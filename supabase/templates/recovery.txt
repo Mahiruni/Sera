@@ -1,0 +1,19 @@
+Reset your Sera.et password
+
+Hello {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }},
+
+We received a request to reset your password. Use the secure link below to choose a new password. If you did not request this, you can ignore this email.
+
+Choose a new password
+
+{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
+
+A small reminder for a safer journey
+
+Never share passwords, verification links or codes. Sera.et will not ask for your password by email. Do not enter financial, identity or private student records into the demo.
+
+Need a hand?
+
+{{ .SiteURL }}/help
+
+You received this transactional email because of an account action on Sera.et. It is not a marketing subscription.
