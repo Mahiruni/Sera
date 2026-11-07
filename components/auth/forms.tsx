@@ -7,6 +7,13 @@ import {
   ArrowRight,
   ShieldCheck,
   LoaderCircle,
+  ArrowUpLeft,
+  Mail,
+  LockKeyhole,
+  UserRound,
+  Sparkles,
+  Check,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { useSera } from "../store";
 import { locales } from "@/lib/locales";
@@ -45,7 +52,8 @@ export function PasswordField({
           ? "የይለፍ ቃል ያረጋግጡ"
           : "Confirm password"
         : copy.password}
-      <span className="password-input">
+      <span className="password-input auth-input-wrap">
+        <LockKeyhole className="auth-input-icon" size={17} aria-hidden="true" />
         <input
           required
           name={confirm ? "confirm_password" : "password"}
@@ -55,6 +63,15 @@ export function PasswordField({
           }
           minLength={confirm || newPassword ? 12 : 1}
           maxLength={128}
+          placeholder={
+            newPassword || confirm
+              ? lang === "am"
+                ? "ቢያንስ 12 ቁምፊዎች"
+                : "At least 12 characters"
+              : lang === "am"
+                ? "የይለፍ ቃልዎ"
+                : "Enter your password"
+          }
         />
         <button
           type="button"
@@ -111,168 +128,323 @@ export function AuthForm({
             : lang === "am"
               ? "የይለፍ ቃል አዘምን"
               : "Update password";
+  const isEntry = mode === "signin" || mode === "signup";
   return (
-    <section className="auth-layout">
-      <div className="auth-story">
-        <p className="eyebrow">
-          Sera.et / {lang === "am" ? "የእርስዎ ቀጣይ ምዕራፍ" : "YOUR NEXT CHAPTER"}
-        </p>
-        <h1>{heading}</h1>
-        <p>
-          {mode === "verify"
-            ? "Follow the confirmation link in your email to verify ownership. Check your spam folder too. If a previous link expired, request another below."
-            : lang === "am"
-              ? "የግል መለያዎን ያዘጋጁ፣ ምርጫዎችዎን ያስቀምጡ እና ቀጣዩን እርምጃ በግልጽነት ያቅዱ።"
-              : "A personal space to keep your details and preferences together. Start simply, and add more when you are ready."}
-        </p>
-        <div className="auth-trust">
-          <ShieldCheck size={21} />
-          <span>{copy.notice}</span>
-        </div>
-        <Link href="/demo" className="inline-link">
-          {lang === "am" ? "መጀመሪያ ሙከራውን ያስሱ" : "Explore the demo first"}
-          <ArrowRight size={15} />
+    <section className={`auth-layout auth-mode-${mode}`}>
+      <aside className="auth-story">
+        <Link href="/" className="auth-wordmark" aria-label="Sera.et home">
+          Sera<span>.et</span>
         </Link>
-      </div>
-      <form action={action} className="panel auth-form" aria-busy={pending}>
-        {mode === "signup" && !registrationOpen && (
-          <p className="auth-notice" role="status">
-            Account registration is being prepared. It opens after
-            email-delivery and security verification. You can review this form
-            and explore the demo now.
+        <div className="auth-story-content">
+          <p className="auth-story-kicker">
+            <span />
+            {lang === "am"
+              ? "ለቀጣዩ እርምጃዎ"
+              : "A LITTLE CLARITY. A NEW POSSIBILITY."}
           </p>
+          <h2>
+            {lang === "am" ? (
+              <>
+                ቀጣዩ ምዕራፍዎ
+                <br />
+                <em>ከዚህ ይጀምራል።</em>
+              </>
+            ) : (
+              <>
+                Your next chapter.
+                <br />
+                <em>Starts with you.</em>
+              </>
+            )}
+          </h2>
+          <p className="auth-story-description">
+            {lang === "am"
+              ? "ለእርስዎ የተዘጋጀ ቦታ። መገለጫዎን ያዘጋጁ፣ ምርጫዎችዎን ያስቀምጡ፣ ወደ ፊት ይቀጥሉ።"
+              : "A space for who you are — and where you want to go. Bring your profile and preferences together."}
+          </p>
+          <div className="auth-art" aria-hidden="true">
+            <div className="auth-art-orbit orbit-one" />
+            <div className="auth-art-orbit orbit-two" />
+            <div className="auth-art-spark">
+              <Sparkles size={23} />
+            </div>
+            <div className="auth-art-ticket">
+              <BriefcaseBusiness size={20} />
+              <span>{lang === "am" ? "አዲስ አቅጣጫ" : "A fresh perspective"}</span>
+            </div>
+            <div className="auth-art-profile">
+              <div className="auth-art-profile-top">
+                <span className="auth-art-avatar">
+                  <UserRound size={27} strokeWidth={1.5} />
+                </span>
+                <span className="auth-art-check">
+                  <Check size={13} />
+                </span>
+              </div>
+              <strong>
+                {lang === "am" ? "የእርስዎ ልዩ መንገድ።" : "Uniquely you."}
+              </strong>
+              <span>
+                {lang === "am"
+                  ? "ችሎታዎ። ምርጫዎ። ወደፊትዎ።"
+                  : "Your skills. Your direction."}
+              </span>
+              <div className="auth-art-lines">
+                <i />
+                <i />
+              </div>
+              <span className="auth-art-pill">
+                <span />
+                {lang === "am" ? "የእርስዎ ቀጣይ ምዕራፍ" : "Made for your next move"}
+              </span>
+            </div>
+            <span className="auth-art-dot dot-a" />
+            <span className="auth-art-dot dot-b" />
+          </div>
+        </div>
+        <div className="auth-story-bottom">
+          <span>
+            <ShieldCheck size={16} />
+            {lang === "am"
+              ? "የግል መለያ። የእርስዎ ቁጥጥር።"
+              : "Your profile. Your space. Your control."}
+          </span>
+          <Link href="/">
+            {lang === "am" ? "ወደ መነሻ" : "Back to Sera"}
+            <ArrowUpLeft size={14} />
+          </Link>
+        </div>
+      </aside>
+      <div className="auth-form-area">
+        <Link
+          href="/"
+          className="auth-wordmark auth-mobile-brand"
+          aria-label="Sera.et home"
+        >
+          Sera<span>.et</span>
+        </Link>
+        {isEntry && (
+          <nav
+            className="auth-tabs"
+            aria-label={lang === "am" ? "የመለያ መዳረሻ" : "Account access"}
+          >
+            <Link
+              href="/sign-in"
+              aria-current={mode === "signin" ? "page" : undefined}
+            >
+              {copy.login}
+            </Link>
+            <Link
+              href="/sign-up"
+              aria-current={mode === "signup" ? "page" : undefined}
+            >
+              {copy.create}
+            </Link>
+          </nav>
         )}
-        {mode === "signup" && (
-          <>
+        <div className="auth-form-heading">
+          <span className="auth-heading-icon">
+            {mode === "verify" ? <Mail size={21} /> : <ArrowRight size={21} />}
+          </span>
+          <h1>{heading}</h1>
+          <p>
+            {mode === "signup"
+              ? lang === "am"
+                ? "በቀላሉ ይጀምሩ። የቀረውን በኋላ ያክሉ።"
+                : "A few details. A space of your own."
+              : mode === "signin"
+                ? lang === "am"
+                  ? "ወደ የግል ቦታዎ ይመለሱ።"
+                  : "Good to see you again. Make yourself at home."
+                : mode === "verify"
+                  ? "Open the confirmation email to continue. Check your spam folder, or request a fresh link below."
+                  : mode === "forgot"
+                    ? "Enter your account email. We’ll send you a link to start again."
+                    : "Choose a strong, unique password for your account."}
+          </p>
+        </div>
+        <form action={action} className="auth-form" aria-busy={pending}>
+          {mode === "signup" && !registrationOpen && (
+            <p className="auth-notice" role="status">
+              Account registration is temporarily unavailable. Please try again
+              later.
+            </p>
+          )}
+          {mode === "signup" && (
             <label className="auth-label">
               {copy.name}
-              <input
-                name="full_name"
-                required
-                minLength={2}
-                maxLength={100}
-                autoComplete="name"
-              />
+              <span className="auth-input-wrap">
+                <UserRound
+                  className="auth-input-icon"
+                  size={17}
+                  aria-hidden="true"
+                />
+                <input
+                  name="full_name"
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  autoComplete="name"
+                  placeholder={lang === "am" ? "ሙሉ ስምዎ" : "Your full name"}
+                />
+              </span>
             </label>
+          )}
+          {mode !== "reset" && (
             <label className="auth-label">
-              {copy.journey}
-              <select
-                name="journey"
-                value={journey}
-                onChange={(e) => setJourney(e.target.value)}
-              >
-                <option value="candidate">{copy.candidate}</option>
-                <option value="employer">{copy.employer}</option>
-              </select>
+              {copy.email}
+              <span className="auth-input-wrap">
+                <Mail
+                  className="auth-input-icon"
+                  size={17}
+                  aria-hidden="true"
+                />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  maxLength={254}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                />
+              </span>
             </label>
-            <p className="auth-help">
-              {lang === "am"
-                ? "ይህ ምርጫ የተረጋገጠ ቀጣሪ መብት አይሰጥም።"
-                : "Your journey is a preference, not employer verification or privileged access."}
-            </p>
-            <label className="auth-label">
-              {copy.language}
-              <select
-                name="locale"
-                value={locale}
-                onChange={(e) => setLang(e.target.value as typeof locale)}
-              >
-                {locales.map((l) => (
-                  <option value={l.code} key={l.code}>
-                    {l.native}
-                    {l.status === "in-progress" ? " · English fallback" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="auth-help">
-              Email translations use the saved preference when a reviewed
-              template is available. Otherwise English is used.
-            </p>
-            <label className="auth-honeypot" aria-hidden="true">
-              Website
-              <input name="website" tabIndex={-1} autoComplete="off" />
-            </label>
-          </>
-        )}
-        {mode !== "reset" && (
-          <label className="auth-label">
-            {copy.email}
-            <input
-              name="email"
-              type="email"
-              required
-              maxLength={254}
-              autoComplete="email"
-            />
-          </label>
-        )}
-        {["signup", "signin", "reset"].includes(mode) && (
-          <PasswordField newPassword={mode !== "signin"} />
-        )}
-        {mode === "signup" && (
-          <p className="auth-help">
-            Use 12–128 characters. Never reuse a password from another service.
-          </p>
-        )}
-        {mode === "reset" && <PasswordField confirm />}
-        {mode === "signup" && (
-          <label className="auth-help auth-consent">
-            <input type="checkbox" name="accept_terms" value="yes" required />
-            <span>
-              {lang === "am"
-                ? "የመለያ ውሎችን እቀበላለሁ፣ የግላዊነት መግለጫውንም አንብቤያለሁ።"
-                : "I agree to the account terms and have read the privacy notice."}{" "}
-              <Link href="/terms" target="_blank" rel="noopener">
-                {lang === "am" ? "ውሎች" : "Terms"}
-              </Link>
-              {" · "}
-              <Link href="/privacy" target="_blank" rel="noopener">
-                {lang === "am" ? "ግላዊነት" : "Privacy"}
-              </Link>
-              .
-              {lang === "am"
-                ? " የማስታወቂያ ደንበኝነት አይካተትም።"
-                : " No marketing subscription is included."}
-            </span>
-          </label>
-        )}
-        {state.message && (
-          <p
-            className={`auth-feedback ${state.success ? "success" : ""}`}
-            role={state.success ? "status" : "alert"}
-            lang="en"
-          >
-            {state.message}
-          </p>
-        )}
-        <button
-          className="button"
-          disabled={pending || (mode === "signup" && !registrationOpen)}
-        >
-          {pending ? <LoaderCircle className="auth-spinner" size={17} /> : null}
-          {pending ? (lang === "am" ? "በሂደት ላይ…" : "Working…") : submit}
-          <ArrowRight size={16} />
-        </button>
-        <div className="auth-form-links">
-          {mode !== "signin" && <Link href="/sign-in">{copy.login}</Link>}
+          )}
+          {["signup", "signin", "reset"].includes(mode) && (
+            <PasswordField newPassword={mode !== "signin"} />
+          )}
           {mode === "signin" && (
+            <Link href="/forgot-password" className="auth-forgot">
+              {copy.forgot}
+            </Link>
+          )}
+          {mode === "reset" && <PasswordField confirm />}
+          {mode === "signup" && (
             <>
-              <Link href="/sign-up">{copy.create}</Link>
-              <Link href="/forgot-password">{copy.forgot}</Link>
-              <Link href="/verify-email">
-                {lang === "am" ? "ኢሜይል ያረጋግጡ" : "Verify your email"}
-              </Link>
+              <p className="auth-help auth-password-hint">
+                {lang === "am"
+                  ? "ቢያንስ 12 ቁምፊዎች። ልዩ የይለፍ ቃል ይጠቀሙ።"
+                  : "12 characters minimum. Make it unique to you."}
+              </p>
+              <div className="auth-field-grid">
+                <label className="auth-label">
+                  {copy.journey}
+                  <select
+                    name="journey"
+                    value={journey}
+                    onChange={(e) => setJourney(e.target.value)}
+                  >
+                    <option value="candidate">{copy.candidate}</option>
+                    <option value="employer">{copy.employer}</option>
+                  </select>
+                </label>
+                <label className="auth-label">
+                  {copy.language}
+                  <select
+                    name="locale"
+                    value={locale}
+                    onChange={(e) => setLang(e.target.value as typeof locale)}
+                  >
+                    {locales.map((l) => (
+                      <option value={l.code} key={l.code}>
+                        {l.native}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <p className="auth-help">
+                {lang === "am"
+                  ? "የመለያ ኢሜይሎች በአሁኑ ጊዜ በእንግሊዝኛ ይላካሉ። የቀጣሪ ምርጫ ማረጋገጫ አይሰጥም።"
+                  : "Account emails currently arrive in English. Employer selection does not grant verified status."}
+              </p>
+              <label className="auth-honeypot" aria-hidden="true">
+                Website
+                <input name="website" tabIndex={-1} autoComplete="off" />
+              </label>
+              <label className="auth-help auth-consent">
+                <input
+                  type="checkbox"
+                  name="accept_terms"
+                  value="yes"
+                  required
+                />
+                <span>
+                  {lang === "am"
+                    ? "የመለያ ውሎችን እቀበላለሁ፣ የግላዊነት መግለጫውንም አንብቤያለሁ።"
+                    : "I agree to the account terms and have read the privacy notice."}{" "}
+                  <Link href="/terms" target="_blank" rel="noopener">
+                    {lang === "am" ? "ውሎች" : "Terms"}
+                  </Link>
+                  {" · "}
+                  <Link href="/privacy" target="_blank" rel="noopener">
+                    {lang === "am" ? "ግላዊነት" : "Privacy"}
+                  </Link>
+                </span>
+              </label>
             </>
           )}
-          {mode === "reset" && (
-            <Link href="/forgot-password">Request a fresh reset link</Link>
+          {state.message && (
+            <p
+              className={`auth-feedback ${state.success ? "success" : ""}`}
+              role={state.success ? "status" : "alert"}
+              lang="en"
+            >
+              {state.message}
+            </p>
           )}
-        </div>
-      </form>
+          <button
+            className="button auth-submit"
+            disabled={pending || (mode === "signup" && !registrationOpen)}
+          >
+            {pending ? (
+              <LoaderCircle className="auth-spinner" size={18} />
+            ) : null}
+            {pending ? (lang === "am" ? "በሂደት ላይ…" : "Working…") : submit}
+            {!pending && <ArrowRight size={18} />}
+          </button>
+          <div className="auth-form-links">
+            {mode === "signup" ? (
+              <p>
+                {lang === "am" ? "መለያ አለዎት?" : "Already have an account?"}{" "}
+                <Link href="/sign-in">{copy.login}</Link>
+              </p>
+            ) : mode === "signin" ? (
+              <>
+                <p>
+                  {lang === "am" ? "አዲስ ነዎት?" : "New to Sera?"}{" "}
+                  <Link href="/sign-up">{copy.create}</Link>
+                </p>
+                <Link href="/verify-email" className="auth-secondary-link">
+                  {lang === "am"
+                    ? "ኢሜይል እንደገና ያረጋግጡ"
+                    : "Need a new verification email?"}
+                </Link>
+              </>
+            ) : (
+              <Link href="/sign-in">
+                <ArrowUpLeft size={14} />
+                {copy.login}
+              </Link>
+            )}
+            {mode === "reset" && (
+              <Link href="/forgot-password">Request a fresh reset link</Link>
+            )}
+          </div>
+        </form>
+        <p className="auth-footnote">
+          <LockKeyhole size={13} />
+          {lang === "am"
+            ? "የግል መለያ። የቅጥር መሣሪያዎች ሙከራ ናቸው።"
+            : "Private account access · Recruitment tools are demos"}
+        </p>
+      </div>
     </section>
   );
 }
+
 export type Profile = {
   id: string;
   full_name: string;
