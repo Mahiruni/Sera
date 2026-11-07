@@ -45,3 +45,10 @@ After dashboard access:
 - Production build, TypeScript checks, ESLint and all 14 tests passed for the prepared account foundation.
 - Browser: 390px registration and 768px marketing viewports showed no horizontal overflow; desktop registration and email previews render. Anonymous `/dashboard` redirects to sign-in, expired-link error is visible and auth robots metadata is noindex.
 - Current Supabase public settings report email provider enabled, confirmation required and native signup not disabled. SMTP sender/delivery has not been verified. No real customer account or successful email delivery is claimed.
+
+## Dashboard follow-up
+Dashboard access succeeded after the owner's CAPTCHA handoff. Confirmed Site URL is the existing production origin. Saved and verified these two exact allowed redirects:
+- https://sera-dusky-seven.vercel.app/auth/callback
+- https://sera-dusky-seven.vercel.app/auth/callback?next=/reset-password
+
+The Free-plan dashboard requires custom SMTP before editing email templates; the alternative built-in-service customization requires a paid upgrade, which was not purchased. Both connected Hostinger links resolve to the same existing mailbox. Owner selected mahir@hisabtech.com as sender, displayed as Sera.et. Prepared smtp.hostinger.com:465 with that username, using Hostinger's official published settings. Password remains for secure owner entry directly in Supabase; the SMTP form is not saved and delivery/templates are not yet activated. No secret was read or committed. Screenshot documents the prepared, unsaved form.
