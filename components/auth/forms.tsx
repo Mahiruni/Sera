@@ -440,6 +440,16 @@ export function AuthForm({
             ? "የግል መለያ። የቅጥር መሣሪያዎች ሙከራ ናቸው።"
             : "Private account access · Recruitment tools are demos"}
         </p>
+        <nav
+          className="auth-policy-links"
+          aria-label={lang === "am" ? "የመለያ መረጃ" : "Account information"}
+        >
+          <Link href="/privacy">{lang === "am" ? "ግላዊነት" : "Privacy"}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/terms">{lang === "am" ? "ውሎች" : "Terms"}</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/contact">{lang === "am" ? "እገዛ" : "Get help"}</Link>
+        </nav>
       </div>
     </section>
   );
