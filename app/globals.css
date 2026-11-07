@@ -5281,3 +5281,11 @@ body:has(.auth-layout) .information-footer {
 .auth-policy-links a:hover {
   color: #087f9f;
 }
+.auth-layout .auth-form .auth-consent input[type="checkbox"] {
+  min-height: 15px;
+  height: 15px;
+  width: 15px;
+  margin: 3px 0 0;
+  padding: 0;
+  flex: 0 0 15px;
+}
