@@ -8,5 +8,5 @@ export default async function Page({
 }) {
   const { id } = await params;
   if (!/^\d+$/.test(id)) notFound();
-  return <JobDetail id={Number(id)} />;
+  return <JobDetail key={id} id={Number(id)} />;
 }

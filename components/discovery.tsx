@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   MapPin,
   Clock3,
+  Building2,
+  BriefcaseBusiness,
   ArrowUpRight,
   Bookmark,
 } from "lucide-react";
@@ -176,6 +178,9 @@ export function Discovery({
 export function JobDetail({ id }: { id: number }) {
   const { state, setState, t, lang, ready, notify } = useSera();
   const [cover, setCover] = useState("");
+  const [detailTab, setDetailTab] = useState<"description" | "company">(
+    "description",
+  );
   if (!ready) return <Loading />;
   const job = state.jobs.find((j) => j.id === id);
   if (!job)
@@ -196,30 +201,117 @@ export function JobDetail({ id }: { id: number }) {
         <ArrowLeft size={16} />
         {t("back")}
       </Link>
+      <section className="role-overview">
+        <div className="role-overview-band" aria-hidden="true" />
+        <span className="role-company-symbol" aria-hidden="true">
+          {job.org
+            .split(" ")
+            .map((word) => word[0])
+            .slice(0, 2)
+            .join("")}
+        </span>
+        <p className="role-company-name">
+          {job.org}
+          <span className="sample-tag">{t("sample")}</span>
+        </p>
+        <h1>{job.title}</h1>
+        <p className="role-salary">
+          {pay(job)} <span>{t("month")}</span>
+        </p>
+        <div className="tags role-overview-tags">
+          <span>{job.type}</span>
+          <span>{job.loc}</span>
+          <span>
+            {categories.find((category) => category.id === job.cat)?.[lang]}
+          </span>
+        </div>
+      </section>
       <div className="detail-layout">
         <article className="detail-main">
-          <span className="sample-tag">{t("sample")}</span>
-          <p className="eyebrow detail-org">{job.org}</p>
-          <h1>{job.title}</h1>
-          <div className="detail-meta">
-            <span>
-              <MapPin size={15} />
-              {job.loc}
-            </span>
-            <span>
-              <Clock3 size={15} />
-              {job.type}
-            </span>
+          <div
+            className="detail-tabs"
+            role="group"
+            aria-label={lang === "en" ? "Role information" : "የሥራ መረጃ"}
+          >
+            <button
+              type="button"
+              aria-pressed={detailTab === "description"}
+              onClick={() => setDetailTab("description")}
+            >
+              <BriefcaseBusiness size={16} />
+              {t("description")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={detailTab === "company"}
+              onClick={() => setDetailTab("company")}
+            >
+              <Building2 size={16} />
+              {lang === "en" ? "Company" : "ድርጅት"}
+            </button>
           </div>
-          <div className="divider" />
-          <h2>{t("about")}</h2>
-          <p className="body-copy">{job.desc}</p>
-          <h2>{t("requirements")}</h2>
-          <ul className="requirements">
-            {job.req.split("·").map((r, i) => (
-              <li key={i}>{r.trim()}</li>
-            ))}
-          </ul>
+          {detailTab === "description" ? (
+            <>
+              <div className="role-facts">
+                <div>
+                  <Clock3 size={19} />
+                  <span>{t("type")}</span>
+                  <strong>{job.type}</strong>
+                </div>
+                <div>
+                  <MapPin size={19} />
+                  <span>{t("location")}</span>
+                  <strong>{job.loc}</strong>
+                </div>
+                <div>
+                  <BriefcaseBusiness size={19} />
+                  <span>{t("category")}</span>
+                  <strong>
+                    {
+                      categories.find((category) => category.id === job.cat)?.[
+                        lang
+                      ]
+                    }
+                  </strong>
+                </div>
+              </div>
+              <h2>{t("about")}</h2>
+              <p className="body-copy">{job.desc}</p>
+              <h2>{t("requirements")}</h2>
+              <ul className="requirements">
+                {job.req.split("·").map((requirement, i) => (
+                  <li key={i}>{requirement.trim()}</li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div className="company-information">
+              <h2>{job.org}</h2>
+              <p className="body-copy">
+                {lang === "en"
+                  ? "This employer is part of Sera’s sample collection. Company verification and live hiring are not available in this demo."
+                  : "ይህ ቀጣሪ የሥራ የሙከራ ስብስብ አካል ነው። የድርጅት ማረጋገጫ እና ቀጥታ ቅጥር በዚህ ሙከራ አይገኙም።"}
+              </p>
+              <h2>{lang === "en" ? "More sample roles" : "ተጨማሪ የሙከራ ሥራዎች"}</h2>
+              {state.jobs
+                .filter(
+                  (other) =>
+                    other.org === job.org &&
+                    other.status === "open" &&
+                    other.id !== job.id,
+                )
+                .map((other) => (
+                  <Link
+                    className="company-role-link"
+                    href={`/jobs/${other.id}`}
+                    key={other.id}
+                  >
+                    {other.title}
+                    <ArrowUpRight size={16} />
+                  </Link>
+                ))}
+            </div>
+          )}
           <Notice>{t("demoNote")}</Notice>
         </article>
         <aside className="detail-aside">

@@ -19,26 +19,38 @@ export function Brand({ small = false }: { small?: boolean }) {
       aria-label="Sera home"
     >
       <span className="brand-mark" aria-hidden="true">
-        <i />
-        <i />
-        <i />
+        <svg width="27" height="27" viewBox="0 0 32 32" fill="none">
+          <path
+            d="M23 9H13.5a4.5 4.5 0 0 0 0 9h5a4.5 4.5 0 0 1 0 9H9M9 5v4m14 18v-4"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            transform="translate(0 -2)"
+          />
+        </svg>
       </span>
       <span>
         sera<span className="brand-am">ሥራ</span>
-        <span className="brand-dot">.</span>
       </span>
     </Link>
   );
 }
-export function JobCard({ job }: { job: Job }) {
+export function JobCard({
+  job,
+  tone = "default",
+}: {
+  job: Job;
+  tone?: "default" | "cyan" | "ice";
+}) {
   const { state, setState, t, lang } = useSera();
   const saved = state.saved.includes(job.id);
   const c = categories.find((c) => c.id === job.cat);
   return (
-    <article className="job-card">
+    <article className={`job-card job-card-${tone}`}>
       <div className="card-top">
         <span
-          className={`company-mark ${job.empId === 3 ? "gold" : ""}`}
+          className={`company-mark ${job.empId === 3 ? "alternate" : ""}`}
           aria-hidden="true"
         >
           {job.org
@@ -51,7 +63,7 @@ export function JobCard({ job }: { job: Job }) {
         <button
           type="button"
           className={`icon-button bookmark ${saved ? "selected" : ""}`}
-          aria-label={`${saved ? "Unsave" : "Save"} ${job.title}`}
+          aria-label={`${lang === "am" ? (saved ? "አስወግድ" : "አስቀምጥ") : saved ? "Unsave" : "Save"} ${job.title}`}
           aria-pressed={saved}
           onClick={() =>
             setState((s) => ({

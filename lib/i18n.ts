@@ -17,12 +17,6 @@ const words = {
     "Sample roles and local workspaces. No live applications, payments, or AI service.",
     "የሙከራ ሥራዎች እና የአካባቢ የሥራ ቦታዎች። ቀጥታ ማመልከቻ፣ ክፍያ ወይም AI አገልግሎት የለም።",
   ],
-  heroTop: ["A little closer to", "ወደ ቀጣዩ ዕድልዎ"],
-  heroBottom: ["your next chapter.", "አንድ እርምጃ ይቅረቡ።"],
-  heroSub: [
-    "Meaningful work. Exceptional people. A thoughtfully built space for Ethiopia’s next generation of talent.",
-    "ትርጉም ያለው ሥራ። ልዩ ባለሙያዎች። ለኢትዮጵያ ቀጣይ ትውልድ ተሰጥኦ በጥንቃቄ የተዘጋጀ ቦታ።",
-  ],
   search: ["Job title, company, or skill", "የሥራ መደብ፣ ድርጅት ወይም ክህሎት"],
   searchBtn: ["Find your next role", "ቀጣዩን ሥራዎን ያግኙ"],
   all: ["All categories", "ሁሉም ዘርፎች"],
@@ -31,7 +25,7 @@ const words = {
   explore: ["Explore opportunities", "ዕድሎችን ያስሱ"],
   curated: ["A place to start.", "የሚጀምሩበት ቦታ።"],
   featured: [
-    "From the original Sera collection. All listings below are demonstration content.",
+    "Explore Sera’s sample collection. These are demonstration roles, not live vacancies.",
     "ከመጀመሪያው የሥራ ስብስብ። ከታች ያሉት ሁሉም ዝርዝሮች ለሙከራ ናቸው።",
   ],
   viewAll: ["View all roles", "ሁሉንም ሥራዎች ይመልከቱ"],

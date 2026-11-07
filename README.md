@@ -1,6 +1,6 @@
 # Sera ሥራ
 
-A responsive Next.js App Router frontend for an Ethiopian recruitment marketplace, migrated from the supplied `sera-marketplace-2.html`. The green, ivory, and gold interface supports English and Amharic, a transparent two-control header, an accessible modal navigation drawer, and a floating glass navigation dock.
+A responsive Next.js App Router frontend for an Ethiopian recruitment marketplace, migrated from the supplied `sera-marketplace-2.html`. The cyan-blue and soft white interface supports English and Amharic, a transparent two-control header, an accessible modal navigation drawer, and a floating glass navigation dock.
 
 ## Run
 
@@ -65,8 +65,10 @@ No backend or hosting project was supplied or provisioned in this implementation
 - Reusable shell, cards, headings, notices, loading UI, route components, shared translations, domain functions, and a versioned browser-store adapter.
 - `useSyncExternalStore` keeps browser data hydration-safe and subscribes to storage changes.
 - Native `<dialog>` provides modal focus containment, Escape dismissal, and focus restoration.
-- Self-hosted variable fonts support Latin and Ethiopic text; CSS creates the hero artwork without raster downloads.
+- Self-hosted Plus Jakarta Sans provides Pinterest-like rounded typography, with Noto Sans Ethiopic for Amharic. It does not use Pinterest’s proprietary font.
+- The redesigned app home includes work-type pills, a cyan spotlight rail, compact role cards, saved-item summaries, and category chips. All artwork is CSS/SVG.
+- Brand tokens: cyan `#35B4DA`, accessible primary `#087F9F`, ice blue `#E9F7FC`, background `#F5F8FC`, and ink `#172D3B`.
 - Reduced-motion support, keyboard focus indicators, form labels, a skip link, stable loading placeholders, safe-area spacing, and a non-blur dock fallback are included.
-- `docs/reference/sera-marketplace-2.html` retains the user's source for migration reference. It is not served or embedded by the application.
+- The superseded HTML interface and former brand assets have been removed from the current source tree; the original migration remains available in Git history.
 
 See [verification notes](docs/VERIFICATION.md) for checks and limits.
