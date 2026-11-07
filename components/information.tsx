@@ -4,12 +4,15 @@ import { ArrowUpRight, ArrowLeft, Compass } from "lucide-react";
 import { useSera } from "./store";
 import { Heading } from "./ui";
 import { informationPages, type InformationSlug } from "@/lib/information";
+import { accountInformationPages } from "@/lib/account-information";
 import { categories } from "@/lib/model";
 export function InformationPage({ page }: { page: InformationSlug }) {
   const { t, lang } = useSera();
-  const content = informationPages[page];
+  const content =
+    page in accountInformationPages
+      ? accountInformationPages[page as keyof typeof accountInformationPages]
+      : informationPages[page];
   const i = lang === "am" ? 1 : 0;
-  const draft = page === "terms" || page === "privacy";
   return (
     <div className="container page information-page">
       <Link href="/" className="inline-link">
@@ -21,7 +24,6 @@ export function InformationPage({ page }: { page: InformationSlug }) {
         title={content.title[i]}
         description={content.intro[i]}
       />
-      {draft && <p className="draft-label">{t("draftNotice")}</p>}
       <article className="panel information-article">
         {content.sections.map((section, index) => (
           <section key={index}>
@@ -51,7 +53,7 @@ export function InformationPage({ page }: { page: InformationSlug }) {
           {t("terms")}
           <ArrowUpRight size={14} />
         </Link>
-        <Link href="/account">
+        <Link href="/dashboard">
           {t("account")}
           <ArrowUpRight size={14} />
         </Link>

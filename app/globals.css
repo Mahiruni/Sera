@@ -4630,3 +4630,16 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.auth-consent input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 3px;
+  accent-color: #087f9f;
+}

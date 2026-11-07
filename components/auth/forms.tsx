@@ -120,7 +120,7 @@ export function AuthForm({
         <h1>{heading}</h1>
         <p>
           {mode === "verify"
-            ? "Follow the confirmation link in your email to verify ownership. If a previous link expired, request another below. Delivery is not guaranteed until your sender is configured."
+            ? "Follow the confirmation link in your email to verify ownership. Check your spam folder too. If a previous link expired, request another below."
             : lang === "am"
               ? "የግል መለያዎን ያዘጋጁ፣ ምርጫዎችዎን ያስቀምጡ እና ቀጣዩን እርምጃ በግልጽነት ያቅዱ።"
               : "A personal space to keep your details and preferences together. Start simply, and add more when you are ready."}
@@ -217,12 +217,25 @@ export function AuthForm({
         )}
         {mode === "reset" && <PasswordField confirm />}
         {mode === "signup" && (
-          <p className="auth-help">
-            Please review our <Link href="/privacy">draft privacy notice</Link>{" "}
-            and <Link href="/terms">draft terms</Link>. Public registration
-            remains paused pending launch review. No marketing subscription is
-            included.
-          </p>
+          <label className="auth-help auth-consent">
+            <input type="checkbox" name="accept_terms" value="yes" required />
+            <span>
+              {lang === "am"
+                ? "የመለያ ውሎችን እቀበላለሁ፣ የግላዊነት መግለጫውንም አንብቤያለሁ።"
+                : "I agree to the account terms and have read the privacy notice."}{" "}
+              <Link href="/terms" target="_blank" rel="noopener">
+                {lang === "am" ? "ውሎች" : "Terms"}
+              </Link>
+              {" · "}
+              <Link href="/privacy" target="_blank" rel="noopener">
+                {lang === "am" ? "ግላዊነት" : "Privacy"}
+              </Link>
+              .
+              {lang === "am"
+                ? " የማስታወቂያ ደንበኝነት አይካተትም።"
+                : " No marketing subscription is included."}
+            </span>
+          </label>
         )}
         {state.message && (
           <p

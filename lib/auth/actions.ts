@@ -27,7 +27,7 @@ export async function register(
   if (!input)
     return {
       message:
-        "Check your name, email, language and journey. Use a password of 12–128 characters.",
+        "Check your details, accept the account terms and use a password of 12–128 characters.",
     };
   if (String(data.get("website") || ""))
     return { message: "Unable to process this request." };
@@ -41,6 +41,8 @@ export async function register(
         full_name: input.full_name,
         locale: input.locale,
         journey: input.journey,
+        account_terms_version: "2026-11-07",
+        account_terms_acknowledged_at: new Date().toISOString(),
       },
     },
   });

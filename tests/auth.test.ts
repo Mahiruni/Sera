@@ -23,6 +23,7 @@ test("registration accepts only supported journeys/locales and validates require
   const f = new FormData();
   for (const [k, v] of Object.entries({
     email: " TEST@example.com ",
+    accept_terms: "yes",
     password: "strong-test-password",
     full_name: "Test person",
     journey: "candidate",
@@ -30,6 +31,9 @@ test("registration accepts only supported journeys/locales and validates require
   }))
     f.set(k, v);
   assert.equal(readRegistration(f)?.email, "test@example.com");
+  f.delete("accept_terms");
+  assert.equal(readRegistration(f), null);
+  f.set("accept_terms", "yes");
   f.set("journey", "admin");
   assert.equal(readRegistration(f), null);
   f.set("journey", "candidate");

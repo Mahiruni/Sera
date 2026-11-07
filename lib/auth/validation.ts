@@ -27,6 +27,7 @@ export function readRegistration(data: FormData) {
   const locale = data.get("locale");
   const journey = data.get("journey");
   if (
+    data.get("accept_terms") !== "yes" ||
     !email ||
     passwordIssue(password) ||
     name.length < 2 ||

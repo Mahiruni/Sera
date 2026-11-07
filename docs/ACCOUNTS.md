@@ -7,8 +7,9 @@ Production origin: https://sera-dusky-seven.vercel.app
 Supabase: Sera's Project (`okegwojigrtxadvgxpwm`), eu-central-1, Seraa connection.
 Public Supabase URL and publishable key are configured for production and preview. The application uses no privileged key.
 
-`SERA_ACCOUNT_REGISTRATION=disabled` remains set in both environments. This pauses the website registration button and server action; it does not disable the project-wide Supabase signup API.
-The account foundation is deployed; public account launch is not complete.
+`SERA_ACCOUNT_REGISTRATION=enabled` is now configured for production and preview under the owner's explicit public-registration launch request. New deployments enable the website registration button and server action. Email confirmation remains required.
+
+The public registration release replaces browser-demo privacy/terms copy with scoped account notices in English and Amharic, names Mahir Aman as operator and uses the verified mahir@hisabtech.com support address. It adds a required terms/privacy acknowledgement checked on both client and server. The action adds the notice version and server timestamp to Auth metadata; this is user-editable metadata, not an immutable legal audit or authorization claim. Recruitment features remain separate demonstrations.
 
 ## Hosted email configuration
 
@@ -54,11 +55,11 @@ Profiles are created by a private trigger. RLS restricts authenticated users to 
 
 Fresh local build (including TypeScript), ESLint and all 14 automated tests passed for the deployed foundation. GitHub CI and Vercel preview passed. Current hosted Supabase security advisor returned no findings. Previous rolled-back two-user RLS tests passed. Anonymous dashboard redirect, registration pause and expired-link feedback were verified live in the browser. Runtime-log inspection was unavailable (Vercel 403); no clean-log claim is made.
 
-## Remaining public-launch work
+## Follow-up work
 
-1. Replace/review draft privacy and terms for real account operation, including actual operator/contact and retention decisions.
+1. Keep account notices aligned with actual operation; no legal compliance certification is claimed. Account deletion requests are manual through the verified mailbox.
 2. Exercise browser form submissions and obtain a fresh final confirmation sample; extend inbox rendering checks beyond the connected Hostinger mailbox.
 3. Review and activate translations; implement idempotent post-verification welcome delivery if required.
-4. Enable public website registration only after those launch decisions and checks are complete, then verify the deployed registration flow.
+4. Registration is enabled for the limited account/profile release. Recruitment, document handling, payments and standalone welcome dispatch are outside this launch.
 
 No paid upgrade, new hosting/database project or additional privileged access was created.
