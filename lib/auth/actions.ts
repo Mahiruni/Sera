@@ -1,5 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { dispatchWelcome } from "../emails/welcome";
 import { revalidatePath } from "next/cache";
 import { serverClient, authConfigured, currentUser } from "../supabase/server";
 import {
@@ -71,6 +73,11 @@ export async function signIn(
       message:
         "Sign-in was unsuccessful. Check your details and verify your email, or request a password reset.",
     };
+  const signedIn = await client.auth.getUser();
+  if (signedIn.data.user?.email_confirmed_at)
+    after(async () => {
+      await dispatchWelcome(signedIn.data.user!.id);
+    });
   revalidatePath("/", "layout");
   redirect("/dashboard");
 }

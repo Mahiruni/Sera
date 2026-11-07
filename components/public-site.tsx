@@ -52,23 +52,23 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
         </h1>
         <p>
           {am
-            ? "በኢትዮጵያ ስለ ሥራ፣ የትምህርት ምርጫዎች እና የተማሪ ፕሮጀክቶች ተግባራዊ መመሪያዎችን ያንብቡ። የሥራ ፍለጋ ሙከራውንም በግልጽ የተለየ የሙከራ ይዘት ያስሱ።"
-            : "Practical career and education guidance for Ethiopia. Check opportunities carefully, compare study options, and plan your academic work—with a clearly labelled recruitment demo to explore."}
+            ? "በቀጣሪዎች የተለጠፉ ሥራዎችን ያስሱ፣ በግል ያመልክቱ እና በሙያና በትምህርት መመሪያዎች ቀጣዩን እርምጃ ያቅዱ።"
+            : "Explore employer-posted jobs, introduce yourself privately, and plan your next step with practical career and education guidance."}
         </p>
         <div className="public-actions">
-          <Link className="button" href="/guides">
-            {am ? "መመሪያዎችን ያንብቡ" : "Explore the guides"}
+          <Link className="button" href="/jobs">
+            {am ? "ሥራዎችን ያግኙ" : "Explore jobs"}
             <ArrowRight size={16} />
           </Link>
-          <Link className="button secondary" href="/demo">
-            {am ? "የሥራ ፍለጋ ሙከራ" : "Try the recruitment demo"}
+          <Link className="button secondary" href="/employer">
+            {am ? "ሥራ ይለጥፉ" : "For employers"}
             <ArrowUpRight size={16} />
           </Link>
         </div>
         <p className="public-status">
           {am
-            ? "መመሪያዎች አሁን ይገኛሉ። ቀጥታ ቅጥር እና የትምህርት የሥራ ቦታዎች ገና አልተከፈቱም።"
-            : "Guides are available now. Live recruitment and academic workspaces are not launched."}
+            ? "መለያዎች፣ በቀጣሪዎች የተለጠፉ ሥራዎች እና የግል ማመልከቻዎች ቀጥታ ይሠራሉ። የትምህርት የሥራ ቦታዎች ገና በእቅድ ላይ ናቸው።"
+            : "Accounts, employer-posted jobs and private applications are live. Academic workspaces are still planned."}
         </p>
       </div>
       <section
@@ -133,8 +133,8 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
         </h2>
         <p>
           {am
-            ? "አሁን፦ መመሪያዎች፣ የሙከራ ሥራ ፍለጋ እና በአሳሽ የሚቀመጡ የሙከራ የሥራ ቦታዎች። ቀጣይ፦ ደህንነቱ የተጠበቀ ምዝገባ፣ የተቋማት አስተዳደር እና የትምህርት ሂደቶች። የሚስጥር ወይም እውነተኛ የተማሪ መረጃ በሙከራው አያስገቡ።"
-            : "Now: original guides, a sample job-search interface and browser-local demo workspaces. Planned: secure accounts, institutional management and academic workflows. Notifications, live chat, calling, file conversion and exam or assignment handling are not enabled services. Do not enter confidential or real student records into the demo."}
+            ? "የግል መለያዎች፣ በቀጣሪዎች የተለጠፉ ሥራዎች፣ የተቀመጡ ሥራዎች፣ ማመልከቻዎች እና የማመልከቻ መልዕክቶች አሉ። የሙከራ የሥራ ቦታዎች ለየብቻ ናቸው። የተቋም አስተዳደር እና የትምህርት ሂደቶች ገና በእቅድ ላይ ናቸው።"
+            : "Available: private accounts, employer-posted jobs, saved roles, applications and in-app application conversations. Sample workspaces remain separate demonstrations. Institutional management, academic workflows, calling, file conversion and exam handling are still planned."}
         </p>
         <Link className="inline-link" href="/how-it-works">
           {am ? "ሙከራውን ይረዱ" : "Understand the demo"}

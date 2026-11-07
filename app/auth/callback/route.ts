@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { dispatchWelcome } from "@/lib/emails/welcome";
 import { NextRequest, NextResponse } from "next/server";
 import { serverClient } from "@/lib/supabase/server";
 import { safeDestination } from "@/lib/auth/validation";
@@ -8,6 +10,11 @@ export async function GET(request: NextRequest) {
     const client = await serverClient();
     const { error } = await client.auth.exchangeCodeForSession(code);
     if (!error) {
+      const verified = await client.auth.getUser();
+      if (verified.data.user?.email_confirmed_at)
+        after(async () => {
+          await dispatchWelcome(verified.data.user!.id);
+        });
       const response = NextResponse.redirect(
         new URL(
           safeDestination(

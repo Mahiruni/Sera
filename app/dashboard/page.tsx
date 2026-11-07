@@ -21,8 +21,8 @@ export default async function Page() {
       </h1>
       <p className="subtext">
         {am
-          ? "ይህ የእርስዎ የግል መለያ ነው። የቅጥር እና የትምህርት መሣሪያዎች ገና ቀጥታ አይሠሩም።"
-          : "Your private account is separate from the recruitment demo. Live job applications and academic tools are not launched."}
+          ? "ሥራዎችን ያስሱ፣ ማመልከቻዎችዎን ይከታተሉ እና የግል መገለጫዎን ያስተካክሉ።"
+          : "Explore employer-posted jobs, keep track of applications and manage your private profile."}
       </p>
       <div className="dashboard-status">
         <CheckCircle2 size={18} />
@@ -31,6 +31,24 @@ export default async function Page() {
         </span>
       </div>
       <div className="guide-grid">
+        <Link className="panel" href="/jobs">
+          <h2>{am ? "ሥራዎችን ያግኙ" : "Find your next role"}</h2>
+          <p>
+            Explore employer-provided opportunities and apply with a private
+            introduction.
+          </p>
+          <ArrowUpRight size={16} />
+        </Link>
+        <Link className="panel" href="/applications">
+          <h2>{am ? "ማመልከቻዎች" : "My applications"}</h2>
+          <p>Follow your stages and conversations with job posters.</p>
+          <ArrowUpRight size={16} />
+        </Link>
+        <Link className="panel" href="/employer">
+          <h2>{am ? "የቀጣሪ ቦታ" : "Employer workspace"}</h2>
+          <p>Publish roles you represent and review incoming introductions.</p>
+          <ArrowUpRight size={16} />
+        </Link>
         <Link className="panel" href="/settings">
           <UserRound size={23} />
           <h2>{am ? "መለያ እና ምርጫዎች" : "Account & preferences"}</h2>

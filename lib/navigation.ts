@@ -24,12 +24,12 @@ export function navigationGroups(role: Role | null): NavGroup[] {
           ? []
           : [
               {
-                href: "/workspace",
+                href: "/dashboard",
                 key: "workspace" as Key,
                 icon: "workspace",
               },
             ]),
-        { href: "/profile", key: "profile", icon: "profile" },
+        { href: "/settings", key: "profile", icon: "profile" },
         ...(role === "employer"
           ? []
           : [

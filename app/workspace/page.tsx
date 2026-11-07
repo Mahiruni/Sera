@@ -1,10 +1,4 @@
-import { pageMetadata } from "@/lib/seo";
-import { Dashboard } from "@/components/workspace";
-export const metadata = pageMetadata(
-  "/workspace",
-  "Your Demo Workspace",
-  "Browser-only workspace for sample candidate and employer journeys.",
-);
+import { redirect } from "next/navigation";
 export default function Page() {
-  return <Dashboard />;
+  redirect("/dashboard");
 }

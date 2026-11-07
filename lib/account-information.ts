@@ -24,8 +24,8 @@ export const accountInformationPages = {
       {
         title: ["Why we use it", "ለምን እንጠቀምበታለን"],
         body: [
-          "We use this information to create and secure your account, save your private profile and preferences, send verification/recovery/security emails, and respond to your requests. Registration does not subscribe you to marketing. Profiles are not publicly listed or shared with employers in this release. Choosing employer does not grant verified or administrator access.",
-          "መረጃውን መለያዎን ለመፍጠርና ለመጠበቅ፣ የግል መገለጫና ምርጫዎችን ለማስቀመጥ፣ የማረጋገጫ፣ የማገገሚያ እና የደህንነት ኢሜይሎችን ለመላክ እና ጥያቄዎችን ለመመለስ እንጠቀማለን። ምዝገባ የማስታወቂያ ደንበኝነት አያስጀምርም። መገለጫዎች በዚህ ስሪት በይፋ አይታዩም፣ ከቀጣሪዎችም ጋር አይጋሩም።",
+          "We use this information to create and secure your account, save your private profile and preferences, send verification/recovery/security emails, and respond to your requests. Registration does not subscribe you to marketing. Profiles are not publicly listed. When you apply, your explicit acknowledgement shares a snapshot of your name, skills, experience and cover note with that job’s poster. Application stages and conversation messages are stored and visible only to the applicant and poster. Job details you publish are public. Choosing employer does not grant verified or administrator access.",
+          "መረጃውን መለያዎን ለመፍጠርና ለመጠበቅ፣ የግል መገለጫና ምርጫዎችን ለማስቀመጥ፣ የማረጋገጫ፣ የማገገሚያ እና የደህንነት ኢሜይሎችን ለመላክ እና ጥያቄዎችን ለመመለስ እንጠቀማለን። ምዝገባ የማስታወቂያ ደንበኝነት አያስጀምርም። መገለጫዎች በይፋ አይታዩም። ሲያመለክቱ በግልጽ ፈቃድዎ ስም፣ ክህሎት፣ ልምድ እና የማመልከቻ ማስታወሻ ለሥራው ለጣፊ ይጋራሉ። የማመልከቻ ደረጃና መልዕክቶች በአመልካቹና በለጣፊው ብቻ ይታያሉ። የሚለጥፉት የሥራ ዝርዝር ይፋዊ ነው።",
         ],
       },
       {
@@ -57,8 +57,8 @@ export const accountInformationPages = {
       {
         title: ["What is available", "ያሉ አገልግሎቶች"],
         body: [
-          "You can create a free personal account, verify your email and manage a private profile and preferences. Sera is operated by Mahir Aman in Ethiopia; account questions can be sent to mahir@hisabtech.com. Job listings, applications, employer workspaces and messages labelled demo remain sample, browser-local features. No employment, admission, employer verification, interview, payment or application delivery is promised.",
-          "ነፃ የግል መለያ መፍጠር፣ ኢሜይልዎን ማረጋገጥ እና የግል መገለጫና ምርጫዎችን ማስተዳደር ይችላሉ። Seraን Mahir Aman በኢትዮጵያ ያስተዳድራል፤ የመለያ ጥያቄዎችን ወደ mahir@hisabtech.com ይላኩ። ሙከራ ተብለው የተለዩ ሥራዎች፣ ማመልከቻዎችና መልዕክቶች በአሳሽ ብቻ ያሉ ምሳሌዎች ናቸው። ቅጥር፣ ቅበላ፣ የቀጣሪ ማረጋገጫ፣ ቃለ መጠይቅ ወይም ክፍያ አይሰጡም።",
+          "You can create a free personal account, verify your email and manage a private profile and preferences. Sera is operated by Mahir Aman in Ethiopia; account questions can be sent to mahir@hisabtech.com. Employer-posted jobs, account-saved roles, applications and application conversations are shared live services. Sample jobs and workspaces explicitly labelled demo remain separate browser-local examples. Employers are not independently verified; check each opportunity yourself. No employment, admission, employer verification, interview or payment outcome is promised.",
+          "ነፃ የግል መለያ መፍጠር፣ ኢሜይልዎን ማረጋገጥ እና የግል መገለጫና ምርጫዎችን ማስተዳደር ይችላሉ። Seraን Mahir Aman በኢትዮጵያ ያስተዳድራል፤ የመለያ ጥያቄዎችን ወደ mahir@hisabtech.com ይላኩ። በቀጣሪዎች የተለጠፉ ሥራዎች፣ የተቀመጡ ሥራዎች፣ ማመልከቻዎች እና መልዕክቶች ቀጥታ የጋራ አገልግሎቶች ናቸው። ሙከራ ተብለው የተለዩት ግን በአሳሽ ብቻ ያሉ ምሳሌዎች ናቸው። ቀጣሪዎች በተናጠል አልተረጋገጡም። ቅጥር፣ ቅበላ፣ የቀጣሪ ማረጋገጫ፣ ቃለ መጠይቅ ወይም ክፍያ አይሰጡም።",
         ],
       },
       {

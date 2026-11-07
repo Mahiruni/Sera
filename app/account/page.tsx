@@ -5,7 +5,7 @@ import { Account } from "@/components/workspace";
 export const metadata = pageMetadata(
   "/account",
   "Demo Workspace — Candidate & Employer",
-  "Choose a browser-only demonstration role. Live registration and sign-in are not launched.",
+  "Choose a browser-only demonstration role. Real account access is available separately at /sign-in.",
 );
 export default function Page() {
   return (

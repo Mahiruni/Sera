@@ -1,0 +1,24 @@
+Baga gara Sera.et dhuftan
+
+Akkam {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }},
+
+Imeeliin kee mirkanaa’eera. Piroofaayilii kee qopheessi, filannoowwan kee kaa’i, carraawwan jiran qoradhu.
+
+Piroofaayilii koo qopheessi
+
+{{ .SiteURL }}/onboarding
+
+Waan siif barbaachisu irraa jalqabi
+Odeeffannoo piroofaayilii fi filannoo afaanii kee bakka dhuunfaa tokko keessatti kaa’i. Odeeffannoon dabalataa dirqama miti.
+Suuta suutaan qoradhu
+Hojiiwwan hojjechiistotaan maxxanfamanii fi qajeelfamoota ilaali. Osoo hin iyyatin dura odeeffannoo carraa sanaa mirkaneessi.
+
+Herrega kee eegi
+
+Jecha iccitii, koodii ykn hidhaa mirkaneessaa hin qoodin. Sera.et jecha iccitii kee imeeliin si hin gaafatu. Sanada eenyummaa ykn odeeffannoo maallaqaa ergaadhaan hin ergini.
+
+Gargaarsa barbaaddaa?
+
+{{ .SiteURL }}/help
+
+Tarkaanfii herrega Sera.et kee irratti fudhatameen imeelii kana argatte. Kun ergaa beeksisaa miti.

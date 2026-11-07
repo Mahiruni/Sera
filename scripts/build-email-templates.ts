@@ -1,10 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { emailKinds, renderEmail } from "../lib/emails/render";
+import {
+  emailKinds,
+  renderEmail,
+  supportedEmailLocales,
+} from "../lib/emails/render";
 async function main() {
   const origin = "https://sera-dusky-seven.vercel.app";
   await mkdir("supabase/templates", { recursive: true });
   await mkdir("docs/emails", { recursive: true });
   for (const kind of emailKinds) {
+    const combined: { locale: string; html: string; subject: string }[] = [];
     const path =
       kind === "confirmation"
         ? "/auth/confirm?token_hash={{ .TokenHash }}&type=email"
@@ -14,7 +19,7 @@ async function main() {
             ? "/onboarding"
             : "/settings";
     const actionUrl = `{{ .SiteURL }}${path}`;
-    for (const locale of ["en", "am"]) {
+    for (const locale of supportedEmailLocales) {
       const template = renderEmail({
         kind,
         locale,
@@ -23,12 +28,13 @@ async function main() {
         origin: "{{ .SiteURL }}",
         template: true,
       });
+      combined.push({ locale, html: template.html, subject: template.subject });
       await writeFile(
-        `supabase/templates/${kind}${locale === "am" ? ".am-draft" : ""}.html`,
+        `supabase/templates/${kind}${locale === "en" ? "" : "." + locale}.html`,
         template.html,
       );
       await writeFile(
-        `supabase/templates/${kind}${locale === "am" ? ".am-draft" : ""}.txt`,
+        `supabase/templates/${kind}${locale === "en" ? "" : "." + locale}.txt`,
         template.text,
       );
       const preview = renderEmail({
@@ -41,6 +47,23 @@ async function main() {
       await writeFile(`docs/emails/${kind}.${locale}.html`, preview.html);
       await writeFile(`docs/emails/${kind}.${locale}.txt`, preview.text);
     }
+    const english = combined.find((c) => c.locale === "en")!;
+    const localized = combined.filter((c) => c.locale !== "en");
+    const conditional = (field: "html" | "subject") =>
+      localized
+        .map(
+          (c, i) =>
+            `{{ ${i === 0 ? "if" : "else if"} eq .Data.locale "${c.locale}" }}${c[field]}`,
+        )
+        .join("") + `{{ else }}${english[field]}{{ end }}`;
+    await writeFile(
+      `supabase/templates/${kind}.localized.html`,
+      conditional("html"),
+    );
+    await writeFile(
+      `supabase/templates/${kind}.localized.subject.txt`,
+      conditional("subject"),
+    );
   }
 }
 main().catch(() => {

@@ -357,8 +357,8 @@ export function AuthForm({
               </div>
               <p className="auth-help">
                 {lang === "am"
-                  ? "የመለያ ኢሜይሎች በአሁኑ ጊዜ በእንግሊዝኛ ይላካሉ። የቀጣሪ ምርጫ ማረጋገጫ አይሰጥም።"
-                  : "Account emails currently arrive in English. Employer selection does not grant verified status."}
+                  ? "ኢሜይሎች በመረጡት ቋንቋ ይላካሉ፤ ለአፋርኛ እንግሊዝኛ ይጠቀማሉ። የቀጣሪ ምርጫ ማረጋገጫ አይሰጥም።"
+                  : "Account emails follow your language, with English fallback for Afar. Employer selection does not grant verified status."}
               </p>
               <label className="auth-honeypot" aria-hidden="true">
                 Website
@@ -437,8 +437,8 @@ export function AuthForm({
         <p className="auth-footnote">
           <LockKeyhole size={13} />
           {lang === "am"
-            ? "የግል መለያ። የቅጥር መሣሪያዎች ሙከራ ናቸው።"
-            : "Private account access · Recruitment tools are demos"}
+            ? "የግል መለያ። መገለጫዎ በእርስዎ ቁጥጥር ስር ነው።"
+            : "Private account access · Your profile, your control"}
         </p>
         <nav
           className="auth-policy-links"

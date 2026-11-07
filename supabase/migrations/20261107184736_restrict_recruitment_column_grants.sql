@@ -1,0 +1,12 @@
+revoke all on public.jobs from anon,authenticated;
+grant select on public.jobs to anon,authenticated;
+grant insert on public.jobs to authenticated;
+grant update(title,company,location,work_type,salary_min,salary_max,description,requirements,status) on public.jobs to authenticated;
+revoke all on public.applications from anon,authenticated;
+grant select,insert on public.applications to authenticated;
+grant update(stage) on public.applications to authenticated;
+revoke all on public.saved_jobs from anon,authenticated;
+grant select,insert,delete on public.saved_jobs to authenticated;
+revoke all on public.application_messages from anon,authenticated;
+grant select,insert on public.application_messages to authenticated;
+create policy email_outbox_no_client_access on public.email_outbox for all to authenticated using(false) with check(false);
