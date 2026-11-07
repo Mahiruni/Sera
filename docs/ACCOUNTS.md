@@ -1,54 +1,64 @@
-# Sera account foundation — 7 November 2026
+# Sera accounts — verified release state, 7 November 2026
 
-## Connected resources
-- Supabase: Sera's Project (`okegwojigrtxadvgxpwm`), eu-central-1, Seraa connection. Originally no public tables and no accounts.
-- Hosting: existing Sera Vercel project, not a new project. Public API URL and publishable key configured in production/preview environments; no privileged key is used by the app.
-- `SERA_ACCOUNT_REGISTRATION=disabled` gates the website's registration action and button until the release checklist below passes. This does not modify Supabase's own project-wide signup configuration.
+## Current status
 
-## Implemented
-Marketing header adds an accessible Create account control next to the profile button; authenticated users get My account. Profile icon opens real sign-in/account routes. Existing `/account`, `/workspace`, employer tools and browser-local records remain explicitly separate demo features. The real private dashboard is `/dashboard`.
+The account foundation was merged into main at `4cd1748701d993cef646e6d7b13fc0cf25f3e7a6` and deployed to production (Vercel READY).
+Production origin: https://sera-dusky-seven.vercel.app
+Supabase: Sera's Project (`okegwojigrtxadvgxpwm`), eu-central-1, Seraa connection.
+Public Supabase URL and publishable key are configured for production and preview. The application uses no privileged key.
 
-Routes: `/sign-up`, `/sign-in`, `/verify-email`, `/forgot-password`, `/reset-password`, `/onboarding`, `/dashboard`, `/settings`, `/auth/confirm`, `/auth/callback`. Private pages validate the user against Supabase Auth on the server and require verified email before profile access. Server actions validate inputs. PKCE callback and explicit token-hash confirmation are supported with fixed/allowlisted internal destinations. Auth pages remain noindex and are excluded from the public sitemap.
+`SERA_ACCOUNT_REGISTRATION=disabled` remains set in both environments. This pauses the website registration button and server action; it does not disable the project-wide Supabase signup API.
+The account foundation is deployed; public account launch is not complete.
 
-Server-only Supabase SSR clients use per-request HTTP-only cookies. Proxy refreshes sessions and forwards response cache headers; auth responses use private/no-store. No shared server client or authorization from user-editable metadata. Public rendering receives only an authenticated boolean, not a token or user record.
+## Hosted email configuration
 
-Registration takes name, email, password (12–128 characters), language and candidate/employer journey. The journey is a preference, never a privileged role or verified employer status. Onboarding progressively collects optional location, phone, skills/experience/preferred roles or organization details. Student/teacher/institution privileged workflows are not offered.
+- Custom SMTP is enabled and saved: smtp.hostinger.com, port 465.
+- Sender: mahir@hisabtech.com, display name Sera.et.
+- The existing stored SMTP password was not read or replaced.
+- Saved the English confirmation, recovery and password-change HTML templates and subjects from `supabase/templates`.
+- Enabled password-change security notifications.
+- Verified all three complete editor documents against their prepared assets after navigating away/reloading. The initial editor insertion retained default content; this was corrected before concluding verification.
+- Set the Auth Site URL to the exact production origin above, without a trailing slash. It previously used the alternative sera-gulitshop deployment domain, which produced inconsistent/double-slash email links.
+- Preserved existing redirects, including the two exact callback destinations:
+  - https://sera-dusky-seven.vercel.app/auth/callback
+  - https://sera-dusky-seven.vercel.app/auth/callback?next=/reset-password
 
-Profiles are created by a private trigger, not user insert permissions. Authenticated users can select/update only their own row and only permitted columns. ID and creation timestamps cannot be reassigned by clients. RLS is enabled; anonymous reads and direct client inserts are denied. Trigger metadata is normalized and length-limited. Initial migrations were created with the CLI and filenames aligned to the exact hosted migration versions returned after application.
+The mailbox received confirmation and recovery messages from Sera.et. Recovery was received with the correct origin, a single branded HTML document, and a plain-text alternative. Password-change notification also reached the inbox after an actual test password change. Confirmation delivery and token-hash verification worked; an earlier confirmation sample contained default content before the editor correction. The final confirmation template was independently verified after reload; a new post-correction confirmation inbox sample is still useful before public launch.
 
-Security advisory fixed: revoked PUBLIC/anon/authenticated execution of the existing internal `rls_auto_enable` event-trigger function. Subsequent Supabase security advisor output had no lints.
+English is the active fallback. Amharic assets remain review drafts; five other language preferences fall back to English. Native localized template conditions, approved translations, Arabic RTL copy and cross-client/dark-mode inbox rendering remain unverified. The welcome template is an asset only: there is no standalone post-verification welcome dispatcher yet.
 
-## Email design and localization
-`lib/emails/render.ts` is the single rendering source; run `node --import tsx scripts/build-email-templates.ts` to regenerate files. Templates cover confirmation, recovery, welcome and password-change notice. Table layout, inline styling, cyan/white wordmark, woven-style divider, clear CTA, fallback link, safety/help sections and plain-text counterparts. All names and ordinary links are escaped/validated. Emails use system fonts that work without web fonts/images. No graphical logo, invented sender address or registration claims.
+## Authenticated verification
 
-English files: `supabase/templates/*.html` and `.txt`. Amharic files marked `.am-draft` require native review before activation. Sample English/Amharic rendered HTML/text are in `docs/emails`; previews use fictional details. `/email-preview` is noindex and exposes only samples, not tokens or records.
+Used the owner's connected mailbox for one explicitly labelled Sera Email Delivery Test account, with fictional profile details. No real employee/customer/identity/financial data was used.
 
-Seven language preferences are saved. Registration supplies `locale` in signup metadata before initial email; settings updates both profile locale and auth metadata for subsequent templates. Auth metadata is for presentation only. The templates in this branch are English by default, not falsely labelled as seven completed translations. Five incomplete languages fall back to English. Amharic is a review draft. Arabic full email copy/RTL is still pending; no English email is labelled Arabic.
+Passed:
+- Public Auth API signup requested email and issued no session before verification.
+- Inbox receipt from the configured sender.
+- Actual production `/auth/confirm` accepted the delivered token hash, returned a 307 redirect to `/onboarding`, and set session cookies with a private/no-store response.
+- Hosted user was confirmed.
+- Password sign-in, own-profile access, profile update/onboarding timestamp, and session refresh.
+- Authenticated production `/dashboard` and `/settings` returned the test profile with private/no-store caching.
+- Password recovery reached the inbox; its delivered link redirected to `/reset-password`, established a verified recovery session and displayed the reset form.
+- Changing the disposable test password through the recovery session succeeded.
+- Password-change security notification reached the inbox.
+- Global sign-out cleared the test session.
 
-Templates are PREPARED, NOT INSTALLED in the hosted Auth configuration. Neither HTML preview nor successful database setup proves delivery. Native Supabase templates support `.Data.locale` conditions, but no such localized template has been activated until review/configuration are complete. The welcome template is a design asset; a post-verification, idempotent delivery mechanism is still required before claiming welcome emails are sent. Plain-text assets are prepared; multipart delivery must be verified with the actual email provider. Gmail/Outlook/Apple Mail dark-mode inbox rendering is not yet verified.
+These are direct API and production HTTP checks, not a claim that every browser form submission has been exercised. The test account remains labelled and retained; no irreversible account deletion was performed. Temporary local credentials/tokens are not committed.
 
-## Dashboard configuration still required
-The connected Supabase tool supports SQL/schema but not Auth URL, email template or SMTP configuration. Browser dashboard requires sign-in. No account password, SMTP secret or sender DNS credential was requested in chat or committed.
+## Implemented security and routes
 
-After dashboard access:
-1. Inspect existing SMTP/email settings and preserve unrelated settings. Confirm a verified sender the owner controls; do not invent `hello@sera.et` or assume sera.et ownership. Use the provider's actual SPF/DKIM/DMARC instructions.
-2. Set the Auth Site URL to `https://sera-dusky-seven.vercel.app` and allow the exact `/auth/callback` recovery/confirmation destinations required by the app. Preserve legitimate existing redirects; avoid broad production wildcards. Do not redirect auth to an unverified custom domain.
-3. Install English confirmation/recovery/password-change templates and subjects; enable the applicable password-change security notification. Token-hash confirmation links use `/auth/confirm` and avoid depending on the original signup browser. Never include actual tokens in screenshots/logs.
-4. Review translated templates, then configure template conditionals or a supported localized send-email hook. English fallback remains until approval. Standalone welcome mail requires an authorized sender and idempotent post-verification dispatch; it is not a built-in Supabase confirmation event.
-5. Obtain an authorized isolated test inbox. Verify actual registration, inbox arrival, confirmation, onboarding, sign-in, refresh, settings edits, recovery, expired-link resend and sign-out. Confirm each message's sender, links, language, plain-text part, responsive and dark-mode rendering. Do not claim provider acceptance means inbox receipt.
-6. Complete privacy/terms and operator/contact/data-retention review for real accounts; current public policies remain draft demo notices and must not silently become final policies.
-7. Enable `SERA_ACCOUNT_REGISTRATION=enabled` only after these checks pass; merge the verified release and verify production. Do not deploy the account release while delivery/security checks are incomplete.
+Routes: `/sign-up`, `/sign-in`, `/verify-email`, `/forgot-password`, `/reset-password`, `/onboarding`, `/dashboard`, `/settings`, `/auth/confirm`, `/auth/callback`.
+Private pages validate the Auth user server-side and require verified email. Callback destinations are allowlisted; auth pages are noindex and omitted from public sitemap. Per-request SSR clients use HTTP-only cookies and private/no-store responses.
 
-## Verification
-- 14 automated tests passed: existing demo domain behavior, SEO, redirect allowlist, registration/profile validation, no metadata privilege assignment, email escaping and unsafe-link rejection.
-- `tests/profiles.rls.sql` ran on the hosted database with two disposable users inside a rolled-back transaction. PASS: own read/update, cross-user denial, ownership reassignment denial, insert denial, anonymous denial, and normalization of malicious journey/unknown locale. This is an RLS test, not end-to-end Auth delivery evidence. Fixtures were not retained.
-- Production build, TypeScript checks, ESLint and all 14 tests passed for the prepared account foundation.
-- Browser: 390px registration and 768px marketing viewports showed no horizontal overflow; desktop registration and email previews render. Anonymous `/dashboard` redirects to sign-in, expired-link error is visible and auth robots metadata is noindex.
-- Current Supabase public settings report email provider enabled, confirmation required and native signup not disabled. SMTP sender/delivery has not been verified. No real customer account or successful email delivery is claimed.
+Profiles are created by a private trigger. RLS restricts authenticated users to their own rows and allowed update columns; anonymous access, direct inserts, ownership reassignment and cross-user access are denied. Journey/locale metadata is normalized and never grants privileged roles. Existing demo workspaces remain separate from real accounts.
 
-## Dashboard follow-up
-Dashboard access succeeded after the owner's CAPTCHA handoff. Confirmed Site URL is the existing production origin. Saved and verified these two exact allowed redirects:
-- https://sera-dusky-seven.vercel.app/auth/callback
-- https://sera-dusky-seven.vercel.app/auth/callback?next=/reset-password
+Fresh local build (including TypeScript), ESLint and all 14 automated tests passed for the deployed foundation. GitHub CI and Vercel preview passed. Current hosted Supabase security advisor returned no findings. Previous rolled-back two-user RLS tests passed. Anonymous dashboard redirect, registration pause and expired-link feedback were verified live in the browser. Runtime-log inspection was unavailable (Vercel 403); no clean-log claim is made.
 
-The Free-plan dashboard requires custom SMTP before editing email templates; the alternative built-in-service customization requires a paid upgrade, which was not purchased. Both connected Hostinger links resolve to the same existing mailbox. Owner selected mahir@hisabtech.com as sender, displayed as Sera.et. Prepared smtp.hostinger.com:465 with that username, using Hostinger's official published settings. Password remains for secure owner entry directly in Supabase; the SMTP form is not saved and delivery/templates are not yet activated. No secret was read or committed. Screenshot documents the prepared, unsaved form.
+## Remaining public-launch work
+
+1. Replace/review draft privacy and terms for real account operation, including actual operator/contact and retention decisions.
+2. Exercise browser form submissions and obtain a fresh final confirmation sample; extend inbox rendering checks beyond the connected Hostinger mailbox.
+3. Review and activate translations; implement idempotent post-verification welcome delivery if required.
+4. Enable public website registration only after those launch decisions and checks are complete, then verify the deployed registration flow.
+
+No paid upgrade, new hosting/database project or additional privileged access was created.
