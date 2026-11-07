@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ArrowLeftRight,
   Star,
+  UserPlus,
 } from "lucide-react";
 import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
@@ -31,7 +32,13 @@ import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
 import { navigationGroups, navIsActive } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({
+  children,
+  authenticated = false,
+}: {
+  children: React.ReactNode;
+  authenticated?: boolean;
+}) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -76,7 +83,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/", key: "home" as Key, Icon: Home },
     { href: "/jobs", key: "jobs" as Key, Icon: Compass },
     { href: "/saved", key: "saved" as Key, Icon: Bookmark },
-    { href: "/workspace", key: "workspace" as Key, Icon: LayoutDashboard },
+    {
+      href: authenticated ? "/dashboard" : "/workspace",
+      key: "workspace" as Key,
+      Icon: LayoutDashboard,
+    },
   ];
   return (
     <>
@@ -96,21 +107,52 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span />
           <span />
         </button>
-        <Link
-          className="header-control profile-control"
-          href={state.role ? "/profile" : "/account"}
-          aria-label={t("profile")}
-        >
-          {state.role ? (
-            <span>
-              {(state.role === "employer" ? state.company : state.name)
-                .slice(0, 1)
-                .toUpperCase()}
-            </span>
-          ) : (
-            <UserRound size={20} />
+        <div className="header-account-controls">
+          {([
+            "/",
+            "/am",
+            "/about",
+            "/guides",
+            "/education",
+            "/institutions",
+            "/opportunities",
+            "/how-it-works",
+            "/languages",
+          ].includes(pathname) ||
+            pathname.startsWith("/guides/")) && (
+            <Link
+              className="header-signup"
+              href={authenticated ? "/dashboard" : "/sign-up"}
+              aria-label={
+                authenticated
+                  ? lang === "am"
+                    ? "የእኔ መለያ"
+                    : "My account"
+                  : lang === "am"
+                    ? "መለያ ፍጠር"
+                    : "Create account"
+              }
+            >
+              <UserPlus size={18} />
+              <span>
+                {authenticated
+                  ? lang === "am"
+                    ? "የእኔ መለያ"
+                    : "My account"
+                  : lang === "am"
+                    ? "መለያ ፍጠር"
+                    : "Create account"}
+              </span>
+            </Link>
           )}
-        </Link>
+          <Link
+            className="header-control profile-control"
+            href={authenticated ? "/dashboard" : "/sign-in"}
+            aria-label={t("profile")}
+          >
+            <UserRound size={20} />
+          </Link>
+        </div>
       </header>
       <dialog
         lang={lang}
@@ -249,7 +291,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SiteFooter />
-      <nav className="footer-dock" aria-label={t("quickNav")}>
+      <nav lang={lang} className="footer-dock" aria-label={t("quickNav")}>
         <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {
           const active =

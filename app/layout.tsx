@@ -3,6 +3,7 @@ import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Provider } from "@/components/store";
+import { currentUser } from "@/lib/supabase/server";
 import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
 import { pageMetadata, siteOrigin } from "@/lib/seo";
@@ -38,6 +39,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const user = await currentUser();
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
@@ -51,7 +53,7 @@ export default async function RootLayout({
       <body>
         <WebsiteData />
         <Provider initialLocale={language}>
-          <Shell>{children}</Shell>
+          <Shell authenticated={Boolean(user)}>{children}</Shell>
         </Provider>
       </body>
     </html>
