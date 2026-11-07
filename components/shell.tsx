@@ -13,9 +13,23 @@ import {
   Languages,
   Check,
   LogOut,
+  Sparkles,
+  BriefcaseBusiness,
+  FileText,
+  MessagesSquare,
+  Plus,
+  GitPullRequest,
+  BadgeInfo,
+  CircleHelp,
+  ShieldCheck,
+  ChevronDown,
+  ArrowLeftRight,
+  Star,
 } from "lucide-react";
 import { useSera } from "./store";
 import { Brand } from "./ui";
+import { SiteFooter } from "./footer";
+import { navigationGroups, navIsActive } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({ children }: { children: React.ReactNode }) {
   const { t, lang, setLang, state, setState, notice, storageError } = useSera();
@@ -40,21 +54,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
     setOpen(false);
     trigger.current?.focus();
   };
-  const links: [string, Key][] = [
-    ["/", "home"],
-    ["/jobs", "jobs"],
-    ["/saved", "saved"],
-    ["/workspace", "workspace"],
-    ["/profile", "profile"],
-    ["/applications", "applications"],
-    ["/matches", "matches"],
-    ["/messages", "messages"],
-    ["/employer", "employer"],
-    ["/employer/post", "post"],
-    ["/employer/pipeline", "pipeline"],
-    ["/pricing", "promote"],
-    ["/account", "privacy"],
-  ];
+  const groups = navigationGroups(state.role);
+  const icons: Record<string, typeof Home> = {
+    home: Home,
+    discover: Compass,
+    saved: Bookmark,
+    matches: Sparkles,
+    workspace: LayoutDashboard,
+    profile: UserRound,
+    applications: FileText,
+    messages: MessagesSquare,
+    employer: BriefcaseBusiness,
+    post: Plus,
+    pipeline: GitPullRequest,
+    featured: Star,
+    about: BadgeInfo,
+    help: CircleHelp,
+    privacy: ShieldCheck,
+  };
   const dock = [
     { href: "/", key: "home" as Key, Icon: Home },
     { href: "/jobs", key: "jobs" as Key, Icon: Compass },
@@ -64,7 +81,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <a href="#main-content" className="skip-link">
-        Skip to content
+        {t("skipContent")}
       </a>
       <header className="site-header">
         <button
@@ -103,10 +120,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
           const items = event.currentTarget.querySelectorAll<HTMLElement>(
-            'a[href],button:not([disabled]),[tabindex="0"]',
+            'a[href],button:not([disabled]),summary,[tabindex="0"]',
           );
-          const first = items[0];
-          const last = items[items.length - 1];
+          const visible = Array.from(items).filter(
+            (item) => item.getClientRects().length > 0,
+          );
+          const first = visible[0];
+          const last = visible[visible.length - 1];
           if (event.shiftKey && document.activeElement === first) {
             event.preventDefault();
             last?.focus();
@@ -139,29 +159,88 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <p className="eyebrow" id="drawer-title">
             {t("navigation")}
           </p>
-          <nav>
-            {links.map(([href, key]) => (
-              <Link
-                href={href}
-                key={href}
-                onClick={close}
-                aria-current={pathname === href ? "page" : undefined}
-                className={pathname === href ? "active" : ""}
-              >
-                {t(key)}
-                <ArrowUpRight size={15} />
-              </Link>
-            ))}
+          <nav className="grouped-navigation" aria-label={t("navigation")}>
+            {groups.map((group) => {
+              const active = group.items.some((item) =>
+                navIsActive(pathname, item.href),
+              );
+              const defaultOpen =
+                active ||
+                (group.id === "explore" &&
+                  !groups.some((g) =>
+                    g.items.some((item) => navIsActive(pathname, item.href)),
+                  ));
+              return (
+                <details
+                  className="drawer-group"
+                  key={`${group.id}-${pathname}`}
+                  name="sera-navigation"
+                  open={defaultOpen}
+                >
+                  <summary>
+                    {t(group.title)}
+                    <ChevronDown size={15} />
+                  </summary>
+                  <div className="drawer-group-links">
+                    {group.id === "preferences" && (
+                      <div className="language-switch">
+                        <Languages size={17} />
+                        <span>{t("language")}</span>
+                        <button
+                          aria-pressed={lang === "en"}
+                          onClick={() => setLang("en")}
+                        >
+                          EN
+                        </button>
+                        <button
+                          aria-pressed={lang === "am"}
+                          onClick={() => setLang("am")}
+                        >
+                          አማ
+                        </button>
+                      </div>
+                    )}
+                    {group.items.map((item) => {
+                      const Icon = icons[item.icon];
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={close}
+                          aria-current={
+                            navIsActive(pathname, item.href)
+                              ? "page"
+                              : undefined
+                          }
+                          className={
+                            navIsActive(pathname, item.href) ? "active" : ""
+                          }
+                        >
+                          <Icon size={17} />
+                          <span>{t(item.key)}</span>
+                          <ArrowUpRight size={13} />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </details>
+              );
+            })}
           </nav>
-          <div className="language-switch">
-            <Languages size={17} />
-            <span>{t("language")}</span>
-            <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>
-              EN
-            </button>
-            <button aria-pressed={lang === "am"} onClick={() => setLang("am")}>
-              አማ
-            </button>
+          <div className="drawer-actions">
+            <Link
+              className="role-switch"
+              href={
+                state.role
+                  ? `/account?role=${state.role === "employer" ? "seeker" : "employer"}`
+                  : "/account"
+              }
+              onClick={close}
+            >
+              <ArrowLeftRight size={16} />
+              <span>{t(state.role ? "switch" : "chooseRole")}</span>
+              <ArrowUpRight size={13} />
+            </Link>
           </div>
           {state.role && (
             <button
@@ -181,15 +260,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <main id="main-content" tabIndex={-1}>
         {children}
       </main>
-      <footer className="site-footer">
-        <Brand small />
-        <p>{t("footer")}</p>
-        <Link href="/account">
-          {t("privacy")}
-          <ArrowUpRight size={13} />
-        </Link>
-      </footer>
-      <nav className="footer-dock" aria-label="Quick navigation">
+      <SiteFooter />
+      <nav className="footer-dock" aria-label={t("quickNav")}>
+        <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {
           const active =
             href === "/"

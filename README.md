@@ -40,6 +40,14 @@ npm start
 | `/employer/pipeline` | Demo candidate review and application-stage changes                |
 | `/pricing`           | Original featured-listing concept; checkout explicitly unavailable |
 
+## Footer and navigation
+
+The information footer is separate from the floating app dock. It includes bilingual About, Help, Contact, Privacy, Terms, How it works, and category pages. Privacy and Terms are clearly marked draft demo information; no contact address is invented.
+
+The drawer groups Explore, Your workspace, For employers, and Preferences & information into native accordions. Links adapt to the current demo role. Collapsed links are excluded from focus wrapping.
+
+The glass dock uses a masked non-interactive perimeter with a restrained 16-second CSS transform animation. It has a static border fallback for unsupported masks and disables motion under `prefers-reduced-motion: reduce`.
+
 ## Honest demo boundary
 
 **This is a production-buildable frontend, not a live recruitment backend.** The original HTML used localStorage accounts with plaintext demo passwords, simulated payment success, and a browser-side AI request with heuristic fallbacks. Those mechanisms are not suitable for production and have not been carried forward as live services.
@@ -58,7 +66,7 @@ npm start
 
 Before accepting real users, add server-backed identity, server-enforced roles and ownership checks, a durable database, verified vacancies and employer onboarding, secure document storage, validated API mutations, abuse controls, and delivery infrastructure. Any AI integration must run server-side with protected credentials, explicit provenance, and appropriate evaluation. Any payment integration must verify provider webhooks server-side and be idempotent. Local demo state must never be trusted for authorization or payment status.
 
-No backend or hosting project was supplied or provisioned in this implementation. A GitHub push is not evidence of deployment. The project can be imported into a Next.js-compatible host with `npm run build` and `npm start`; a conventional Vercel import should detect Next.js automatically.
+A Sera Vercel project is connected to this repository. The footer release reuses that project; no backend is configured. A GitHub push alone is not evidence of a successful deployment. The project can be imported into a Next.js-compatible host with `npm run build` and `npm start`; a conventional Vercel import should detect Next.js automatically.
 
 ## Implementation notes
 

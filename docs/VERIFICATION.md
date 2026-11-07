@@ -53,4 +53,16 @@ The temporary responsive-preview route was removed before the final build. The N
 
 ## Boundaries
 
-No deployment is authorized in this revision, and no deployment command is part of the verification workflow. The demo limitations remain: browser-only state, freely switchable demo roles, sample vacancies, no live authentication, no external application delivery or messages, no connected AI, and no payment checkout. No fictitious vacancies, employer verification, interview reminders, or live notifications were added from the reference image.
+Production deployment was authorized for the subsequent footer release; its result is checked separately from local verification. The demo limitations remain: browser-only state, freely switchable demo roles, sample vacancies, no live authentication, no external application delivery or messages, no connected AI, and no payment checkout. No fictitious vacancies, employer verification, interview reminders, or live notifications were added from the reference image.
+
+## Information footer, grouped navigation, and illuminated dock
+
+The footer now has a brand description, Explore / Support / Information columns, current-year copyright, and separate policy links. New bilingual routes are `/about`, `/how-it-works`, `/help`, `/contact`, `/privacy`, `/terms`, and `/categories`. Contact is explicitly unconfigured; privacy and terms are draft demo information rather than final legal policies.
+
+The hamburger menu uses four native accordion groups. Only the selected group is expanded. Candidate workspace entries include applications; employer workspace entries omit candidate-only links and expose the employer dashboard once in the employer group. A single role-switch action and a separate Exit workspace control remain. Focus wrapping includes visible summaries and skips links inside collapsed groups.
+
+The dock's controls remain stationary. A non-interactive masked perimeter layer rotates a narrow conic cyan/white reflection every 16 seconds, linearly. Unsupported masks/gradients get a static border. The reduced-motion media rule disables this animation, makes the reflection static, and removes its compositing hint.
+
+Browser checks completed in development: four-column desktop footer; two-column phone footer; all footer destinations present; Amharic footer and draft privacy content; phone and tablet Help layouts with no horizontal overflow; mobile footer-bottom at 656px and dock-top at 691px (about 35px clear at the bottom); accordion grouping and employer adaptation; Shift+Tab wraps to Exit workspace even with collapsed groups; mobile role switch; border layer computed as `dock-light-orbit`, 16s, linear, `mask-composite: exclude`, and `pointer-events: none`. Reduced-motion and unsupported-browser fallback declarations were inspected in source; no OS-level reduced-motion emulation is claimed. Screenshots are under `docs/screenshots/sera-footer-*.png` and `sera-menu-mobile.png`.
+
+The user subsequently authorized production deployment for this footer release. The existing Sera Vercel project is reused. Final deployment outcome is reported separately after GitHub source and cloud-build verification.
