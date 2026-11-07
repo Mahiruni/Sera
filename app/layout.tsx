@@ -8,6 +8,7 @@ import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
 import { pageMetadata, siteOrigin } from "@/lib/seo";
 import "./globals.css";
+import "./footer-x-glass.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",
