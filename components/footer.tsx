@@ -8,8 +8,9 @@ const groups: { title: Key; links: [string, Key][] }[] = [
   {
     title: "exploreGroup",
     links: [
-      ["/jobs", "findJobs"],
-      ["/categories", "browseCategories"],
+      ["/opportunities", "opportunities"],
+      ["/education", "education"],
+      ["/guides", "guides"],
       ["/employer", "employer"],
     ],
   },
@@ -31,18 +32,18 @@ const groups: { title: Key; links: [string, Key][] }[] = [
   },
 ];
 export function SiteFooter() {
-  const { t } = useSera();
+  const { t, lang } = useSera();
   const year = new Intl.DateTimeFormat("en", {
     year: "numeric",
     timeZone: "Africa/Addis_Ababa",
   }).format(new Date());
   return (
-    <footer className="information-footer">
+    <footer className="information-footer" lang={lang} dir="ltr">
       <div className="footer-main">
         <div className="footer-intro">
           <Brand small />
           <p>{t("footerDescription")}</p>
-          <Link className="footer-demo" href="/account">
+          <Link className="footer-demo" href="/demo">
             <span className="status-dot" />
             {t("demo")}
             <ArrowUpRight size={13} />
@@ -60,7 +61,7 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="footer-bottom">
-        <p>© {year} Sera ሥራ</p>
+        <p>© {year} Sera.et</p>
         <p>{t("footer")}</p>
         <div>
           <Link href="/privacy">{t("privacyPolicy")}</Link>

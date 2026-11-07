@@ -10,19 +10,29 @@ import {
   type SetStateAction,
 } from "react";
 import { initialState, isState, type State, type Lang } from "@/lib/model";
+import { usePathname } from "next/navigation";
+import {
+  isLocale,
+  contentLanguage,
+  pageLanguage,
+  type LocaleCode,
+} from "@/lib/locales";
 import { translate, type Key } from "@/lib/i18n";
 type Snapshot = {
   state: State;
   lang: Lang;
+  locale: LocaleCode;
   ready: boolean;
   storageError: boolean;
 };
 const serverSnapshot: Snapshot = {
   state: initialState,
   lang: "en",
+  locale: "en",
   ready: false,
   storageError: false,
 };
+const amSnapshot: Snapshot = { ...serverSnapshot, lang: "am", locale: "am" };
 let snapshot = serverSnapshot;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -30,6 +40,7 @@ const emit = () => listeners.forEach((fn) => fn());
 function readStorage() {
   let state = initialState,
     lang: Lang = "en",
+    locale: LocaleCode = "en",
     storageError = false;
   try {
     const raw = localStorage.getItem("sera-next-v1");
@@ -38,11 +49,15 @@ function readStorage() {
       if (isState(value)) state = value;
       else storageError = true;
     }
-    if (localStorage.getItem("sera-language") === "am") lang = "am";
+    const choice = localStorage.getItem("sera-language");
+    if (isLocale(choice)) {
+      locale = choice;
+      lang = contentLanguage(choice);
+    }
   } catch {
     storageError = true;
   }
-  snapshot = { state, lang, ready: true, storageError };
+  snapshot = { state, lang, locale, ready: true, storageError };
   loaded = true;
 }
 function getSnapshot() {
@@ -70,7 +85,7 @@ function subscribe(listener: () => void) {
 function persist() {
   try {
     localStorage.setItem("sera-next-v1", JSON.stringify(snapshot.state));
-    localStorage.setItem("sera-language", snapshot.lang);
+    localStorage.setItem("sera-language", snapshot.locale);
   } catch {
     snapshot = { ...snapshot, storageError: true };
   }
@@ -84,9 +99,9 @@ const setState: Dispatch<SetStateAction<State>> = (action) => {
   };
   persist();
 };
-const setLang = (lang: Lang) => {
+const setLang = (locale: LocaleCode) => {
   getSnapshot();
-  snapshot = { ...snapshot, lang };
+  snapshot = { ...snapshot, locale, lang: contentLanguage(locale) };
   persist();
 };
 type Context = Snapshot & {
@@ -97,16 +112,24 @@ type Context = Snapshot & {
   notify: (text: string) => void;
 };
 const Store = createContext<Context | null>(null);
-export function Provider({ children }: { children: ReactNode }) {
-  const value = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    () => serverSnapshot,
+export function Provider({
+  children,
+  initialLocale = "en",
+}: {
+  children: ReactNode;
+  initialLocale?: LocaleCode;
+}) {
+  const pathname = usePathname();
+  const value = useSyncExternalStore(subscribe, getSnapshot, () =>
+    initialLocale === "am" ? amSnapshot : serverSnapshot,
   );
   const [notice, notify] = useState("");
+  const htmlLanguage = pageLanguage(pathname, value.locale);
+  const lang: Lang = htmlLanguage === "am" ? "am" : "en";
   useEffect(() => {
-    document.documentElement.lang = value.lang;
-  }, [value.lang]);
+    document.documentElement.lang = htmlLanguage;
+    document.documentElement.dir = htmlLanguage === "ar" ? "rtl" : "ltr";
+  }, [htmlLanguage]);
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => notify(""), 4500);
@@ -116,9 +139,10 @@ export function Provider({ children }: { children: ReactNode }) {
     <Store.Provider
       value={{
         ...value,
+        lang,
         setState,
         setLang,
-        t: (k) => translate(value.lang, k),
+        t: (k) => translate(lang, k),
         notice,
         notify,
       }}

@@ -80,3 +80,6 @@ A Sera Vercel project is connected to this repository. The footer release reuses
 - The superseded HTML interface and former brand assets have been removed from the current source tree; the original migration remains available in Git history.
 
 See [verification notes](docs/VERIFICATION.md) for checks and limits.
+
+### SEO and public content
+Public guidance now lives at `/`, `/opportunities`, `/education`, `/institutions` and `/guides`. The original recruitment home remains at `/demo`. See [SEO release plan](docs/SEO.md) for canonical-domain configuration, language availability, indexing rules and Google/Bing ownership setup. Copy `.env.example` only when configuring the relevant verified hosting environment. Do not point `SITE_URL` to an unverified domain or enable Amharic indexing before editorial review.

@@ -10,7 +10,6 @@ import {
   UserRound,
   X,
   ArrowUpRight,
-  Languages,
   Check,
   LogOut,
   Sparkles,
@@ -27,12 +26,13 @@ import {
   Star,
 } from "lucide-react";
 import { useSera } from "./store";
+import { LanguageSelector, TranslationNotice } from "./language-selector";
 import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
 import { navigationGroups, navIsActive } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { t, lang, setLang, state, setState, notice, storageError } = useSera();
+  const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -83,7 +83,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <a href="#main-content" className="skip-link">
         {t("skipContent")}
       </a>
-      <header className="site-header">
+      <header className="site-header" lang={lang} dir="ltr">
         <button
           ref={trigger}
           type="button"
@@ -113,6 +113,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </Link>
       </header>
       <dialog
+        lang={lang}
+        dir="ltr"
         ref={dialog}
         id="navigation-drawer"
         className="drawer"
@@ -120,7 +122,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
           const items = event.currentTarget.querySelectorAll<HTMLElement>(
-            'a[href],button:not([disabled]),summary,[tabindex="0"]',
+            'a[href],button:not([disabled]),select:not([disabled]),summary,[tabindex="0"]',
           );
           const visible = Array.from(items).filter(
             (item) => item.getClientRects().length > 0,
@@ -183,22 +185,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   </summary>
                   <div className="drawer-group-links">
                     {group.id === "preferences" && (
-                      <div className="language-switch">
-                        <Languages size={17} />
-                        <span>{t("language")}</span>
-                        <button
-                          aria-pressed={lang === "en"}
-                          onClick={() => setLang("en")}
-                        >
-                          EN
-                        </button>
-                        <button
-                          aria-pressed={lang === "am"}
-                          onClick={() => setLang("am")}
-                        >
-                          አማ
-                        </button>
-                      </div>
+                      <LanguageSelector onNavigate={close} />
                     )}
                     {group.items.map((item) => {
                       const Icon = icons[item.icon];
@@ -258,6 +245,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </dialog>
       <main id="main-content" tabIndex={-1}>
+        <TranslationNotice />
         {children}
       </main>
       <SiteFooter />

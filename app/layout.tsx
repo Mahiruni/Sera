@@ -1,14 +1,31 @@
 import "@fontsource-variable/plus-jakarta-sans";
 import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Provider } from "@/components/store";
 import { Shell } from "@/components/shell";
+import { WebsiteData } from "@/components/public-site";
+import { pageMetadata, siteOrigin } from "@/lib/seo";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: { default: "Sera ሥራ — Find what’s next", template: "%s · Sera ሥራ" },
-  description:
-    "A thoughtfully built Ethiopian recruitment marketplace. Explore the Sera interactive demonstration in English and Amharic.",
-  robots: { index: false, follow: false },
+  ...pageMetadata(
+    "/",
+    "Opportunities & Education in Ethiopia",
+    "Practical career and education guidance for Ethiopia, with a clearly labelled recruitment demo.",
+    false,
+  ),
+  metadataBase: new URL(siteOrigin),
+  title: {
+    default: "Sera.et — Opportunities & Education in Ethiopia",
+    template: "%s | Sera.et",
+  },
+  applicationName: "Sera.et",
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION }
+      : undefined,
+  },
 };
 export const viewport: Viewport = {
   width: "device-width",
@@ -16,15 +33,24 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#f5f8fc",
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const requestHeaders = await headers();
+  const requestLanguage = requestHeaders.get("x-sera-language");
+  const language =
+    requestLanguage === "am" ? "am" : requestLanguage === "ar" ? "ar" : "en";
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html
+      lang={language}
+      dir={language === "ar" ? "rtl" : "ltr"}
+      data-scroll-behavior="smooth"
+    >
       <body>
-        <Provider>
+        <WebsiteData />
+        <Provider initialLocale={language}>
           <Shell>{children}</Shell>
         </Provider>
       </body>

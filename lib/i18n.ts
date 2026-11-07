@@ -1,5 +1,8 @@
 import type { Lang } from "./model";
 const words = {
+  guides: ["Practical guides", "ተግባራዊ መመሪያዎች"],
+  education: ["Education", "ትምህርት"],
+  opportunities: ["Career guidance", "የሥራ መመሪያ"],
   exploreGroup: ["Explore", "ያስሱ"],
   yourWorkspace: ["Your workspace", "የእርስዎ የሥራ ቦታ"],
   preferencesGroup: ["Preferences & information", "ምርጫዎች እና መረጃ"],
@@ -17,7 +20,7 @@ const words = {
   helpContact: ["Help & contact", "እገዛ እና ግንኙነት"],
   privacyTerms: ["Privacy & terms", "ግላዊነት እና ውሎች"],
   footerDescription: [
-    "A clearer path to meaningful work. Discover roles, keep your favourites, and explore your next move in Ethiopia.",
+    "Practical career and education guidance for Ethiopia. Explore original guides and a clearly labelled recruitment demo.",
     "ወደ ትርጉም ያለው ሥራ የሚወስድ ግልጽ መንገድ። ሥራዎችን ያግኙ፣ የወደዷቸውን ያስቀምጡ፣ ቀጣዩን እርምጃዎንም ያስሱ።",
   ],
   draftNotice: ["Draft information · demo release", "ረቂቅ መረጃ · የሙከራ ስሪት"],
