@@ -85,8 +85,8 @@
 }
 .footer-dock a.active,
 .footer-dock a[aria-current="page"] {
-  color: #fff !important;
-  background: #087f9f !important;
+  color: #36c4e6 !important;
+  background: transparent !important;
   font-weight: 700 !important;
 }
 .footer-dock a.active .dock-icon svg {
