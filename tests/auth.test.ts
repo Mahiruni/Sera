@@ -61,7 +61,7 @@ test("emails escape personal content, provide plain text and reject unsafe links
     const e = renderEmail({
       kind,
       name: "<script>alert(1)</script>",
-      locale: "ar",
+      locale: "aa",
       actionUrl: "https://example.com/action",
       origin: "https://example.com",
     });
@@ -79,4 +79,33 @@ test("emails escape personal content, provide plain text and reject unsafe links
     }),
   );
   assert.equal(escapeHtml('"<&'), "&quot;&lt;&amp;");
+});
+
+test("email localization uses supported languages, Arabic RTL and a truthful Afar fallback", async () => {
+  const { supportedEmailLocales } = await import("../lib/emails/render");
+  for (const locale of supportedEmailLocales) {
+    for (const kind of emailKinds) {
+      const e = renderEmail({
+        kind,
+        locale,
+        name: "<test>",
+        origin: "https://example.com",
+        actionUrl: "https://example.com/action",
+      });
+      assert.equal(e.language, locale);
+      assert.ok(e.html.includes(`lang="${locale}"`));
+      assert.ok(e.html.includes(`dir="${locale === "ar" ? "rtl" : "ltr"}"`));
+      assert.ok(e.html.includes("&lt;test&gt;"));
+      assert.ok(e.subject && e.text);
+    }
+  }
+  assert.equal(
+    renderEmail({
+      kind: "welcome",
+      locale: "aa",
+      origin: "https://example.com",
+      actionUrl: "https://example.com/action",
+    }).language,
+    "en",
+  );
 });

@@ -1,10 +1,4 @@
-import { pageMetadata } from "@/lib/seo";
-import { ProfilePage } from "@/components/workspace";
-export const metadata = pageMetadata(
-  "/profile",
-  "Local Demo Profile",
-  "Edit fictional profile information in the Sera.et browser demonstration.",
-);
+import { redirect } from "next/navigation";
 export default function Page() {
-  return <ProfilePage />;
+  redirect("/settings");
 }

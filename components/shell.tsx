@@ -297,9 +297,11 @@ export function Shell({
           const active =
             href === "/"
               ? pathname === "/"
-              : href === "/workspace"
+              : href === "/workspace" || href === "/dashboard"
                 ? [
                     "/workspace",
+                    "/dashboard",
+                    "/settings",
                     "/profile",
                     "/applications",
                     "/messages",
@@ -307,7 +309,7 @@ export function Shell({
                     "/employer",
                     "/employer/post",
                     "/employer/pipeline",
-                  ].includes(pathname)
+                  ].some((route) => pathname === route || pathname.startsWith(route + "/"))
                 : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

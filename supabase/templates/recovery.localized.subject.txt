@@ -1,0 +1,1 @@
+{{ if eq .Data.locale "am" }}የSera.et የይለፍ ቃልዎን ያድሱ{{ else if eq .Data.locale "om" }}Jecha iccitii Sera.et kee haaromsi{{ else if eq .Data.locale "ti" }}ናይ Sera.et መሕለፊ ቃልካ ሓድስ{{ else if eq .Data.locale "ar" }}إعادة تعيين كلمة مرور Sera.et{{ else if eq .Data.locale "so" }}Dib u deji eraygaaga sirta ah ee Sera.et{{ else }}Reset your Sera.et password{{ end }}

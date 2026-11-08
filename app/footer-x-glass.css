@@ -31,6 +31,7 @@
   align-items: center !important;
   gap: 2px !important;
   min-width: 0;
+  width: 100%;
   min-height: 51px !important;
   padding: 5px 2px !important;
   border: 0 !important;
@@ -73,4 +74,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .footer-dock a { transition: none !important; }
+}
+/* Keep account forms clear of the floating navigation. */
+body:has(.auth-layout) .footer-dock { display: none !important; }
+@supports not (backdrop-filter: blur(24px)) {
+  .footer-dock { background: #0e0e10 !important; }
 }

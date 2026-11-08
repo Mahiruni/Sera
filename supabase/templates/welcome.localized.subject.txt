@@ -1,0 +1,1 @@
+{{ if eq .Data.locale "am" }}እንኳን ወደ Sera.et በደህና መጡ{{ else if eq .Data.locale "om" }}Baga gara Sera.et dhuftan{{ else if eq .Data.locale "ti" }}እንቋዕ ናብ Sera.et ብደሓን መጻእካ{{ else if eq .Data.locale "ar" }}مرحبًا بك في Sera.et{{ else if eq .Data.locale "so" }}Ku soo dhowow Sera.et{{ else }}Welcome to Sera.et — make yourself at home{{ end }}

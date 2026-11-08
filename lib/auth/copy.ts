@@ -17,8 +17,7 @@ export const authCopy = {
     phone: "Phone (optional)",
     location: "Location (optional)",
     next: "Continue to your dashboard",
-    notice:
-      "Private account foundation · recruitment and academic tools remain demonstrations.",
+    notice: "Your private account, built around your next move.",
     show: "Show password",
     hide: "Hide password",
   },
@@ -40,7 +39,7 @@ export const authCopy = {
     phone: "ስልክ (አማራጭ)",
     location: "አካባቢ (አማራጭ)",
     next: "ወደ መቆጣጠሪያዎ ይቀጥሉ",
-    notice: "የግል መለያ መሠረት · የቅጥር እና የትምህርት መሣሪያዎች አሁንም ሙከራዎች ናቸው።",
+    notice: "ለቀጣዩ እርምጃዎ የተዘጋጀ የግል መለያ።",
     show: "የይለፍ ቃል አሳይ",
     hide: "የይለፍ ቃል ደብቅ",
   },

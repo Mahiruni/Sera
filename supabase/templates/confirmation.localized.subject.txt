@@ -1,0 +1,1 @@
+{{ if eq .Data.locale "am" }}የSera.et ኢሜይል አድራሻዎን ያረጋግጡ{{ else if eq .Data.locale "om" }}Imeelii Sera.et kee mirkaneessi{{ else if eq .Data.locale "ti" }}ናይ Sera.et ኢመይልካ ኣረጋግጽ{{ else if eq .Data.locale "ar" }}أكد عنوان بريدك الإلكتروني في Sera.et{{ else if eq .Data.locale "so" }}Xaqiiji cinwaanka iimaylkaaga Sera.et{{ else }}Confirm your Sera.et email address{{ end }}

@@ -159,7 +159,7 @@ export function HomePage() {
           ))}
         </div>
         <Link
-          href="/jobs"
+          href="/demo/jobs"
           className="filter-shortcut"
           aria-label={en ? "Open all search filters" : "ሁሉንም ማጣሪያዎች ክፈት"}
         >
@@ -183,7 +183,7 @@ export function HomePage() {
                 : "የሙከራ ዕድሎች። ለማሰስ ብዙ አማራጮች።"}
             </p>
           </div>
-          <Link className="inline-link" href="/jobs">
+          <Link className="inline-link" href="/demo/jobs">
             {en ? "See all" : "ሁሉንም ይመልከቱ"}
             <ArrowUpRight size={16} />
           </Link>
@@ -222,7 +222,7 @@ export function HomePage() {
                   : "ለእርስዎ የሚስማማውን ሥራ ያግኙ።"}
               </p>
             </div>
-            <Link href="/jobs" className="inline-link">
+            <Link href="/demo/jobs" className="inline-link">
               {en ? "See all" : "ሁሉንም ይመልከቱ"}
               <ArrowUpRight size={16} />
             </Link>
@@ -320,7 +320,7 @@ export function HomePage() {
       <section className="home-section sectors-section">
         <div className="section-head">
           <h2>{en ? "Find your field" : "ዘርፍዎን ያግኙ"}</h2>
-          <Link className="inline-link" href="/jobs">
+          <Link className="inline-link" href="/demo/jobs">
             {t("viewAll")}
             <ArrowUpRight size={16} />
           </Link>
