@@ -73,7 +73,7 @@
 .footer-dock a.active,
 .footer-dock a[aria-current="page"] {
   color: #fff !important;
-  background: transparent !important;
+  background: #087f9f !important;
   font-weight: 700 !important;
 }
 .footer-dock a.active .dock-icon svg {
@@ -82,7 +82,7 @@
 .footer-dock a > i {
   display: none !important;
 }
-.footer-dock a:hover {
+.footer-dock a:not(.active):not([aria-current="page"]):hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.1) !important;
 }
