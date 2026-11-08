@@ -9,7 +9,7 @@ export async function requiredProfile() {
   const { data, error } = await client
     .from("profiles")
     .select(
-      "id,full_name,locale,journey,location,phone,skills,experience,preferred_roles,company_name,company_role,onboarded_at",
+      "id,full_name,locale,journey,location,phone,skills,experience,preferred_roles,company_name,company_role,onboarded_at,headline,summary,education",
     )
     .eq("id", user.id)
     .single();

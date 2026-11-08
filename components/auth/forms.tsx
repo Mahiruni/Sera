@@ -468,6 +468,9 @@ export type Profile = {
   company_name: string;
   company_role: string;
   onboarded_at: string | null;
+  headline?: string;
+  summary?: string;
+  education?: string;
 };
 export function ProfileForm({ profile }: { profile: Profile }) {
   const { lang } = useSera();

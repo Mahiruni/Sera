@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ProfileForm } from "@/components/auth/forms";
+import { ProfessionalProfile } from "@/components/account/profile";
+import { accountAssets } from "@/lib/account/assets";
 import { requiredProfile } from "@/lib/auth/profile";
 import { pageMetadata } from "@/lib/seo";
 import { signOut } from "@/lib/auth/actions";
@@ -10,16 +11,22 @@ export const metadata = pageMetadata(
 );
 export default async function Page() {
   const { profile, user } = await requiredProfile();
+  let assets = null;
+  let filesUnavailable = false;
+  try {
+    assets = await accountAssets(user.id);
+  } catch {
+    filesUnavailable = true;
+  }
   return (
     <div className="container page account-foundation">
-      <p className="eyebrow">Sera.et / ACCOUNT</p>
-      <h1>Your details. Your preferences.</h1>
-      <p className="subtext">
-        Signed in as <bdi>{user.email}</bdi>. Profile edits apply to your own
-        account.
-      </p>
       {profile ? (
-        <ProfileForm profile={profile} />
+        <ProfessionalProfile
+          profile={profile}
+          email={user.email || ""}
+          assets={assets}
+          filesUnavailable={filesUnavailable}
+        />
       ) : (
         <p role="alert">Profile unavailable. Please try again later.</p>
       )}
