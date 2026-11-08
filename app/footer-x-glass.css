@@ -17,7 +17,7 @@
   gap: 4px !important;
   border: 0 !important;
   border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 0 !important;
+  border-radius: 30px 30px 0 0 !important;
   background: rgba(14, 14, 16, 0.84) !important;
   color: #fff !important;
   box-shadow: none !important;
