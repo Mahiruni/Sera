@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { type LiveApplication } from "@/lib/recruitment/data";
-import { MarketNav, Empty } from "@/components/recruitment/ui";
+import { Empty } from "@/components/recruitment/ui";
+import { WorkspaceNav } from "@/components/workspace/navigation";
+import { stageLabel, activityDate } from "@/lib/workspace/model";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/applications",
@@ -20,10 +22,10 @@ export default async function Page() {
     .limit(100);
   const apps = (data || []) as unknown as LiveApplication[];
   return (
-    <div className="container page live-market">
+    <div className="container page live-market workspace-detail">
       <p className="eyebrow">SERA / YOUR NEXT MOVE</p>
       <h1>Every introduction, in one place.</h1>
-      <MarketNav />
+      <WorkspaceNav />
       {error ? (
         <Empty title="Applications could not be loaded">
           <p>Please refresh.</p>
@@ -39,11 +41,11 @@ export default async function Page() {
               <div>
                 <p>{a.jobs?.company}</p>
                 <h2>{a.jobs?.title || "Job unavailable"}</h2>
-                <p>
-                  Applied {new Date(a.created_at).toLocaleDateString("en-GB")}
-                </p>
+                <p>Applied {activityDate(a.created_at)}</p>
               </div>
-              <span className="live-badge">{a.stage} →</span>
+              <span className={`ws-status ${a.stage}`}>
+                {stageLabel(a.stage)} →
+              </span>
             </Link>
           ))}
         </div>

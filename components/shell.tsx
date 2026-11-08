@@ -41,6 +41,18 @@ export function Shell({
 }) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
+  const privateWorkspace =
+    authenticated &&
+    [
+      "/dashboard",
+      "/employer",
+      "/applications",
+      "/saved",
+      "/settings",
+      "/messages",
+      "/workspace",
+      "/profile",
+    ].some((route) => pathname === route || pathname.startsWith(route + "/"));
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -61,7 +73,7 @@ export function Shell({
     setOpen(false);
     trigger.current?.focus();
   };
-  const groups = navigationGroups(state.role);
+  const groups = navigationGroups(authenticated ? null : state.role);
   const icons: Record<string, typeof Home> = {
     home: Home,
     discover: Compass,
@@ -259,18 +271,24 @@ export function Shell({
             <Link
               className="role-switch"
               href={
-                state.role
-                  ? `/account?role=${state.role === "employer" ? "seeker" : "employer"}`
-                  : "/account"
+                authenticated
+                  ? "/settings"
+                  : state.role
+                    ? `/account?role=${state.role === "employer" ? "seeker" : "employer"}`
+                    : "/account"
               }
               onClick={close}
             >
               <ArrowLeftRight size={16} />
-              <span>{t(state.role ? "switch" : "chooseRole")}</span>
+              <span>
+                {authenticated
+                  ? t("profile")
+                  : t(state.role ? "switch" : "chooseRole")}
+              </span>
               <ArrowUpRight size={13} />
             </Link>
           </div>
-          {state.role && (
+          {!authenticated && state.role && (
             <button
               className="text-button"
               onClick={() => {
@@ -282,14 +300,20 @@ export function Shell({
               {t("exit")}
             </button>
           )}
-          <p className="drawer-foot">{t("demoNote")}</p>
+          <p className="drawer-foot">
+            {authenticated
+              ? lang === "am"
+                ? "የእርስዎ የግል መገለጫ እና የሥራ ቦታ።"
+                : "Your private account, profile and workspaces."
+              : t("demoNote")}
+          </p>
         </div>
       </dialog>
       <main id="main-content" tabIndex={-1}>
         <TranslationNotice />
         {children}
       </main>
-      <SiteFooter />
+      {!privateWorkspace && <SiteFooter />}
       <nav lang={lang} className="footer-dock" aria-label={t("quickNav")}>
         <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {

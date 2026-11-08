@@ -536,7 +536,7 @@ export function ProfessionalProfile({
           </aside>
         </div>
       )}
-      <section className="profile-section profile-cv panel">
+      <section className="profile-section profile-cv panel" id="cv">
         <div className="profile-section-heading">
           <div>
             <p className="eyebrow">READY FOR YOUR NEXT OPPORTUNITY</p>

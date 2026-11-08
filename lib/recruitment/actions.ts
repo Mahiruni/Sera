@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
+import { employerReturn } from "@/lib/workspace/model";
 import {
   readJob,
   readApplication,
@@ -124,11 +125,11 @@ export async function changeJobStatus(data: FormData) {
     .eq("id", id)
     .select("id")
     .single();
-  if (r.error) redirect("/employer?error=status");
+  if (r.error) redirect(employerReturn(data, true));
   revalidatePath("/jobs");
   revalidatePath("/jobs/" + id);
   revalidatePath("/employer");
-  redirect("/employer");
+  redirect(employerReturn(data));
 }
 export async function toggleSavedJob(data: FormData) {
   const { user } = await requiredProfile();

@@ -6,7 +6,8 @@ import { type LiveApplication } from "@/lib/recruitment/data";
 import { uuid, applicationStages } from "@/lib/recruitment/validation";
 import { changeStage } from "@/lib/recruitment/actions";
 import { MessageForm } from "@/components/recruitment/forms";
-import { MarketNav } from "@/components/recruitment/ui";
+import { WorkspaceNav } from "@/components/workspace/navigation";
+import { stageLabel } from "@/lib/workspace/model";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/applications",
@@ -41,8 +42,8 @@ export default async function Page({
     .limit(200);
   const p = await searchParams;
   return (
-    <div className="container page live-market">
-      <MarketNav />
+    <div className="container page live-market workspace-detail">
+      <WorkspaceNav employer={employer} />
       <Link
         className="inline-link"
         href={employer ? "/employer" : "/applications"}
@@ -52,7 +53,7 @@ export default async function Page({
       <div className="live-heading">
         <div>
           <p className="eyebrow">
-            {a.jobs?.company} / {a.stage}
+            {a.jobs?.company} / {stageLabel(a.stage)}
           </p>
           <h1>{a.jobs?.title || "Application"}</h1>
           <p className="subtext">Introduction from {a.candidate_name}</p>
@@ -101,7 +102,9 @@ export default async function Page({
                     }
                   >
                     {applicationStages.map((s) => (
-                      <option key={s}>{s}</option>
+                      <option key={s} value={s}>
+                        {stageLabel(s)}
+                      </option>
                     ))}
                   </select>
                 </label>

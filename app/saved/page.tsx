@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { type LiveJob } from "@/lib/recruitment/data";
-import { LiveJobCard, MarketNav, Empty } from "@/components/recruitment/ui";
+import { LiveJobCard, Empty } from "@/components/recruitment/ui";
+import { WorkspaceNav } from "@/components/workspace/navigation";
 import { toggleSavedJob } from "@/lib/recruitment/actions";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
@@ -24,10 +25,10 @@ export default async function Page() {
     jobs: LiveJob | null;
   }[];
   return (
-    <div className="container page live-market">
+    <div className="container page live-market workspace-detail">
       <p className="eyebrow">SERA / SAVED FOR LATER</p>
       <h1>Keep the possibilities close.</h1>
-      <MarketNav />
+      <WorkspaceNav />
       {error ? (
         <Empty title="Saved jobs could not be loaded">
           <p>Please refresh.</p>
