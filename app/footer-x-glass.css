@@ -63,7 +63,20 @@
   background: none !important;
   color: inherit !important;
   box-shadow: none !important;
-  transform: none !important;
+  transform: none;
+}
+.footer-dock a.active .dock-icon {
+  animation: active-footer-icon 2.8s ease-in-out infinite;
+}
+@keyframes active-footer-icon {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-2px) scale(1.08);
+  }
 }
 .footer-dock a .dock-icon svg {
   width: 22px;
@@ -99,6 +112,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .footer-dock a.active .dock-icon {
+    animation: none;
+  }
   .footer-dock a {
     transition: none !important;
   }
