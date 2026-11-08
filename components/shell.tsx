@@ -88,6 +88,11 @@ export function Shell({
       key: "workspace" as Key,
       Icon: LayoutDashboard,
     },
+    {
+      href: authenticated ? "/settings" : "/sign-in",
+      key: "profile" as Key,
+      Icon: UserRound,
+    },
   ];
   return (
     <>
@@ -145,13 +150,7 @@ export function Shell({
               </span>
             </Link>
           )}
-          <Link
-            className="header-control profile-control"
-            href={authenticated ? "/dashboard" : "/sign-in"}
-            aria-label={t("profile")}
-          >
-            <UserRound size={20} />
-          </Link>
+          <LanguageSelector compact />
         </div>
       </header>
       <dialog
@@ -301,7 +300,6 @@ export function Shell({
                 ? [
                     "/workspace",
                     "/dashboard",
-                    "/settings",
                     "/profile",
                     "/applications",
                     "/messages",
@@ -309,7 +307,10 @@ export function Shell({
                     "/employer",
                     "/employer/post",
                     "/employer/pipeline",
-                  ].some((route) => pathname === route || pathname.startsWith(route + "/"))
+                  ].some(
+                    (route) =>
+                      pathname === route || pathname.startsWith(route + "/"),
+                  )
                 : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

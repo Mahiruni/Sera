@@ -2,20 +2,32 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Languages } from "lucide-react";
+import { useId } from "react";
 import { useSera } from "./store";
 import { locales, type LocaleCode } from "@/lib/locales";
-export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
+export function LanguageSelector({
+  onNavigate,
+  compact = false,
+}: {
+  onNavigate?: () => void;
+  compact?: boolean;
+}) {
   const { locale, setLang, t, lang } = useSera();
   const pathname = usePathname();
   const router = useRouter();
+  const selectId = useId();
   return (
-    <div className="language-picker">
-      <label htmlFor="sera-language">
-        <Languages size={17} />
-        {t("language")}
+    <div
+      className={
+        compact ? "header-control header-language-picker" : "language-picker"
+      }
+    >
+      <label htmlFor={selectId}>
+        <Languages size={compact ? 20 : 17} aria-hidden="true" />
+        <span className={compact ? "sr-only" : undefined}>{t("language")}</span>
       </label>
       <select
-        id="sera-language"
+        id={selectId}
         value={locale}
         onChange={(e) => {
           const next = e.target.value as LocaleCode;
@@ -54,9 +66,11 @@ export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
           </option>
         ))}
       </select>
-      <Link href="/languages">
-        {lang === "am" ? "ስለ ቋንቋ ድጋፍ" : "Language availability"}
-      </Link>
+      {!compact && (
+        <Link href="/languages">
+          {lang === "am" ? "ስለ ቋንቋ ድጋፍ" : "Language availability"}
+        </Link>
+      )}
     </div>
   );
 }
