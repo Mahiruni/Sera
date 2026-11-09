@@ -43,7 +43,6 @@ export default async function RootLayout({
   const user = await currentUser();
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
-  const bare = requestHeaders.get("x-sera-bare") === "1";
   const language =
     requestLanguage === "am" ? "am" : requestLanguage === "ar" ? "ar" : "en";
   return (
@@ -55,13 +54,7 @@ export default async function RootLayout({
       <body>
         <WebsiteData />
         <Provider initialLocale={language}>
-          {bare ? (
-            <main id="main" className="ax-bare">
-              {children}
-            </main>
-          ) : (
-            <Shell authenticated={Boolean(user)}>{children}</Shell>
-          )}
+          <Shell authenticated={Boolean(user)}>{children}</Shell>
         </Provider>
       </body>
     </html>

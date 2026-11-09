@@ -5,10 +5,6 @@ export async function proxy(request: NextRequest) {
   const language = path === "/am" ? "am" : path === "/ar" ? "ar" : "en";
   const headers = new Headers(request.headers);
   headers.set("x-sera-language", language);
-  headers.set(
-    "x-sera-bare",
-    path === "/sign-in" || path === "/sign-up" ? "1" : "0",
-  );
   let response = NextResponse.next({ request: { headers } });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
