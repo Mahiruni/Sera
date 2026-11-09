@@ -41,6 +41,7 @@ export async function register(
       emailRedirectTo: `${siteOrigin}/auth/callback`,
       data: {
         full_name: input.full_name,
+        phone: input.phone || undefined,
         locale: input.locale,
         journey: input.journey,
         account_terms_version: "2026-11-07",

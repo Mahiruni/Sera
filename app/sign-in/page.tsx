@@ -1,4 +1,4 @@
-import { AuthForm } from "@/components/auth/forms";
+import { PremiumAuth } from "@/components/auth/premium";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/sign-in",
@@ -12,18 +12,15 @@ export default async function Page({
 }) {
   const status = await searchParams;
   return (
-    <div className="container page">
-      {status.password === "updated" && (
-        <p className="auth-notice" role="status">
-          Your password was updated. Sign in with the new password.
-        </p>
-      )}
-      {status.signed === "out" && (
-        <p className="auth-notice" role="status">
-          You have signed out.
-        </p>
-      )}
-      <AuthForm mode="signin" />
-    </div>
+    <PremiumAuth
+      mode="signin"
+      notice={
+        status.password === "updated"
+          ? "password-updated"
+          : status.signed === "out"
+            ? "signed-out"
+            : undefined
+      }
+    />
   );
 }

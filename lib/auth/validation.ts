@@ -36,7 +36,15 @@ export function readRegistration(data: FormData) {
     !journeys.includes(journey as Journey)
   )
     return null;
+  const confirm = data.get("confirm_password");
+  const phone = String(data.get("phone") || "").trim();
+  if (
+    (confirm !== null && confirm !== password) ||
+    (phone && !/^\+\d{8,15}$/.test(phone))
+  )
+    return null;
   return {
+    phone,
     email,
     password: password as string,
     full_name: name,
