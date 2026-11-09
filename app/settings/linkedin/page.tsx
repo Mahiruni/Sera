@@ -20,7 +20,7 @@ export default async function LinkedInSettings({
     linkedInState(),
     client
       .from("profiles")
-      .select("full_name,linkedin_imported_at,linkedin_imported_fields")
+      .select("full_name,headline,summary,location,skills,experience,education,linkedin_imported_at,linkedin_imported_fields")
       .eq("id", user.id)
       .single(),
     client.from("account_assets").select("avatar_path").eq("user_id", user.id).maybeSingle(),
@@ -35,6 +35,14 @@ export default async function LinkedInSettings({
         importedFields={(profile.data?.linkedin_imported_fields as string[] | null) ?? []}
         justImported={sp.imported === "1"}
         connectError={sp.error === "connect"}
+        current={{
+          headline: profile.data?.headline ?? "",
+          summary: profile.data?.summary ?? "",
+          location: profile.data?.location ?? "",
+          skills: profile.data?.skills ?? "",
+          experience: profile.data?.experience ?? "",
+          education: profile.data?.education ?? "",
+        }}
       />
     </section>
   );

@@ -6,6 +6,7 @@ import {
   disconnectLinkedIn,
 } from "@/lib/auth/linkedin";
 import type { ActionState } from "@/lib/auth/actions";
+import LinkedInExportImport from "./LinkedInExportImport";
 
 export type PanelProps = {
   connected: boolean;
@@ -19,9 +20,11 @@ export type PanelProps = {
   importedFields: string[];
   justImported: boolean;
   connectError: boolean;
+  current: Record<string, string>;
 };
 
-const labels: Record<string, string> = { full_name: "name", avatar: "photo" };
+const labels: Record<string, string> = { full_name: "name", avatar: "photo", headline: "headline", summary: "about", location: "location", skills: "skills", experience: "experience", education: "education" };
+const box = { width: 22, height: 22, minHeight: 0, padding: 0, margin: 0, flex: "none" } as const;
 
 export default function LinkedInPanel(p: PanelProps) {
   const [imp, importAction, importing] = useActionState<ActionState, FormData>(applyLinkedInImport, {});
@@ -58,7 +61,7 @@ export default function LinkedInPanel(p: PanelProps) {
           <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Build your Sera profile with LinkedIn</h2>
           {p.name && (
             <label className="auth-help" style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="checkbox" name="field" value="full_name" defaultChecked={!p.profileName || !nameDiffers} />
+              <input type="checkbox" name="field" value="full_name" defaultChecked={!p.profileName || !nameDiffers} style={box} />
               <span>
                 Name: <strong>{p.name}</strong>
                 {nameDiffers && p.profileName ? ` (replaces “${p.profileName}”)` : ""}
@@ -67,7 +70,7 @@ export default function LinkedInPanel(p: PanelProps) {
           )}
           {p.picture && (
             <label className="auth-help" style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="checkbox" name="field" value="avatar" defaultChecked={!p.hasAvatar} />
+              <input type="checkbox" name="field" value="avatar" defaultChecked={!p.hasAvatar} style={box} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.picture} alt="" width={40} height={40} style={{ borderRadius: 999 }} referrerPolicy="no-referrer" />
               <span>Profile photo{p.hasAvatar ? " (replaces your current photo)" : ""}</span>
@@ -93,6 +96,8 @@ export default function LinkedInPanel(p: PanelProps) {
           )}
         </form>
       )}
+
+      {p.connected && <LinkedInExportImport current={p.current} />}
 
       {p.connected && (
         <form action={disconnectAction} aria-busy={disconnecting}>

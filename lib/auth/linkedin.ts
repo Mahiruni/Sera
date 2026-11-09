@@ -178,3 +178,54 @@ export async function applyLinkedInImport(
   revalidatePath("/", "layout");
   redirect(row.onboarded_at ? "/settings/linkedin?imported=1" : "/onboarding");
 }
+
+const EXPORT_LIMITS = {
+  headline: 120,
+  summary: 2000,
+  location: 500,
+  skills: 500,
+  experience: 500,
+  education: 2000,
+} as const;
+type ExportKey = keyof typeof EXPORT_LIMITS;
+
+/** Saves reviewed values from the user's own LinkedIn data export. Only ticked fields. */
+export async function saveLinkedInExport(
+  _previous: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  const user = await currentUser();
+  if (!user || !user.email_confirmed_at) redirect("/sign-in");
+  const keys = data
+    .getAll("field")
+    .map(String)
+    .filter((k): k is ExportKey => k in EXPORT_LIMITS);
+  if (!keys.length) return { message: "Select at least one item to import." };
+  const update: Record<string, string> = {};
+  for (const k of keys) {
+    const v = String(data.get(`v_${k}`) ?? "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+      .trim();
+    if (!v) continue;
+    if (v.length > EXPORT_LIMITS[k])
+      return { message: `${k} is too long (maximum ${EXPORT_LIMITS[k]} characters).` };
+    update[k] = v;
+  }
+  if (!Object.keys(update).length) return { message: "Nothing to import." };
+  const client = await serverClient();
+  const { data: cur } = await client
+    .from("profiles")
+    .select("linkedin_imported_fields")
+    .eq("id", user.id)
+    .single();
+  const fields = Array.from(
+    new Set([...((cur?.linkedin_imported_fields as string[] | null) ?? []), ...Object.keys(update)]),
+  );
+  const { error } = await client
+    .from("profiles")
+    .update({ ...update, linkedin_imported_at: new Date().toISOString(), linkedin_imported_fields: fields })
+    .eq("id", user.id);
+  if (error) return { message: "Profile could not be updated. Please try again." };
+  revalidatePath("/", "layout");
+  redirect("/settings/linkedin?imported=1");
+}
