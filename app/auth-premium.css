@@ -567,3 +567,12 @@
     transition: none !important;
   }
 }
+
+/* Focused layout: no site header/menu/footer on sign-in and sign-up */
+.ax-bare {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
