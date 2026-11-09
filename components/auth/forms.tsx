@@ -16,6 +16,7 @@ import {
   BriefcaseBusiness,
 } from "lucide-react";
 import { useSera } from "../store";
+import LinkedInButton from "./LinkedInButton";
 import { locales } from "@/lib/locales";
 import { authCopy } from "@/lib/auth/copy";
 import {
@@ -434,6 +435,7 @@ export function AuthForm({
             )}
           </div>
         </form>
+        {isEntry && <LinkedInButton mode={mode === "signup" ? "signup" : "signin"} />}
         <p className="auth-footnote">
           <LockKeyhole size={13} />
           {lang === "am"

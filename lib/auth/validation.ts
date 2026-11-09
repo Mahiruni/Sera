@@ -3,7 +3,7 @@ export const journeys = ["candidate", "employer"] as const;
 export type Journey = (typeof journeys)[number];
 export function safeDestination(value: unknown, fallback = "/dashboard") {
   return typeof value === "string" &&
-    ["/dashboard", "/onboarding", "/settings", "/reset-password"].includes(
+    ["/dashboard", "/onboarding", "/settings", "/reset-password", "/settings/linkedin"].includes(
       value,
     )
     ? value
