@@ -11,6 +11,7 @@ export const li = {
   en: {
     or: "or",
     continueWith: "Continue with LinkedIn",
+    continueGoogle: "Continue with Google",
     agreePre: "By continuing you agree to the ",
     terms: "Terms",
     and: " and ",
@@ -49,6 +50,7 @@ export const li = {
   am: {
     or: "ወይም",
     continueWith: "በLinkedIn ቀጥል",
+    continueGoogle: "በGoogle ቀጥል",
     agreePre: "በመቀጠል ",
     terms: "የአገልግሎት ውሎችን",
     and: " እና ",
@@ -90,6 +92,8 @@ export const liFieldTitles = fieldTitles;
 const messages: Record<string, string> = {
   "Account services are not configured yet.": "የመለያ አገልግሎቶች ገና አልተዋቀሩም።",
   "LinkedIn sign-in is unavailable right now.": "የLinkedIn መግቢያ አሁን አይገኝም።",
+  "Google sign-in is unavailable right now.": "የGoogle መግቢያ አሁን አይገኝም።",
+  "Account access with Google opens together with registration. Please try again later.": "በGoogle መግባት ከምዝገባ ጋር አብሮ ይከፈታል። እባክዎ በኋላ ይሞክሩ።",
   "LinkedIn is not connected.": "LinkedIn አልተገናኘም።",
   "LinkedIn could not be disconnected. Please try again.": "LinkedIn ማቋረጥ አልተቻለም። እባክዎ እንደገና ይሞክሩ።",
   "LinkedIn disconnected. Your Sera profile was kept.": "LinkedIn ተቋርጧል። የSera መገለጫዎ እንዳለ ተቀምጧል።",
