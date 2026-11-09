@@ -58,6 +58,8 @@ export async function applyToJob(
       candidate_name: profile.full_name,
       skills: profile.skills,
       experience: profile.experience,
+      candidate_headline: profile.headline ?? "",
+      education: profile.education ?? "",
     })
     .select("id")
     .single();

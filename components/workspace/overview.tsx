@@ -558,6 +558,11 @@ export function WorkspaceOverview({
               Update your profile
               <ChevronRight size={14} />
             </Link>
+            <Link href="/settings/linkedin">
+              <UserRound size={16} />
+              LinkedIn import & connection
+              <ChevronRight size={14} />
+            </Link>
             <Link href="/guides">
               <BookOpen size={16} />
               Career & education guides

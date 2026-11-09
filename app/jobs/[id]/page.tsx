@@ -43,6 +43,15 @@ export default async function Page({
         .eq("user_id", user.id)
         .maybeSingle()
     : null;
+  const profile = user?.email_confirmed_at
+    ? (
+        await c
+          .from("profiles")
+          .select("full_name,headline,skills,experience,education")
+          .eq("id", user.id)
+          .single()
+      ).data
+    : null;
   const p = await searchParams;
   return (
     <div className="container page live-market">
@@ -105,7 +114,18 @@ export default async function Page({
       ) : job.status !== "open" ? (
         <p className="auth-notice">This job is closed.</p>
       ) : user?.email_confirmed_at ? (
-        <ApplyForm jobId={id} />
+        <ApplyForm
+          jobId={id}
+          jobTitle={job.title}
+          company={job.company}
+          snapshot={{
+            name: profile?.full_name ?? "",
+            headline: profile?.headline ?? "",
+            skills: profile?.skills ?? "",
+            experience: profile?.experience ?? "",
+            education: profile?.education ?? "",
+          }}
+        />
       ) : (
         <div className="panel live-empty">
           <h2>Ready to introduce yourself?</h2>

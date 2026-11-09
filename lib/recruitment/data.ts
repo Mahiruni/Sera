@@ -21,6 +21,8 @@ export type LiveApplication = {
   candidate_name: string;
   skills: string;
   experience: string;
+  candidate_headline: string;
+  education: string;
   cover_note: string;
   stage: string;
   created_at: string;

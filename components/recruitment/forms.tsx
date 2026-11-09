@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import {
   createJob,
   applyToJob,
@@ -127,12 +128,58 @@ export function JobPostForm({ company = "" }: { company?: string }) {
     </form>
   );
 }
-export function ApplyForm({ jobId }: { jobId: string }) {
+export type ApplySnapshot = {
+  name: string;
+  headline: string;
+  skills: string;
+  experience: string;
+  education: string;
+};
+export function ApplyForm({
+  jobId,
+  jobTitle,
+  company,
+  snapshot,
+}: {
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  snapshot: ApplySnapshot;
+}) {
   const [state, action, pending] = useActionState(applyToJob, {});
+  const rows = [
+    ["Name", snapshot.name],
+    ["Headline", snapshot.headline],
+    ["Skills", snapshot.skills],
+    ["Experience", snapshot.experience],
+    ["Education", snapshot.education],
+  ] as const;
+  const intro = `Hello,\n\nI’m ${snapshot.name}${snapshot.headline ? `, ${snapshot.headline}` : ""}. I’m applying for the ${jobTitle} role at ${company} because `;
   return (
     <form action={action} className="panel live-form" aria-busy={pending}>
       <input name="job_id" type="hidden" value={jobId} />
       <h2>Make your introduction</h2>
+      <section aria-label="Details that will be shared">
+        <h3>Review what will be shared</h3>
+        <dl style={{ display: "grid", gap: 10, margin: 0 }}>
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt className="auth-help">
+                <strong>{label}</strong>
+              </dt>
+              <dd style={{ margin: 0, whiteSpace: "pre-line" }}>
+                {value || "Not added yet"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="auth-help">
+          Something missing or out of date?{" "}
+          <Link href="/settings/linkedin">Import from LinkedIn</Link> or{" "}
+          <Link href="/settings">update your profile</Link> first. Your phone
+          number and email are never shared.
+        </p>
+      </section>
       <label className="auth-label">
         Cover note
         <textarea
@@ -140,17 +187,17 @@ export function ApplyForm({ jobId }: { jobId: string }) {
           required
           minLength={20}
           maxLength={4000}
-          rows={6}
-          placeholder="Why is this role a good fit for you?"
+          rows={8}
+          defaultValue={intro}
         />
       </label>
       <label className="live-check">
         <input type="checkbox" name="share_profile" value="yes" required />
         <span>
-          Share my name, skills, experience and this note with this job’s
-          poster. My phone number, email and other private profile fields are
-          not included. This creates a snapshot; later profile changes do not
-          alter it.
+          Share the details listed above and this note with this job’s poster.
+          Your phone number, email and other private profile fields are not
+          included. This creates a snapshot; later profile changes do not alter
+          it.
         </span>
       </label>
       <Feedback state={state} />

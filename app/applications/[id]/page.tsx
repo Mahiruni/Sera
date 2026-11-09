@@ -78,10 +78,16 @@ export default async function Page({
         <section className="panel live-copy">
           <h2>Shared introduction</h2>
           <p>{a.cover_note}</p>
+          <h3>Headline</h3>
+          <p>{a.candidate_headline || "Not provided"}</p>
           <h3>Skills</h3>
           <p>{a.skills || "Not provided"}</p>
           <h3>Experience</h3>
           <p>{a.experience || "Not provided"}</p>
+          <h3>Education</h3>
+          <p style={{ whiteSpace: "pre-line" }}>
+            {a.education || "Not provided"}
+          </p>
           <p className="live-disclosure">
             This is the profile snapshot shared at application time.
           </p>
