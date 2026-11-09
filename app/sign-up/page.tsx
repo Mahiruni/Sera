@@ -1,4 +1,4 @@
-import { AuthForm } from "@/components/auth/forms";
+import { PremiumAuth } from "@/components/auth/premium";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/sign-up",
@@ -7,11 +7,9 @@ export const metadata = pageMetadata(
 );
 export default async function Page() {
   return (
-    <div className="container page">
-      <AuthForm
-        mode="signup"
-        registrationOpen={process.env.SERA_ACCOUNT_REGISTRATION === "enabled"}
-      />
-    </div>
+    <PremiumAuth
+      mode="signup"
+      registrationOpen={process.env.SERA_ACCOUNT_REGISTRATION === "enabled"}
+    />
   );
 }
