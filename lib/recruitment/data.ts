@@ -23,6 +23,8 @@ export type LiveApplication = {
   experience: string;
   candidate_headline: string;
   education: string;
+  cv_path: string | null;
+  cv_name: string | null;
   cover_note: string;
   stage: string;
   created_at: string;

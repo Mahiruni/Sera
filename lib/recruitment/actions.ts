@@ -49,11 +49,27 @@ export async function applyToJob(
       message:
         "Add a cover note of 20–4,000 characters and confirm which profile details will be shared.",
     };
+  const { attach_cv, ...fields } = input;
   const c = await serverClient();
+  let cv: { cv_path: string; cv_name: string } | null = null;
+  if (attach_cv) {
+    const a = await c
+      .from("account_assets")
+      .select("cv_path,cv_name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (a.error || !a.data?.cv_path)
+      return {
+        message:
+          "No CV found. Upload one in your profile or untick “Attach my CV”.",
+      };
+    cv = { cv_path: a.data.cv_path, cv_name: a.data.cv_name || "CV.pdf" };
+  }
   const r = await c
     .from("applications")
     .insert({
-      ...input,
+      ...fields,
+      ...(cv ?? {}),
       candidate_id: user.id,
       candidate_name: profile.full_name,
       skills: profile.skills,

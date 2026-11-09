@@ -40,6 +40,13 @@ export default async function Page({
     .eq("application_id", id)
     .order("created_at", { ascending: true })
     .limit(200);
+  let cvUrl: string | null = null;
+  if (a.cv_path && a.stage !== "withdrawn") {
+    const s = await c.storage
+      .from("sera-account-private")
+      .createSignedUrl(a.cv_path, 300, { download: a.cv_name || true });
+    cvUrl = s.data?.signedUrl ?? null;
+  }
   const p = await searchParams;
   return (
     <div className="container page live-market workspace-detail">
@@ -88,6 +95,24 @@ export default async function Page({
           <p style={{ whiteSpace: "pre-line" }}>
             {a.education || "Not provided"}
           </p>
+          <h3>CV</h3>
+          {a.cv_path ? (
+            cvUrl ? (
+              <p>
+                <a
+                  className="button secondary"
+                  href={cvUrl}
+                  rel="noopener noreferrer"
+                >
+                  Download {a.cv_name || "CV"}
+                </a>
+              </p>
+            ) : (
+              <p>CV unavailable.</p>
+            )
+          ) : (
+            <p>Not attached</p>
+          )}
           <p className="live-disclosure">
             This is the profile snapshot shared at application time.
           </p>

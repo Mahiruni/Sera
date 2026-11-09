@@ -60,7 +60,7 @@ export function readApplication(data: FormData) {
     cover_note.length >= 20 &&
     cover_note.length <= 4000 &&
     data.get("share_profile") === "yes"
-    ? { job_id, cover_note }
+    ? { job_id, cover_note, attach_cv: data.get("attach_cv") === "yes" }
     : null;
 }
 export function readMessage(data: FormData) {

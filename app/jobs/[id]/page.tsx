@@ -52,6 +52,15 @@ export default async function Page({
           .single()
       ).data
     : null;
+  const cv = user?.email_confirmed_at
+    ? (
+        await c
+          .from("account_assets")
+          .select("cv_path,cv_name")
+          .eq("user_id", user.id)
+          .maybeSingle()
+      ).data
+    : null;
   const p = await searchParams;
   return (
     <div className="container page live-market">
@@ -118,6 +127,7 @@ export default async function Page({
           jobId={id}
           jobTitle={job.title}
           company={job.company}
+          cvName={cv?.cv_path ? cv.cv_name || "CV" : null}
           snapshot={{
             name: profile?.full_name ?? "",
             headline: profile?.headline ?? "",

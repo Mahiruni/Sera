@@ -25,6 +25,7 @@ import {
   stageLabel,
   type WorkspaceMode,
 } from "@/lib/workspace/model";
+import type { LinkedInBadge } from "@/lib/auth/linkedin-badge";
 import { WorkspaceNav } from "./navigation";
 import { WorkspaceSubmit } from "./submit";
 import { changeJobStatus } from "@/lib/recruitment/actions";
@@ -90,6 +91,7 @@ export function WorkspaceOverview({
   appsPage = 1,
   status = "all",
   statusError = false,
+  linkedin = null,
 }: {
   profile: Profile;
   userId: string;
@@ -99,6 +101,7 @@ export function WorkspaceOverview({
   appsPage?: number;
   status?: string;
   statusError?: boolean;
+  linkedin?: LinkedInBadge | null;
 }) {
   const employer = mode === "employer",
     checklist = profileChecklist(profile, data.assets, mode),
@@ -561,6 +564,29 @@ export function WorkspaceOverview({
             <Link href="/settings/linkedin">
               <UserRound size={16} />
               LinkedIn import & connection
+              {linkedin && (
+                <span
+                  role="status"
+                  title={
+                    linkedin.importedAt
+                      ? "Last import: " +
+                        new Date(linkedin.importedAt).toLocaleDateString("en-GB")
+                      : undefined
+                  }
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: linkedin.connected ? "#0A66C2" : "transparent",
+                    color: linkedin.connected ? "#fff" : "inherit",
+                    border: linkedin.connected ? 0 : "1px solid currentColor",
+                  }}
+                >
+                  {linkedin.connected ? "Connected" : "Not connected"}
+                </span>
+              )}
               <ChevronRight size={14} />
             </Link>
             <Link href="/guides">

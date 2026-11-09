@@ -140,11 +140,13 @@ export function ApplyForm({
   jobTitle,
   company,
   snapshot,
+  cvName = null,
 }: {
   jobId: string;
   jobTitle: string;
   company: string;
   snapshot: ApplySnapshot;
+  cvName?: string | null;
 }) {
   const [state, action, pending] = useActionState(applyToJob, {});
   const rows = [
@@ -191,6 +193,19 @@ export function ApplyForm({
           defaultValue={intro}
         />
       </label>
+      {cvName ? (
+        <label className="live-check">
+          <input type="checkbox" name="attach_cv" value="yes" defaultChecked />
+          <span>
+            Attach my CV ({cvName}). The job poster can download it while this
+            application is active; it stays private otherwise.
+          </span>
+        </label>
+      ) : (
+        <p className="auth-help">
+          No CV yet. <Link href="/settings#cv">Upload one</Link> to attach it.
+        </p>
+      )}
       <label className="live-check">
         <input type="checkbox" name="share_profile" value="yes" required />
         <span>

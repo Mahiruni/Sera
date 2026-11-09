@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { workspaceData } from "@/lib/workspace/data";
 import { WorkspaceOverview } from "@/components/workspace/overview";
+import { linkedInBadge } from "@/lib/auth/linkedin-badge";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/dashboard",
@@ -26,12 +27,14 @@ export default async function Page({
   if (profile.journey === "employer" && params.view !== "candidate")
     redirect("/employer");
   const data = await workspaceData(user.id, "candidate");
+  const linkedin = await linkedInBadge(user.id);
   return (
     <WorkspaceOverview
       profile={profile}
       userId={user.id}
       data={data}
       mode="candidate"
+      linkedin={linkedin}
     />
   );
 }
