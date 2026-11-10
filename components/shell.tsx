@@ -26,7 +26,6 @@ import {
   ChevronDown,
   ArrowLeftRight,
   Star,
-  UserPlus,
 } from "lucide-react";
 import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
@@ -137,45 +136,7 @@ export function Shell({
           <span />
           <span />
         </button>
-        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="SERA.et home">SERA<span>.et</span></Link>
         <div className="header-account-controls">
-          {([
-            "/",
-            "/am",
-            "/about",
-            "/guides",
-            "/education",
-            "/institutions",
-            "/opportunities",
-            "/how-it-works",
-            "/languages",
-          ].includes(pathname) ||
-            pathname.startsWith("/guides/")) && (
-            <Link
-              className="header-signup"
-              href={authenticated ? "/dashboard" : "/sign-up"}
-              aria-label={
-                authenticated
-                  ? lang === "am"
-                    ? "የእኔ መለያ"
-                    : "My account"
-                  : lang === "am"
-                    ? "መለያ ፍጠር"
-                    : "Create account"
-              }
-            >
-              <UserPlus size={18} />
-              <span>
-                {authenticated
-                  ? lang === "am"
-                    ? "የእኔ መለያ"
-                    : "My account"
-                  : lang === "am"
-                    ? "መለያ ፍጠር"
-                    : "Create account"}
-              </span>
-            </Link>
-          )}
           {verified && <ActivityBell />}
           <LanguageSelector compact />
         </div>
