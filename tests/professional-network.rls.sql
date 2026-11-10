@@ -67,20 +67,20 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
 set local role authenticated;
 insert into public.professional_blocks(blocker_id,blocked_id) select a,b from network_fixture;
-do $ begin
+do $$ begin
  if exists(select from public.professional_messages) then raise exception 'Block did not hide conversation messages'; end if;
-end $;
+end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
 set local role authenticated;
-do $ begin
+do $$ begin
  if exists(select from public.professional_messages) then raise exception 'Blocked recipient can still read messages'; end if;
  begin
   insert into public.professional_messages(conversation_id,sender_id,body) select thread,b,'Blocked send' from network_fixture;
   raise exception 'Blocked message sent';
  exception when check_violation or insufficient_privilege then null;
  end;
-end $;
+end $$;
 reset role;
 set local role anon;
 do $$ begin
