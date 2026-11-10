@@ -332,7 +332,7 @@ export function Shell({
         <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {
           const active =
-            href === "/settings" && (pathname === "/settings" || pathname.startsWith("/settings/") || pathname.startsWith("/members/"))
+            href === "/settings" && (pathname === "/settings" || pathname.startsWith("/settings/"))
               ? true
               : href === "/"
               ? pathname === "/"
