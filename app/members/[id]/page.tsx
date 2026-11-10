@@ -1,3 +1,5 @@
+import { serverClient } from "@/lib/supabase/server";
+import { changeProfessionalRelationship } from "@/lib/network/relationships";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { notFound } from "next/navigation";
@@ -27,6 +29,15 @@ export default async function Member({
   const result = await loadSocialFeed({ authorId: id, page });
   const author = result.posts[0]?.author;
   const member = (await memberCards([id])).get(id);
+  const db = await serverClient();
+  const [follow, sent, received] = id === user.id ? [null, null, null] : await Promise.all([
+    db.from("professional_follows").select("follower_id").eq("follower_id", user.id).eq("followed_id", id).maybeSingle(),
+    db.from("professional_connection_requests").select("status").eq("requester_id", user.id).eq("recipient_id", id).maybeSingle(),
+    db.from("professional_connection_requests").select("status").eq("requester_id", id).eq("recipient_id", user.id).maybeSingle(),
+  ]);
+  const following = Boolean(follow?.data);
+  const sentStatus = sent?.data?.status;
+  const receivedStatus = received?.data?.status;
   return (
     <div className="container page social-page social-detail">
       <SocialNav />
@@ -43,6 +54,36 @@ export default async function Member({
             "Ideas, achievements and work shared with the community."}
         </p>
         {author?.location && <p>{author.location}</p>}
+        {id !== user.id && member && (
+          <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+            <form action={changeProfessionalRelationship}>
+              <input type="hidden" name="target" value={id} />
+              <input type="hidden" name="action" value={following ? "unfollow" : "follow"} />
+              <button type="submit" className="network-button">{following ? "Following ✓" : "Follow"}</button>
+            </form>
+            {receivedStatus === "pending" ? (
+              <form action={changeProfessionalRelationship}>
+                <input type="hidden" name="target" value={id} />
+                <input type="hidden" name="action" value="accept" />
+                <button type="submit" className="network-button">Accept invitation</button>
+              </form>
+            ) : sentStatus === "pending" ? (
+              <form action={changeProfessionalRelationship}>
+                <input type="hidden" name="target" value={id} />
+                <input type="hidden" name="action" value="withdraw" />
+                <button type="submit" className="network-button">Withdraw invitation</button>
+              </form>
+            ) : sentStatus === "accepted" || receivedStatus === "accepted" ? (
+              <span>Connected ✓</span>
+            ) : !sentStatus && !receivedStatus ? (
+              <form action={changeProfessionalRelationship}>
+                <input type="hidden" name="target" value={id} />
+                <input type="hidden" name="action" value="request" />
+                <button type="submit" className="network-button">Connect</button>
+              </form>
+            ) : <span>Invitation {sentStatus || receivedStatus}</span>}
+          </div>
+        )}
       </header>
       <PostList
         posts={result.posts}
