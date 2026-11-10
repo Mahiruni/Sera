@@ -66,6 +66,28 @@ end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
 set local role authenticated;
+insert into public.professional_typing_status(conversation_id,member_id) select thread,a from network_fixture;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if (select count(*) from public.professional_typing_status) <> 1 then raise exception 'Participant cannot see typing'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',c)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if exists(select from public.professional_typing_status) then raise exception 'Outsider can read typing'; end if;
+ begin
+  insert into public.professional_typing_status(conversation_id,member_id)
+  select thread,c from network_fixture;
+  raise exception 'Outsider can announce typing';
+ exception when check_violation or insufficient_privilege then null;
+ end;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
 insert into public.professional_message_attachments(message_id,owner_id,storage_path,file_name,mime_type,byte_size)
 select message,a,a::text || '/' || thread::text || '/test.pdf','test.pdf','application/pdf',1024 from network_fixture;
 do $$ begin
