@@ -41,7 +41,7 @@ export function navigationGroups(role: Role | null): NavGroup[] {
                 icon: "applications",
               },
             ]),
-        { href: "/messages", key: "messages", icon: "messages" },
+        { href: "/network/messages", key: "messages", icon: "messages" },
       ],
     },
     {
@@ -71,6 +71,6 @@ export function navIsActive(pathname: string, href: string) {
   if (href === "/help")
     return ["/help", "/contact", "/how-it-works"].includes(pathname);
   return (
-    pathname === href || (href === "/jobs" && pathname.startsWith("/jobs/"))
+    pathname === href || pathname.startsWith(href + "/")
   );
 }
