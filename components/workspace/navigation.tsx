@@ -8,6 +8,8 @@ import {
   Bookmark,
   UserRound,
   Plus,
+  MessageCircle,
+  Bell,
 } from "lucide-react";
 export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
   const path = usePathname();
@@ -25,6 +27,8 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
           icon: LayoutDashboard,
         },
         { href: "/settings", label: "My profile", icon: UserRound },
+        { href: "/network/messages", label: "Messages", icon: MessageCircle },
+        { href: "/notifications", label: "Notifications", icon: Bell },
       ]
     : [
         {
