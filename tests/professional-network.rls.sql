@@ -211,9 +211,36 @@ do $$ begin
  exception when insufficient_privilege then null;
  end;
 end $$;
+-- Notification delivery and read-state isolation: both sides of the relationship.
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
+do $ begin
+ if not exists(select 1 from public.professional_notifications where recipient_id=(select a from network_fixture) and kind='connection_accepted' and read_at is null) then
+  raise exception 'Connection acceptance must create unread recipient notification';
+ end if;
+end $;
+update public.professional_notifications set read_at=now()
+where recipient_id=(select a from network_fixture) and read_at is null;
+do $ begin
+ if exists(select 1 from public.professional_notifications where read_at is null) then
+  raise exception 'Recipient failed to mark notifications read';
+ end if;
+end $;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
+set local role authenticated;
+do $ begin
+ if not exists(select 1 from public.professional_notifications where recipient_id=(select b from network_fixture) and kind='connection_request' and read_at is null) then
+  raise exception 'Connection invitation must create unread recipient notification';
+ end if;
+ if exists(select 1 from public.professional_notifications where recipient_id=(select a from network_fixture)) then
+  raise exception 'Recipient RLS leaked another member notification';
+ end if;
+end $;
 reset role;
 set local role anon;
-do $$ begin
+do $ begin
  begin perform * from public.professional_messages;raise exception 'Anonymous read allowed';exception when insufficient_privilege then null;end;
 end $$;
 reset role;
