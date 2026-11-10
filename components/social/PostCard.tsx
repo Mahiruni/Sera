@@ -33,7 +33,7 @@ export function PostCard({
         <Link
           className="social-avatar"
           href={"/members/" + post.author_id}
-          aria-label={`${post.author.full_name}'s posts`}
+          aria-label={`View ${post.author.full_name}'s professional profile`}
         >
           <MemberAvatar
             name={post.author.full_name}
@@ -139,7 +139,7 @@ export function PostCard({
           action={toggleSavePost}
           fields={{ post_id: post.id, remove: post.saved ? "yes" : "no" }}
         >
-          <Submit aria-pressed={post.saved}>
+          <Submit aria-pressed={post.saved} aria-label={post.saved ? "Remove saved post" : "Save post"}>
             <Bookmark size={17} fill={post.saved ? "currentColor" : "none"} />
             <span>{post.saved ? "Saved" : "Save"}</span>
           </Submit>
