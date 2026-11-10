@@ -2,6 +2,7 @@ import { serverClient } from "@/lib/supabase/server";
 import { changeProfessionalRelationship, reportProfessionalMember } from "@/lib/network/relationships";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
+import { ProfessionalPresence } from "@/components/network/professional-presence";
 import { notFound } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
@@ -46,11 +47,12 @@ export default async function Member({
       <header className="social-hero sera-member-hero">
         <p className="eyebrow">SERA PROFESSIONAL COMMUNITY</p>
         <MemberAvatar
-          name={member?.name || "Sera member"}
+          name={member?.name || author?.full_name || "Community member"}
           photo={member?.photo}
           size={84}
         />
         <h1>{member?.name || author?.full_name || "Sera community member"}</h1>
+        <div className="sera-member-activity-row"><ProfessionalPresence member={id} compact /></div>
         <p>
           {author?.headline ||
             "Ideas, achievements and work shared with the community."}
@@ -83,7 +85,7 @@ export default async function Member({
                 <input type="hidden" name="action" value="request" />
                 <button type="submit" className="network-button">Connect</button>
               </form>
-            ) : <span>Invitation {sentStatus || receivedStatus}</span>}
+            ) : <span className="sera-member-status">Invitation {sentStatus || receivedStatus}</span>}
             <form action={changeProfessionalRelationship}>
               <input type="hidden" name="target" value={id} />
               <input type="hidden" name="action" value={blocked ? "unblock" : "block"} />
