@@ -9,6 +9,7 @@ import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
 import { pageMetadata, siteOrigin } from "@/lib/seo";
 import "./globals.css";
+import "./experience-tokens.css";
 import "./footer-x-glass.css";
 import "./social.css";
 import "./network.css";
