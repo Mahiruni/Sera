@@ -137,6 +137,7 @@ export function Shell({
           <span />
           <span />
         </button>
+        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="SERA.et home">SERA<span>.et</span></Link>
         <div className="header-account-controls">
           {([
             "/",
