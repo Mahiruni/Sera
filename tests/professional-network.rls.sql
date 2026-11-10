@@ -12,7 +12,7 @@ do $$ begin
   begin
     insert into public.professional_connection_requests(requester_id,recipient_id) select b,c from network_fixture;
     raise exception 'Forged requester accepted';
-  exception when check_violation then null;
+  exception when check_violation or insufficient_privilege then null;
   end;
 end $$;
 reset role;
@@ -53,7 +53,7 @@ do $$ begin
  begin
   insert into public.professional_messages(conversation_id,sender_id,body) select thread,c,'Intrusion' from network_fixture;
   raise exception 'Outsider sent a message';
- exception when check_violation then null;
+ exception when check_violation or insufficient_privilege then null;
  end;
 end $$;
 reset role;
