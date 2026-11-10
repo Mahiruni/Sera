@@ -81,7 +81,7 @@ export async function workspaceData(
             .order("created_at", { ascending: false })
             .limit(3),
       scopedMessages.order("created_at", { ascending: false }).limit(3),
-      appsQuery().in("stage", ["interview", "offer"]).limit(0),
+      c.from("applications").select("id,jobs!inner(employer_id)", { count: "exact", head: true }).eq(employer ? "jobs.employer_id" : "candidate_id", userId).in("stage", ["interview", "offer"]),
       employer
         ? c
             .from("jobs")
