@@ -29,10 +29,10 @@ export default async function Page({
   const c = await serverClient();
   let query = c
     .from("jobs")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", "open")
     .order("created_at", { ascending: false })
-    .range((page - 1) * 20, page * 20);
+    .range((page - 1) * 20, page * 20 + 19);
   if (q) query = query.ilike("title", "%" + q.replace(/[%_\\]/g, "") + "%");
   if (location)
     query = query.ilike(
@@ -40,8 +40,10 @@ export default async function Page({
       "%" + location.replace(/[%_\\]/g, "") + "%",
     );
   if (type) query = query.eq("work_type", type);
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   const jobs = (data || []) as LiveJob[];
+  const total = count ?? 0;
+  const hasNext = page * 20 < total;
   const next = new URLSearchParams({
     q,
     location,
@@ -99,6 +101,13 @@ export default async function Page({
         verified employers. Never pay to apply or send sensitive documents
         through messages.
       </p>
+      {!error && (
+        <p className="live-disclosure" role="status">
+          {total === 0
+            ? "No matching opportunities"
+            : `${total.toLocaleString()} ${total === 1 ? "opportunity" : "opportunities"} · Page ${page} of ${Math.max(1, Math.ceil(total / 20))}`}
+        </p>
+      )}
       {error ? (
         <Empty title="Jobs could not be loaded">
           <p>Please refresh and try again.</p>
@@ -137,7 +146,7 @@ export default async function Page({
             ← Previous
           </Link>
         )}
-        {jobs.length > 20 && <Link href={"/jobs?" + next}>Next →</Link>}
+        {hasNext && <Link href={"/jobs?" + next}>Next →</Link>}
       </nav>
       <Link className="inline-link" href="/demo/jobs">
         Explore sample jobs separately →
