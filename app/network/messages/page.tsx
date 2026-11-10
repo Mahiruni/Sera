@@ -7,7 +7,7 @@ import { MemberAvatar } from "@/components/activity/avatar";
 import { startConversation, sendProfessionalMessage, markProfessionalMessagesRead } from "@/lib/network/messaging";
 export const metadata = { title: "Professional messages | SERA.et", robots: { index: false, follow: false } };
 export default async function ProfessionalInbox({ searchParams }: {
-  searchParams: Promise<{ thread?: string }>;
+  searchParams: Promise<{ thread?: string; q?: string }>;
 }) {
   const { user } = await requiredProfile("/network/messages");
   const db = await serverClient();
@@ -17,13 +17,18 @@ export default async function ProfessionalInbox({ searchParams }: {
     .order("created_at", { ascending: false }).limit(80);
   const conversations = threads ?? [];
   const people = await memberCards(conversations.map((c) => c.member_a === user.id ? c.member_b : c.member_a));
-  const requested = (await searchParams).thread;
+  const params = await searchParams;
+  const requested = params.thread;
+  const search = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const selected = conversations.find((c) => c.id === requested) ?? conversations[0];
   const { data: messages } = selected
-    ? await db.from("professional_messages")
-        .select("id,sender_id,body,created_at,read_at")
-        .eq("conversation_id", selected.id)
-        .order("created_at", { ascending: false }).limit(100)
+    ? await (() => {
+        let query = db.from("professional_messages")
+          .select("id,sender_id,body,created_at,read_at")
+          .eq("conversation_id", selected.id);
+        if (search) query = query.ilike("body", "%" + search.replace(/[%,_]/g, "") + "%");
+        return query.order("created_at", { ascending: false }).limit(100);
+      })()
     : { data: [] };
   const { data: unreadMessages } = await db.from("professional_messages")
     .select("conversation_id").is("read_at", null).neq("sender_id", user.id).limit(1000);
@@ -72,12 +77,18 @@ export default async function ProfessionalInbox({ searchParams }: {
         <section aria-label="Message thread" style={{ border: "1px solid #d5e9ef", borderRadius: 22, padding: 18, minHeight: 350 }}>
           {selected ? <>
             <h2>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</h2>
+            <form method="get" action="/network/messages" role="search" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <input type="hidden" name="thread" value={selected.id} />
+              <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} style={{ flex: 1, minWidth: 0, padding: 11, borderRadius: 12, border: "1px solid #a8d5df" }} />
+              <button className="network-button" type="submit">Search</button>
+              {search && <Link href={"/network/messages?thread=" + selected.id} style={{ alignSelf: "center" }}>Clear</Link>}
+            </form>
             <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12, margin: "20px 0" }}>
               {[...(messages ?? [])].reverse().map((m) => <article key={m.id} style={{ maxWidth: "88%", alignSelf: m.sender_id === user.id ? "flex-end" : "flex-start", padding: "12px 16px", borderRadius: 18, background: m.sender_id === user.id ? "#dff6fa" : "#f0f3f5", color: "#173d4b", overflowWrap: "anywhere" }}>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{m.body}</p>
                 <small>{new Date(m.created_at).toLocaleString()} {m.sender_id === user.id && m.read_at ? "· Read" : ""}</small>
               </article>)}
-              {!messages?.length && <p>Say hello and start a meaningful professional conversation.</p>}
+              {!messages?.length && <p>{search ? "No matching messages found." : "Say hello and start a meaningful professional conversation."}</p>}
             </div>
             <form action={sendProfessionalMessage} style={{ display: "grid", gap: 8 }}>
               <input type="hidden" name="conversation" value={selected.id} />
