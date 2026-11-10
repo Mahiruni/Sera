@@ -7,6 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 import { signOut } from "@/lib/auth/actions";
 import { serverClient } from "@/lib/supabase/server";
 import { saveProfileVisibility } from "@/lib/account/visibility";
+import { updatePublicPortfolio } from "@/lib/account/public-portfolio";
 export const metadata = pageMetadata(
   "/settings",
   "Account settings",
@@ -23,6 +24,7 @@ export default async function Page() {
   }
   const db = await serverClient();
   const { data: visibilitySettings } = await db.from("professional_profile_visibility").select("visibility").eq("user_id", user.id).maybeSingle();
+  const { data: publicPortfolio } = await db.from("professional_public_portfolios").select("published").eq("user_id",user.id).maybeSingle();
   return (
     <div className="container page account-foundation">
       {profile ? (
@@ -47,6 +49,16 @@ export default async function Page() {
           </select>
           <button className="button" type="submit">Save preference</button>
         </form>
+      </section>
+      <section className="account-security panel" aria-labelledby="portfolio-publishing-title">
+        <h2 id="portfolio-publishing-title">Public portfolio publishing</h2>
+        <p>Publishing is optional. Your professional name, headline, summary, location, skills, experience and education become visible on a shareable page. Your email, phone, CV and private activity are excluded. Changes to your professional information require republishing to update this public copy.</p>
+        <p><strong>Status:</strong> {publicPortfolio?.published ? "Published" : "Not published"}</p>
+        <div className="sera-visibility-form">
+          <form action={updatePublicPortfolio}><input type="hidden" name="intent" value={publicPortfolio?.published ? "unpublish" : "publish"} /><button className="button" type="submit" disabled={!publicPortfolio?.published && visibilitySettings?.visibility !== "public"}>{publicPortfolio?.published ? "Unpublish portfolio" : "Publish portfolio"}</button></form>
+          {publicPortfolio?.published && <Link className="inline-link" href={`/portfolio/${user.id}`}>View public portfolio</Link>}
+        </div>
+        {visibilitySettings?.visibility !== "public" && !publicPortfolio?.published && <p>Choose Public internet above and save your preference before publishing.</p>}
       </section>
       <div className="account-security panel">
         <h2>Account security</h2>
