@@ -1,5 +1,6 @@
 import { InboxRefresh } from "@/components/network/inbox-refresh";
 import { ConversationTyping } from "@/components/network/conversation-typing";
+import { ProfessionalPresence } from "@/components/network/professional-presence";
 import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -90,6 +91,7 @@ export default async function ProfessionalInbox({ searchParams }: {
         <section aria-label="Message thread" style={{ border: "1px solid #d5e9ef", borderRadius: 22, padding: 18, minHeight: 350 }}>
           {selected ? <>
             <h2>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</h2>
+            <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
             <form method="get" action="/network/messages" role="search" style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <input type="hidden" name="thread" value={selected.id} />
               <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} style={{ flex: 1, minWidth: 0, padding: 11, borderRadius: 12, border: "1px solid #a8d5df" }} />
