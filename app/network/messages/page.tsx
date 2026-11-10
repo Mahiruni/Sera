@@ -111,7 +111,7 @@ export default async function ProfessionalInbox({ searchParams }: {
               <input type="hidden" name="conversation" value={selected.id} />
               <ConversationTyping conversation={selected.id} />
               <label htmlFor="professional-message-body">Your message</label>
-              <textarea id="professional-message-body" name="body" rows={3} maxLength={5000} placeholder="Write a thoughtful message…" aria-label="Write your message" required />
+              <textarea id="professional-message-body" name="body" rows={3} maxLength={4000} placeholder="Write a thoughtful message…" aria-label="Write your message" />
               <label htmlFor="professional-attachment"><Paperclip size={16} aria-hidden="true" /> Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
               <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
               <button type="submit" className="network-button"><Send size={16} aria-hidden="true" /> Send message</button>
