@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { SocialPost } from "@/lib/social/data";
 import { PostCard } from "./PostCard";
 /** Navigation is provided globally by Shell\u2019s persistent footer dock. */
