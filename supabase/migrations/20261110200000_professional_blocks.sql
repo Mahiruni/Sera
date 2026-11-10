@@ -10,7 +10,7 @@ create index professional_blocks_blocked_idx on public.professional_blocks(block
 alter table public.professional_blocks enable row level security;
 revoke all on public.professional_blocks from anon;
 grant select,insert,delete on public.professional_blocks to authenticated;
-create policy "Members see their own blocks" on public.professional_blocks for select to authenticated using(blocker_id=(select auth.uid()));
+create policy "Members see their own blocks" on public.professional_blocks for select to authenticated using(blocker_id=(select auth.uid()) or blocked_id=(select auth.uid()));
 create policy "Members block as themselves" on public.professional_blocks for insert to authenticated with check(blocker_id=(select auth.uid()));
 create policy "Members unblock as themselves" on public.professional_blocks for delete to authenticated using(blocker_id=(select auth.uid()));
 -- Existing private conversations remain stored, but no participant may access
