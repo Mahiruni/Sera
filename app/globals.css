@@ -7154,3 +7154,41 @@ body:has(.auth-layout) .information-footer {
 .sera-member-page .sera-member-report{width:100%;margin-top:8px}
 .sera-member-page .sera-member-report summary{padding:12px 14px}
 @media(max-width:600px){.sera-member-page .sera-member-hero{gap:10px}.sera-member-page .sera-member-actions{gap:8px}.sera-member-page .sera-member-actions .network-button{min-width:0;padding:10px 14px}.sera-member-page .social-card{margin-top:12px}}
+
+
+/* Global header-to-content rhythm: align every page with the floating controls.
+   Keep content clear of the fixed header without the oversized empty strip. */
+:root {
+  --sera-header-content-offset: 88px;
+}
+.page {
+  padding-top: var(--sera-header-content-offset);
+}
+.home-app {
+  padding-top: var(--sera-header-content-offset);
+}
+@media (min-width: 1500px) {
+  .home-app {
+    padding-top: var(--sera-header-content-offset);
+  }
+}
+@media (max-width: 800px) {
+  :root {
+    --sera-header-content-offset: 82px;
+  }
+  .home-app {
+    padding-top: var(--sera-header-content-offset);
+  }
+}
+@media (max-width: 600px) {
+  :root {
+    --sera-header-content-offset: calc(78px + env(safe-area-inset-top, 0px));
+  }
+  .site-header {
+    padding-top: calc(17px + env(safe-area-inset-top, 0px));
+  }
+  .page,
+  .home-app {
+    padding-top: var(--sera-header-content-offset);
+  }
+}
