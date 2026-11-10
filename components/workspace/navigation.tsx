@@ -7,7 +7,6 @@ import {
   FileText,
   Bookmark,
   UserRound,
-  Plus,
   MessageCircle,
   Bell,
 } from "lucide-react";
