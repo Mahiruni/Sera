@@ -7131,3 +7131,6 @@ body:has(.auth-layout) .information-footer {
 .sera-toolbar-notifications{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:40px;height:40px;border-radius:50%;color:#147b9a;background:#eaf8fc;border:1px solid #d0eaf2}
 .sera-toolbar-notifications:hover{background:#d6f1f9}
 .sera-toolbar-notifications:focus-visible,.sera-notifications-mark-all:focus-visible,.sera-notification-read:focus-visible{outline:3px solid #3fb4d0;outline-offset:3px}
+
+.sera-toolbar-notifications{position:relative}
+.sera-toolbar-notification-badge{position:absolute;top:-5px;right:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:99px;display:grid;place-items:center;background:#d63355;color:white;border:2px solid white;font-size:9px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
