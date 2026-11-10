@@ -60,6 +60,9 @@ export function Shell({
       "/saved",
       "/settings",
       "/messages",
+      "/network/messages",
+      "/notifications",
+      "/connections",
       "/workspace",
       "/profile",
     ].some((route) => pathname === route || pathname.startsWith(route + "/"));
@@ -329,7 +332,9 @@ export function Shell({
         <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {
           const active =
-            href === "/"
+            href === "/settings" && (pathname === "/settings" || pathname.startsWith("/settings/"))
+              ? true
+              : href === "/"
               ? pathname === "/"
               : href === "/workspace" || href === "/dashboard"
                 ? [
@@ -338,6 +343,9 @@ export function Shell({
                     "/profile",
                     "/applications",
                     "/messages",
+                    "/network/messages",
+                    "/connections",
+                    "/notifications",
                     "/matches",
                     "/employer",
                     "/employer/post",
