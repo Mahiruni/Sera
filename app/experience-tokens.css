@@ -183,3 +183,43 @@ html[data-sera-theme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .professional-account * { scroll-behavior: auto; }
 }
+
+/* Phase 2.5.2: professional inbox, consistent with SERA's design system. */
+.sera-inbox .sera-inbox-title { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.04em; }
+.sera-inbox .sera-conversation-link {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border-radius: var(--sera-radius-md); margin-bottom: 6px;
+  color: var(--sera-text); text-decoration: none;
+  border: 1px solid transparent; transition: background .15s ease, border-color .15s ease;
+}
+.sera-inbox .sera-conversation-link:hover { background: var(--sera-surface-soft); }
+.sera-inbox .sera-conversation-link[aria-current="page"] {
+  background: var(--sera-surface-soft); border-color: var(--sera-border);
+}
+.sera-inbox .sera-conversation-name { min-width: 0; overflow-wrap: anywhere; }
+.sera-inbox .sera-conversation-unread {
+  margin-left: auto; flex: none; border-radius: 99px; padding: 3px 9px;
+  background: var(--sera-accent); color: white; font-size: 12px;
+}
+.sera-inbox .sera-inbox-composer { display: grid; gap: 10px; }
+.sera-inbox .sera-inbox-composer textarea {
+  display: block; width: 100%; min-width: 0; resize: vertical;
+  border: 1px solid var(--sera-border); border-radius: var(--sera-radius-md);
+  background: var(--sera-surface); color: var(--sera-text);
+  padding: 13px 15px; font: inherit; line-height: 1.5;
+}
+.sera-inbox .sera-inbox-composer label { display: flex; gap: 7px; align-items: center; }
+.sera-inbox .sera-inbox-composer .network-button { display: inline-flex; gap: 8px; align-items: center; justify-content: center; justify-self: end; }
+.sera-inbox .sera-inbox-empty {
+  display: grid; justify-items: center; text-align: center; gap: 12px;
+  padding: clamp(24px, 5vw, 56px); color: var(--sera-text-secondary);
+}
+.sera-inbox .sera-inbox-empty a { display: inline-flex; gap: 7px; align-items: center; color: var(--sera-accent); }
+.sera-inbox :where(a,button,input,textarea):focus-visible { outline: 3px solid var(--sera-focus); outline-offset: 3px; }
+@media (max-width: 650px) {
+  .sera-inbox .sera-inbox-layout > * { min-width: 0; }
+  .sera-inbox .sera-inbox-composer .network-button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sera-inbox .sera-conversation-link { transition: none; }
+}
