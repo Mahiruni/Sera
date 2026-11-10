@@ -1,3 +1,25 @@
+-- The live canonical tables were created before their migration history was recorded.
+-- Permit this baseline to be recorded ONLY when the expected contract already exists.
+do $baseline$
+begin
+  if to_regclass('public.posts') is not null then
+    if exists (
+      select 1 from (values
+        ('posts','author_id'),('posts','kind'),('posts','status'),('posts','title'),('posts','body'),
+        ('posts','quote_source'),('posts','category'),('posts','location'),('posts','skills'),('posts','project_url'),
+        ('posts','like_count'),('posts','comment_count'),('posts','share_count'),('posts','published_at'),('posts','edited_at'),
+        ('post_comments','author_id'),('post_comments','parent_id'),('post_comments','body'),
+        ('post_images','path'),('post_images','sort_order'),('post_likes','user_id'),
+        ('post_saves','user_id'),('post_shares','user_id'),('post_authors','headline')
+      ) expected(table_name,column_name)
+      where not exists(select 1 from information_schema.columns c where c.table_schema='public'
+        and c.table_name=expected.table_name and c.column_name=expected.column_name)
+    ) or to_regprocedure('private.guard_post()') is null or to_regprocedure('private.guard_comment()') is null
+      or not exists(select 1 from storage.buckets where id='sera-post-media' and not public) then
+      raise exception 'Incompatible social schema: reconcile the legacy tables before recording this baseline';
+    end if;
+    return;
+  end if;
 -- SERA social feed, phase 1: posts, images, likes, comments, saves, shares.
 -- Members-only network: every read requires a signed-in account; every write requires
 -- a verified email (private.account_verified) and ownership. Counters are maintained by
@@ -236,3 +258,6 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 create policy post_media_read on storage.objects for select to authenticated using (bucket_id='sera-post-media' and ((storage.foldername(name))[1]=(select auth.uid())::text or private.reads_post_media(name)));
 create policy post_media_insert on storage.objects for insert to authenticated with check (bucket_id='sera-post-media' and (storage.foldername(name))[1]=(select auth.uid())::text and name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[A-Za-z0-9._-]{1,120}$' and (select private.account_verified()));
 create policy post_media_delete on storage.objects for delete to authenticated using (bucket_id='sera-post-media' and (storage.foldername(name))[1]=(select auth.uid())::text);
+
+end;
+$baseline$;

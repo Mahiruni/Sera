@@ -109,3 +109,17 @@ test("email localization uses supported languages, Arabic RTL and a truthful Afa
     "en",
   );
 });
+
+// Community sharing must survive sign-in while the redirect allowlist stays closed.
+test("community destinations allow only local story and member UUID routes", () => {
+  assert.equal(safeDestination("/feed"), "/feed");
+  const story = "/posts/36c7a54e-88d8-4fc0-aa91-11582cae249f";
+  assert.equal(safeDestination(story), story);
+  for (const bad of [
+    story + "?next=evil",
+    "/posts/../settings",
+    "//evil.com/feed",
+    "/members/not-a-uuid",
+  ])
+    assert.equal(safeDestination(bad), "/dashboard");
+});

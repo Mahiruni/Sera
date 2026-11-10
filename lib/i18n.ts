@@ -27,6 +27,7 @@ const words = {
   chooseRole: ["Choose a demo role", "የሙከራ ሚና ይምረጡ"],
   skipContent: ["Skip to content", "ወደ ይዘት ዝለል"],
   quickNav: ["Quick navigation", "ፈጣን ማውጫ"],
+  community: ["Community", "ማህበረሰብ"],
   home: ["Home", "መነሻ"],
   jobs: ["Discover", "ሥራ ፈልግ"],
   saved: ["Saved", "የተቀመጡ"],

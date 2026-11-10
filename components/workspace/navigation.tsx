@@ -41,6 +41,10 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
       className="workspace-nav"
       aria-label={employer ? "Employer workspace" : "Career workspace"}
     >
+      <Link href="/feed" className={path === "/feed" ? "is-current" : ""}>
+        <LayoutDashboard size={16} />
+        <span>Community</span>
+      </Link>
       {items.map(({ href, label, icon: Icon }) => {
         const base = href.split("?")[0],
           active =

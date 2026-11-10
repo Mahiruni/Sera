@@ -8,12 +8,13 @@ export const metadata = pageMetadata(
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ password?: string; signed?: string }>;
+  searchParams: Promise<{ password?: string; signed?: string; next?: string }>;
 }) {
   const status = await searchParams;
   return (
     <PremiumAuth
       mode="signin"
+      destination={status.next}
       notice={
         status.password === "updated"
           ? "password-updated"

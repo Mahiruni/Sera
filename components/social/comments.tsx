@@ -1,0 +1,104 @@
+import Link from "next/link";
+import { addComment, deleteComment } from "@/lib/social/actions";
+import type { SocialComment } from "@/lib/social/data";
+import { ActionForm, Submit } from "./forms";
+function CommentForm({
+  postId,
+  parentId,
+}: {
+  postId: string;
+  parentId?: string;
+}) {
+  return (
+    <ActionForm
+      action={addComment}
+      fields={{ post_id: postId, ...(parentId ? { parent_id: parentId } : {}) }}
+      reset
+    >
+      <label>
+        {parentId ? "Your reply" : "Join the conversation"}
+        <textarea
+          name="body"
+          required
+          maxLength={2000}
+          rows={2}
+          placeholder={
+            parentId ? "Write a thoughtful reply…" : "Add your perspective…"
+          }
+        />
+      </label>
+      <Submit className="button secondary">
+        {parentId ? "Reply" : "Post comment"}
+      </Submit>
+    </ActionForm>
+  );
+}
+export function Comments({
+  comments,
+  postId,
+  userId,
+  ownerId,
+  page,
+  hasMore,
+}: {
+  comments: SocialComment[];
+  postId: string;
+  userId: string;
+  ownerId: string;
+  page: number;
+  hasMore: boolean;
+}) {
+  const render = (c: SocialComment) => (
+    <div className="social-comment" key={c.id}>
+      <Link className="social-author" href={"/members/" + c.author_id}>
+        {c.author}
+      </Link>
+      <p>{c.body}</p>
+      <small>
+        <time dateTime={c.created_at}>
+          {new Date(c.created_at).toLocaleDateString("en-GB", {
+            timeZone: "Africa/Addis_Ababa",
+          })}
+        </time>
+      </small>
+      {(c.author_id === userId || ownerId === userId) && (
+        <ActionForm
+          action={deleteComment}
+          fields={{ comment_id: c.id, post_id: postId }}
+          confirm="Remove this comment and its replies?"
+        >
+          <Submit className="social-remove-comment">Remove</Submit>
+        </ActionForm>
+      )}
+    </div>
+  );
+  return (
+    <section className="social-comments" id="comments">
+      <h2>The conversation</h2>
+      <CommentForm postId={postId} />
+      {!comments.length && <p>No comments yet. Start the conversation.</p>}
+      {comments
+        .filter((c) => !c.parent_id)
+        .map((c) => (
+          <div className="social-thread" key={c.id}>
+            {render(c)}
+            <div className="social-replies">
+              {comments.filter((r) => r.parent_id === c.id).map(render)}
+            </div>
+            <details>
+              <summary>Reply to {c.author}</summary>
+              <CommentForm postId={postId} parentId={c.id} />
+            </details>
+          </div>
+        ))}
+      <nav className="social-pagination" aria-label="Comment pages">
+        {page > 1 && (
+          <Link href={`?comments=${page - 1}#comments`}>← Newer comments</Link>
+        )}
+        {hasMore && (
+          <Link href={`?comments=${page + 1}#comments`}>Older comments →</Link>
+        )}
+      </nav>
+    </section>
+  );
+}
