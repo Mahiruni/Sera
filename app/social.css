@@ -753,3 +753,41 @@ button[disabled] {
 .sera-compose-dialog .social-kind-tabs button{flex-shrink:0}
 @media(max-width:600px){.sera-feed-compose{padding:12px;border-radius:18px}.sera-feed-compose-trigger{font-size:13px;padding:12px}.sera-feed-compose-actions button{font-size:12px;gap:6px}.sera-compose-backdrop{align-items:flex-end;padding:0}.sera-compose-dialog{width:100%;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 18px);border-radius:24px 24px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}.sera-compose-dialog-head{padding:12px 16px}.sera-compose-dialog-author{padding:12px 16px 0}.sera-compose-dialog-content{padding:0 16px 16px}.sera-compose-dialog .social-composer textarea{min-height:180px}}
 @media(prefers-reduced-motion:no-preference){.sera-compose-dialog{animation:sera-compose-enter .18s ease-out}@keyframes sera-compose-enter{from{opacity:.75;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}}
+
+
+/* SERA composer refresh: compact, accessible, keyboard-aware publishing sheet. */
+.sera-compose-dialog .social-composer{margin:0;padding:8px 0 0;overflow:visible}
+.sera-compose-dialog .social-composer form{display:flex;flex-direction:column;min-height:0}
+.sera-compose-dialog .social-kind-tabs{gap:7px;margin:4px 0 12px;padding:4px 0 9px;scrollbar-width:none}
+.sera-compose-dialog .social-kind-tabs::-webkit-scrollbar{display:none}
+.sera-compose-dialog .social-kind-tabs button{font-size:13px;font-weight:650;padding:9px 15px;min-height:40px;border-radius:999px;border-color:#dce6e8}
+.sera-compose-dialog .social-kind-tabs button[aria-pressed=true]{background:#17434b;color:white;border-color:#17434b}
+.sera-compose-dialog .sera-compose-story{margin:0;display:block}
+.sera-compose-dialog .sera-compose-story textarea{min-height:140px;height:auto;max-height:none;resize:none;padding:16px 2px;border:0!important;border-radius:0;background:transparent!important;box-shadow:none;font-size:16px;line-height:1.65;overflow:hidden}
+.sera-compose-dialog .sera-compose-story textarea::placeholder{color:#81959b}
+.sera-compose-dialog .sera-compose-headline{margin:5px 0 0}
+.sera-compose-dialog .sera-compose-headline input{font-size:15px;border-radius:14px}
+.sera-compose-tools{display:flex;align-items:center;gap:5px;padding:10px 0;border-top:1px solid #e5eeee;border-bottom:1px solid #e5eeee}
+.sera-compose-tools button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 10px;border:0;border-radius:12px;background:transparent;color:#176a77;font-size:12px;font-weight:650;cursor:pointer}
+.sera-compose-tools button:hover,.sera-compose-tools button[aria-pressed=true]{background:#eaf5f4}
+.sera-compose-tools small{margin-left:auto;color:#82949a;font-size:11px;font-variant-numeric:tabular-nums}
+.sera-compose-dialog .social-composer-details{margin-top:0;border-top:0;padding-top:10px}
+.sera-compose-dialog .social-composer-details summary{padding:8px 0;font-size:13px}
+.sera-compose-dialog .social-composer-bottom{position:sticky;bottom:0;z-index:2;background:var(--net-surface,#fff);border-top:1px solid #e5eeee;margin-top:12px;padding:12px 0 max(10px,env(safe-area-inset-bottom,0px))}
+.sera-compose-dialog .social-composer-bottom .button{min-height:48px;border-radius:14px;padding:10px 22px;background:#0786a1;color:white;font-weight:750}
+.sera-compose-dialog .social-composer-bottom small{max-width:48%;line-height:1.5}
+.sera-compose-dialog-content{min-height:0;scrollbar-gutter:stable;overscroll-behavior:contain}
+.sera-compose-dialog{max-height:min(90dvh,900px)}
+@media(max-width:600px){
+ .sera-compose-backdrop{align-items:flex-end;padding:0}
+ .sera-compose-dialog{height:auto;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 8px);border-radius:26px 26px 0 0;padding-bottom:0}
+ .sera-compose-dialog-head{flex-shrink:0;padding:12px 18px}
+ .sera-compose-dialog-author{flex-shrink:0;padding:12px 18px 0}
+ .sera-compose-dialog-content{padding:0 18px;overflow-y:auto}
+ .sera-compose-dialog .social-composer-bottom{flex-direction:row;align-items:center;gap:10px}
+ .sera-compose-dialog .social-composer-bottom .button{width:auto;min-width:136px}
+ .sera-compose-tools button span{display:none}
+ .sera-compose-tools button{min-width:44px}
+}
+@media(max-height:570px){.sera-compose-dialog{max-height:100dvh}.sera-compose-dialog .sera-compose-story textarea{min-height:96px}}
+@media(prefers-reduced-motion:reduce){.sera-compose-dialog{animation:none!important}}
