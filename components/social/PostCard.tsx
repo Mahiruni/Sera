@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Pencil,
   Trash2,
+  ThumbsUp,
 } from "lucide-react";
 import {
   toggleLikePost,
@@ -38,7 +39,7 @@ export function PostCard({
           <MemberAvatar
             name={post.author.full_name}
             photo={post.photo}
-            size={42}
+            size={46}
           />
         </Link>
         <div>
@@ -77,10 +78,10 @@ export function PostCard({
       )}
       {!!post.images.length && (
         <div
-          className={`social-images ${post.images.length > 1 ? "social-images-grid" : ""}`}
+          className={`social-images ${post.images.length > 1 ? "social-images-grid" : ""} ${post.images.length === 3 ? "social-images-three" : ""} ${post.images.length >= 5 ? "social-images-many" : ""}`}
         >
-          {post.images.map((img, i) => (
-            <a href={img.url} target="_blank" rel="noopener noreferrer" key={i}>
+          {post.images.slice(0, post.images.length > 4 ? 4 : undefined).map((img, i) => (
+            <a href={img.url} target="_blank" rel="noopener noreferrer" key={i} className="social-image-link" aria-label={`Open photo ${i + 1} in full size`}>
               <Image
                 unoptimized
                 src={img.url}
@@ -89,6 +90,7 @@ export function PostCard({
                 height={900}
                 style={{ width: "100%", height: "auto", aspectRatio: "auto" }}
               />
+              {post.images.length > 4 && i === 3 && <span className="social-more-images">+{post.images.length - 4}</span>}
             </a>
           ))}
         </div>
@@ -119,22 +121,16 @@ export function PostCard({
             aria-pressed={post.liked}
             aria-label={`${post.liked ? "Unlike" : "Like"} post, ${post.like_count} likes`}
           >
-            <Heart size={17} fill={post.liked ? "currentColor" : "none"} />
-            <span>
-              {post.like_count}{" "}
-              <span className="social-action-word">likes</span>
-            </span>
+            <span className="social-reaction-icons" aria-hidden="true"><Heart size={15} fill="currentColor" /><ThumbsUp size={14} fill="currentColor" /></span>
+            <span className="social-action-count">{post.like_count}</span>
           </Submit>
         </ActionForm>
         <Link
           href={"/posts/" + post.id + "#comments"}
           aria-label={`${post.comment_count} comments, open conversation`}
         >
-          <MessageCircle size={17} />
-          <span>
-            {post.comment_count}{" "}
-            <span className="social-action-word">comments</span>
-          </span>
+          <MessageCircle size={19} />
+          <span className="social-action-count">{post.comment_count}</span>
         </Link>
         <ActionForm
           action={toggleSavePost}
