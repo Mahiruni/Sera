@@ -12,7 +12,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
-import { currentUser, serverClient } from "@/lib/supabase/server";
 export type MemberCard = {
   id: string;
   full_name: string;
@@ -34,16 +33,6 @@ export function NetworkBrand() {
       <i aria-hidden="true" />
     </Link>
   );
-}
-async function NotificationBell(){
-  const user=await currentUser();
-  let unread=0;
-  if(user){
-    const db=await serverClient();
-    const {count}=await db.from("professional_notifications").select("id",{count:"exact",head:true}).eq("recipient_id",user.id).is("read_at",null);
-    unread=count??0;
-  }
-  return <Link href="/notifications" className="sera-toolbar-notifications" aria-label={unread?`Open notifications, ${unread} unread`:"Open notifications"} title="Notifications"><Bell size={19} aria-hidden="true" />{unread>0&&<span className="sera-toolbar-notification-badge">{unread>99?"99+":unread}</span>}</Link>;
 }
 export async function NetworkToolbar({
   query = "",
@@ -72,7 +61,6 @@ export async function NetworkToolbar({
           <ArrowRight size={17} />
         </button>
       </form>
-      <NotificationBell />
       <ThemeToggle />
     </div>
   );

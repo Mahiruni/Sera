@@ -1,0 +1,120 @@
+/* SERA Phase 2.5: shared experience foundation. */
+:root {
+  --sera-space-1: 4px;
+  --sera-space-2: 8px;
+  --sera-space-3: 12px;
+  --sera-space-4: 16px;
+  --sera-space-5: 20px;
+  --sera-space-6: 24px;
+  --sera-space-8: 32px;
+  --sera-control-height: 44px;
+  --sera-radius-sm: 10px;
+  --sera-radius-md: 16px;
+  --sera-radius-lg: 22px;
+  --sera-text-xs: 12px;
+  --sera-text-sm: 13px;
+  --sera-text-md: 14px;
+  --sera-text-lg: 18px;
+  --sera-surface: #ffffff;
+  --sera-surface-soft: #f1f7fa;
+  --sera-border: #dce8ef;
+  --sera-text: #172d3b;
+  --sera-text-secondary: #536c7b;
+  --sera-accent: #087f9f;
+  --sera-accent-hover: #066985;
+  --sera-focus: #0c8eb3;
+  --sera-shadow: 0 8px 28px rgba(21, 61, 79, .07);
+}
+html[data-sera-theme="dark"] {
+  --sera-surface: #162833;
+  --sera-surface-soft: #203742;
+  --sera-border: #35515e;
+  --sera-text: #e9f4f8;
+  --sera-text-secondary: #bdd1dc;
+  --sera-accent: #67d2ed;
+  --sera-accent-hover: #8ee3f5;
+  --sera-focus: #8ee3f5;
+  --sera-shadow: 0 8px 28px rgba(0, 0, 0, .24);
+}
+:where(.social-page,.network-page,.sera-member-page) :where(button,input,select,textarea) {
+  font-family: var(--sans);
+}
+:where(.social-page,.network-page,.sera-member-page) :where(button,a,input,select,textarea,summary):focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+}
+/* Preserve compact icon buttons and inline controls. Enforce 44px targets only
+   for substantial actions, rather than resizing every feed icon and chip. */
+:where(.social-page,.network-page,.sera-member-page) :where(
+  .network-button,.ax-primary,.social-project,.sera-notifications-mark-all
+) {
+  min-height: var(--sera-control-height);
+}
+:where(.social-page,.network-page,.sera-member-page) :where(.social-card,.network-card) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  :where(.social-page,.network-page,.sera-member-page) { min-width: 0; }
+  :where(.social-page,.network-page,.sera-member-page) :where(.social-nav,.network-toolbar) {
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.social-page,.network-page,.sera-member-page) *,
+  :where(.social-page,.network-page,.sera-member-page) *::before,
+  :where(.social-page,.network-page,.sera-member-page) *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Phase 2.5: consistent marketing-to-community surface language. */
+.sera-network {
+  --sera-surface: var(--net-surface);
+  --sera-surface-soft: var(--net-subtle);
+  --sera-border: var(--net-line);
+  --sera-text: var(--net-ink);
+  --sera-text-secondary: var(--net-muted);
+  --sera-accent: var(--net-blue);
+  --sera-shadow: var(--net-shadow);
+}
+.sera-network :where(.network-button,.network-signin,.network-text-link,.network-feed-tabs a,.social-filters a) {
+  text-underline-offset: 3px;
+}
+.sera-network :where(.network-button,.network-signin,.network-text-link):focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 4px;
+}
+.sera-network .network-welcome-subtitle {
+  margin-top: 8px;
+  color: var(--net-muted);
+  font-size: clamp(12px, 1.15vw, 14px);
+  line-height: 1.65;
+  max-width: 52ch;
+}
+.sera-network :where(.social-card,.network-profile-card,.network-side-card) {
+  border-color: var(--sera-border);
+}
+.sera-network :where(.social-post-header,.social-post-actions) {
+  min-width: 0;
+}
+.sera-network :where(.social-author,.social-post-header p) {
+  overflow-wrap: anywhere;
+}
+.sera-network .network-button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .sera-network .network-welcome-subtitle {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  .sera-network .network-app-grid > * {
+    min-width: 0;
+  }
+  .sera-network .social-post-header {
+    gap: 10px;
+  }
+}

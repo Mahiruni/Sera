@@ -353,6 +353,7 @@ export function Shell({
               href={href}
               className={active ? "active" : ""}
               aria-current={active ? "page" : undefined}
+              title={t(key)}
             >
               <span className={`dock-icon dock-${i}`}>
                 {key === "profile" && identity ? (

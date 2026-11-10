@@ -19,3 +19,16 @@ export async function markAllNotificationsRead(){
   .eq("recipient_id",user.id).is("read_at",null);
  if(!error) revalidatePath("/notifications");
 }
+
+/** Shared unread count for the global bell and the canonical inbox. */
+export async function professionalUnreadCount(): Promise<number> {
+ const user = await currentUser();
+ if (!user?.email_confirmed_at) return 0;
+ const db = await serverClient();
+ const { count, error } = await db.from("professional_notifications")
+  .select("id", { count: "exact", head: true })
+  .eq("recipient_id", user.id)
+  .is("read_at", null);
+ if (error) throw new Error("Notifications are temporarily unavailable.");
+ return count ?? 0;
+}

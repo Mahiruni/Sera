@@ -229,7 +229,7 @@ export function NetworkFrontPage() {
             professional identity. Keep your profile current, manage your CV and
             let your published work speak for itself.
           </p>
-          <Link href="/settings" className="network-text-link">
+          <Link href="/sign-up" className="network-text-link">
             Build your professional story <ChevronRight size={17} />
           </Link>
           <div className="network-identity-features">
