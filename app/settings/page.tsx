@@ -39,7 +39,7 @@ export default async function Page() {
       )}
       <section className="account-security panel" aria-labelledby="profile-privacy-title">
         <h2 id="profile-privacy-title">Professional profile visibility</h2>
-        <p>Choose your preferred audience. These preferences are saved privately. Public publishing and audience enforcement are not enabled yet; your member page currently requires sign-in.</p>
+        <p>Choose who can open your professional member profile. Connections-only access is checked on the member page; public internet access requires separately publishing your portfolio below. Other community surfaces are still being reviewed.</p>
         <form action={saveProfileVisibility} className="sera-visibility-form">
           <label htmlFor="professional-visibility">Preferred audience</label>
           <select id="professional-visibility" name="visibility" defaultValue={visibilitySettings?.visibility || "members"}>
