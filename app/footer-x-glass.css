@@ -253,3 +253,69 @@ body:has(.auth-layout) .footer-dock {
     scroll-padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Phase 3.4: Facebook/LinkedIn-inspired professional bottom navigation. */
+.footer-dock {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+  margin: 0 !important;
+  padding: 6px max(8px, calc((100vw - 640px)/2)) calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+  border: 0 !important;
+  border-top: 1px solid #e1e9ee !important;
+  border-radius: 0 !important;
+  background: rgba(255,255,255,.97) !important;
+  color: #526270 !important;
+  box-shadow: 0 -4px 20px rgba(17,45,60,.06) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+.footer-dock a {
+  min-height: 53px !important;
+  padding: 5px 2px !important;
+  border-radius: 12px !important;
+  color: #657481 !important;
+  font-size: 10px !important;
+  gap: 3px !important;
+}
+.footer-dock a .dock-icon {
+  width: 28px !important;
+  height: 28px !important;
+}
+.footer-dock a .dock-icon svg { width: 23px; height: 23px; }
+.footer-dock a.active,
+.footer-dock a[aria-current="page"] {
+  color: #0796c8 !important;
+  background: transparent !important;
+}
+.footer-dock a.active::before,
+.footer-dock a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  width: 36px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: #0796c8;
+}
+.footer-dock a.active .dock-icon { animation: none !important; }
+.footer-dock a:not(.active):not([aria-current="page"]):hover {
+  background: #edf7fb !important;
+  color: #1a4257 !important;
+}
+html[data-sera-theme="dark"] .footer-dock {
+  background: rgba(20,30,41,.98) !important;
+  border-top-color: #334656 !important;
+}
+html[data-sera-theme="dark"] .footer-dock a { color: #a9bdca !important; }
+html[data-sera-theme="dark"] .footer-dock a.active,
+html[data-sera-theme="dark"] .footer-dock a[aria-current="page"] { color: #55d7f0 !important; }
+html[data-sera-theme="dark"] .footer-dock a.active::before,
+html[data-sera-theme="dark"] .footer-dock a[aria-current="page"]::before { background: #55d7f0; }
+@media (max-width: 380px) {
+  .footer-dock { padding-inline: 3px !important; gap: 0 !important; }
+  .footer-dock a { font-size: 9px !important; }
+}
