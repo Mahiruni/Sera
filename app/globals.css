@@ -7123,3 +7123,11 @@ body:has(.auth-layout) .information-footer {
 .sera-notifications-empty p{font-size:13px;margin-bottom:18px}
 .sera-notifications-empty a{font-size:13px;font-weight:700;color:#087f9f}
 @media(max-width:600px){.sera-notifications{padding:18px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-notification{padding:12px;border-radius:16px}.sera-notification-link{gap:10px}}
+
+
+.sera-notifications-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sera-notifications-mark-all{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 13px;border-radius:13px;border:1px solid #c4e4ed;background:#fff;color:#08718f;font-size:12px;font-weight:700}
+.sera-notifications-mark-all:hover{background:#edf9fc}
+.sera-toolbar-notifications{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:40px;height:40px;border-radius:50%;color:#147b9a;background:#eaf8fc;border:1px solid #d0eaf2}
+.sera-toolbar-notifications:hover{background:#d6f1f9}
+.sera-toolbar-notifications:focus-visible,.sera-notifications-mark-all:focus-visible,.sera-notification-read:focus-visible{outline:3px solid #3fb4d0;outline-offset:3px}
