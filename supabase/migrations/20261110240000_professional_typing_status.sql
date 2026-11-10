@@ -11,7 +11,7 @@ revoke all on public.professional_typing_status from anon;
 grant select,insert,update,delete on public.professional_typing_status to authenticated;
 create policy "Participants read recent typing" on public.professional_typing_status
 for select to authenticated using (
- updated_at > now() - interval '12 seconds'
+ (member_id=(select auth.uid()) or updated_at > now() - interval '12 seconds')
  and exists(select 1 from public.professional_conversations c where c.id=conversation_id
  and (c.member_a=(select auth.uid()) or c.member_b=(select auth.uid())))
 );
