@@ -223,3 +223,45 @@ html[data-sera-theme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .sera-inbox .sera-conversation-link { transition: none; }
 }
+
+/* Phase 2.5.4: responsive interaction and accessibility refinements. */
+.sera-network :where(.network-app-grid,.network-content,.network-right,.network-toolbar,.network-search) {
+  min-width: 0;
+}
+.sera-network :where(.network-mobile-shortcuts,.network-feed-tabs,.social-filters) {
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.sera-network :where(.network-mobile-shortcuts,.network-feed-tabs,.social-filters) a {
+  text-underline-offset: 3px;
+}
+.sera-network :where(.network-mobile-shortcuts,.network-feed-tabs,.social-filters) a:focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: -3px;
+}
+.sera-network .network-mobile-shortcuts > a {
+  min-height: 40px;
+  justify-content: center;
+}
+.sera-network .network-compose-toggle > summary:focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+  border-radius: var(--sera-radius-md);
+}
+.sera-network .network-compose-toggle > summary svg,
+.sera-network .network-mobile-shortcuts svg {
+  flex: none;
+}
+@media (max-width: 520px) {
+  .sera-network .network-toolbar { gap: 12px; }
+  .sera-network .network-toolbar .network-search { flex-basis: 100%; }
+  .sera-network .network-mobile-shortcuts { scroll-padding-inline: 12px; }
+  .sera-network .network-compose-toggle > summary { gap: 10px; }
+  .sera-network .network-compose-types { gap: 12px; flex-wrap: wrap; }
+  .sera-network .network-welcome h1 { overflow-wrap: break-word; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sera-network :where(.network-mobile-shortcuts,.network-feed-tabs,.social-filters) {
+    scroll-behavior: auto !important;
+  }
+}
