@@ -1,9 +1,9 @@
 "use client";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Send, FileText, ChevronDown, Lightbulb, Quote, Award, FolderKanban, MessageCircle, Save, AtSign, Smile, Video, BarChart3, Sparkles } from "lucide-react";
+import { ImagePlus, Send, FileText, ChevronDown, Lightbulb, Quote, Award, FolderKanban, MessageCircle, Save, AtSign, Smile, Video, BarChart3 } from "lucide-react";
 import { createPost, updatePost } from "@/lib/social/actions";
-import { postKinds, MEDIA_LIMIT, MEDIA_COUNT, validMedia, type PostKind } from "@/lib/social/validation";
+import { postKinds, validMedia, type PostKind } from "@/lib/social/validation";
 import type { SocialPost } from "@/lib/social/data";
 import { Submit } from "./forms";
 import "./composer-premium.css";
@@ -34,7 +34,7 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
   },{});
   useEffect(()=>{ if(state.postId && onPublished) onPublished(state.postId); },[state.postId,onPublished]);
   useEffect(()=>()=>{ urls.current.forEach(URL.revokeObjectURL); },[]);
-  useEffect(()=>{ if(post) return; try { const saved=JSON.parse(localStorage.getItem(draftKey)||"null"); if(saved && saved.kind===initialKind) {setBody(saved.body||"");setTitle(saved.title||"");setShowHeadline(Boolean(saved.title)||initialKind==="project");} } catch {} },[post,initialKind]);
+
   const saveDraft=()=>{try{localStorage.setItem(draftKey,JSON.stringify({kind,body,title}));setDraftMessage("Draft saved on this device");}catch{setDraftMessage("Draft could not be saved");}};
   const chooseFiles=(files:File[])=>{
     urls.current.forEach(URL.revokeObjectURL);
