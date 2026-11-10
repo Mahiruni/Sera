@@ -304,10 +304,15 @@ export function ProfessionalProfile({
               </>;
             })()}
           </section>
+          <div className="sera-profile-visibility-note" role="note">
+            <LockKeyhole size={16} aria-hidden="true" />
+            <span>Private account controls stay here. Your community profile shows professional information to signed-in members.</span>
+            <a href={`/members/${profile.id}`}>View member profile <ArrowUpRight size={15}/></a>
+          </div>
           <div className="sera-profile-quick-actions">
             <button type="button" className="button" onClick={()=>{setEditing(true);setActiveSection("experience");}}><BriefcaseBusiness size={17}/> Add experience</button>
             <a href="#cv" className="button secondary"><FileText size={17}/> {assets?.cv_path ? "Manage CV" : "Upload CV"}</a>
-            <button type="button" className="button secondary" onClick={async()=>{try{await navigator.clipboard.writeText(window.location.href);setShareStatus("Profile link copied");}catch{setShareStatus("Unable to copy profile link");}}}><Share2 size={17}/> Share profile</button>
+            <button type="button" className="button secondary" onClick={async()=>{try{await navigator.clipboard.writeText(`${window.location.origin}/members/${profile.id}`);setShareStatus("Member profile link copied");}catch{setShareStatus("Unable to copy profile link");}}}><Share2 size={17}/> Share profile</button>
           </div>
           {shareStatus && <p role="status" className="profile-feedback">{shareStatus}</p>}
           <nav className="sera-profile-tabs" aria-label="Profile sections">
