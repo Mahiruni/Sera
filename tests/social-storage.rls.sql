@@ -1,0 +1,45 @@
+begin;
+create temporary table social_storage_qa(a uuid,b uuid,p uuid);
+insert into social_storage_qa values(gen_random_uuid(),gen_random_uuid(),null);
+grant select,update on social_storage_qa to authenticated;
+insert into auth.users(id,email_confirmed_at) select a,now() from social_storage_qa union all select b,now() from social_storage_qa;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from social_storage_qa),'role','authenticated')::text,true);
+set local role authenticated;
+with p as (insert into public.posts(kind,title) values('photos','Storage QA photo') returning id) update social_storage_qa set p=p.id from p;
+insert into storage.objects(bucket_id,name) select 'sera-post-media',a::text||'/'||p::text||'/one.webp' from social_storage_qa;
+insert into public.post_images(post_id,path) select p,a::text||'/'||p::text||'/one.webp' from social_storage_qa;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from social_storage_qa),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if exists(select 1 from storage.objects where bucket_id='sera-post-media') then raise exception 'Draft media visible to another member';end if;
+ if exists(select 1 from public.post_authors where id=(select a from social_storage_qa)) then raise exception 'Unpublished author exposed';end if;
+ begin insert into storage.objects(bucket_id,name) select 'sera-post-media',a::text||'/'||p::text||'/intrusion.webp' from social_storage_qa; raise exception 'Cross-owner media upload';exception when insufficient_privilege then null;end;
+end$$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from social_storage_qa),'role','authenticated')::text,true);
+set local role authenticated;
+update public.posts set status='published' where id=(select p from social_storage_qa);
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from social_storage_qa),'role','authenticated')::text,true);
+set local role authenticated;
+do $$declare n integer;begin
+ if not exists(select 1 from storage.objects where bucket_id='sera-post-media') then raise exception 'Published media inaccessible';end if;
+ if not exists(select 1 from public.post_authors where id=(select a from social_storage_qa)) then raise exception 'Published author card inaccessible';end if;
+ if exists(select 1 from public.profiles where id=(select a from social_storage_qa)) then raise exception 'Private profile fields exposed';end if;
+ delete from storage.objects where bucket_id='sera-post-media';get diagnostics n=row_count;if n<>0 then raise exception 'Another member deleted media';end if;
+end$$;
+reset role;
+select set_config('request.jwt.claims','{"role":"authenticated"}',true);
+set local role authenticated;
+do $$begin if exists(select 1 from public.post_authors) then raise exception 'Missing-session author lookup exposed data';end if;end$$;
+reset role;
+select set_config('request.jwt.claims','{"role":"anon"}',true);
+set local role anon;
+do $$begin
+ if exists(select 1 from storage.objects where bucket_id='sera-post-media') then raise exception 'Anonymous media read';end if;
+ begin perform * from public.post_authors;raise exception 'Anonymous author read';exception when insufficient_privilege then null;end;
+end$$;
+reset role;
+select 'PASS: draft/published media, cross-user file writes, curated author cards, private profiles and anonymous isolation' as result;
+rollback;

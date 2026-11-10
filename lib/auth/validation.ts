@@ -2,10 +2,22 @@ import { isLocale, type LocaleCode } from "../locales";
 export const journeys = ["candidate", "employer"] as const;
 export type Journey = (typeof journeys)[number];
 export function safeDestination(value: unknown, fallback = "/dashboard") {
-  return typeof value === "string" &&
-    ["/dashboard", "/onboarding", "/settings", "/reset-password", "/settings/linkedin"].includes(
-      value,
-    )
+  if (typeof value !== "string") return fallback;
+  if (
+    [
+      "/dashboard",
+      "/onboarding",
+      "/settings",
+      "/reset-password",
+      "/settings/linkedin",
+      "/feed",
+      "/saved",
+    ].includes(value)
+  )
+    return value;
+  return /^\/(posts|members)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  )
     ? value
     : fallback;
 }

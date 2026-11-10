@@ -5,6 +5,7 @@ import { dispatchWelcome } from "../emails/welcome";
 import { revalidatePath } from "next/cache";
 import { serverClient, authConfigured, currentUser } from "../supabase/server";
 import {
+  safeDestination,
   readRegistration,
   normalizedEmail,
   passwordIssue,
@@ -80,7 +81,7 @@ export async function signIn(
       await dispatchWelcome(signedIn.data.user!.id);
     });
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(safeDestination(data.get("next")));
 }
 export async function requestReset(
   _previous: ActionState,

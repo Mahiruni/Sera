@@ -44,6 +44,9 @@ export function Shell({
   const privateWorkspace =
     authenticated &&
     [
+      "/feed",
+      "/posts",
+      "/members",
       "/dashboard",
       "/employer",
       "/applications",
@@ -92,7 +95,7 @@ export function Shell({
     privacy: ShieldCheck,
   };
   const dock = [
-    { href: "/", key: "home" as Key, Icon: Home },
+    { href: authenticated ? "/feed" : "/", key: "home" as Key, Icon: Home },
     { href: "/jobs", key: "jobs" as Key, Icon: Compass },
     { href: "/saved", key: "saved" as Key, Icon: Bookmark },
     {

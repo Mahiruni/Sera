@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { loadSocialFeed } from "@/lib/social/data";
+import { PostList, SocialPagination } from "@/components/social/feed";
+import { pageNumber } from "@/lib/social/validation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { type LiveJob } from "@/lib/recruitment/data";
@@ -11,8 +14,16 @@ export const metadata = pageMetadata(
   "Saved jobs",
   "Your private saved roles, synchronized with your account.",
 );
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { user } = await requiredProfile();
+  const page = pageNumber((await searchParams).page);
+  const social = await loadSocialFeed({ savedOnly: true, page }).catch(
+    () => null,
+  );
   const c = await serverClient();
   const { data, error } = await c
     .from("saved_jobs")
@@ -29,6 +40,26 @@ export default async function Page() {
       <p className="eyebrow">SERA / SAVED FOR LATER</p>
       <h1>Keep the possibilities close.</h1>
       <WorkspaceNav />
+      <section className="social-page">
+        <h2>Saved stories</h2>
+        {social ? (
+          <>
+            <PostList
+              posts={social.posts}
+              userId={user.id}
+              empty="Keep a story for later."
+            />
+            <SocialPagination
+              page={page}
+              hasMore={social.hasMore}
+              href="/saved"
+            />
+          </>
+        ) : (
+          <p role="alert">Saved stories could not be loaded. Please refresh.</p>
+        )}
+      </section>
+      <h2>Saved jobs</h2>
       {error ? (
         <Empty title="Saved jobs could not be loaded">
           <p>Please refresh.</p>

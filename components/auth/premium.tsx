@@ -277,10 +277,12 @@ const LinkedInMark = () => (
 export function PremiumAuth({
   mode,
   registrationOpen = false,
+  destination,
   notice,
 }: {
   mode: Mode;
   registrationOpen?: boolean;
+  destination?: string;
   notice?: Notice;
 }) {
   const { lang, locale } = useSera();
@@ -590,6 +592,7 @@ export function PremiumAuth({
             </div>
           )}
 
+          <input type="hidden" name="next" value={destination || "/dashboard"} />
           {signup && (
             <>
               <input type="hidden" name="locale" value={locale} />
