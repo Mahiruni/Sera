@@ -19,9 +19,6 @@ import {
   GraduationCap,
   Share2,
   MoreHorizontal,
-  Users,
-  FolderKanban,
-  BookOpen,
   LayoutGrid,
   Activity,
   Layers3,
@@ -287,11 +284,26 @@ export function ProfessionalProfile({
                 : "Career profile"}
             </span>
           </div>
-          <div className="sera-profile-stat-row" aria-label="Profile summary">
-            <div><Users size={19}/><strong>Professional network</strong><span>Grow your connections</span></div>
-            <div><BookOpen size={19}/><strong>Career journey</strong><span>{profile.journey === "employer" ? "Employer" : "Professional"}</span></div>
-            <div><FolderKanban size={19}/><strong>Portfolio</strong><span>Showcase your work</span></div>
-          </div>
+          <section className="sera-profile-completion" aria-label="Profile completion">
+            {(() => {
+              const steps = [
+                { label: "Headline", done: Boolean(profile.headline?.trim()) },
+                { label: "Location", done: Boolean(profile.location?.trim()) },
+                { label: "About", done: Boolean(profile.summary?.trim()) },
+                { label: "Skills", done: Boolean(profile.skills?.trim()) },
+                { label: "Experience", done: Boolean(profile.experience?.trim()) },
+                { label: "CV", done: Boolean(assets?.cv_path) },
+              ];
+              const complete = steps.filter(step => step.done).length;
+              const percent = Math.round(complete / steps.length * 100);
+              return <>
+                <div className="sera-profile-completion-heading"><div><span className="sera-profile-completion-eyebrow">YOUR PROFESSIONAL PRESENCE</span><h2>Complete your profile</h2><p>{complete === steps.length ? "Your essential profile details are complete." : "Make your profile more useful to your professional network."}</p></div><strong>{percent}%</strong></div>
+                <div className="sera-profile-progress-track" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completion"><span style={{width:percent+"%"}}/></div>
+                <div className="sera-profile-step-list">{steps.map(step=><span key={step.label} className={step.done?"is-complete":""}>{step.done?<Check size={13}/>:<span className="sera-profile-step-dot"/>}{step.label}</span>)}</div>
+                {complete < steps.length && <button type="button" className="sera-profile-complete-button" onClick={()=>{if(steps.slice(0,5).some(step=>!step.done)){setEditing(true);}else{document.getElementById("cv")?.scrollIntoView({behavior:"smooth",block:"start"});}}}>Continue profile setup <ArrowUpRight size={16}/></button>}
+              </>;
+            })()}
+          </section>
           <div className="sera-profile-quick-actions">
             <button type="button" className="button" onClick={()=>{setEditing(true);setActiveSection("experience");}}><BriefcaseBusiness size={17}/> Add experience</button>
             <a href="#cv" className="button secondary"><FileText size={17}/> {assets?.cv_path ? "Manage CV" : "Upload CV"}</a>
