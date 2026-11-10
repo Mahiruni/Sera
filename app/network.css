@@ -2017,3 +2017,39 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .network-app > .network-toolbar {
   display: none;
 }
+
+/* Phase 3.2: eliminate stacked header/hero whitespace.
+   The fixed Shell header already reserves the top safe area. */
+.network-public {
+  padding-top: var(--sera-header-content-offset, 88px);
+}
+.network-public-top {
+  padding-top: 0;
+  padding-bottom: 14px;
+}
+.network-public-hero {
+  min-height: 0;
+  padding-top: 8px;
+  padding-bottom: clamp(24px, 4vw, 54px);
+}
+.network-app {
+  padding-top: var(--sera-header-content-offset, 88px);
+}
+.network-app-grid {
+  margin-top: 0;
+}
+@media (min-width: 1500px) {
+  .network-public { padding-top: var(--sera-header-content-offset, 88px); }
+  .network-public-hero { min-height: 0; }
+}
+@media (max-width: 800px) {
+  .network-public { padding-top: var(--sera-header-content-offset, 82px); }
+  .network-public-hero { padding-top: 4px; padding-bottom: 32px; gap: 26px; }
+  .network-app { padding-top: var(--sera-header-content-offset, 82px); }
+}
+@media (max-width: 520px) {
+  .network-public-top { padding-bottom: 10px; }
+  .network-public-hero { padding-top: 0; padding-bottom: 20px; gap: 20px; }
+  .network-hero-stage { margin-top: 0; margin-bottom: 12px; }
+  .network-app { padding-top: var(--sera-header-content-offset, 78px); }
+}
