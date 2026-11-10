@@ -102,11 +102,11 @@ export default async function ProfessionalInbox({ searchParams }: {
           {selected ? <>
             <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2><Link href={"/members/" + (selected.member_a === user.id ? selected.member_b : selected.member_a)}>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</Link></h2><small>Private professional conversation</small></div></div>
             <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
-            <form method="get" action="/network/messages" role="search" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <form method="get" action="/network/messages" role="search" className="sera-inbox-search">
               <input type="hidden" name="thread" value={selected.id} />
-              <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} style={{ flex: 1, minWidth: 0, padding: 11, borderRadius: 12, border: "1px solid #a8d5df" }} />
+              <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} />
               <button className="network-button" type="submit"><Search size={16} aria-hidden="true" /> Search</button>
-              {search && <Link href={"/network/messages?thread=" + selected.id} style={{ alignSelf: "center" }}>Clear</Link>}
+              {search && <Link href={"/network/messages?thread=" + selected.id} className="sera-inbox-search-clear">Clear</Link>}
             </form>
             <div aria-live="polite" className="sera-inbox-messages">
               {[...(messages ?? [])].reverse().map((m) => <article key={m.id} className={m.sender_id === user.id ? "sera-message-bubble is-mine" : "sera-message-bubble"}>
@@ -123,9 +123,9 @@ export default async function ProfessionalInbox({ searchParams }: {
               <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
               <button type="submit" className="network-button"><Send size={16} aria-hidden="true" /> Send message</button>
             </form>
-            <form action={markProfessionalMessagesRead} style={{ marginTop: 12 }}>
+            <form action={markProfessionalMessagesRead} className="sera-inbox-read-form">
               <input type="hidden" name="conversation" value={selected.id} />
-              <button type="submit">Mark received messages as read</button>
+              <button type="submit" className="sera-inbox-read-button">Mark received messages as read</button>
             </form>
           </> : <div className="sera-inbox-empty"><MessageCircle size={34} aria-hidden="true" /><p>Select a conversation or start one with an accepted connection.</p><Link href="/connections"><ArrowLeft size={15} aria-hidden="true" /> Explore connections</Link></div>}
         </section>
