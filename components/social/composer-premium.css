@@ -1,0 +1,33 @@
+/* SERA premium post composer — scoped to avoid feed regressions */
+.sera-premium-composer.social-composer{padding:0;border:0;box-shadow:none;border-radius:0;margin:0;background:#fff;overflow:visible;color:#102c3c}
+.sera-premium-composer form{display:flex;flex-direction:column;gap:17px}
+.sera-premium-types{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:6px 2px 10px;flex-wrap:nowrap}
+.sera-premium-types::-webkit-scrollbar{display:none}
+.sera-premium-types button{display:inline-flex;align-items:center;gap:8px;flex:none;border:1px solid #d9e5ec;border-radius:100px;background:#fff;color:#183449;padding:11px 16px;font-size:14px;font-weight:650;box-shadow:0 3px 9px #102c3c0b;min-height:44px}
+.sera-premium-types button[aria-pressed=true]{background:linear-gradient(135deg,#079eaa,#006e72);border-color:#007b82;color:#fff}
+.sera-premium-headline{display:block;font-size:13px;font-weight:650;color:#23404f}
+.sera-premium-headline input{display:block;width:100%;padding:12px 14px;border:1px solid #d7e5eb;border-radius:15px;margin-top:7px;font:inherit;font-size:16px}
+.sera-premium-editor{position:relative;min-height:210px;border:1px solid #d7e5eb;border-radius:23px;background:linear-gradient(180deg,#fff 0%,#fff 76%,#eaf8fb 100%);overflow:hidden}
+.sera-premium-editor textarea{display:block;width:100%;min-height:200px;padding:24px 20px 48px;border:0;outline:0;resize:none;font:inherit;font-size:17px;line-height:1.65;color:#173344;background:transparent}
+.sera-premium-editor textarea::placeholder{color:#82919e;opacity:1}
+.sera-premium-editor:focus-within{border-color:#0899a5;box-shadow:0 0 0 3px #0899a51b}
+.sera-premium-counter{position:absolute;bottom:13px;right:17px;font-size:12px;color:#71838e}
+.sera-premium-toolbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+.sera-premium-toolbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:70px;border:1px solid #dbe7ed;border-radius:19px;background:#fff;box-shadow:0 3px 9px #102c3c0a;color:#153348;font-size:11px;cursor:pointer}
+.sera-premium-toolbar button:nth-child(2) svg{color:#8460ee}.sera-premium-toolbar button:nth-child(3) svg{color:#2685dc}.sera-premium-toolbar button:nth-child(4) svg{color:#089c8c}.sera-premium-toolbar button:nth-child(5) svg{color:#e7a000}.sera-premium-toolbar button:nth-child(6) svg{color:#eeaa00}
+.sera-premium-toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.sera-premium-extras{display:flex;flex-wrap:wrap;gap:12px}
+.sera-premium-extras button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#087b84;font-size:12px;font-weight:650;padding:6px;cursor:pointer}
+.sera-premium-details{border-top:1px solid #e7eef1;padding-top:12px}
+.sera-premium-details[hidden]{display:none}
+.sera-premium-details label{display:block;font-size:12px;margin:8px 0}
+.sera-premium-details input{display:block;width:100%;padding:10px 12px;border:1px solid #d7e5eb;border-radius:11px;margin-top:5px;font:inherit}
+.sera-premium-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.sera-premium-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.8fr);gap:12px;padding-top:18px;border-top:1px solid #e7eef1;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.sera-premium-footer button{min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:17px;font-size:15px;font-weight:750}
+.sera-premium-save{border:1px solid #cbdde6;background:#fff;color:#163449}
+.sera-premium-publish{border:0;background:linear-gradient(135deg,#079eaa,#006c71);color:#fff;box-shadow:0 8px 20px #007f872b}
+.sera-premium-publish:disabled{opacity:.5}
+.sera-premium-composer button:focus-visible,.sera-premium-composer textarea:focus-visible,.sera-premium-composer input:focus-visible{outline:2px solid #05a2ae;outline-offset:2px}
+@media(max-width:420px){.sera-premium-toolbar{gap:4px}.sera-premium-toolbar button{border-radius:13px;font-size:10px;min-height:62px}.sera-premium-toolbar button svg{width:18px;height:18px}.sera-premium-editor textarea{font-size:16px}.sera-premium-footer button{font-size:13px}}
+@media(prefers-reduced-motion:no-preference){.sera-premium-types button,.sera-premium-footer button{transition:background .2s ease,transform .2s ease}.sera-premium-footer button:active{transform:scale(.98)}}
