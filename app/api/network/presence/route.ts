@@ -21,5 +21,6 @@ export async function GET(request: Request) {
   if (error) return Response.json({ online: false }, { status: 503 });
   return Response.json({
     online: Boolean(data && data.visibility === "connections" && Date.now()-new Date(data.last_seen_at).getTime()<90000),
+    lastSeenAt: data?.visibility === "connections" ? data.last_seen_at : null,
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
