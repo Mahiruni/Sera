@@ -1,0 +1,36 @@
+/* Approved SERA Professional Identity profile refresh */
+.account-foundation{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px));max-width:1120px}
+.account-foundation .professional-account{margin:0 auto}
+.account-foundation .profile-topline{margin:0 0 14px;min-height:0}
+.account-foundation .profile-hero-card{overflow:hidden;border-radius:30px;border:1px solid #dce8ee;background:#fff;box-shadow:0 15px 48px #153c4a0b}
+.account-foundation .profile-cover{position:relative;min-height:190px;padding:27px 30px;background:radial-gradient(ellipse at 80% 20%,#368f9e 0%,transparent 55%),linear-gradient(135deg,#083b46,#145e69 68%,#187b83);color:#fff;display:flex;align-items:flex-start;justify-content:space-between;overflow:hidden}
+.account-foundation .profile-cover:after{content:"";position:absolute;inset:auto 0 0;height:55px;opacity:.28;background:linear-gradient(135deg,transparent 10%,#7cd3db 10% 12%,transparent 12% 20%,#7cd3db 20% 23%,transparent 23% 40%,#7cd3db 40% 42%,transparent 42% 60%,#7cd3db 60% 63%,transparent 63%);clip-path:polygon(0 100%,0 65%,6% 65%,6% 30%,10% 30%,10% 80%,19% 80%,19% 10%,23% 10%,23% 55%,36% 55%,36% 0,40% 0,40% 80%,50% 80%,50% 30%,57% 30%,57% 90%,66% 90%,66% 10%,70% 10%,70% 70%,81% 70%,81% 25%,86% 25%,86% 60%,94% 60%,94% 10%,100% 10%,100% 100%)}
+.account-foundation .profile-cover .sera-cover-title{font-size:clamp(18px,3.6vw,26px);font-weight:450;line-height:1.2;letter-spacing:-.035em;position:relative;z-index:1}
+.account-foundation .profile-cover .sera-cover-title b{color:#6be3e9}
+.account-foundation .profile-cover-mark{font-size:12px;opacity:.75;position:relative;z-index:1}
+.account-foundation .profile-hero-body{padding:0 clamp(18px,4vw,36px) 22px}
+.account-foundation .profile-avatar-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:-54px;position:relative;z-index:2}
+.account-foundation .profile-avatar{box-shadow:0 7px 23px #062e3b2a;border:5px solid white;border-radius:50%}
+.account-foundation .sera-profile-top-actions{display:flex;align-items:center;gap:9px;padding-bottom:8px}
+.account-foundation .profile-edit{border:0;border-radius:16px;background:linear-gradient(135deg,#069aa9,#006e77);color:#fff;min-height:46px;padding:10px 18px;box-shadow:0 7px 16px #087a852b}
+.account-foundation .sera-profile-more{display:grid;place-items:center;border:1px solid #d7e5ea;background:#fff;color:#254451;border-radius:50%;width:46px;height:46px}
+.account-foundation .profile-hero-body h1{font-size:clamp(30px,5vw,44px);line-height:1.12;letter-spacing:-.05em;color:#102f3b;margin:12px 0 6px}
+.account-foundation .profile-headline{font-size:clamp(15px,2.4vw,20px);line-height:1.45;color:#294c5b;margin:0 0 14px}
+.account-foundation .profile-meta{display:flex;flex-wrap:wrap;gap:10px 20px;font-size:12px;color:#55717b}
+.account-foundation .profile-meta span{display:inline-flex;align-items:center;gap:6px}
+.account-foundation .sera-profile-photo-remove{margin-top:8px}
+.account-foundation .sera-profile-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:22px}
+.account-foundation .sera-profile-stat-row>div{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;border:1px solid #deebf0;border-radius:18px;background:#f6fafc;padding:15px 7px;color:#078b9c;min-width:0}
+.account-foundation .sera-profile-stat-row strong{color:#12313e;font-size:12px;line-height:1.3}
+.account-foundation .sera-profile-stat-row span{font-size:10px;color:#66818c;line-height:1.35}
+.account-foundation .sera-profile-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:17px}
+.account-foundation .sera-profile-quick-actions :is(button,a){display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:46px;border-radius:14px;padding:9px 8px;font-size:12px;text-align:center;text-decoration:none}
+.account-foundation .sera-profile-quick-actions .button:first-child{background:linear-gradient(135deg,#079eaa,#006e75);color:white}
+.account-foundation .sera-profile-tabs{display:flex;overflow-x:auto;scrollbar-width:none;gap:5px;margin-top:21px;border-bottom:1px solid #e0ebef}
+.account-foundation .sera-profile-tabs button{flex:1;min-width:max-content;padding:12px 10px;border:0;border-bottom:3px solid transparent;background:transparent;color:#456674;font-size:12px;font-weight:650}
+.account-foundation .sera-profile-tabs button.is-active{border-bottom-color:#008e9d;color:#007c8b}
+.account-foundation .profile-content-grid{margin-top:17px}
+.account-foundation .profile-section{border-radius:23px;border:1px solid #dce9ee;box-shadow:0 8px 28px #173e4b08}
+.account-foundation #sera-profile-about,.account-foundation #sera-profile-background,.account-foundation #cv{scroll-margin-top:110px}
+@media(max-width:600px){.account-foundation{padding-top:calc(80px + env(safe-area-inset-top,0px));padding-inline:12px}.account-foundation .profile-cover{min-height:155px;padding:20px}.account-foundation .profile-cover-mark{max-width:95px;text-align:right}.account-foundation .profile-avatar-row{margin-top:-42px}.account-foundation .profile-avatar{transform:scale(.85);transform-origin:bottom left;margin-right:-15px}.account-foundation .profile-edit{font-size:12px;padding:8px 12px}.account-foundation .sera-profile-stat-row{gap:6px}.account-foundation .sera-profile-stat-row>div{padding:11px 5px;border-radius:13px}.account-foundation .sera-profile-stat-row strong{font-size:10px}.account-foundation .sera-profile-stat-row span{font-size:9px}.account-foundation .sera-profile-quick-actions{gap:5px}.account-foundation .sera-profile-quick-actions :is(button,a){font-size:10px;padding:7px 4px;gap:4px}.account-foundation .sera-profile-quick-actions svg{width:15px}.account-foundation .profile-hero-body h1{margin-top:6px}}
+@media(prefers-reduced-motion:reduce){.account-foundation *{scroll-behavior:auto!important;transition:none!important}}
