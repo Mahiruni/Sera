@@ -34,3 +34,21 @@
 .account-foundation #sera-profile-about,.account-foundation #sera-profile-background,.account-foundation #cv{scroll-margin-top:110px}
 @media(max-width:600px){.account-foundation{padding-top:calc(80px + env(safe-area-inset-top,0px));padding-inline:12px}.account-foundation .profile-cover{min-height:155px;padding:20px}.account-foundation .profile-cover-mark{max-width:95px;text-align:right}.account-foundation .profile-avatar-row{margin-top:-42px}.account-foundation .profile-avatar{transform:scale(.85);transform-origin:bottom left;margin-right:-15px}.account-foundation .profile-edit{font-size:12px;padding:8px 12px}.account-foundation .sera-profile-stat-row{gap:6px}.account-foundation .sera-profile-stat-row>div{padding:11px 5px;border-radius:13px}.account-foundation .sera-profile-stat-row strong{font-size:10px}.account-foundation .sera-profile-stat-row span{font-size:9px}.account-foundation .sera-profile-quick-actions{gap:5px}.account-foundation .sera-profile-quick-actions :is(button,a){font-size:10px;padding:7px 4px;gap:4px}.account-foundation .sera-profile-quick-actions svg{width:15px}.account-foundation .profile-hero-body h1{margin-top:6px}}
 @media(prefers-reduced-motion:reduce){.account-foundation *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Fidelity pass: skyline artwork, refined cover-to-card overlap, six-tab navigation */
+.account-foundation .profile-cover{background-image:linear-gradient(90deg,rgba(0,44,53,.42),transparent 72%),url("/sera-profile-skyline.svg");background-size:cover;background-position:center 45%;min-height:205px}
+.account-foundation .profile-cover:after{display:none}
+.account-foundation .profile-cover .sera-cover-title{color:#fff;text-shadow:0 1px 10px #003a4a60;font-size:clamp(19px,3.2vw,29px)}
+.account-foundation .profile-cover .sera-cover-title:after{content:"";display:block;width:44px;height:3px;border-radius:5px;background:#35e2ea;margin-top:10px}
+.account-foundation .profile-cover-mark{color:#f2fdff;font-weight:600;opacity:.9}
+.account-foundation .profile-hero-body{position:relative}
+.account-foundation .profile-avatar-row{margin-top:-62px}
+.account-foundation .profile-avatar{background:#fff;outline:1px solid #e4edf1}
+.account-foundation .sera-profile-stat-row>div{background:linear-gradient(150deg,#f8fcff,#f0f6fa);box-shadow:0 3px 11px #102f3d06}
+.account-foundation .sera-profile-tabs{justify-content:space-between;gap:3px}
+.account-foundation .sera-profile-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.account-foundation .sera-profile-tabs button svg{flex:none}
+.account-foundation .sera-profile-extra-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.account-foundation .sera-profile-extra-sections .profile-section{margin:0}
+.account-foundation :is(#sera-profile-projects,#sera-profile-activity){scroll-margin-top:110px}
+@media(max-width:680px){.account-foundation .profile-cover{min-height:172px;background-position:center}.account-foundation .profile-avatar-row{margin-top:-49px}.account-foundation .sera-profile-tabs{justify-content:flex-start}.account-foundation .sera-profile-tabs button{flex:none;padding:12px 10px;font-size:11px}.account-foundation .sera-profile-extra-sections{grid-template-columns:1fr;gap:12px}}
