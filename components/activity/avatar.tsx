@@ -21,7 +21,7 @@ export function MemberAvatar({
     .map((word) => Array.from(word)[0] || "")
     .join("")
     .toLocaleUpperCase();
-  const validPhoto = typeof photo === "string" && /^https:\/\//i.test(photo)
+  const validPhoto = typeof photo === "string" && (/^https:\/\//i.test(photo) || /^\/(?!\/)/.test(photo))
     ? photo
     : null;
   return (
