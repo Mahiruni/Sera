@@ -76,10 +76,5 @@ create trigger guard_professional_message_before_update
 before update on public.professional_messages
 for each row execute function public.guard_professional_message_update();
 
--- Deliver INSERT/UPDATE events to subscribed, RLS-authorized participants.
-do $
-begin
-  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    alter publication supabase_realtime add table public.professional_messages;
-  end if;
-end $;
+-- Enable publication for this table in the hosted Supabase project after schema verification.
+-- Local PGlite test databases do not provide Supabase's publication.
