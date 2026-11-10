@@ -43,7 +43,11 @@ html[data-sera-theme="dark"] {
   outline: 3px solid var(--sera-focus);
   outline-offset: 3px;
 }
-:where(.social-page,.network-page,.sera-member-page) :where(button,input,select,textarea) {
+/* Preserve compact icon buttons and inline controls. Enforce 44px targets only
+   for substantial actions, rather than resizing every feed icon and chip. */
+:where(.social-page,.network-page,.sera-member-page) :where(
+  .network-button,.ax-primary,.social-project,.sera-notifications-mark-all
+) {
   min-height: var(--sera-control-height);
 }
 :where(.social-page,.network-page,.sera-member-page) :where(.social-card,.network-card) {
