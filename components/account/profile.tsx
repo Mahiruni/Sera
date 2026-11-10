@@ -23,6 +23,10 @@ import {
   Users,
   FolderKanban,
   BookOpen,
+  LayoutGrid,
+  Activity,
+  Layers3,
+  House,
 } from "lucide-react";
 import type { Profile } from "@/components/auth/forms";
 import type { Assets } from "@/lib/account/assets";
@@ -296,7 +300,7 @@ export function ProfessionalProfile({
           </div>
           {shareStatus && <p role="status" className="profile-feedback">{shareStatus}</p>}
           <nav className="sera-profile-tabs" aria-label="Profile sections">
-            {["overview","about","experience","skills","cv"].map(tab=><button type="button" key={tab} className={activeSection===tab?"is-active":""} aria-current={activeSection===tab?"page":undefined} onClick={()=>{setActiveSection(tab);document.getElementById(tab==="cv"?"cv":tab==="about"?"sera-profile-about":tab==="experience"||tab==="skills"?"sera-profile-background":"sera-profile-about")?.scrollIntoView({behavior:"smooth",block:"start"});}}>{tab==="cv"?"CV":tab.charAt(0).toUpperCase()+tab.slice(1)}</button>)}
+            {([{id:"overview",label:"Overview",icon:House,target:"sera-profile-about"},{id:"about",label:"About",icon:UserRound,target:"sera-profile-about"},{id:"experience",label:"Experience",icon:BriefcaseBusiness,target:"sera-profile-background"},{id:"skills",label:"Skills",icon:Layers3,target:"sera-profile-background"},{id:"projects",label:"Projects",icon:LayoutGrid,target:"sera-profile-background"},{id:"activity",label:"Activity",icon:Activity,target:"sera-profile-background"}] as const).map(tab=><button type="button" key={tab.id} className={activeSection===tab.id?"is-active":""} aria-current={activeSection===tab.id?"page":undefined} onClick={()=>{setActiveSection(tab.id);document.getElementById(tab.target)?.scrollIntoView({behavior:"smooth",block:"start"});}}><tab.icon size={16}/>{tab.label}</button>)}
           </nav>
         </div>
       </section>
@@ -486,7 +490,7 @@ export function ProfessionalProfile({
           <div className="profile-main-column">
             <section className="profile-section panel" id="sera-profile-about">
               <div className="profile-section-heading">
-                <h2><Sparkles size={19} aria-hidden="true" /> About you</h2>
+                <h2><UserRound size={19} aria-hidden="true" /> About Me</h2>
                 <button
                   className="profile-icon-button"
                   aria-label="Edit professional summary"
