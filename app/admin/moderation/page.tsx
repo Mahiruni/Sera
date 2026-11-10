@@ -10,10 +10,12 @@ export default async function ModerationQueue({searchParams}:{
   if (!["admin","moderator"].includes(String(user.app_metadata?.role ?? ""))) notFound();
   const status=(await searchParams).status;
   const db=await serverClient();
-  let query=db.from("professional_reports").select("id,reporter_id,reported_id,reason,details,created_at,status,moderator_note,reviewed_at")
+  let query=db.from("professional_reports").select("id,reporter_id,reported_id,reason,details,created_at,status,reviewed_at")
     .order("created_at",{ascending:false}).limit(100);
   if (status && ["open","reviewing","resolved","dismissed"].includes(status)) query=query.eq("status",status);
   const {data:reports,error}=await query;
+  const {data:reviews}=await db.from("professional_report_reviews").select("report_id,note").in("report_id",(reports??[]).map(r=>r.id));
+  const reviewNotes=new Map((reviews??[]).map(r=>[r.report_id,r.note]));
   return <main className="sera-network network-app" style={{maxWidth:1050,margin:"auto",padding:"28px 16px 120px"}}>
     <p className="network-kicker">TRUST & SAFETY</p>
     <h1 style={{fontSize:"clamp(2rem,5vw,3rem)",letterSpacing:"-.04em"}}>Moderation workspace</h1>
@@ -37,7 +39,7 @@ export default async function ModerationQueue({searchParams}:{
             <option value="reviewing">Under review</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option>
           </select>
           <label htmlFor={"note-"+r.id}>Internal review notes</label>
-          <textarea id={"note-"+r.id} name="note" maxLength={2000} rows={3} defaultValue={r.moderator_note??""} style={{padding:12,borderRadius:12,border:"1px solid #b7dbe3"}}/>
+          <textarea id={"note-"+r.id} name="note" maxLength={2000} rows={3} defaultValue={reviewNotes.get(r.id)??""} style={{padding:12,borderRadius:12,border:"1px solid #b7dbe3"}}/>
           <button type="submit" className="network-button">Save review</button>
         </form>
       </article>)}
