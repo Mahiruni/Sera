@@ -198,3 +198,35 @@ body:has(.auth-layout) .footer-dock {
     color: #a1a1aa !important;
   }
 }
+
+/* Phase 3.3 — floating curved premium dock, aligned with approved preview. */
+.footer-dock {
+  left: max(10px, env(safe-area-inset-left, 0px)) !important;
+  right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  width: auto !important;
+  max-width: 620px !important;
+  min-height: 70px !important;
+  margin-inline: auto !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 999px !important;
+  background: rgba(34,37,43,.96) !important;
+  box-shadow: 0 12px 38px rgba(8,17,26,.24) !important;
+}
+.footer-dock a {
+  min-height: 54px !important;
+  border-radius: 999px !important;
+}
+.footer-dock a .dock-icon { width: 26px !important; height: 26px !important; }
+.footer-dock a.active,.footer-dock a[aria-current="page"] {
+  color: #55d7f0 !important;
+  background: transparent !important;
+}
+@media (max-width: 380px) {
+  .footer-dock { left: 6px !important; right: 6px !important; padding: 6px 5px !important; gap: 1px !important; }
+  .footer-dock a { font-size: 9px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-dock a.active .dock-icon { animation: none !important; }
+}
