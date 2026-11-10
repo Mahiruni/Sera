@@ -17,7 +17,6 @@ import {
   UserRound,
   Languages,
   GraduationCap,
-  Sparkles,
   Share2,
   MoreHorizontal,
   Users,
@@ -300,7 +299,7 @@ export function ProfessionalProfile({
           </div>
           {shareStatus && <p role="status" className="profile-feedback">{shareStatus}</p>}
           <nav className="sera-profile-tabs" aria-label="Profile sections">
-            {([{id:"overview",label:"Overview",icon:House,target:"sera-profile-about"},{id:"about",label:"About",icon:UserRound,target:"sera-profile-about"},{id:"experience",label:"Experience",icon:BriefcaseBusiness,target:"sera-profile-background"},{id:"skills",label:"Skills",icon:Layers3,target:"sera-profile-background"},{id:"projects",label:"Projects",icon:LayoutGrid,target:"sera-profile-background"},{id:"activity",label:"Activity",icon:Activity,target:"sera-profile-background"}] as const).map(tab=><button type="button" key={tab.id} className={activeSection===tab.id?"is-active":""} aria-current={activeSection===tab.id?"page":undefined} onClick={()=>{setActiveSection(tab.id);document.getElementById(tab.target)?.scrollIntoView({behavior:"smooth",block:"start"});}}><tab.icon size={16}/>{tab.label}</button>)}
+            {([{id:"overview",label:"Overview",icon:House,target:"sera-profile-about"},{id:"about",label:"About",icon:UserRound,target:"sera-profile-about"},{id:"experience",label:"Experience",icon:BriefcaseBusiness,target:"sera-profile-background"},{id:"skills",label:"Skills",icon:Layers3,target:"sera-profile-background"},{id:"projects",label:"Projects",icon:LayoutGrid,target:"sera-profile-projects"},{id:"activity",label:"Activity",icon:Activity,target:"sera-profile-activity"}] as const).map(tab=><button type="button" key={tab.id} className={activeSection===tab.id?"is-active":""} aria-current={activeSection===tab.id?"page":undefined} onClick={()=>{setActiveSection(tab.id);document.getElementById(tab.target)?.scrollIntoView({behavior:"smooth",block:"start"});}}><tab.icon size={16}/>{tab.label}</button>)}
           </nav>
         </div>
       </section>
@@ -564,6 +563,10 @@ export function ProfessionalProfile({
           </aside>
         </div>
       )}
+      {!editing && <div className="sera-profile-extra-sections">
+        <section className="profile-section panel" id="sera-profile-projects"><div className="profile-section-heading"><h2><LayoutGrid size={19}/> Projects</h2></div><p className="profile-missing">Your featured projects and portfolio will appear here when available.</p></section>
+        <section className="profile-section panel" id="sera-profile-activity"><div className="profile-section-heading"><h2><Activity size={19}/> Activity</h2></div><p className="profile-missing">Your professional publications and activity will appear here when available.</p></section>
+      </div>}
       <section className="profile-section profile-cv panel" id="cv">
         <div className="profile-section-heading">
           <div>
