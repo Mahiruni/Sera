@@ -36,7 +36,7 @@ export default async function NotificationsPage(){
     {!n.read_at&&<form action={markNotificationRead}><input type="hidden" name="id" value={n.id}/><button type="submit" className="sera-notification-read" aria-label={"Mark notification from "+(person?.name??"member")+" as read"} title="Mark as read"><CheckCheck size={17}/></button></form>}
    </article>;
   })}
-  {!error&&!notifications.length&&<div className="sera-notifications-empty"><Bell size={32}/><h2>You're all caught up</h2><p>New likes, comments, shares, follows and connection invitations will appear here.</p><Link href="/discover?tab=people">Discover professionals</Link></div>}
+  {!error&&!notifications.length&&<div className="sera-notifications-empty"><Bell size={32}/><h2>You&apos;re all caught up</h2><p>New likes, comments, shares, follows and connection invitations will appear here.</p><Link href="/discover?tab=people">Discover professionals</Link></div>}
   </div>
  </main>;
 }
