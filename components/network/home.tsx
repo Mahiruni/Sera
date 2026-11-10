@@ -9,6 +9,8 @@ import {
   Quote,
   BriefcaseBusiness,
   Compass,
+  MessageCircle,
+  Bell,
 } from "lucide-react";
 import { PostComposer } from "@/components/social/PostComposer";
 import { PostList, SocialPagination } from "@/components/social/feed";
@@ -159,6 +161,12 @@ export function NetworkHome({
             <Link href="/jobs">
               <BriefcaseBusiness size={14} />
               Opportunities
+            </Link>
+            <Link href="/network/messages">
+              <MessageCircle size={14} aria-hidden="true" /> Messages
+            </Link>
+            <Link href="/notifications">
+              <Bell size={14} aria-hidden="true" /> Notifications
             </Link>
             <Link href="/settings">
               My profile <ArrowUpRight size={13} />
