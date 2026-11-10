@@ -108,6 +108,24 @@ do $$ begin
  end;
 end $$;
 reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
+insert into public.professional_message_attachments(message_id,owner_id,storage_path,file_name,mime_type,byte_size)
+select message,a,a::text || '/' || thread::text || '/test.pdf','test.pdf','application/pdf',1024 from network_fixture;
+do $$ begin
+ if (select count(*) from public.professional_message_attachments) <> 1 then
+  raise exception 'Sender cannot see own attachment';
+ end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',c)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if exists(select from public.professional_message_attachments) then
+  raise exception 'Outsider can view private attachments';
+ end if;
+end $$;
+reset role;
 set local role anon;
 do $$ begin
  begin perform * from public.professional_messages;raise exception 'Anonymous read allowed';exception when insufficient_privilege then null;end;
