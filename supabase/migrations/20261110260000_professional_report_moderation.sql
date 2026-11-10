@@ -3,6 +3,7 @@ alter table public.professional_reports
  add column status text not null default 'open' check(status in ('open','reviewing','resolved','dismissed')),
  add column reviewed_at timestamptz,
  add column reviewed_by uuid references auth.users(id) on delete set null;
+grant update on public.professional_reports to authenticated;
 create index professional_reports_queue_idx on public.professional_reports(status,created_at desc);
 create policy "Moderators review member reports" on public.professional_reports
 for select to authenticated using (
