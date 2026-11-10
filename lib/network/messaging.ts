@@ -25,22 +25,28 @@ export async function sendProfessionalMessage(form: FormData) {
   if (!user?.email_confirmed_at || !uuid(conversation) || typeof body !== "string" ||
       (!body.trim() && !file) || body.trim().length > 4000) return;
   const db = await serverClient();
+  // Upload first: a rejected or oversized file must not create an empty message.
+  let path: string | null = null;
+  const bucket = db.storage.from("professional-message-files");
+  if (file) {
+    const ext = file.type === "application/pdf" ? "pdf" : file.type.split("/")[1];
+    path = user.id + "/" + conversation + "/" + crypto.randomUUID() + "." + ext;
+    const uploaded = await bucket.upload(path, file, { contentType: file.type, upsert: false });
+    if (uploaded.error) return;
+  }
   const { data: message, error } = await db.from("professional_messages").insert({
     conversation_id: conversation, sender_id: user.id, body: body.trim() || "Attachment",
   }).select("id").single();
-  if (error || !message) return;
-  if (file) {
-    const ext = file.type === "application/pdf" ? "pdf" : file.type.split("/")[1];
-    const path = user.id + "/" + conversation + "/" + crypto.randomUUID() + "." + ext;
-    const bucket = db.storage.from("professional-message-files");
-    const upload = await bucket.upload(path, file, { contentType: file.type, upsert: false });
-    if (!upload.error) {
-      const recorded = await db.from("professional_message_attachments").insert({
-        message_id: message.id, owner_id: user.id, storage_path: path,
-        file_name: file.name.slice(0, 180) || "attachment", mime_type: file.type, byte_size: file.size,
-      });
-      if (recorded.error) await bucket.remove([path]);
-    }
+  if (error || !message) {
+    if (path) await bucket.remove([path]);
+    return;
+  }
+  if (file && path) {
+    const recorded = await db.from("professional_message_attachments").insert({
+      message_id: message.id, owner_id: user.id, storage_path: path,
+      file_name: file.name.slice(0, 180) || "attachment", mime_type: file.type, byte_size: file.size,
+    });
+    if (recorded.error) await bucket.remove([path]);
   }
   revalidatePath("/network/messages");
 }
