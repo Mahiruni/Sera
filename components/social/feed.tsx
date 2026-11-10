@@ -1,5 +1,9 @@
 import type { SocialPost } from "@/lib/social/data";
 import { PostCard } from "./PostCard";
+/** Navigation is provided globally by Shell\u2019s persistent footer dock. */
+export function SocialNav() {
+  return null;
+}
 export function PostList({
   posts,
   userId,
