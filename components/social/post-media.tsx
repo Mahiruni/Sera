@@ -10,6 +10,7 @@ export function PostMedia({ images }: { images: Photo[] }) {
   const previousFocus = useRef<HTMLElement | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const openRef = useRef(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const openPhoto = (index: number) => {
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setSelected(index);
@@ -30,8 +31,8 @@ export function PostMedia({ images }: { images: Photo[] }) {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
       if (event.key === "Escape") setSelected(null);
-      if (event.key === "ArrowRight") setSelected((n) => n === null ? null : (n + 1) % images.length);
-      if (event.key === "ArrowLeft") setSelected((n) => n === null ? null : (n - 1 + images.length) % images.length);
+      if (event.key === "ArrowRight" && images.length > 1) setSelected((n) => n === null ? null : (n + 1) % images.length);
+      if (event.key === "ArrowLeft" && images.length > 1) setSelected((n) => n === null ? null : (n - 1 + images.length) % images.length);
     };
     document.addEventListener("keydown", onKey);
     const oldOverflow = document.body.style.overflow;
@@ -65,7 +66,16 @@ export function PostMedia({ images }: { images: Photo[] }) {
       </div>
       {selected !== null && (
         <div className="social-lightbox" role="dialog" aria-modal="true" aria-label="Post photo viewer"
-          onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+          onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}
+          onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
+          onTouchEnd={(event) => {
+            if (touchStartX === null || images.length < 2) return;
+            const endX = event.changedTouches[0]?.clientX;
+            if (endX === undefined) return;
+            const delta = endX - touchStartX;
+            if (Math.abs(delta) > 55) setSelected((selected + (delta < 0 ? 1 : images.length - 1)) % images.length);
+            setTouchStartX(null);
+          }}>
           <button type="button" ref={closeButton} className="social-lightbox-close" aria-label="Close photo viewer" onClick={() => setSelected(null)}><X /></button>
           {images.length > 1 && <button type="button" className="social-lightbox-prev" aria-label="Previous photo" onClick={() => setSelected((selected - 1 + images.length) % images.length)}><ChevronLeft /></button>}
           <Image unoptimized className="social-lightbox-photo" src={images[selected].url} alt={images[selected].alt} width={1600} height={1200} style={{ width: "auto", height: "auto" }} />
@@ -79,10 +89,11 @@ export function PostMedia({ images }: { images: Photo[] }) {
 
 export function ExpandableCaption({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
-  const long = text.length > 260;
+  const characters = Array.from(text);
+  const long = characters.length > 260;
   return (
     <div className="social-caption">
-      <p className="social-body">{long && !expanded ? text.slice(0, 260).trimEnd() + "…" : text}</p>
+      <p className="social-body">{long && !expanded ? characters.slice(0, 260).join("").trimEnd() + "…" : text}</p>
       {long && <button type="button" className="social-caption-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "See less" : "See more"}</button>}
     </div>
   );
