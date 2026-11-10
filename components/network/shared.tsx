@@ -167,9 +167,13 @@ export function NetworkLinks() {
         <Bookmark size={18} />
         Saved for later
       </Link>
-      <Link href="/messages">
+      <Link href="/notifications">
+        <Bell size={18} />
+        Notifications
+      </Link>
+      <Link href="/network/messages">
         <MessageCircle size={18} />
-        Application messages
+        Professional messages
       </Link>
     </nav>
   );
