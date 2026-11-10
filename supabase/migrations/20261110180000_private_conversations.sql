@@ -77,4 +77,9 @@ before update on public.professional_messages
 for each row execute function public.guard_professional_message_update();
 
 -- Deliver INSERT/UPDATE events to subscribed, RLS-authorized participants.
-alter publication supabase_realtime add table public.professional_messages;
+do $
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    alter publication supabase_realtime add table public.professional_messages;
+  end if;
+end $;
