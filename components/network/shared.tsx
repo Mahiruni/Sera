@@ -61,6 +61,7 @@ export function NetworkToolbar({
           <ArrowRight size={17} />
         </button>
       </form>
+      <Link href="/notifications" className="sera-toolbar-notifications" aria-label="Open notifications" title="Notifications"><Bell size={19} aria-hidden="true" /></Link>
       <ThemeToggle />
     </div>
   );
