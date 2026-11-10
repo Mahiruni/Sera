@@ -87,6 +87,7 @@ export function PostCard({
                 alt={img.alt}
                 width={1200}
                 height={900}
+                style={{ width: "100%", height: "auto", aspectRatio: "auto" }}
               />
             </a>
           ))}
