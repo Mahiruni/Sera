@@ -86,15 +86,15 @@ select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) fr
 set local role authenticated;
 insert into public.professional_reports(reporter_id,reported_id,reason,details)
 select a,b,'spam','Repeated unsolicited messages' from network_fixture;
-do $ begin
+do $$ begin
  if (select count(*) from public.professional_reports) <> 1 then
    raise exception 'Reporter cannot see own report';
  end if;
-end $;
+end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
 set local role authenticated;
-do $ begin
+do $$ begin
  if exists(select from public.professional_reports) then
    raise exception 'Reported member can view confidential report';
  end if;
@@ -104,7 +104,7 @@ do $ begin
   raise exception 'Forged reporter accepted';
  exception when check_violation or insufficient_privilege then null;
  end;
-end $;
+end $$;
 reset role;
 set local role anon;
 do $$ begin
