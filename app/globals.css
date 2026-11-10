@@ -7211,3 +7211,151 @@ body:has(.auth-layout) .information-footer {
 @media (max-width: 390px) {
   .sera-header-wordmark { font-size: 1.12rem; }
 }
+
+/* SERA Employer Workspace: compact, content-first dashboard.
+   Scoped so candidate workspace and recruitment functionality remain unchanged. */
+.workspace-employer {
+  padding-top: 96px;
+}
+.workspace-employer .ws-context {
+  margin-bottom: 15px;
+  letter-spacing: .065em;
+}
+.workspace-employer .ws-welcome {
+  margin-bottom: 16px;
+  gap: 16px;
+}
+.workspace-employer .ws-identity { gap: 13px; }
+.workspace-employer .ws-identity .eyebrow {
+  margin-bottom: 5px;
+  font-size: 10px;
+}
+.workspace-employer .ws-welcome h1 {
+  margin-bottom: 5px;
+  font-size: clamp(24px, 2.6vw, 32px);
+}
+.workspace-employer .ws-welcome p:not(.eyebrow) { line-height: 1.55; }
+.workspace-employer .ws-primary {
+  min-height: 44px;
+  border-radius: 14px;
+  padding: 10px 17px;
+}
+.workspace-employer .workspace-nav {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 17px;
+  padding-bottom: 10px;
+}
+.workspace-employer .workspace-nav::-webkit-scrollbar { display: none; }
+.workspace-employer .workspace-nav > a {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-height: 42px;
+  padding: 9px 12px;
+}
+.workspace-employer .ws-metrics {
+  gap: 12px;
+  margin: 14px 0 22px;
+}
+.workspace-employer .ws-metric { padding: 15px; }
+.workspace-employer .ws-metric > strong {
+  font-size: 27px;
+  margin: 10px 0 5px;
+}
+.workspace-employer .ws-metric > p { line-height: 1.5; }
+@media (max-width: 760px) {
+  .workspace-employer {
+    padding-top: 90px;
+  }
+  .workspace-employer .ws-welcome { gap: 13px; }
+  .workspace-employer .ws-primary { margin-left: 0; }
+}
+@media (max-width: 520px) {
+  .workspace-employer {
+    padding-top: calc(80px + env(safe-area-inset-top, 0px));
+  }
+  .workspace-employer .ws-context {
+    margin-bottom: 14px;
+    font-size: 9px;
+  }
+  .workspace-employer .ws-context > span {
+    max-width: none;
+    line-height: 1.4;
+  }
+  .workspace-employer .ws-context > a { font-size: 10px; }
+  .workspace-employer .ws-welcome {
+    margin-bottom: 13px;
+    gap: 13px;
+  }
+  .workspace-employer .ws-identity {
+    gap: 12px;
+    align-items: center;
+  }
+  .workspace-employer .ws-avatar {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    border-radius: 16px;
+  }
+  .workspace-employer .ws-identity .eyebrow {
+    font-size: 9px;
+    letter-spacing: .055em;
+    margin-bottom: 4px;
+  }
+  .workspace-employer .ws-welcome h1 {
+    font-size: clamp(22px, 5.7vw, 27px);
+    line-height: 1.15;
+    letter-spacing: -.045em;
+  }
+  .workspace-employer .ws-welcome p:not(.eyebrow) {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .workspace-employer .ws-primary {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 13px;
+    padding: 9px 15px;
+    font-size: 12px;
+  }
+  .workspace-employer .workspace-nav {
+    margin: 0 -2px 12px;
+    padding: 0 2px 9px;
+    gap: 6px;
+    border-bottom-color: #e3edf1;
+  }
+  .workspace-employer .workspace-nav > a {
+    min-height: 42px;
+    padding: 8px 11px;
+    font-size: 10px;
+    border-radius: 12px;
+  }
+  .workspace-employer .ws-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 11px 0 18px;
+  }
+  .workspace-employer .ws-metric {
+    border-radius: 16px;
+    padding: 13px;
+  }
+  .workspace-employer .ws-metric > div {
+    align-items: flex-start;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .workspace-employer .ws-metric > div > svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
+  .workspace-employer .ws-metric > strong {
+    font-size: 27px;
+    margin: 8px 0 4px;
+  }
+  .workspace-employer .ws-metric > p {
+    font-size: 10px;
+    line-height: 1.45;
+  }
+}
