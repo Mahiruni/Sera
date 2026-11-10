@@ -18,6 +18,11 @@ import {
   Languages,
   GraduationCap,
   Sparkles,
+  Share2,
+  MoreHorizontal,
+  Users,
+  FolderKanban,
+  BookOpen,
 } from "lucide-react";
 import type { Profile } from "@/components/auth/forms";
 import type { Assets } from "@/lib/account/assets";
@@ -59,6 +64,9 @@ export function ProfessionalProfile({
   filesUnavailable?: boolean;
 }) {
   const router = useRouter();
+  const [activeSection, setActiveSection] = useState("overview");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
   const [editing, setEditing] = useState(false),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState("");
@@ -188,15 +196,15 @@ export function ProfessionalProfile({
   return (
     <div className="professional-account">
       <div className="profile-topline">
-        <p className="eyebrow">SERA / YOUR ACCOUNT</p>
+        <p className="eyebrow">SERA / PROFESSIONAL PROFILE</p>
         <span>
           <LockKeyhole size={13} /> Private profile
         </span>
       </div>
       <section className="profile-hero-card">
         <div className="profile-cover">
-          <span>Made for your next chapter.</span>
-          <span className="profile-cover-mark">Sera.et</span>
+          <span className="sera-cover-title">Your Professional<br/><strong>Journey</strong><br/>at <b>SERA.et</b></span>
+          <span className="profile-cover-mark">Your next chapter starts here.</span>
         </div>
         <div className="profile-hero-body">
           <div className="profile-avatar-row">
@@ -219,7 +227,7 @@ export function ProfessionalProfile({
                 <Camera size={17} />
               </button>
             </div>
-            <button
+            <div className="sera-profile-top-actions"><button
               className="button profile-edit"
               onClick={() => {
                 setEditing((v) => !v);
@@ -229,7 +237,7 @@ export function ProfessionalProfile({
             >
               <Pencil size={15} />
               {editing ? "Close editor" : "Edit profile"}
-            </button>
+            </button><button className="sera-profile-more" type="button" aria-label="Profile photo options" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><MoreHorizontal size={20}/></button></div>
           </div>
           <input
             className="sr-only"
@@ -255,6 +263,7 @@ export function ProfessionalProfile({
               e.target.value = "";
             }}
           />
+          {moreOpen && assets?.avatar_path && <button className="profile-text-button sera-profile-photo-remove" type="button" disabled={busy} onClick={()=>{if(window.confirm("Remove your profile photo?"))void sendFile("avatar","remove");}}>Remove profile photo</button>}
           <h1>{profile.full_name}</h1>
           <p className="profile-headline">
             {profile.headline ||
@@ -275,18 +284,20 @@ export function ProfessionalProfile({
                 : "Career profile"}
             </span>
           </div>
-          {assets?.avatar_path && (
-            <button
-              className="profile-text-button"
-              disabled={busy}
-              onClick={() => {
-                if (window.confirm("Remove your profile photo?"))
-                  void sendFile("avatar", "remove");
-              }}
-            >
-              Remove photo
-            </button>
-          )}
+          <div className="sera-profile-stat-row" aria-label="Profile summary">
+            <div><Users size={19}/><strong>Professional network</strong><span>Grow your connections</span></div>
+            <div><BookOpen size={19}/><strong>Career journey</strong><span>{profile.journey === "employer" ? "Employer" : "Professional"}</span></div>
+            <div><FolderKanban size={19}/><strong>Portfolio</strong><span>Showcase your work</span></div>
+          </div>
+          <div className="sera-profile-quick-actions">
+            <button type="button" className="button" onClick={()=>{setEditing(true);setActiveSection("experience");}}><BriefcaseBusiness size={17}/> Add experience</button>
+            <a href="#cv" className="button secondary"><FileText size={17}/> {assets?.cv_path ? "Manage CV" : "Upload CV"}</a>
+            <button type="button" className="button secondary" onClick={async()=>{try{await navigator.clipboard.writeText(window.location.href);setShareStatus("Profile link copied");}catch{setShareStatus("Unable to copy profile link");}}}><Share2 size={17}/> Share profile</button>
+          </div>
+          {shareStatus && <p role="status" className="profile-feedback">{shareStatus}</p>}
+          <nav className="sera-profile-tabs" aria-label="Profile sections">
+            {["overview","about","experience","skills","cv"].map(tab=><button type="button" key={tab} className={activeSection===tab?"is-active":""} aria-current={activeSection===tab?"page":undefined} onClick={()=>{setActiveSection(tab);document.getElementById(tab==="cv"?"cv":tab==="about"?"sera-profile-about":tab==="experience"||tab==="skills"?"sera-profile-background":"sera-profile-about")?.scrollIntoView({behavior:"smooth",block:"start"});}}>{tab==="cv"?"CV":tab.charAt(0).toUpperCase()+tab.slice(1)}</button>)}
+          </nav>
         </div>
       </section>
       {message && (
@@ -473,7 +484,7 @@ export function ProfessionalProfile({
       ) : (
         <div className="profile-content-grid">
           <div className="profile-main-column">
-            <section className="profile-section panel">
+            <section className="profile-section panel" id="sera-profile-about">
               <div className="profile-section-heading">
                 <h2><Sparkles size={19} aria-hidden="true" /> About you</h2>
                 <button
@@ -493,7 +504,7 @@ export function ProfessionalProfile({
                   "Tell your story: your strengths, interests, and what you would like to do next."}
               </p>
             </section>
-            <section className="profile-section panel">
+            <section className="profile-section panel" id="sera-profile-background">
               <h2><GraduationCap size={19} aria-hidden="true" /> Professional background</h2>
               <dl>
                 {detail(
