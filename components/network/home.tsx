@@ -65,7 +65,7 @@ export function NetworkHome({
   const filters = new URLSearchParams();
   if (kind) filters.set("kind", kind);
   if (mine) filters.set("view", "mine");
-  const name = profile?.full_name || "Sera member";
+  const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page">
       <NetworkToolbar />
@@ -140,6 +140,11 @@ export function NetworkHome({
               <h1>
                 {mine ? "Your work. Your voice." : "A good place to grow."}
               </h1>
+              <p className="network-welcome-subtitle">
+                {mine
+                  ? "Everything you have shared with your professional community."
+                  : "Discover ideas, people and opportunities worth your time."}
+              </p>
             </div>
             <span>People · Ideas · Opportunities</span>
           </header>
