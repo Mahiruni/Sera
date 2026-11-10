@@ -12,7 +12,7 @@ import {
   MessageCircle,
   Bell,
 } from "lucide-react";
-import { PostComposer } from "@/components/social/PostComposer";
+import { FeedComposer } from "@/components/social/FeedComposer";
 import { PostList, SocialPagination } from "@/components/social/feed";
 import type { SocialPost } from "@/lib/social/data";
 import { postKinds, type PostKind } from "@/lib/social/validation";
@@ -184,30 +184,7 @@ export function NetworkHome({
               Explore projects <ArrowUpRight size={11} />
             </Link>
           </nav>
-          <details className="network-compose-toggle">
-            <summary aria-label="Create a new professional post">
-              <span className="network-compose-avatar">
-                <MemberAvatar name={name} photo={avatarUrl} />
-              </span>
-              <span>Something worth sharing?</span>
-              <PenLine size={18} />
-              <span className="network-compose-types">
-                <span>
-                  <ImagePlus size={14} />
-                  Photo
-                </span>
-                <span>
-                  <FolderKanban size={14} />
-                  Project
-                </span>
-                <span>
-                  <Quote size={14} />
-                  Thought
-                </span>
-              </span>
-            </summary>
-            <PostComposer />
-          </details>
+          <FeedComposer name={name} avatarUrl={avatarUrl} />
           <nav className="social-filters" aria-label="Filter stories">
             <Link
               href={mine ? "/feed?view=mine" : "/feed"}
