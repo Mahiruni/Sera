@@ -7379,3 +7379,12 @@ body:has(.auth-layout) .information-footer {
     padding-top: var(--sera-header-content-offset);
   }
 }
+
+/* Professional identity: owner tools and visitor simulation */
+.sera-visitor-preview { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:0 0 18px; padding:14px 17px; border:1px solid #b8dce4; border-radius:16px; background:#effafb; color:#174a58; }
+.sera-visitor-preview strong { font-size:14px; }
+.sera-visitor-preview p { margin:4px 0 0; font-size:12px; line-height:1.5; }
+.sera-visitor-preview a,.sera-member-owner-tools a { display:inline-flex; align-items:center; justify-content:center; min-height:38px; border-radius:11px; padding:8px 12px; background:#087f92; color:#fff; font-size:12px; font-weight:700; text-decoration:none; }
+.sera-member-owner-tools { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin:10px auto 18px; }
+.sera-member-owner-tools a:last-child { background:#e5f4f6; color:#087184; }
+.sera-visitor-preview a:focus-visible,.sera-member-owner-tools a:focus-visible { outline:3px solid #12a3bc; outline-offset:3px; }
