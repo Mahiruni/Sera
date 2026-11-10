@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import Image from "next/image";
-import { ImagePlus, Send } from "lucide-react";
+import { ImagePlus, Send, FileText, ChevronDown } from "lucide-react";
 import { createPost, updatePost } from "@/lib/social/actions";
 import {
   postKinds,
@@ -32,6 +32,12 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
   const [previews, setPreviews] = useState<string[]>([]);
   const urls = useRef<string[]>([]);
   const [fileError, setFileError] = useState("");
+  const [bodyText, setBodyText] = useState(post?.body || "");
+  const [headline, setHeadline] = useState(post?.title || "");
+  const [showHeadline, setShowHeadline] = useState(Boolean(post?.title) || initialKind === "project");
+  const [detailsOpen, setDetailsOpen] = useState(Boolean(post) || initialKind === "photos");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const ref = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(
     async (
@@ -45,6 +51,8 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
         urls.current = [];
         setPreviews([]);
         setFileError("");
+        setBodyText("");
+        setHeadline("");
       }
       return result;
     },
@@ -75,6 +83,10 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
           e.preventDefault();
           if (fileError || pending) return;
           const data = new FormData(e.currentTarget);
+          if (kind !== "quote" && !String(data.get("title") || "").trim()) {
+            const derived = String(data.get("body") || "").trim().replace(/\s+/g, " ").slice(0, 140);
+            data.set("title", derived.length >= 3 ? derived : "Photo update");
+          }
           startTransition(() => action(data));
         }}
       >
@@ -87,7 +99,7 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
                 type="button"
                 key={k}
                 aria-pressed={kind === k}
-                onClick={() => setKind(k)}
+                onClick={() => { setKind(k); if (k === "project") setShowHeadline(true); if (k === "photos") setDetailsOpen(true); }}
               >
                 {labels[k]}
               </button>
@@ -117,6 +129,161 @@ export function PostComposer({ post, initialKind = "idea", onPublished }: { post
             placeholder="Share something useful, inspiring or worth discussing…"
           />
         </label>
+        {kind === "quote" && (
+          <label>
+            Attribution
+            <input
+              name="quote_source"
+              maxLength={120}
+              defaultValue={post?.quote_source}
+              placeholder="Who said it?"
+            />
+          </label>
+        )}
+        {kind !== "quote" && (
+          <input
+            type="hidden"
+            name="quote_source"
+            value={post?.quote_source || ""}
+          />
+        )}
+        <details
+          className="social-composer-details"
+          open={post || kind === "photos" ? true : undefined}
+        >
+          <summary>Add details, skills or photos</summary>
+          <div className="social-form-grid">
+            <label>
+              Field
+              <input
+                name="category"
+                maxLength={60}
+                defaultValue={post?.category}
+                placeholder="Engineering, design…"
+              />
+            </label>
+            <label>
+              Location
+              <input
+                name="location"
+                maxLength={120}
+                defaultValue={post?.location}
+                placeholder="Addis Ababa"
+              />
+            </label>
+          </div>
+          <label>
+            Skills <span>(up to 10, separated by commas)</span>
+            <input
+              name="skills"
+              maxLength={400}
+              defaultValue={post?.skills.join(", ")}
+              placeholder="React, photography, product design"
+            />
+          </label>
+          <label>
+            Project link <span>(optional, HTTPS)</span>
+            <input
+              type="url"
+              name="project_url"
+              maxLength={500}
+              defaultValue={post?.project_url || ""}
+              placeholder="https://"
+            />
+          </label>
+          {!post && (
+            <label className="social-upload">
+              <ImagePlus size={20} /> Add photos{" "}
+              <span>
+                Up to {MEDIA_COUNT} images · {MEDIA_LIMIT / 1024 / 1024} MB
+                total · JPG, PNG, WebP
+              </span>
+              <input
+                type="file"
+                name="media"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                required={kind === "photos"}
+                onChange={(e) => {
+                  const chosen = [...(e.target.files || [])];
+                  urls.current.forEach((url) => URL.revokeObjectURL(url));
+                  urls.current = validMedia(chosen)
+                    ? chosen.map((file) => URL.createObjectURL(file))
+                    : [];
+                  setPreviews(urls.current);
+                  setFileError(
+                    validMedia(chosen)
+                      ? ""
+                      : "Choose up to four supported images totaling 3 MB or less.",
+                  );
+                }}
+              />
+            </label>
+          )}
+          {!!previews.length && (
+            <div className="social-preview">
+              {previews.map((url, i) => (
+                <Image
+                  unoptimized
+                  width={90}
+                  height={90}
+                  key={url}
+                  src={url}
+                  alt={`Selected photo ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </details>
+        {(fileError || state.error) && (
+          <p role="alert" className="social-error">
+            {fileError || state.error}
+          </p>
+        )}
+        {state.success && (
+          <p role="status" className="social-status">
+            {state.success}
+          </p>
+        )}
+        <div className="social-composer-bottom">
+          <small>Visible to SERA members · {pending ? "Publishing securely…" : "Your professional community"}</small>
+          <Submit
+            className="button primary"
+            disabled={Boolean(fileError) || pending || (kind !== "photos" && bodyText.trim().length < (kind === "quote" ? 3 : 1))}
+          >
+            {pending ? "Publishing…" : post ? "Save changes" : "Publish story"}
+          </Submit>
+        </div>
+      </form>
+    </section>
+  );
+}        {(showHeadline || kind === "project") && (
+          <label className="sera-compose-headline">
+            Headline <span>(optional)</span>
+            <input name="title" maxLength={140} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Give your post a headline" />
+          </label>
+        )}
+        {!showHeadline && kind !== "project" && <input type="hidden" name="title" value={headline} />}
+        <label className="sera-compose-story">
+          <span className="sr-only">{kind === "quote" ? "Your quote" : "Your story"}</span>
+          <textarea
+            ref={textarea}
+            name="body"
+            rows={4}
+            maxLength={kind === "quote" ? 600 : 10000}
+            minLength={kind === "quote" ? 3 : 1}
+            required={kind !== "photos"}
+            value={bodyText}
+            onChange={(e) => { setBodyText(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.max(140, e.target.scrollHeight) + "px"; }}
+            placeholder={kind === "quote" ? "Share a thought worth remembering…" : kind === "project" ? "What have you been building?" : "What would you like to share with your professional community?"}
+          />
+        </label>
+        <div className="sera-compose-tools" aria-label="Post tools">
+          <button type="button" onClick={() => { setDetailsOpen(true); fileInput.current?.click(); }} aria-label="Add photos"><ImagePlus size={20} /> <span>Photo</span></button>
+          <button type="button" onClick={() => setShowHeadline((v) => !v)} aria-pressed={showHeadline} aria-label="Toggle headline"><FileText size={20} /> <span>Headline</span></button>
+          <button type="button" onClick={() => setDetailsOpen((v) => !v)} aria-expanded={detailsOpen}><ChevronDown size={20} /> <span>Details</span></button>
+          <small>{bodyText.length}/{kind === "quote" ? 600 : 10000}</small>
+        </div>
         {kind === "quote" && (
           <label>
             Attribution
