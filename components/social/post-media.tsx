@@ -9,13 +9,17 @@ export function PostMedia({ images }: { images: Photo[] }) {
   const [selected, setSelected] = useState<number | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const openRef = useRef(false);
   const openPhoto = (index: number) => {
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setSelected(index);
   };
   useEffect(() => {
     if (selected === null) return;
-    closeButton.current?.focus();
+    if (!openRef.current) {
+      openRef.current = true;
+      closeButton.current?.focus();
+    }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Tab") {
         const dialog = closeButton.current?.closest(".social-lightbox");
@@ -35,9 +39,15 @@ export function PostMedia({ images }: { images: Photo[] }) {
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = oldOverflow;
-      previousFocus.current?.focus();
+      // Restore focus only when the viewer actually closes, not between photos.
     };
   }, [selected, images.length]);
+
+  useEffect(() => {
+    if (selected !== null || !openRef.current) return;
+    openRef.current = false;
+    previousFocus.current?.focus();
+  }, [selected]);
 
   if (!images.length) return null;
   return (
