@@ -13,6 +13,11 @@ import {
   LockKeyhole,
   ArrowUpRight,
   X,
+  BriefcaseBusiness,
+  UserRound,
+  Languages,
+  GraduationCap,
+  Sparkles,
 } from "lucide-react";
 import type { Profile } from "@/components/auth/forms";
 import type { Assets } from "@/lib/account/assets";
@@ -147,10 +152,28 @@ export function ProfessionalProfile({
     }
   }
   async function savePhoto() {
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.current?.toBlob(resolve, "image/jpeg", 0.88),
-    );
-    if (blob) await sendFile("avatar", "upload", blob);
+    const preview = canvas.current;
+    if (!preview || !imageReady || busy) return;
+    // 512px square is enough for crisp 2x display on professional cards.
+    // Prefer high JPEG quality; lower it only when the resulting file is large.
+    const encode = (quality: number) =>
+      new Promise<Blob | null>((resolve) => preview.toBlob(resolve, "image/jpeg", quality));
+    setBusy(true);
+    setMessage("Optimizing your profile photo…");
+    try {
+      let blob: Blob | null = null;
+      for (const quality of [0.9, 0.85, 0.8, 0.75]) {
+        blob = await encode(quality);
+        if (!blob || blob.size <= 180 * 1024) break;
+      }
+      if (!blob) throw new Error("Could not process the image.");
+      // sendFile manages upload progress and clears the busy state.
+      await sendFile("avatar", "upload", blob, "profile.jpg");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not optimize photo.");
+    } finally {
+      setBusy(false);
+    }
   }
   const detail = (
     label: string,
@@ -246,6 +269,7 @@ export function ProfessionalProfile({
               <ShieldCheck size={14} /> Email confirmed
             </span>
             <span>
+              {profile.journey === "employer" ? <BriefcaseBusiness size={14} /> : <UserRound size={14} />}
               {profile.journey === "employer"
                 ? "Employer account"
                 : "Career profile"}
@@ -451,7 +475,7 @@ export function ProfessionalProfile({
           <div className="profile-main-column">
             <section className="profile-section panel">
               <div className="profile-section-heading">
-                <h2>About you</h2>
+                <h2><Sparkles size={19} aria-hidden="true" /> About you</h2>
                 <button
                   className="profile-icon-button"
                   aria-label="Edit professional summary"
@@ -470,7 +494,7 @@ export function ProfessionalProfile({
               </p>
             </section>
             <section className="profile-section panel">
-              <h2>Professional background</h2>
+              <h2><GraduationCap size={19} aria-hidden="true" /> Professional background</h2>
               <dl>
                 {detail(
                   "Skills",
@@ -492,7 +516,7 @@ export function ProfessionalProfile({
           </div>
           <aside className="profile-side-column">
             <section className="profile-section panel">
-              <h2>Personal details</h2>
+              <h2><Languages size={19} aria-hidden="true" /> Personal details</h2>
               <dl>
                 {detail("Email", email, "")}
                 {detail("Phone", profile.phone, "Not added")}

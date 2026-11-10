@@ -118,3 +118,68 @@ html[data-sera-theme="dark"] {
     gap: 10px;
   }
 }
+
+/* Phase 2.5.1: consistent member identity in feeds, replies and profiles. */
+:where(.sera-network,.social-page,.sera-member-page,.sera-notifications) .member-photo {
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--sera-surface-soft, #e9f7fc);
+  color: var(--sera-accent, #087f9f);
+  border: 1px solid var(--sera-border, #dce8ef);
+  font-weight: 750;
+  font-size: clamp(11px, 1.2vw, 15px);
+  line-height: 1;
+  letter-spacing: -.025em;
+  isolation: isolate;
+}
+:where(.sera-network,.social-page,.sera-member-page,.sera-notifications) .member-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  object-position: center;
+}
+.sera-network .network-profile-info h2 a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.sera-network .network-profile-info h2 a:hover {
+  color: var(--sera-accent);
+  text-decoration: underline;
+}
+.sera-network .network-profile-info h2 a:focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Refined professional profile section hierarchy. */
+.professional-account .profile-section-heading h2,
+.professional-account .profile-section > h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.professional-account .profile-section-heading h2 svg,
+.professional-account .profile-section > h2 svg {
+  flex: none;
+  color: var(--sera-accent);
+}
+.professional-account :where(.profile-camera,.profile-edit,.profile-icon-button):focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+}
+.professional-account .profile-avatar .member-photo {
+  border: 3px solid var(--sera-surface, #fff);
+  box-shadow: 0 5px 18px rgba(18,65,82,.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .professional-account * { scroll-behavior: auto; }
+}

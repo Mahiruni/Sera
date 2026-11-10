@@ -77,13 +77,13 @@ export function NetworkHome({
               <span className="network-own-avatar">
                 <MemberAvatar name={name} photo={avatarUrl} size={57} />
               </span>
-              <h2>{name}</h2>
+              <h2><Link href={"/members/" + userId}>{name}</Link></h2>
               <p>
                 {profile?.headline ||
                   "Give your professional story a clear headline."}
               </p>
               <Link href="/settings">
-                Your professional profile <ArrowUpRight size={13} />
+                Edit professional profile <ArrowUpRight size={13} />
               </Link>
               <div className="network-completeness">
                 <div>
