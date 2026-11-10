@@ -37,7 +37,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
   const onPublished = useCallback((id: string) => { setOpen(false); router.push("/posts/" + id); router.refresh(); }, [router]);
   const dismiss = () => {
     const form = dialog.current?.querySelector("form");
-    const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) => key !== "kind" && (typeof value === "string" ? value.trim().length > 0 : value.size > 0)) : false;
+    const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) => !["kind", "quote_source"].includes(key) && (typeof value === "string" ? value.trim().length > 0 : value.size > 0)) : false;
     if (dirty && !window.confirm("Close the editor? Any unsaved changes will be lost.")) return;
     setOpen(false);
   };
