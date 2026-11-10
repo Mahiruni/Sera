@@ -151,3 +151,50 @@ body:has(.auth-layout) .footer-dock {
   outline: 2px solid #087f9f;
   outline-offset: 3px;
 }
+
+/* SERA navigation refinement: calm, centered brand and compact glass dock. */
+.site-header { position: relative; }
+.sera-header-wordmark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  color: var(--sera-text, #17323b);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: clamp(17px, 4.4vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+.sera-header-wordmark span { color: #0c9fbd; }
+.sera-header-wordmark:focus-visible {
+  outline: 3px solid #0c9fbd;
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+@media (max-width: 390px) {
+  .sera-header-wordmark { font-size: 17px; }
+  .header-account-controls { gap: 5px; }
+}
+@media (max-width: 340px) {
+  .sera-header-wordmark { position: static; transform: none; margin-inline: auto; }
+}
+.footer-dock {
+  background: rgba(20, 23, 28, 0.9) !important;
+  border-top-color: rgba(255,255,255,.11) !important;
+  box-shadow: 0 -8px 30px rgba(8,17,26,.09) !important;
+}
+.footer-dock a { min-height: 54px !important; }
+.footer-dock a.active,
+.footer-dock a[aria-current="page"] { color: #55d7f0 !important; }
+@media (hover: none) {
+  .footer-dock a:not(.active):not([aria-current="page"]):hover {
+    background: transparent !important;
+    color: #a1a1aa !important;
+  }
+}
