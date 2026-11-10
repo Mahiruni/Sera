@@ -8,9 +8,9 @@ export async function startConversation(form: FormData) {
   if (!user?.email_confirmed_at || !uuid(other) || other === user.id) return;
   const db = await serverClient();
   const [member_a, member_b] = [user.id, other].sort();
-  const { error } = await db.from("professional_conversations").upsert(
-    { member_a, member_b }, { onConflict: "member_a,member_b", ignoreDuplicates: true },
-  );
+  const { error } = await db.from("professional_conversations").insert({ member_a, member_b });
+  // A duplicate conversation is an expected, harmless outcome. Never require UPDATE privileges.
+  if (error?.code === "23505") { revalidatePath("/network/messages"); return; }
   if (error) return;
   revalidatePath("/network/messages");
 }
