@@ -33,6 +33,8 @@ export default async function Page({
     .order("id", { ascending: true })
     .range((page - 1) * pageSize, page * pageSize - 1);
   const apps = (data || []) as unknown as LiveApplication[];
+  const journey = ["applied", "screened", "interview", "offer"] as const;
+  const stageIndex = (value: string) => journey.findIndex((step) => step === value);
   return (
     <div className="container page live-market workspace-detail">
       <p className="eyebrow">SERA / YOUR NEXT MOVE</p>
@@ -74,6 +76,18 @@ export default async function Page({
                 <p>{a.jobs?.company}</p>
                 <h2>{a.jobs?.title || "Job unavailable"}</h2>
                 <p>Applied {activityDate(a.created_at)}</p>
+                {stageIndex(a.stage) >= 0 ? (
+                  <div aria-label={`Current application stage: ${stageLabel(a.stage)}`} style={{ marginTop: 12 }}>
+                    <div style={{ display: "flex", gap: 5 }} aria-hidden="true">
+                      {journey.map((step, index) => (
+                        <span key={step} style={{ height: 5, flex: 1, borderRadius: 999, background: index <= stageIndex(a.stage) ? "#16B9D6" : "#DCE7EC" }} />
+                      ))}
+                    </div>
+                    <p className="auth-help" style={{ marginTop: 6 }}>Current stage: {stageLabel(a.stage)}</p>
+                  </div>
+                ) : (
+                  <p className="auth-help">{a.stage === "withdrawn" ? "Application withdrawn" : "Application closed — not selected"}</p>
+                )}
               </div>
               <span className={`ws-status ${a.stage}`}>
                 {stageLabel(a.stage)} →
