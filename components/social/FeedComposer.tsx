@@ -11,13 +11,12 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [initialKind, setInitialKind] = useState<PostKind>("idea");
-  const [mounted, setMounted] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
-  useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!open) return;
+    const triggerElement = trigger.current;
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     close.current?.focus();
@@ -31,7 +30,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
       else if (!event.shiftKey && (document.activeElement === last || !dialog.current?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; trigger.current?.focus(); };
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; triggerElement?.focus(); };
   }, [open]);
   const launch = (kind: PostKind) => { setInitialKind(kind); setOpen(true); };
   const onPublished = useCallback((id: string) => { setOpen(false); router.push("/posts/" + id); router.refresh(); }, [router]);
@@ -45,7 +44,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     <section className="sera-feed-compose" aria-label="Create a post">
       <div className="sera-feed-compose-top">
         <MemberAvatar name={name} photo={avatarUrl} size={46} />
-        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}>What's on your mind?</button>
+        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}>What&apos;s on your mind?</button>
         <button type="button" className="sera-feed-compose-pencil" aria-label="Create a post" onClick={() => launch("idea")}><PenLine size={19}/></button>
       </div>
       <div className="sera-feed-compose-actions">
@@ -54,7 +53,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
         <button type="button" onClick={() => launch("quote")}><Quote size={19}/> Thought</button>
       </div>
     </section>
-    {mounted && open && createPortal(
+    {open && typeof document !== "undefined" && createPortal(
       <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
         <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog">
           <div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create a post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
