@@ -66,6 +66,22 @@ end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
 set local role authenticated;
+insert into public.professional_presence(member_id,visibility) select a,'connections' from network_fixture;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if (select count(*) from public.professional_presence) <> 1 then raise exception 'Accepted connection cannot see presence'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',c)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if exists(select from public.professional_presence) then raise exception 'Outsider can view online presence'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
 insert into public.professional_typing_status(conversation_id,member_id) select thread,a from network_fixture;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
