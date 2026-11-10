@@ -166,6 +166,27 @@ do $$ begin
  end;
 end $$;
 reset role;
+select set_config('request.jwt.claims',json_build_object('sub',c,'app_metadata',json_build_object('role','moderator'))::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if (select count(*) from public.professional_reports) <> 1 then raise exception 'Moderator cannot review reports'; end if;
+end $$;
+update public.professional_reports set status='reviewing',reviewed_at=now(),reviewed_by=(select c from network_fixture);
+insert into public.professional_report_reviews(report_id,moderator_id,note)
+select r.id,f.c,'Internal evidence' from public.professional_reports r cross join network_fixture f;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if exists(select from public.professional_report_reviews) then raise exception 'Reporter can read internal moderation notes'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if exists(select from public.professional_report_reviews) then raise exception 'Reported member can read internal moderation notes'; end if;
+end $$;
+reset role;
 set local role anon;
 do $$ begin
  begin perform * from public.professional_messages;raise exception 'Anonymous read allowed';exception when insufficient_privilege then null;end;
