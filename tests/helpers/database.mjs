@@ -13,9 +13,9 @@ export async function testDatabase() {
     create function auth.uid() returns uuid language sql stable as $$
       select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid
     $$;
-    create function auth.jwt() returns jsonb language sql stable as $
+    create function auth.jwt() returns jsonb language sql stable as $jwt$
       select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}'::jsonb)
-    $;
+    $jwt$;
     grant usage on schema auth,storage,public to anon,authenticated;
     grant execute on function auth.uid(),auth.jwt() to anon,authenticated;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
