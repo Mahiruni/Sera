@@ -7360,20 +7360,22 @@ body:has(.auth-layout) .information-footer {
   }
 }
 
-/* Signed-in header clearance: avoid the extra blank band above workspace/profile.
-   The shell header is fixed; these page wrappers need one clearance, not a second spacer. */
+/* Shared top spacing for SERA pages: one fixed-header clearance.
+   Keep this centralized rather than patching employer/profile individually. */
+:root { --sera-header-content-offset: 82px; }
+@media (max-width: 800px) {
+  :root { --sera-header-content-offset: 74px; }
+}
 @media (max-width: 600px) {
-  .page.workspace-page,
-  .page.account-foundation {
-    padding-top: calc(66px + env(safe-area-inset-top, 0px));
+  :root {
+    --sera-header-content-offset: calc(66px + env(safe-area-inset-top, 0px));
   }
   .page.workspace-employer {
-    padding-top: calc(66px + env(safe-area-inset-top, 0px));
+    padding-top: var(--sera-header-content-offset);
   }
 }
 @media (min-width: 601px) {
-  .page.workspace-page,
-  .page.account-foundation {
-    padding-top: 82px;
+  .page.workspace-employer {
+    padding-top: var(--sera-header-content-offset);
   }
 }
