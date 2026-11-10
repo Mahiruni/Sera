@@ -41,14 +41,14 @@ export default async function Member({
   const sentStatus = sent?.data?.status;
   const receivedStatus = received?.data?.status;
   return (
-    <div className="container page social-page social-detail">
+    <div className="container page social-page social-detail sera-member-page">
       <SocialNav />
-      <header className="social-hero">
-        <p className="eyebrow">MEMBER STORIES</p>
+      <header className="social-hero sera-member-hero">
+        <p className="eyebrow">SERA PROFESSIONAL COMMUNITY</p>
         <MemberAvatar
           name={member?.name || "Sera member"}
           photo={member?.photo}
-          size={64}
+          size={84}
         />
         <h1>{member?.name || author?.full_name || "Sera community member"}</h1>
         <p>
@@ -57,7 +57,7 @@ export default async function Member({
         </p>
         {author?.location && <p>{author.location}</p>}
         {id !== user.id && member && (
-          <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+          <div className="sera-member-actions">
             {!blocked && <form action={changeProfessionalRelationship}>
               <input type="hidden" name="target" value={id} />
               <input type="hidden" name="action" value={following ? "unfollow" : "follow"} />
@@ -91,7 +91,7 @@ export default async function Member({
             </form>
           </div>
         )}
-        {id !== user.id && member && <details style={{ maxWidth: 420, margin: "18px auto", textAlign: "left" }}>
+        {id !== user.id && member && <details className="sera-member-report">
           <summary style={{ cursor: "pointer", fontSize: 13 }}>Report this member</summary>
           <form action={reportProfessionalMember} style={{ display: "grid", gap: 10, padding: 14, border: "1px solid #b9dce4", borderRadius: 16 }}>
             <input type="hidden" name="target" value={id} />
