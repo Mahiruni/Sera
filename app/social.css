@@ -501,3 +501,39 @@ button[disabled] {
   cursor: pointer;
   font-weight: 650;
 }
+
+
+/* Feed photos: display each upload at its natural aspect ratio.
+   No fixed 4:3 sizing, colored letterboxing, or padded image frame. */
+.social-images {
+  margin: 16px -28px 20px;
+  gap: 3px;
+  border-radius: 0;
+  background: transparent;
+}
+.social-images > a {
+  display: block;
+  min-width: 0;
+  line-height: 0;
+}
+.social-images img,
+.social-images-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.social-images-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+@media (max-width: 600px) {
+  .social-images {
+    margin-left: -28px;
+    margin-right: -28px;
+  }
+}
