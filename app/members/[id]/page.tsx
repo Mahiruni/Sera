@@ -4,6 +4,7 @@ import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
 import { uuid, pageNumber } from "@/lib/social/validation";
@@ -21,7 +22,7 @@ export default async function Member({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; preview?: string }>;
 }) {
   const { user } = await requiredProfile();
   const { id } = await params;
@@ -48,6 +49,7 @@ export default async function Member({
     }
     // "public" remains member-only until a separately reviewed anonymous route exists.
   }
+  const preview = id === user.id && (await searchParams).preview === "visitor";
   const page = pageNumber((await searchParams).page);
   const result = await loadSocialFeed({ authorId: id, page });
   const author = result.posts[0]?.author;
@@ -64,9 +66,14 @@ export default async function Member({
   const receivedStatus = received?.data?.status;
   return (
     <div className="container page social-page social-detail sera-member-page">
+      {preview && <aside className="sera-visitor-preview" role="status">
+        <div><strong>Visitor preview</strong><p>This is a member-view simulation. It does not yet verify anonymous or connection-restricted access.</p></div>
+        <Link href="/settings">Exit preview</Link>
+      </aside>}
       <SocialNav />
       <header className="social-hero sera-member-hero">
         <p className="eyebrow">SERA PROFESSIONAL COMMUNITY</p>
+        {id === user.id && !preview && <div className="sera-member-owner-tools"><Link href="/settings">Edit private profile</Link><Link href={`/members/${id}?preview=visitor`}>View as visitor</Link></div>}
         <MemberAvatar
           name={member?.name || author?.full_name || "Community member"}
           photo={member?.photo}
