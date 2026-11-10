@@ -38,18 +38,27 @@ export default async function ProfessionalInbox({ searchParams }: {
     ? await db.from("professional_message_attachments").select("message_id,storage_path,file_name,mime_type").in("message_id", messageIds)
     : { data: [] };
   const fileLinks = new Map<string, { name: string; url: string }[]>();
-  for (const attachment of attachments ?? []) {
-    const { data } = await db.storage.from("professional-message-files").createSignedUrl(attachment.storage_path, 300);
-    if (!data?.signedUrl) continue;
-    const links = fileLinks.get(attachment.message_id) ?? [];
-    links.push({ name: attachment.file_name, url: data.signedUrl });
-    fileLinks.set(attachment.message_id, links);
+  const attachmentRows = attachments ?? [];
+  if (attachmentRows.length) {
+    const { data: signed } = await db.storage.from("professional-message-files")
+      .createSignedUrls(attachmentRows.map((item) => item.storage_path), 300);
+    attachmentRows.forEach((attachment, index) => {
+      const url = signed?.[index]?.signedUrl;
+      if (!url) return;
+      const links = fileLinks.get(attachment.message_id) ?? [];
+      links.push({ name: attachment.file_name, url });
+      fileLinks.set(attachment.message_id, links);
+    });
   }
-  const { data: unreadMessages } = await db.from("professional_messages")
-    .select("conversation_id").is("read_at", null).neq("sender_id", user.id).limit(1000);
   const unreadCounts = new Map<string, number>();
-  for (const message of unreadMessages ?? []) {
-    unreadCounts.set(message.conversation_id, (unreadCounts.get(message.conversation_id) ?? 0) + 1);
+  if (conversations.length) {
+    const { data: unreadMessages } = await db.from("professional_messages")
+      .select("conversation_id")
+      .in("conversation_id", conversations.map((conversation) => conversation.id))
+      .is("read_at", null).neq("sender_id", user.id).limit(1000);
+    for (const message of unreadMessages ?? []) {
+      unreadCounts.set(message.conversation_id, (unreadCounts.get(message.conversation_id) ?? 0) + 1);
+    }
   }
   const { data: accepted } = await db.from("professional_connection_requests")
     .select("requester_id,recipient_id").eq("status", "accepted")
