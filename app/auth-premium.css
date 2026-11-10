@@ -567,3 +567,52 @@
     transition: none !important;
   }
 }
+
+/* Phase 2.5: auth experience aligned with the public SERA design language. */
+.ax {
+  --ax-primary: var(--sera-accent, #087f9f);
+  --ax-radius: var(--sera-radius-sm, 10px);
+}
+.ax-card {
+  border-radius: var(--sera-radius-lg, 22px);
+  border-color: var(--sera-border, #dce8ef);
+  box-shadow: var(--sera-shadow, 0 8px 28px rgba(21,61,79,.07));
+}
+.ax-head h1 {
+  font-size: clamp(23px, 3vw, 28px);
+  letter-spacing: -.045em;
+}
+.ax-head p { line-height: 1.65; }
+.ax :where(.ax-primary,.ax-sbtn,.ax-type-card) { min-height: 44px; }
+.ax :where(a,button,input,select):focus-visible {
+  outline: 3px solid var(--sera-focus, #0c8eb3);
+  outline-offset: 3px;
+}
+html[data-sera-theme="dark"] .ax {
+  --ax-ink: #e9f4f8;
+  --ax-muted: #bdd1dc;
+  --ax-line: #35515e;
+  --ax-ice: #203742;
+  --ax-primary: #67d2ed;
+}
+html[data-sera-theme="dark"] .ax-card,
+html[data-sera-theme="dark"] .ax-input input,
+html[data-sera-theme="dark"] .ax-type-card {
+  background: #162833;
+  color: #e9f4f8;
+  border-color: #35515e;
+}
+html[data-sera-theme="dark"] .ax-dial {
+  background-color: #162833;
+  color: #e9f4f8;
+  border-color: #35515e;
+}
+html[data-sera-theme="dark"] .ax-input input::placeholder { color: #a3b8c5; }
+@media (max-width: 420px) {
+  .ax { padding-inline: 12px; }
+  .ax-card { padding-inline: 18px; }
+  .ax-head p { max-width: 36ch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax,.ax * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
