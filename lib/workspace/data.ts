@@ -25,7 +25,7 @@ export type SavedPreview = {
 export async function workspaceData(
   userId: string,
   mode: WorkspaceMode,
-  options: { jobsPage?: number; appsPage?: number; status?: string } = {},
+  options: { jobsPage?: number; appsPage?: number; status?: string; stage?: string; candidate?: string } = {},
 ) {
   const c = await serverClient(),
     employer = mode === "employer";
@@ -35,9 +35,13 @@ export async function workspaceData(
       .select("*,jobs!inner(id,title,company,employer_id,status)", {
         count: "exact",
       });
-    return employer
-      ? q.eq("jobs.employer_id", userId)
-      : q.eq("candidate_id", userId);
+    if (!employer) return q.eq("candidate_id", userId);
+    let scoped = q.eq("jobs.employer_id", userId);
+    if (["applied", "screened", "interview", "offer", "rejected", "withdrawn"].includes(options.stage || ""))
+      scoped = scoped.eq("stage", options.stage!);
+    const term = (options.candidate || "").trim().slice(0, 80).replace(/[%_,()\\]/g, "");
+    if (term) scoped = scoped.or(`candidate_name.ilike.%${term}%,skills.ilike.%${term}%`);
+    return scoped;
   };
   let jobQuery = c
     .from("jobs")
@@ -77,7 +81,7 @@ export async function workspaceData(
             .order("created_at", { ascending: false })
             .limit(3),
       scopedMessages.order("created_at", { ascending: false }).limit(3),
-      appsQuery().in("stage", ["interview", "offer"]).limit(0),
+      c.from("applications").select("id,jobs!inner(employer_id)", { count: "exact", head: true }).eq(employer ? "jobs.employer_id" : "candidate_id", userId).in("stage", ["interview", "offer"]),
       employer
         ? c
             .from("jobs")

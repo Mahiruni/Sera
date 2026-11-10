@@ -90,6 +90,8 @@ export function WorkspaceOverview({
   jobsPage = 1,
   appsPage = 1,
   status = "all",
+  applicantStage = "all",
+  applicantSearch = "",
   statusError = false,
   linkedin = null,
 }: {
@@ -100,6 +102,8 @@ export function WorkspaceOverview({
   jobsPage?: number;
   appsPage?: number;
   status?: string;
+  applicantStage?: string;
+  applicantSearch?: string;
   statusError?: boolean;
   linkedin?: LinkedInBadge | null;
 }) {
@@ -143,7 +147,7 @@ export function WorkspaceOverview({
     },
   ];
   const pageHref = (section: "jobs" | "apps", page: number) =>
-    `/employer?jobsPage=${section === "jobs" ? page : jobsPage}&appsPage=${section === "apps" ? page : appsPage}&status=${status}#${section === "jobs" ? "postings" : "incoming"}`;
+    `/employer?jobsPage=${section === "jobs" ? page : jobsPage}&appsPage=${section === "apps" ? page : appsPage}&status=${status}&stage=${encodeURIComponent(applicantStage)}&candidate=${encodeURIComponent(applicantSearch)}#${section === "jobs" ? "postings" : "incoming"}`;
   return (
     <div className="container page workspace-page">
       <div className="ws-context">
@@ -307,6 +311,28 @@ export function WorkspaceOverview({
               title={employer ? "Incoming applications" : "Recent applications"}
               href={employer ? undefined : "/applications"}
             />
+            {employer && (
+              <form className="ws-filters" action="/employer" method="get">
+                <input type="hidden" name="status" value={status} />
+                <label>
+                  Recruitment stage
+                  <select name="stage" defaultValue={applicantStage}>
+                    <option value="all">All stages</option>
+                    <option value="applied">Submitted</option>
+                    <option value="screened">In review</option>
+                    <option value="interview">Interview</option>
+                    <option value="offer">Offer</option>
+                    <option value="rejected">Not selected</option>
+                    <option value="withdrawn">Withdrawn</option>
+                  </select>
+                </label>
+                <label>
+                  Candidate or skill
+                  <input name="candidate" maxLength={80} defaultValue={applicantSearch} placeholder="Name or skill" />
+                </label>
+                <button className="button secondary" type="submit">Filter applicants</button>
+              </form>
+            )}
             {data.apps.error ? (
               <WorkspaceEmpty
                 title="Applications could not be loaded"

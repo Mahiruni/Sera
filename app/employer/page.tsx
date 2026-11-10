@@ -15,6 +15,8 @@ export default async function Page({
     jobsPage?: string;
     appsPage?: string;
     status?: string;
+    stage?: string;
+    candidate?: string;
     error?: string;
   }>;
 }) {
@@ -34,6 +36,8 @@ export default async function Page({
     jobsPage,
     appsPage,
     status,
+    stage: p.stage,
+    candidate: p.candidate,
   });
   return (
     <WorkspaceOverview
@@ -44,6 +48,8 @@ export default async function Page({
       jobsPage={jobsPage}
       appsPage={appsPage}
       status={status}
+      applicantStage={p.stage || "all"}
+      applicantSearch={(p.candidate || "").slice(0, 80)}
       statusError={!!p.error}
     />
   );

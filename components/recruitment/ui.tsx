@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, MapPin, BriefcaseBusiness } from "lucide-react";
+import { ArrowUpRight, MapPin, BriefcaseBusiness, CalendarDays } from "lucide-react";
 import { salary, type LiveJob } from "@/lib/recruitment/data";
 export function MarketNav() {
   return (
@@ -12,6 +12,14 @@ export function MarketNav() {
   );
 }
 export function LiveJobCard({ job }: { job: LiveJob }) {
+  const posted = new Date(job.created_at);
+  const postedLabel = Number.isNaN(posted.getTime())
+    ? null
+    : posted.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
   return (
     <article className="panel live-job">
       <div className="live-job-top">
@@ -28,6 +36,13 @@ export function LiveJobCard({ job }: { job: LiveJob }) {
         <MapPin size={14} />
         {job.location} · {job.work_type}
       </span>
+      {postedLabel && (
+        <p className="live-location">
+          <CalendarDays size={14} aria-hidden="true" />
+          <span>Posted {postedLabel}</span>
+        </p>
+      )}
+      <p className="subtext">{job.description.length > 150 ? job.description.slice(0, 147).trimEnd() + "…" : job.description}</p>
       <footer>
         <strong>{salary(job)}</strong>
         <Link href={"/jobs/" + job.id} aria-label={"View " + job.title}>

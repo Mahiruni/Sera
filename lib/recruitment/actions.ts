@@ -110,7 +110,7 @@ export async function sendApplicationMessage(
   return { success: true, message: "Message sent." };
 }
 export async function changeStage(data: FormData) {
-  await requiredProfile();
+  const { user } = await requiredProfile();
   const id = data.get("application_id"),
     stage = String(data.get("stage"));
   if (
@@ -120,10 +120,22 @@ export async function changeStage(data: FormData) {
   )
     return;
   const c = await serverClient();
+  const existing = await c
+    .from("applications")
+    .select("candidate_id,stage,jobs!inner(employer_id)")
+    .eq("id", id)
+    .maybeSingle();
+  if (existing.error || !existing.data) return;
+  const job = existing.data.jobs as unknown as { employer_id: string } | null;
+  const isCandidate = existing.data.candidate_id === user.id;
+  const isEmployer = job?.employer_id === user.id;
+  if (existing.data.stage === "withdrawn" ||
+      (stage === "withdrawn" ? !isCandidate : !isEmployer)) return;
   const r = await c
     .from("applications")
     .update({ stage })
     .eq("id", id)
+    .eq("stage", existing.data.stage)
     .select("id")
     .single();
   if (r.error) redirect("/applications/" + id + "?error=stage");
@@ -132,7 +144,7 @@ export async function changeStage(data: FormData) {
   redirect("/applications/" + id + "?updated=stage");
 }
 export async function changeJobStatus(data: FormData) {
-  await requiredProfile();
+  const { user } = await requiredProfile();
   const id = data.get("job_id"),
     status = data.get("status");
   if (!uuid(id) || (status !== "open" && status !== "closed")) return;
@@ -141,6 +153,7 @@ export async function changeJobStatus(data: FormData) {
     .from("jobs")
     .update({ status })
     .eq("id", id)
+    .eq("employer_id", user.id)
     .select("id")
     .single();
   if (r.error) redirect(employerReturn(data, true));

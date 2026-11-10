@@ -15,13 +15,17 @@ export default async function Page({
   searchParams: Promise<{
     q?: string;
     location?: string;
+    company?: string;
     type?: string;
+    sort?: string;
     page?: string;
   }>;
 }) {
   const p = await searchParams;
   const q = (p.q || "").trim().slice(0, 100),
     location = (p.location || "").trim().slice(0, 100),
+    company = (p.company || "").trim().slice(0, 100),
+    sort = p.sort === "oldest" ? "oldest" : "newest",
     type = workTypes.includes(p.type as (typeof workTypes)[number])
       ? p.type
       : "";
@@ -29,23 +33,33 @@ export default async function Page({
   const c = await serverClient();
   let query = c
     .from("jobs")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", "open")
-    .order("created_at", { ascending: false })
-    .range((page - 1) * 20, page * 20);
+    .order("created_at", { ascending: sort === "oldest" })
+    .order("id", { ascending: true })
+    .range((page - 1) * 20, page * 20 + 19);
   if (q) query = query.ilike("title", "%" + q.replace(/[%_\\]/g, "") + "%");
   if (location)
     query = query.ilike(
       "location",
       "%" + location.replace(/[%_\\]/g, "") + "%",
     );
+  if (company)
+    query = query.ilike(
+      "company",
+      "%" + company.replace(/[%_\\]/g, "") + "%",
+    );
   if (type) query = query.eq("work_type", type);
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   const jobs = (data || []) as LiveJob[];
+  const total = count ?? 0;
+  const hasNext = page * 20 < total;
   const next = new URLSearchParams({
     q,
     location,
+    company,
     type: type || "",
+    sort,
     page: String(page + 1),
   });
   return (
@@ -84,12 +98,28 @@ export default async function Page({
           />
         </label>
         <label>
+          Company
+          <input
+            name="company"
+            defaultValue={company}
+            placeholder="Search employers"
+            maxLength={100}
+          />
+        </label>
+        <label>
           Work type
           <select name="type" defaultValue={type}>
             <option value="">All types</option>
             {workTypes.map((t) => (
               <option key={t}>{t}</option>
             ))}
+          </select>
+        </label>
+        <label>
+          Sort by
+          <select name="sort" defaultValue={sort}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
           </select>
         </label>
         <button className="button">Search</button>
@@ -99,6 +129,13 @@ export default async function Page({
         verified employers. Never pay to apply or send sensitive documents
         through messages.
       </p>
+      {!error && (
+        <p className="live-disclosure" role="status">
+          {total === 0
+            ? "No matching opportunities"
+            : `${total.toLocaleString()} ${total === 1 ? "opportunity" : "opportunities"} · Page ${page} of ${Math.max(1, Math.ceil(total / 20))}`}
+        </p>
+      )}
       {error ? (
         <Empty title="Jobs could not be loaded">
           <p>Please refresh and try again.</p>
@@ -112,7 +149,7 @@ export default async function Page({
       ) : (
         <Empty title="No open jobs found">
           <p>
-            {q || location || type
+            {q || location || company || type
               ? "Try a different search."
               : "Employers can publish the first opportunity here."}
           </p>
@@ -129,7 +166,9 @@ export default async function Page({
               new URLSearchParams({
                 q,
                 location,
+                company,
                 type: type || "",
+                sort,
                 page: String(page - 1),
               })
             }
@@ -137,7 +176,7 @@ export default async function Page({
             ← Previous
           </Link>
         )}
-        {jobs.length > 20 && <Link href={"/jobs?" + next}>Next →</Link>}
+        {hasNext && <Link href={"/jobs?" + next}>Next →</Link>}
       </nav>
       <Link className="inline-link" href="/demo/jobs">
         Explore sample jobs separately →
