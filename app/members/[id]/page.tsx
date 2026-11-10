@@ -31,6 +31,13 @@ export default async function Member({
   // Check audience before loading member cards, posts, or profile metadata.
   // Missing preferences default to signed-in members. Errors fail closed.
   if (id !== user.id) {
+    const { data: blockedRelationship, error: blockError } = await db
+      .from("professional_blocks")
+      .select("blocker_id")
+      .or(`and(blocker_id.eq.${id},blocked_id.eq.${user.id}),and(blocker_id.eq.${user.id},blocked_id.eq.${id})`)
+      .limit(1)
+      .maybeSingle();
+    if (blockError || blockedRelationship) notFound();
     const { data: preference, error: preferenceError } = await db
       .from("professional_profile_visibility")
       .select("visibility")
