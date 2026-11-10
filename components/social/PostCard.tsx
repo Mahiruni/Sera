@@ -7,7 +7,6 @@ import {
   ArrowUpRight,
   Pencil,
   Trash2,
-  ThumbsUp,
 } from "lucide-react";
 import {
   toggleLikePost,
@@ -103,7 +102,7 @@ export function PostCard({
             aria-pressed={post.liked}
             aria-label={`${post.liked ? "Unlike" : "Like"} post, ${post.like_count} likes`}
           >
-            <span className="social-reaction-icons" aria-hidden="true"><Heart size={15} fill="currentColor" /><ThumbsUp size={14} fill="currentColor" /></span>
+            <span className="social-reaction-icons" aria-hidden="true"><Heart size={15} fill="currentColor" /></span>
             <span className="social-action-count">{post.like_count}</span>
           </Submit>
         </ActionForm>
