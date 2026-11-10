@@ -1,0 +1,61 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { currentUser, serverClient } from "@/lib/supabase/server";
+
+type NetworkAction = "follow" | "unfollow" | "request" | "accept" | "decline" | "withdraw" | "block" | "unblock";
+const validId = (id: unknown): id is string =>
+  typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+export async function changeProfessionalRelationship(form: FormData) {
+  const user = await currentUser();
+  if (!user?.email_confirmed_at) return;
+  const action = form.get("action") as NetworkAction;
+  const target = form.get("target");
+  if (!validId(target) || target === user.id) return;
+  const db = await serverClient();
+  if (action === "block") {
+    await db.from("professional_blocks").upsert({ blocker_id: user.id, blocked_id: target }, { onConflict: "blocker_id,blocked_id", ignoreDuplicates: true });
+  } else if (action === "unblock") {
+    await db.from("professional_blocks").delete().eq("blocker_id", user.id).eq("blocked_id", target);
+  } else if (action === "follow") {
+    await db.from("professional_follows").upsert(
+      { follower_id: user.id, followed_id: target },
+      { onConflict: "follower_id,followed_id", ignoreDuplicates: true },
+    );
+  } else if (action === "unfollow") {
+    await db.from("professional_follows").delete()
+      .eq("follower_id", user.id).eq("followed_id", target);
+  } else if (action === "request") {
+    await db.from("professional_connection_requests").insert({
+      requester_id: user.id, recipient_id: target,
+    });
+  } else if (action === "accept" || action === "decline") {
+    await db.from("professional_connection_requests")
+      .update({ status: action === "accept" ? "accepted" : "declined" })
+      .eq("requester_id", target).eq("recipient_id", user.id).eq("status", "pending");
+  } else if (action === "withdraw") {
+    await db.from("professional_connection_requests")
+      .update({ status: "withdrawn" })
+      .eq("requester_id", user.id).eq("recipient_id", target).eq("status", "pending");
+  }
+  revalidatePath("/connections");
+  revalidatePath("/discover");
+  revalidatePath("/network/messages");
+  revalidatePath("/members/" + target);
+}
+
+const reportReasons = new Set(["spam", "harassment", "impersonation", "inappropriate", "other"]);
+export async function reportProfessionalMember(form: FormData) {
+  const user = await currentUser();
+  const target = form.get("target");
+  const reason = form.get("reason");
+  const details = form.get("details");
+  if (!user?.email_confirmed_at || !validId(target) || target === user.id ||
+      typeof reason !== "string" || !reportReasons.has(reason) ||
+      typeof details !== "string" || details.length > 1000) return;
+  const db = await serverClient();
+  await db.from("professional_reports").insert({
+    reporter_id: user.id, reported_id: target, reason, details: details.trim(),
+  });
+  revalidatePath("/members/" + target);
+}

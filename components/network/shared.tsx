@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { currentUser, serverClient } from "@/lib/supabase/server";
 export type MemberCard = {
   id: string;
   full_name: string;
@@ -34,7 +35,17 @@ export function NetworkBrand() {
     </Link>
   );
 }
-export function NetworkToolbar({
+async function NotificationBell(){
+  const user=await currentUser();
+  let unread=0;
+  if(user){
+    const db=await serverClient();
+    const {count}=await db.from("professional_notifications").select("id",{count:"exact",head:true}).eq("recipient_id",user.id).is("read_at",null);
+    unread=count??0;
+  }
+  return <Link href="/notifications" className="sera-toolbar-notifications" aria-label={unread?`Open notifications, ${unread} unread`:"Open notifications"} title="Notifications"><Bell size={19} aria-hidden="true" />{unread>0&&<span className="sera-toolbar-notification-badge">{unread>99?"99+":unread}</span>}</Link>;
+}
+export async function NetworkToolbar({
   query = "",
   discover = false,
 }: {
@@ -61,6 +72,7 @@ export function NetworkToolbar({
           <ArrowRight size={17} />
         </button>
       </form>
+      <NotificationBell />
       <ThemeToggle />
     </div>
   );
@@ -167,9 +179,13 @@ export function NetworkLinks() {
         <Bookmark size={18} />
         Saved for later
       </Link>
-      <Link href="/messages">
+      <Link href="/notifications">
+        <Bell size={18} />
+        Notifications
+      </Link>
+      <Link href="/network/messages">
         <MessageCircle size={18} />
-        Application messages
+        Professional messages
       </Link>
     </nav>
   );
