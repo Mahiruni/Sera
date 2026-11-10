@@ -57,13 +57,13 @@ export default async function ProfessionalInbox({ searchParams }: {
   const candidates = [...new Set((accepted ?? []).map((r) => r.requester_id === user.id ? r.recipient_id : r.requester_id))].filter((id) => !existing.has(id));
   const candidatePeople = await memberCards(candidates);
   return (
-    <main className="sera-network network-app" style={{ maxWidth: 1100, margin: "auto", padding: "24px 16px 120px" }}>
+    <main className="sera-network network-app" className="sera-inbox">
       <p className="network-kicker">PRIVATE PROFESSIONAL CONVERSATIONS</p>
       <h1 style={{ fontSize: "clamp(2rem, 5vw, 3rem)", letterSpacing: "-.04em" }}>Your messages</h1>
       <InboxRefresh />
       <p>Conversations are visible only to their participants. <Link href="/connections">Manage connections</Link></p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 310px), 1fr))", gap: 18 }}>
-        <aside aria-label="Conversations" style={{ border: "1px solid #d5e9ef", borderRadius: 22, padding: 16 }}>
+      <div className="sera-inbox-layout">
+        <aside aria-label="Conversations" className="sera-inbox-sidebar">
           <h2>Inbox ({conversations.length})</h2>
           {conversations.map((c) => {
             const id = c.member_a === user.id ? c.member_b : c.member_a;
@@ -88,9 +88,9 @@ export default async function ProfessionalInbox({ searchParams }: {
             </form>)}
           </>}
         </aside>
-        <section aria-label="Message thread" style={{ border: "1px solid #d5e9ef", borderRadius: 22, padding: 18, minHeight: 350 }}>
+        <section aria-label="Message thread" className="sera-inbox-thread">
           {selected ? <>
-            <h2>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</h2>
+            <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</h2><small>Private professional conversation</small></div></div>
             <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
             <form method="get" action="/network/messages" role="search" style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <input type="hidden" name="thread" value={selected.id} />
@@ -98,15 +98,15 @@ export default async function ProfessionalInbox({ searchParams }: {
               <button className="network-button" type="submit">Search</button>
               {search && <Link href={"/network/messages?thread=" + selected.id} style={{ alignSelf: "center" }}>Clear</Link>}
             </form>
-            <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12, margin: "20px 0" }}>
-              {[...(messages ?? [])].reverse().map((m) => <article key={m.id} style={{ maxWidth: "88%", alignSelf: m.sender_id === user.id ? "flex-end" : "flex-start", padding: "12px 16px", borderRadius: 18, background: m.sender_id === user.id ? "#dff6fa" : "#f0f3f5", color: "#173d4b", overflowWrap: "anywhere" }}>
+            <div aria-live="polite" className="sera-inbox-messages">
+              {[...(messages ?? [])].reverse().map((m) => <article key={m.id} className={m.sender_id === user.id ? "sera-message-bubble is-mine" : "sera-message-bubble"}>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{m.body}</p>
                 {(fileLinks.get(m.id) ?? []).map((file) => <a key={file.url} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontWeight: 700, marginTop: 8, textDecoration: "underline" }}>📎 {file.name}</a>)}
                 <small>{new Date(m.created_at).toLocaleString()} {m.sender_id === user.id && m.read_at ? "· Read" : ""}</small>
               </article>)}
               {!messages?.length && <p>{search ? "No matching messages found." : "Say hello and start a meaningful professional conversation."}</p>}
             </div>
-            <form action={sendProfessionalMessage} encType="multipart/form-data" style={{ display: "grid", gap: 8 }}>
+            <form action={sendProfessionalMessage} encType="multipart/form-data" className="sera-inbox-composer">
               <input type="hidden" name="conversation" value={selected.id} />
               <ConversationTyping conversation={selected.id} />
               <label htmlFor="professional-attachment">Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
