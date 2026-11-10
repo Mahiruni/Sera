@@ -14,7 +14,7 @@ export default async function ModerationQueue({searchParams}:{
     .order("created_at",{ascending:false}).limit(100);
   if (status && ["open","reviewing","resolved","dismissed"].includes(status)) query=query.eq("status",status);
   const {data:reports,error}=await query;
-  const {data:reviews}=await db.from("professional_report_reviews").select("report_id,note").in("report_id",(reports??[]).map(r=>r.id));
+  const {data:reviews}=(reports??[]).length ? await db.from("professional_report_reviews").select("report_id,note").in("report_id",(reports??[]).map(r=>r.id)) : {data:[]};
   const reviewNotes=new Map((reviews??[]).map(r=>[r.report_id,r.note]));
   return <main className="sera-network network-app" style={{maxWidth:1050,margin:"auto",padding:"28px 16px 120px"}}>
     <p className="network-kicker">TRUST & SAFETY</p>
