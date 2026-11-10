@@ -16,7 +16,7 @@ test.beforeAll(() => {
 async function signIn(browser: Browser, credentials: { email?: string; password?: string }) {
   const context = await browser.newContext({ baseURL });
   const page = await context.newPage();
-  await page.goto("/signin");
+  await page.goto("/sign-in");
   // The login form must expose accessible email and password fields.
   await page.getByRole("textbox", { name: /email/i }).fill(credentials.email!);
   await page.locator('input[type="password"]').fill(credentials.password!);
