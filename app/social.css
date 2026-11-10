@@ -619,3 +619,72 @@ button[disabled] {
   .social-post-actions button,
   .social-post-actions > a { gap: 4px; font-size: 0.75rem; }
 }
+
+/* Photo viewer, caption expansion and reduced-motion accessibility. */
+.social-image-link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: left;
+}
+.social-image-link:focus-visible,
+.social-caption-toggle:focus-visible,
+.social-lightbox button:focus-visible {
+  outline: 3px solid #39c9ec;
+  outline-offset: 3px;
+}
+.social-caption-toggle {
+  color: #39b8d7;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 0;
+  min-height: 40px;
+}
+.social-lightbox {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  background: rgba(3, 11, 18, .96);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 12px;
+}
+.social-lightbox-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 85dvh;
+  object-fit: contain;
+}
+.social-lightbox button {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #6d8497;
+  border-radius: 50%;
+  color: white;
+  background: #172b3edb;
+  cursor: pointer;
+}
+.social-lightbox-close { top: calc(18px + env(safe-area-inset-top, 0px)); right: 16px; }
+.social-lightbox-prev { left: 10px; top: 50%; transform: translateY(-50%); }
+.social-lightbox-next { right: 10px; top: 50%; transform: translateY(-50%); }
+.social-lightbox-count {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  color: white;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .social-post-actions *, .social-lightbox * { animation: none !important; transition: none !important; }
+}
