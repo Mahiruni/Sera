@@ -7359,3 +7359,21 @@ body:has(.auth-layout) .information-footer {
     line-height: 1.45;
   }
 }
+
+/* Signed-in header clearance: avoid the extra blank band above workspace/profile.
+   The shell header is fixed; these page wrappers need one clearance, not a second spacer. */
+@media (max-width: 600px) {
+  .page.workspace-page,
+  .page.account-foundation {
+    padding-top: calc(66px + env(safe-area-inset-top, 0px));
+  }
+  .page.workspace-employer {
+    padding-top: calc(66px + env(safe-area-inset-top, 0px));
+  }
+}
+@media (min-width: 601px) {
+  .page.workspace-page,
+  .page.account-foundation {
+    padding-top: 82px;
+  }
+}
