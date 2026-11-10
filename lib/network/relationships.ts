@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 
-type NetworkAction = "follow" | "unfollow" | "request" | "accept" | "decline" | "withdraw";
+type NetworkAction = "follow" | "unfollow" | "request" | "accept" | "decline" | "withdraw" | "block" | "unblock";
 const validId = (id: unknown): id is string =>
   typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
@@ -13,7 +13,11 @@ export async function changeProfessionalRelationship(form: FormData) {
   const target = form.get("target");
   if (!validId(target) || target === user.id) return;
   const db = await serverClient();
-  if (action === "follow") {
+  if (action === "block") {
+    await db.from("professional_blocks").upsert({ blocker_id: user.id, blocked_id: target }, { onConflict: "blocker_id,blocked_id", ignoreDuplicates: true });
+  } else if (action === "unblock") {
+    await db.from("professional_blocks").delete().eq("blocker_id", user.id).eq("blocked_id", target);
+  } else if (action === "follow") {
     await db.from("professional_follows").upsert(
       { follower_id: user.id, followed_id: target },
       { onConflict: "follower_id,followed_id", ignoreDuplicates: true },
@@ -36,4 +40,6 @@ export async function changeProfessionalRelationship(form: FormData) {
   }
   revalidatePath("/connections");
   revalidatePath("/discover");
+  revalidatePath("/network/messages");
+  revalidatePath("/members/" + target);
 }
