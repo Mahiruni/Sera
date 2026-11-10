@@ -7388,3 +7388,16 @@ body:has(.auth-layout) .information-footer {
 .sera-member-owner-tools { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin:10px auto 18px; }
 .sera-member-owner-tools a:last-child { background:#e5f4f6; color:#087184; }
 .sera-visitor-preview a:focus-visible,.sera-member-owner-tools a:focus-visible { outline:3px solid #12a3bc; outline-offset:3px; }
+
+/* Opt-in professional public portfolio */
+.sera-public-portfolio { max-width: 850px; padding-bottom: 120px; }
+.sera-public-portfolio-hero { padding: 34px 26px; border-radius: 25px; background: linear-gradient(135deg,#e5f8f9,#fff); border: 1px solid #cde9ed; text-align:center; }
+.sera-public-portfolio-hero h1 { margin: 12px 0 8px; font-size: clamp(28px,5vw,46px); letter-spacing:-.04em; color:#103e4a; }
+.sera-public-portfolio-monogram { display:grid; place-items:center; width:82px; height:82px; margin:20px auto 0; border-radius:50%; background:#087f92; color:#fff; font-size:36px; font-weight:750; }
+.sera-public-portfolio-headline { font-size:17px; color:#235869; }
+.sera-public-portfolio-location { font-size:13px; color:#4d7580; }
+.sera-public-portfolio-section { margin-top:17px; padding:24px; border:1px solid #d7e9ed; border-radius:20px; background:#fff; }
+.sera-public-portfolio-section h2 { margin:0 0 12px; color:#0b6072; font-size:17px; }
+.sera-public-portfolio-section p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
+.sera-public-portfolio-footnote { margin:20px 4px; font-size:12px; color:#53737a; }
+@media(max-width:600px) { .sera-public-portfolio-hero { padding:26px 16px; } .sera-public-portfolio-section { padding:18px; } }
