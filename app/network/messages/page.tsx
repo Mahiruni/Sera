@@ -30,6 +30,18 @@ export default async function ProfessionalInbox({ searchParams }: {
         return query.order("created_at", { ascending: false }).limit(100);
       })()
     : { data: [] };
+  const messageIds = (messages ?? []).map((m) => m.id);
+  const { data: attachments } = messageIds.length
+    ? await db.from("professional_message_attachments").select("message_id,storage_path,file_name,mime_type").in("message_id", messageIds)
+    : { data: [] };
+  const fileLinks = new Map<string, { name: string; url: string }[]>();
+  for (const attachment of attachments ?? []) {
+    const { data } = await db.storage.from("professional-message-files").createSignedUrl(attachment.storage_path, 300);
+    if (!data?.signedUrl) continue;
+    const links = fileLinks.get(attachment.message_id) ?? [];
+    links.push({ name: attachment.file_name, url: data.signedUrl });
+    fileLinks.set(attachment.message_id, links);
+  }
   const { data: unreadMessages } = await db.from("professional_messages")
     .select("conversation_id").is("read_at", null).neq("sender_id", user.id).limit(1000);
   const unreadCounts = new Map<string, number>();
@@ -86,14 +98,17 @@ export default async function ProfessionalInbox({ searchParams }: {
             <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12, margin: "20px 0" }}>
               {[...(messages ?? [])].reverse().map((m) => <article key={m.id} style={{ maxWidth: "88%", alignSelf: m.sender_id === user.id ? "flex-end" : "flex-start", padding: "12px 16px", borderRadius: 18, background: m.sender_id === user.id ? "#dff6fa" : "#f0f3f5", color: "#173d4b", overflowWrap: "anywhere" }}>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{m.body}</p>
+                {(fileLinks.get(m.id) ?? []).map((file) => <a key={file.url} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontWeight: 700, marginTop: 8, textDecoration: "underline" }}>📎 {file.name}</a>)}
                 <small>{new Date(m.created_at).toLocaleString()} {m.sender_id === user.id && m.read_at ? "· Read" : ""}</small>
               </article>)}
               {!messages?.length && <p>{search ? "No matching messages found." : "Say hello and start a meaningful professional conversation."}</p>}
             </div>
-            <form action={sendProfessionalMessage} style={{ display: "grid", gap: 8 }}>
+            <form action={sendProfessionalMessage} encType="multipart/form-data" style={{ display: "grid", gap: 8 }}>
               <input type="hidden" name="conversation" value={selected.id} />
               <label htmlFor="professional-message">Your message</label>
-              <textarea id="professional-message" name="body" maxLength={4000} required rows={3} placeholder="Write a thoughtful message…" style={{ width: "100%", padding: 12, borderRadius: 14, border: "1px solid #a8d5df" }} />
+              <textarea id="professional-message" name="body" maxLength={4000} rows={3} placeholder="Write a thoughtful message…" style={{ width: "100%", padding: 12, borderRadius: 14, border: "1px solid #a8d5df" }} />
+              <label htmlFor="professional-attachment">Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
+              <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
               <button type="submit" className="network-button">Send message</button>
             </form>
             <form action={markProfessionalMessagesRead} style={{ marginTop: 12 }}>
