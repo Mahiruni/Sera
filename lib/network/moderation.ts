@@ -15,8 +15,13 @@ export async function reviewProfessionalReport(form: FormData) {
       typeof note !== "string" || note.length > 2000) return;
   const db = await serverClient();
   const { error } = await db.from("professional_reports").update({
-    status, moderator_note: note.trim(), reviewed_by: user.id,
+    status, reviewed_by: user.id,
     reviewed_at: new Date().toISOString(),
   }).eq("id", id);
-  if (!error) revalidatePath("/admin/moderation");
+  if (!error) {
+    await db.from("professional_report_reviews").upsert({
+      report_id: id, moderator_id: user.id, note: note.trim(), updated_at: new Date().toISOString(),
+    }, { onConflict: "report_id" });
+    revalidatePath("/admin/moderation");
+  }
 }
