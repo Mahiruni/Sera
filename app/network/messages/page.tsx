@@ -57,7 +57,7 @@ export default async function ProfessionalInbox({ searchParams }: {
   const candidates = [...new Set((accepted ?? []).map((r) => r.requester_id === user.id ? r.recipient_id : r.requester_id))].filter((id) => !existing.has(id));
   const candidatePeople = await memberCards(candidates);
   return (
-    <main className="sera-network network-app" className="sera-inbox">
+    <main className="sera-network network-app sera-inbox">
       <p className="network-kicker">PRIVATE PROFESSIONAL CONVERSATIONS</p>
       <h1 style={{ fontSize: "clamp(2rem, 5vw, 3rem)", letterSpacing: "-.04em" }}>Your messages</h1>
       <InboxRefresh />
