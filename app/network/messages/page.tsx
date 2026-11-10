@@ -1,3 +1,4 @@
+import { InboxRefresh } from "@/components/network/inbox-refresh";
 import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -24,6 +25,12 @@ export default async function ProfessionalInbox({ searchParams }: {
         .eq("conversation_id", selected.id)
         .order("created_at", { ascending: false }).limit(100)
     : { data: [] };
+  const { data: unreadMessages } = await db.from("professional_messages")
+    .select("conversation_id").is("read_at", null).neq("sender_id", user.id).limit(1000);
+  const unreadCounts = new Map<string, number>();
+  for (const message of unreadMessages ?? []) {
+    unreadCounts.set(message.conversation_id, (unreadCounts.get(message.conversation_id) ?? 0) + 1);
+  }
   const { data: accepted } = await db.from("professional_connection_requests")
     .select("requester_id,recipient_id").eq("status", "accepted")
     .or("requester_id.eq." + user.id + ",recipient_id.eq." + user.id).limit(100);
@@ -34,6 +41,7 @@ export default async function ProfessionalInbox({ searchParams }: {
     <main className="sera-network network-app" style={{ maxWidth: 1100, margin: "auto", padding: "24px 16px 120px" }}>
       <p className="network-kicker">PRIVATE PROFESSIONAL CONVERSATIONS</p>
       <h1 style={{ fontSize: "clamp(2rem, 5vw, 3rem)", letterSpacing: "-.04em" }}>Your messages</h1>
+      <InboxRefresh />
       <p>Conversations are visible only to their participants. <Link href="/connections">Manage connections</Link></p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 310px), 1fr))", gap: 18 }}>
         <aside aria-label="Conversations" style={{ border: "1px solid #d5e9ef", borderRadius: 22, padding: 16 }}>
@@ -47,6 +55,7 @@ export default async function ProfessionalInbox({ searchParams }: {
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, background: selected?.id === c.id ? "#e4f7fb" : "transparent", color: "#134c61", marginBottom: 6 }}>
                 <MemberAvatar name={person?.name ?? "Sera member"} photo={person?.photo} />
                 <strong>{person?.name ?? "Sera member"}</strong>
+                {Boolean(unreadCounts.get(c.id)) && <span aria-label={`${unreadCounts.get(c.id)} unread messages`} style={{ marginLeft: "auto", borderRadius: 99, padding: "3px 9px", background: "#087c9b", color: "white", fontSize: 12 }}>{unreadCounts.get(c.id)}</span>}
               </Link>
             );
           })}
