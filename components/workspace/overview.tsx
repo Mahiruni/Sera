@@ -149,7 +149,7 @@ export function WorkspaceOverview({
   const pageHref = (section: "jobs" | "apps", page: number) =>
     `/employer?jobsPage=${section === "jobs" ? page : jobsPage}&appsPage=${section === "apps" ? page : appsPage}&status=${status}&stage=${encodeURIComponent(applicantStage)}&candidate=${encodeURIComponent(applicantSearch)}#${section === "jobs" ? "postings" : "incoming"}`;
   return (
-    <div className="container page workspace-page">
+    <div className={`container page workspace-page${employer ? " workspace-employer" : ""}`}>
       <div className="ws-context">
         <span>
           <LayoutDashboard size={14} />
