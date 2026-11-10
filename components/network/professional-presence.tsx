@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 export function ProfessionalPresence({ member }: { member: string }) {
   const [online, setOnline] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [sharing, setSharing] = useState(false);
   useEffect(() => {
     let active = true;
     const poll = async () => {
@@ -17,11 +17,21 @@ export function ProfessionalPresence({ member }: { member: string }) {
       void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"connections"})}).catch(()=>{});
     };
     void poll();
-    heartbeat();
+
     const a=window.setInterval(()=>{void poll();},15000);
-    const b=window.setInterval(heartbeat,45000);
+
     document.addEventListener("visibilitychange",poll);
-    return ()=>{active=false;window.clearInterval(a);window.clearInterval(b);document.removeEventListener("visibilitychange",poll);};
+    return ()=>{active=false;window.clearInterval(a);document.removeEventListener("visibilitychange",poll);};
   },[member]);
-  return <span role="status" aria-label={online?"Online now":"Offline or hidden"} style={{fontSize:12,color:online?"#087c73":"#68838c"}}>{online?"● Online now":"Offline or hidden"}</span>;
+  useEffect(() => {
+    if (!sharing) return;
+    const heartbeat = () => {
+      if (document.visibilityState !== "visible") return;
+      void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"connections"})}).catch(()=>{});
+    };
+    heartbeat();
+    const interval=window.setInterval(heartbeat,45000);
+    return ()=>window.clearInterval(interval);
+  },[sharing]);
+  return <span style={{display:"inline-flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><span role="status" aria-label={online?"Online now":"Offline or hidden"} style={{fontSize:12,color:online?"#087c73":"#68838c"}}>{online?"● Online now":"Offline or hidden"}</span><button type="button" onClick={()=>{const next=!sharing;setSharing(next);if(!next)void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"hidden"})}).catch(()=>{});}} style={{border:"1px solid #b4d8df",borderRadius:12,padding:"5px 10px",fontSize:12}}>{sharing?"Hide my online status":"Share my online status"}</button></span>;
 }
