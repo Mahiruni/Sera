@@ -230,3 +230,26 @@ body:has(.auth-layout) .footer-dock {
 @media (prefers-reduced-motion: reduce) {
   .footer-dock a.active .dock-icon { animation: none !important; }
 }
+
+/* Mobile polish: compact floating dock without sacrificing touch targets. */
+@media (max-width: 520px) {
+  .footer-dock {
+    min-height: 64px !important;
+    padding: 5px 8px !important;
+    bottom: calc(9px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .footer-dock a {
+    min-height: 52px !important;
+    padding: 4px 2px !important;
+    gap: 2px !important;
+  }
+  .footer-dock a .dock-icon {
+    height: 25px !important;
+  }
+  body:has(.sera-network) {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+  }
+  .sera-network {
+    scroll-padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+  }
+}
