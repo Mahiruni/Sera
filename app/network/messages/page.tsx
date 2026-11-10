@@ -23,7 +23,7 @@ export default async function ProfessionalInbox({ searchParams }: {
   const params = await searchParams;
   const requested = params.thread;
   const search = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
-  const selected = conversations.find((c) => c.id === requested) ?? conversations[0];
+  const selected = requested ? conversations.find((c) => c.id === requested) : conversations[0];
   const { data: messages } = selected
     ? await (() => {
         let query = db.from("professional_messages")
@@ -91,7 +91,7 @@ export default async function ProfessionalInbox({ searchParams }: {
         </aside>
         <section aria-label="Message thread" className="sera-inbox-thread">
           {selected ? <>
-            <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</h2><small>Private professional conversation</small></div></div>
+            <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2><Link href={"/members/" + (selected.member_a === user.id ? selected.member_b : selected.member_a)}>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</Link></h2><small>Private professional conversation</small></div></div>
             <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
             <form method="get" action="/network/messages" role="search" style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <input type="hidden" name="thread" value={selected.id} />
@@ -110,8 +110,6 @@ export default async function ProfessionalInbox({ searchParams }: {
             <form action={sendProfessionalMessage} encType="multipart/form-data" className="sera-inbox-composer">
               <input type="hidden" name="conversation" value={selected.id} />
               <ConversationTyping conversation={selected.id} />
-              <label htmlFor="professional-message-body">Your message</label>
-              <textarea id="professional-message-body" name="body" rows={3} maxLength={4000} placeholder="Write a thoughtful message…" aria-label="Write your message" />
               <label htmlFor="professional-attachment"><Paperclip size={16} aria-hidden="true" /> Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
               <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
               <button type="submit" className="network-button"><Send size={16} aria-hidden="true" /> Send message</button>
