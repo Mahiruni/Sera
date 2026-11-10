@@ -38,26 +38,26 @@ export default async function ConnectionsPage() {
     const card = members.get(id);
     if (!card) return null;
     return (
-      <li key={id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0", borderBottom: "1px solid #d9e6ea", flexWrap: "wrap" }}>
+      <li key={id} className="sera-connection-person">
         <MemberAvatar name={card.name} photo={card.photo} size={46} />
         <Link href={"/members/" + id} style={{ flex: 1, minWidth: 120, fontWeight: 700 }}>{card.name}</Link>
         {actions.map(({ action, label }) => (
           <form action={changeProfessionalRelationship} key={action}>
             <input type="hidden" name="target" value={id} />
             <input type="hidden" name="action" value={action} />
-            <button type="submit" style={{ border: "1px solid #a9dce5", borderRadius: 18, padding: "8px 12px", color: "#075a74", background: "#e8f8fb", cursor: "pointer" }}>{label}</button>
+            <button type="submit" className="sera-connection-action">{label}</button>
           </form>
         ))}
       </li>
     );
   }
   return (
-    <main className="sera-network network-app" style={{ maxWidth: 850, margin: "auto", padding: "24px 18px 110px" }}>
+    <main className="sera-network network-app sera-connections">
       <p className="network-kicker">YOUR PROFESSIONAL CIRCLE</p>
       <h1 style={{ fontSize: "clamp(2rem, 6vw, 3.4rem)", letterSpacing: "-.05em" }}>Connections that move you forward.</h1>
       <p>Build meaningful professional relationships. Only you and the other participant can view your connection requests.</p>
       <p><Link href="/discover?tab=people">Discover professionals →</Link></p>
-      <section aria-labelledby="requests-heading">
+      <section className="sera-connection-section" aria-labelledby="requests-heading">
         <h2 id="requests-heading">Invitations received ({pendingIncoming.length})</h2>
         {pendingIncoming.length ? <ul style={{ listStyle: "none", padding: 0 }}>{pendingIncoming.map((r) => person(r.requester_id, [{ action: "accept", label: "Accept" }, { action: "decline", label: "Decline" }]))}</ul> : <p>No pending invitations.</p>}
       </section>
