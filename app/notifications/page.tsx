@@ -4,7 +4,7 @@ import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
-import { markNotificationRead, markAllNotificationsRead } from "@/lib/network/notifications";
+import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount } from "@/lib/network/notifications";
 import { NotificationRefresh } from "@/components/network/notification-refresh";
 export const metadata={title:"Notifications | SERA.et",robots:{index:false,follow:false}};
 const descriptions:Record<string,string>={
@@ -20,8 +20,7 @@ export default async function NotificationsPage(){
  .eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(80);
  const notifications=rows??[];
  const people=await memberCards(notifications.map(n=>n.actor_id));
- const {count:totalUnread}=await db.from("professional_notifications").select("id",{count:"exact",head:true}).eq("recipient_id",user.id).is("read_at",null);
- const unread=totalUnread??notifications.filter(n=>!n.read_at).length;
+ const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
  return <main className="sera-network network-app sera-notifications"><NotificationRefresh />
   <div className="sera-notifications-heading"><div><p className="network-kicker">YOUR PROFESSIONAL ACTIVITY</p><h1>Notifications</h1><p>Keep up with the people and ideas that matter to you.</p></div><div className="sera-notifications-tools"><span className="sera-notifications-count" aria-live="polite"><Bell size={16}/>{unread} unread</span>{unread>0&&<form action={markAllNotificationsRead}><button className="sera-notifications-mark-all" type="submit"><CheckCheck size={16}/> Mark all read</button></form>}</div></div>
   {error&&<p role="alert">Notifications are temporarily unavailable. Please try again.</p>}
