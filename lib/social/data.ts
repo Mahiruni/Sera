@@ -1,4 +1,5 @@
 import "server-only";
+import { sanitizeDiscoveryQuery } from "@/lib/network/model";
 import { serverClient } from "@/lib/supabase/server";
 import { MEDIA_BUCKET, type PostKind } from "./validation";
 export type SocialComment = {
@@ -34,6 +35,7 @@ export type SocialPost = {
 export async function loadSocialFeed(
   options: {
     authorId?: string;
+    query?: string;
     savedOnly?: boolean;
     postId?: string;
     kind?: PostKind;
@@ -49,6 +51,11 @@ export async function loadSocialFeed(
     .select(options.savedOnly ? "*,post_saves!inner(user_id)" : "*")
     .eq("status", "published");
   if (options.savedOnly) query = query.eq("post_saves.user_id", auth.user.id);
+  const search = sanitizeDiscoveryQuery(options.query);
+  if (search)
+    query = query.or(
+      `title.ilike.%${search}%,body.ilike.%${search}%,category.ilike.%${search}%,skills.cs.{${search}}`,
+    );
   if (options.authorId) query = query.eq("author_id", options.authorId);
   if (options.postId) query = query.eq("id", options.postId);
   if (options.kind) query = query.eq("kind", options.kind);

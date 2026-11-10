@@ -234,7 +234,7 @@ export function WebsiteData() {
           url: `${siteOrigin}/`,
           name: "Sera.et",
           description:
-            "Practical opportunity and education guidance for Ethiopia, with a clearly labelled recruitment demonstration.",
+            "A professional community for sharing ideas, showcasing work and discovering career opportunities.",
           inLanguage: ["en"],
         }),
       }}
