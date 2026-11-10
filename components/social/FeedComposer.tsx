@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ImagePlus, FolderKanban, Quote, PenLine, X } from "lucide-react";
 import { MemberAvatar } from "@/components/activity/avatar";
@@ -7,6 +8,7 @@ import { PostComposer } from "@/components/social/PostComposer";
 import type { PostKind } from "@/lib/social/validation";
 
 export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [initialKind, setInitialKind] = useState<PostKind>("idea");
   const [mounted, setMounted] = useState(false);
@@ -32,8 +34,11 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; trigger.current?.focus(); };
   }, [open]);
   const launch = (kind: PostKind) => { setInitialKind(kind); setOpen(true); };
+  const onPublished = useCallback((id: string) => { setOpen(false); router.push("/posts/" + id); router.refresh(); }, [router]);
   const dismiss = () => {
-    if (dialog.current?.querySelector("input:not([type=hidden]):not([type=file]):not([type=submit]), textarea") && !window.confirm("Close the editor? Any unsaved changes will be lost.")) return;
+    const form = dialog.current?.querySelector("form");
+    const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) => key !== "kind" && (typeof value === "string" ? value.trim().length > 0 : value.size > 0)) : false;
+    if (dirty && !window.confirm("Close the editor? Any unsaved changes will be lost.")) return;
     setOpen(false);
   };
   return <>
@@ -54,7 +59,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
         <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog">
           <div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create a post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
           <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small>Visible to SERA members</small></div></div>
-          <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} /></div>
+          <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} onPublished={onPublished} /></div>
         </div>
       </div>, document.body
     )}
