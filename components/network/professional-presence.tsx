@@ -12,10 +12,6 @@ export function ProfessionalPresence({ member }: { member: string }) {
         if (res.ok && active) setOnline(Boolean((await res.json()).online));
       } catch { if(active) setOnline(false); }
     };
-    const heartbeat = () => {
-      if (document.visibilityState !== "visible") return;
-      void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"connections"})}).catch(()=>{});
-    };
     void poll();
 
     const a=window.setInterval(()=>{void poll();},15000);
