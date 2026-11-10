@@ -39,6 +39,8 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
         { href: "/applications", label: "Applications", icon: FileText },
         { href: "/saved", label: "Saved jobs", icon: Bookmark },
         { href: "/settings", label: "My profile", icon: UserRound },
+        { href: "/network/messages", label: "Messages", icon: MessageCircle },
+        { href: "/notifications", label: "Notifications", icon: Bell },
       ];
   return (
     <nav
@@ -53,7 +55,7 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
         const base = href.split("?")[0],
           active =
             path === base ||
-            (base === "/applications" && path.startsWith("/applications/"));
+            (base !== "/dashboard" && path.startsWith(base + "/"));
         return (
           <Link
             key={href}
