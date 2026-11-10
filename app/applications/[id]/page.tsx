@@ -1,3 +1,5 @@
+import { memberCards } from "@/lib/activity/members";
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
@@ -47,6 +49,10 @@ export default async function Page({
       .createSignedUrl(a.cv_path, 300, { download: a.cv_name || true });
     cvUrl = s.data?.signedUrl ?? null;
   }
+  const people = await memberCards([
+    a.candidate_id,
+    ...(a.jobs ? [a.jobs.employer_id] : []),
+  ]);
   const p = await searchParams;
   return (
     <div className="container page live-market workspace-detail">
@@ -63,7 +69,14 @@ export default async function Page({
             {a.jobs?.company} / {stageLabel(a.stage)}
           </p>
           <h1>{a.jobs?.title || "Application"}</h1>
-          <p className="subtext">Introduction from {a.candidate_name}</p>
+          <p className="subtext">
+            <MemberAvatar
+              name={a.candidate_name}
+              photo={people.get(a.candidate_id)?.photo}
+              size={28}
+            />{" "}
+            Introduction from {a.candidate_name}
+          </p>
         </div>
         {a.jobs && (
           <Link className="button secondary" href={"/jobs/" + a.job_id}>
@@ -174,6 +187,11 @@ export default async function Page({
                   key={m.id}
                 >
                   <span>
+                    <MemberAvatar
+                      name={people.get(m.sender_id)?.name || "Member"}
+                      photo={people.get(m.sender_id)?.photo}
+                      size={24}
+                    />{" "}
                     {m.sender_id === user.id
                       ? "You"
                       : employer

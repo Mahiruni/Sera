@@ -1,5 +1,6 @@
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
-import Image from "next/image";
+
 import {
   ArrowUpRight,
   PenLine,
@@ -74,17 +75,7 @@ export function NetworkHome({
             <div className="network-profile-cover" />
             <div className="network-profile-info">
               <span className="network-own-avatar">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    unoptimized
-                    width={57}
-                    height={57}
-                    alt="Your profile"
-                  />
-                ) : (
-                  name.slice(0, 1).toUpperCase()
-                )}
+                <MemberAvatar name={name} photo={avatarUrl} size={57} />
               </span>
               <h2>{name}</h2>
               <p>
@@ -185,7 +176,7 @@ export function NetworkHome({
           <details className="network-compose-toggle">
             <summary>
               <span className="network-compose-avatar">
-                {name.slice(0, 1).toUpperCase()}
+                <MemberAvatar name={name} photo={avatarUrl} />
               </span>
               <span>Something worth sharing?</span>
               <PenLine size={18} />

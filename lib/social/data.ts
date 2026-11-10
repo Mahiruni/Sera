@@ -1,3 +1,4 @@
+import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { sanitizeDiscoveryQuery } from "@/lib/network/model";
 import { serverClient } from "@/lib/supabase/server";
@@ -9,6 +10,7 @@ export type SocialComment = {
   body: string;
   created_at: string;
   author: string;
+  photo?: string | null;
 };
 export type SocialPost = {
   id: string;
@@ -27,6 +29,7 @@ export type SocialPost = {
   created_at: string;
   published_at: string;
   edited_at: string | null;
+  photo?: string | null;
   author: { id: string; full_name: string; headline: string; location: string };
   images: { url: string; alt: string }[];
   liked: boolean;
@@ -69,7 +72,7 @@ export async function loadSocialFeed(
   const posts = (rows || []).slice(0, 20) as unknown as SocialPost[];
   const ids = posts.map((p) => p.id);
   if (!ids.length) return { posts: [], userId: auth.user.id, hasMore: false };
-  const [profiles, images, likes, saves] = await Promise.all([
+  const [profiles, images, likes, saves, people] = await Promise.all([
     db
       .from("post_authors")
       .select("id,full_name,headline,location")
@@ -89,6 +92,7 @@ export async function loadSocialFeed(
       .select("post_id")
       .in("post_id", ids)
       .eq("user_id", auth.user.id),
+    memberCards(posts.map((p) => p.author_id)),
   ]);
   if ([profiles, images, likes, saves].some((r) => r.error))
     throw new Error("Unable to load post details. Please refresh.");
@@ -109,6 +113,7 @@ export async function loadSocialFeed(
     hasMore: (rows?.length || 0) > 20,
     posts: posts.map((p) => ({
       ...p,
+      photo: people.get(p.author_id)?.photo,
       author: authorMap.get(p.author_id) || {
         id: p.author_id,
         full_name: "Sera member",
@@ -130,17 +135,28 @@ export async function loadSocialFeed(
     })) as SocialPost[],
   };
 }
-export async function loadComments(postId: string, page = 1) {
+export async function loadComments(postId: string, page = 1, target?: string) {
   const db = await serverClient();
   // Page top-level threads so replies never lose their parent between pages.
-  const roots = await db
+  let rootQuery = db
     .from("post_comments")
     .select("id,author_id,parent_id,body,created_at")
     .eq("post_id", postId)
     .is("parent_id", null)
     .order("created_at", { ascending: false })
-    .order("id")
-    .range((page - 1) * 10, page * 10);
+    .order("id");
+  if (target) {
+    const focus = await db
+      .from("post_comments")
+      .select("id,parent_id")
+      .eq("post_id", postId)
+      .eq("id", target)
+      .maybeSingle();
+    if (focus.error) throw new Error("Unable to load conversation.");
+    if (focus.data)
+      rootQuery = rootQuery.eq("id", focus.data.parent_id || focus.data.id);
+  }
+  const roots = await rootQuery.range((page - 1) * 10, page * 10);
   if (roots.error) throw new Error("Unable to load comments.");
   const top = (roots.data || []).slice(0, 10);
   const replies: typeof top = [];
@@ -164,19 +180,13 @@ export async function loadComments(postId: string, page = 1) {
     }
   }
   const all = [...top, ...replies];
-  const authors = all.length
-    ? await db
-        .from("post_authors")
-        .select("id,full_name")
-        .in("id", [...new Set(all.map((c) => c.author_id))])
-    : null;
-  if (authors?.error) throw new Error("Unable to load comment authors.");
-  const names = new Map((authors?.data || []).map((p) => [p.id, p.full_name]));
+  const people = await memberCards(all.map((c) => c.author_id));
   return {
     hasMore: (roots.data?.length || 0) > 10,
     comments: all.map((c) => ({
       ...c,
-      author: names.get(c.author_id) || "Sera member",
+      photo: people.get(c.author_id)?.photo,
+      author: people.get(c.author_id)?.name || "Sera member",
     })) as SocialComment[],
   };
 }

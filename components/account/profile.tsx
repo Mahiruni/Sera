@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import NextImage from "next/image";
+import { MemberAvatar } from "@/components/activity/avatar";
 import {
   Pencil,
   Camera,
@@ -10,7 +10,6 @@ import {
   FileText,
   Upload,
   Check,
-  UserRound,
   LockKeyhole,
   ArrowUpRight,
   X,
@@ -117,12 +116,6 @@ export function ProfessionalProfile({
       );
     }
   }, [zoom, x, y, imageReady]);
-  const initials = profile.full_name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
   async function sendFile(
     kind: string,
     operation: string,
@@ -185,19 +178,15 @@ export function ProfessionalProfile({
         <div className="profile-hero-body">
           <div className="profile-avatar-row">
             <div className="profile-avatar">
-              {assets?.avatar_path ? (
-                <NextImage
-                  unoptimized
-                  src={`/api/account/files?kind=avatar&v=${assets.version}`}
-                  alt={`${profile.full_name}'s profile photo`}
-                  width={112}
-                  height={112}
-                />
-              ) : (
-                <span aria-label="Your initials">
-                  {initials || <UserRound />}
-                </span>
-              )}
+              <MemberAvatar
+                name={profile.full_name}
+                photo={
+                  assets?.avatar_path
+                    ? `/api/account/files?kind=avatar&v=${assets.version}`
+                    : null
+                }
+                size={112}
+              />
               <button
                 className="profile-camera"
                 aria-label="Upload or change profile photo"

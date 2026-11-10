@@ -1,3 +1,4 @@
+import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { serverClient } from "@/lib/supabase/server";
 import { accountAssets } from "@/lib/account/assets";
@@ -88,7 +89,13 @@ export async function workspaceData(
         .then((data) => ({ data, error: false }))
         .catch(() => ({ data: null, error: true })),
     ]);
+  const candidates = employer
+    ? await memberCards((apps.data || []).map((a) => a.candidate_id))
+    : new Map<string, { photo: string | null }>();
   return {
+    candidatePhotos: Object.fromEntries(
+      [...candidates].map(([id, card]) => [id, card.photo]),
+    ),
     apps: {
       rows: (apps.data || []) as unknown as LiveApplication[],
       count: apps.error ? null : apps.count,

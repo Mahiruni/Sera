@@ -1,5 +1,5 @@
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -105,13 +105,7 @@ export function WorkspaceOverview({
 }) {
   const employer = mode === "employer",
     checklist = profileChecklist(profile, data.assets, mode),
-    first = profile.full_name.trim().split(/\s+/)[0] || "there",
-    initials = profile.full_name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((n) => n[0])
-      .join("");
+    first = profile.full_name.trim().split(/\s+/)[0] || "there";
   const metrics = [
     {
       label: employer ? "Open postings" : "Applications",
@@ -169,17 +163,15 @@ export function WorkspaceOverview({
             className="ws-avatar"
             aria-label="Open your profile"
           >
-            {data.assets?.avatar_path ? (
-              <Image
-                unoptimized
-                src={`/api/account/files?kind=avatar&v=${data.assets.version}`}
-                width={58}
-                height={58}
-                alt="Your profile photo"
-              />
-            ) : (
-              <span>{initials}</span>
-            )}
+            <MemberAvatar
+              name={profile.full_name}
+              photo={
+                data.assets?.avatar_path
+                  ? `/api/account/files?kind=avatar&v=${data.assets.version}`
+                  : null
+              }
+              size={58}
+            />
           </Link>
           <div>
             <p className="eyebrow">
@@ -329,10 +321,14 @@ export function WorkspaceOverview({
                     key={a.id}
                   >
                     <span className="ws-company-initial" aria-hidden="true">
-                      {(employer
-                        ? a.candidate_name
-                        : a.jobs?.company || "S"
-                      ).slice(0, 1)}
+                      {employer ? (
+                        <MemberAvatar
+                          name={a.candidate_name}
+                          photo={data.candidatePhotos[a.candidate_id]}
+                        />
+                      ) : (
+                        (a.jobs?.company || "S").slice(0, 1)
+                      )}
                     </span>
                     <div>
                       <h3>
@@ -570,7 +566,9 @@ export function WorkspaceOverview({
                   title={
                     linkedin.importedAt
                       ? "Last import: " +
-                        new Date(linkedin.importedAt).toLocaleDateString("en-GB")
+                        new Date(linkedin.importedAt).toLocaleDateString(
+                          "en-GB",
+                        )
                       : undefined
                   }
                   style={{

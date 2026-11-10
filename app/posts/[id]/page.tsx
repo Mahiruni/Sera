@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed, loadComments } from "@/lib/social/data";
@@ -14,7 +15,7 @@ export default async function Story({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ comments?: string }>;
+  searchParams: Promise<{ comments?: string; thread?: string }>;
 }) {
   const { id } = await params;
   const { user } = await requiredProfile(uuid(id) ? "/posts/" + id : "/feed");
@@ -23,11 +24,15 @@ export default async function Story({
   const post = posts[0];
   if (!post) notFound();
   const page = pageNumber((await searchParams).comments);
-  const thread = await loadComments(id, page);
+  const focus = (await searchParams).thread;
+  const thread = await loadComments(id, page, uuid(focus) ? focus : undefined);
   return (
     <div className="container page social-page social-detail">
       <SocialNav />
       <PostCard post={post} currentUserId={user.id} detail />
+      {uuid(focus) && (
+        <Link href={"/posts/" + id + "#comments"}>View full conversation</Link>
+      )}
       <Comments
         comments={thread.comments}
         postId={id}

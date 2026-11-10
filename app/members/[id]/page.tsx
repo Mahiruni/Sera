@@ -1,3 +1,5 @@
+import { memberCards } from "@/lib/activity/members";
+import { MemberAvatar } from "@/components/activity/avatar";
 import { notFound } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
@@ -24,12 +26,18 @@ export default async function Member({
   const page = pageNumber((await searchParams).page);
   const result = await loadSocialFeed({ authorId: id, page });
   const author = result.posts[0]?.author;
+  const member = (await memberCards([id])).get(id);
   return (
     <div className="container page social-page social-detail">
       <SocialNav />
       <header className="social-hero">
         <p className="eyebrow">MEMBER STORIES</p>
-        <h1>{author?.full_name || "Sera community member"}</h1>
+        <MemberAvatar
+          name={member?.name || "Sera member"}
+          photo={member?.photo}
+          size={64}
+        />
+        <h1>{member?.name || author?.full_name || "Sera community member"}</h1>
         <p>
           {author?.headline ||
             "Ideas, achievements and work shared with the community."}
