@@ -18,7 +18,6 @@ import type { SocialPost } from "@/lib/social/data";
 import { postKinds, type PostKind } from "@/lib/social/validation";
 import { profileEssentials, skillTopics } from "@/lib/network/model";
 import {
-  NetworkToolbar,
   MemberPreview,
   OpportunityPreview,
   NetworkLinks,
@@ -70,7 +69,6 @@ export function NetworkHome({
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page">
-      <NetworkToolbar />
       <div className="network-app-grid">
         <aside className="network-left" aria-label="Your professional identity">
           <section className="network-profile-card">
