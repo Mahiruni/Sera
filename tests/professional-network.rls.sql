@@ -187,6 +187,31 @@ do $$ begin
  if exists(select from public.professional_report_reviews) then raise exception 'Reported member can read internal moderation notes'; end if;
 end $$;
 reset role;
+select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if not exists(select from public.professional_notifications where recipient_id=(select a from network_fixture) and kind='connection_accepted') then
+  raise exception 'Accepted connection notification missing';
+ end if;
+ if exists(select from public.professional_notifications where recipient_id=(select b from network_fixture)) then
+  raise exception 'Member can see someone else notification';
+ end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from network_fixture;
+set local role authenticated;
+do $$ begin
+ if not exists(select from public.professional_notifications where kind='connection_request') then
+  raise exception 'Invitation notification missing';
+ end if;
+ begin
+  insert into public.professional_notifications(recipient_id,actor_id,kind)
+  select b,a,'follow' from network_fixture;
+  raise exception 'Client forged a notification';
+ exception when insufficient_privilege then null;
+ end;
+end $$;
+reset role;
 set local role anon;
 do $$ begin
  begin perform * from public.professional_messages;raise exception 'Anonymous read allowed';exception when insufficient_privilege then null;end;
