@@ -3,6 +3,7 @@ import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Provider } from "@/components/store";
+import { memberCards } from "@/lib/activity/members";
 import { currentUser } from "@/lib/supabase/server";
 import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
@@ -11,6 +12,7 @@ import "./globals.css";
 import "./footer-x-glass.css";
 import "./social.css";
 import "./network.css";
+import "./activity.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",
@@ -43,6 +45,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const user = await currentUser();
+  const identity = user?.email_confirmed_at
+    ? (await memberCards([user.id])).get(user.id)
+    : undefined;
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
@@ -64,7 +69,13 @@ export default async function RootLayout({
       <body>
         <WebsiteData />
         <Provider initialLocale={language}>
-          <Shell authenticated={Boolean(user)}>{children}</Shell>
+          <Shell
+            authenticated={Boolean(user)}
+            identity={identity}
+            verified={Boolean(user?.email_confirmed_at)}
+          >
+            {children}
+          </Shell>
         </Provider>
       </body>
     </html>

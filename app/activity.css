@@ -1,0 +1,231 @@
+.member-photo {
+  position: relative;
+  display: inline-grid;
+  vertical-align: middle;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #d8f3f8;
+  color: #07556a;
+  font: 700 0.82rem/1 system-ui;
+}
+.member-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.social-comment:target {
+  outline: 2px solid #0a9cb8;
+  outline-offset: 4px;
+  scroll-margin-top: 6rem;
+}
+.activity-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.activity-trigger b {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 17px;
+  border: 2px solid white;
+  border-radius: 20px;
+  padding: 1px 3px;
+  background: #075a74;
+  color: white;
+  font: 700 10px/12px system-ui;
+}
+.activity-panel {
+  --paper: #fff;
+  --ink: #102f41;
+  --muted: #496977;
+  --line: #d9e6ea;
+  --wash: #edf9fc;
+  position: fixed;
+  inset: 64px 20px auto auto;
+  margin: 0;
+  width: min(410px, calc(100vw - 28px));
+  max-width: 100%;
+  max-height: min(78dvh, 660px);
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 22px 80px #062d452e;
+  text-align: start;
+}
+[data-sera-theme="dark"] .activity-panel {
+  --paper: #122835;
+  --ink: #eaf6fa;
+  --muted: #a8c5cf;
+  --line: #324c59;
+  --wash: #173b49;
+  color-scheme: dark;
+}
+.activity-panel::backdrop {
+  background: #08273635;
+}
+.activity-inner {
+  padding: 19px;
+}
+.activity-panel header,
+.activity-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.activity-panel header {
+  justify-content: space-between;
+}
+.activity-panel header small {
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  font-weight: 750;
+  font-size: 0.65rem;
+}
+.activity-panel h2 {
+  font-size: 1.55rem;
+  letter-spacing: -0.045em;
+  margin: 3px 0 12px;
+  color: inherit;
+}
+.activity-panel button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.activity-panel button:focus-visible,
+.activity-trigger:focus-visible {
+  outline: 2px solid #0d98b9;
+  outline-offset: 2px;
+}
+.activity-panel button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.activity-tools {
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0 12px;
+}
+.activity-tools button,
+.activity-panel .activity-more {
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 8px 10px;
+  border-radius: 14px;
+}
+.activity-tools [aria-pressed="true"] {
+  background: var(--wash);
+}
+.activity-mark {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+.activity-panel .activity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 5px;
+  text-align: start;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.activity-row time {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.activity-face {
+  position: relative;
+  flex: none;
+}
+.activity-face i {
+  position: absolute;
+  bottom: -1px;
+  right: -2px;
+  background: var(--wash);
+  color: var(--ink);
+  border-radius: 50%;
+  padding: 3px;
+  display: grid;
+}
+.activity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0795b1;
+  flex: none;
+  margin-inline-start: auto;
+}
+.activity-empty {
+  text-align: center;
+  padding: 30px 12px;
+  color: var(--muted);
+}
+.activity-empty h3 {
+  color: var(--ink);
+  margin: 10px 0;
+  font-size: 1rem;
+}
+.activity-empty p {
+  font-size: 0.86rem;
+  margin: 0;
+}
+.activity-more {
+  width: 100%;
+  margin-top: 10px;
+}
+.activity-toast {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  background: #103d4f;
+  color: white;
+  border-radius: 16px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+}
+@media (max-width: 600px) {
+  .activity-panel {
+    inset: auto 0 0;
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 82dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .activity-panel[open] {
+    animation: activity-in 0.16s ease-out;
+  }
+  @keyframes activity-in {
+    from {
+      opacity: 0.5;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+.profile-avatar > .member-photo,
+.ws-avatar > .member-photo {
+  max-width: 100%;
+  max-height: 100%;
+  font-size: inherit;
+}

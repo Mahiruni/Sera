@@ -1,8 +1,13 @@
+import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { ASSET_BUCKET, ownedPath } from "@/lib/account/assets";
 import { serverClient } from "@/lib/supabase/server";
 import type { MemberCard, OpportunityCard } from "@/components/network/shared";
 import { sanitizeDiscoveryQuery, type DiscoveryKind } from "./model";
+async function withPhotos(people: MemberCard[]) {
+  const cards = await memberCards(people.map((p) => p.id));
+  return people.map((p) => ({ ...p, photo: cards.get(p.id)?.photo }));
+}
 export async function loadNetworkSidebars(userId: string) {
   const db = await serverClient();
   const [people, jobs, assets] = await Promise.all([
@@ -30,7 +35,7 @@ export async function loadNetworkSidebars(userId: string) {
     : null;
   return {
     avatarUrl: avatar?.data?.signedUrl || null,
-    people: (people.data || []) as MemberCard[],
+    people: await withPhotos(people.data || []),
     jobs: (jobs.data || []) as OpportunityCard[],
     peopleError: !!people.error,
     jobsError: !!jobs.error,
@@ -59,7 +64,7 @@ export async function discoverDirectory(
     if (result.error)
       throw new Error("Professional discovery is temporarily unavailable.");
     return {
-      people: (result.data || []).slice(0, 18) as MemberCard[],
+      people: await withPhotos((result.data || []).slice(0, 18)),
       jobs: [] as OpportunityCard[],
       topics: [] as string[],
       hasMore: (result.data?.length || 0) > 18,

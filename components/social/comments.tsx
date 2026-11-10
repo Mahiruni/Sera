@@ -1,3 +1,4 @@
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import { addComment, deleteComment } from "@/lib/social/actions";
 import type { SocialComment } from "@/lib/social/data";
@@ -49,9 +50,9 @@ export function Comments({
   hasMore: boolean;
 }) {
   const render = (c: SocialComment) => (
-    <div className="social-comment" key={c.id}>
+    <div className="social-comment" key={c.id} id={"comment-" + c.id}>
       <Link className="social-author" href={"/members/" + c.author_id}>
-        {c.author}
+        <MemberAvatar name={c.author} photo={c.photo} size={28} /> {c.author}
       </Link>
       <p>{c.body}</p>
       <small>
@@ -80,7 +81,7 @@ export function Comments({
       {comments
         .filter((c) => !c.parent_id)
         .map((c) => (
-          <div className="social-thread" key={c.id}>
+          <div className="social-thread" key={c.id} id={"comment-" + c.id}>
             {render(c)}
             <div className="social-replies">
               {comments.filter((r) => r.parent_id === c.id).map(render)}

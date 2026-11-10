@@ -1,3 +1,4 @@
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -14,6 +15,7 @@ import { ThemeToggle } from "./theme-toggle";
 export type MemberCard = {
   id: string;
   full_name: string;
+  photo?: string | null;
   headline: string;
   location: string;
 };
@@ -67,7 +69,7 @@ export function MemberPreview({ member }: { member: MemberCard }) {
   return (
     <Link href={"/members/" + member.id} className="network-person">
       <span className="network-person-avatar">
-        {(member.full_name || "S").slice(0, 1).toUpperCase()}
+        <MemberAvatar name={member.full_name} photo={member.photo} />
       </span>
       <span>
         <strong>{member.full_name || "Sera member"}</strong>
@@ -132,8 +134,8 @@ export function NextOnSera({ compact = false }: { compact?: boolean }) {
           },
           {
             Icon: Bell,
-            title: "Communities & updates",
-            body: "Spaces for your industry, thoughtful discussions and a personal notification center.",
+            title: "Professional communities",
+            body: "Spaces for your industry, shared projects and thoughtful discussions.",
           },
         ].map(({ Icon, title, body }) => (
           <div key={title}>

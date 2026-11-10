@@ -1,3 +1,4 @@
+import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -34,7 +35,11 @@ export function PostCard({
           href={"/members/" + post.author_id}
           aria-label={`${post.author.full_name}'s posts`}
         >
-          {post.author.full_name.slice(0, 1).toUpperCase()}
+          <MemberAvatar
+            name={post.author.full_name}
+            photo={post.photo}
+            size={42}
+          />
         </Link>
         <div>
           <Link href={"/members/" + post.author_id} className="social-author">

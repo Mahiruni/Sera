@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { MemberAvatar } from "./activity/avatar";
+import { ActivityBell } from "./activity/bell";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -35,9 +37,13 @@ import type { Key } from "@/lib/i18n";
 export function Shell({
   children,
   authenticated = false,
+  verified = false,
+  identity,
 }: {
   children: React.ReactNode;
   authenticated?: boolean;
+  verified?: boolean;
+  identity?: { name: string; photo: string | null };
 }) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
@@ -166,6 +172,7 @@ export function Shell({
               </span>
             </Link>
           )}
+          {verified && <ActivityBell />}
           <LanguageSelector compact />
         </div>
       </header>
@@ -348,7 +355,15 @@ export function Shell({
               aria-current={active ? "page" : undefined}
             >
               <span className={`dock-icon dock-${i}`}>
-                <Icon size={19} strokeWidth={1.8} />
+                {key === "profile" && identity ? (
+                  <MemberAvatar
+                    name={identity.name}
+                    photo={identity.photo}
+                    size={23}
+                  />
+                ) : (
+                  <Icon size={19} strokeWidth={1.8} />
+                )}
               </span>
               <span>{t(key)}</span>
               {active && <i />}
