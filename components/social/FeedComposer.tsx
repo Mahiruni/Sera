@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { ImagePlus, FolderKanban, Quote, PenLine, X } from "lucide-react";
+import { ImagePlus, FolderKanban, Quote, PenLine, X, Users } from "lucide-react";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { PostComposer } from "@/components/social/PostComposer";
 import type { PostKind } from "@/lib/social/validation";
@@ -56,8 +56,8 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     {open && typeof document !== "undefined" && createPortal(
       <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
         <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog">
-          <div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create a post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
-          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small>Visible to SERA members</small></div></div>
+          <div className="sera-compose-dialog-head"><h2 id="sera-compose-heading"><span className="sera-premium-heading-icon"><PenLine size={21}/></span> Create Post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
+          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small className="sera-premium-audience"><Users size={14}/> SERA members</small></div></div>
           <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} onPublished={onPublished} /></div>
         </div>
       </div>, document.body
