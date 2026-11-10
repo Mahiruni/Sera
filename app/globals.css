@@ -7069,3 +7069,32 @@ body:has(.auth-layout) .information-footer {
 .sera-connection-action:hover{background:#d6f2f9;border-color:#7ccddd;transform:translateY(-1px)}
 @media(max-width:760px){.sera-connections{padding:20px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-connection-section{padding:16px;border-radius:20px;margin:12px 0}.sera-connection-person{gap:10px}.sera-connection-person>a{min-width:100px}}
 @media(prefers-reduced-motion:reduce){.sera-connection-action:hover{transform:none}}
+
+
+/* Phase 2: unified profile and trust-and-safety presentation. */
+.sera-member-page{max-width:1100px}
+.sera-member-hero{border:1px solid #d9eaf0;border-radius:28px;padding:clamp(22px,4vw,44px);background:linear-gradient(155deg,#f5fcff,#fff 65%);box-shadow:0 14px 40px #153e5808}
+.sera-member-hero h1{font-size:clamp(28px,4vw,42px);margin:12px 0 8px}
+.sera-member-hero>p:not(.eyebrow){color:var(--muted);font-size:13px;line-height:1.7}
+.sera-member-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:22px}
+.sera-member-actions .network-button{min-height:42px;border-radius:14px;padding:10px 18px;font-size:12px}
+.sera-member-report{max-width:480px;margin:22px auto 0;text-align:left;border:1px solid #e2edf1;border-radius:16px;padding:12px 16px}
+.sera-member-report summary{cursor:pointer;font-size:12px;color:#456f81}
+.sera-member-report form{margin-top:12px}
+.sera-moderation{max-width:1080px;margin:auto;padding:30px 18px calc(130px + env(safe-area-inset-bottom,0px))}
+.sera-moderation>h1{font-size:clamp(30px,4.5vw,48px);margin:8px 0 12px}
+.sera-moderation>p{font-size:13px;color:var(--muted);max-width:690px}
+.sera-moderation-filters{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0}
+.sera-moderation-filters a{border:1px solid #d0e6ed;border-radius:99px;padding:8px 15px;color:#35677b;font-size:12px;font-weight:650;background:#fff}
+.sera-moderation-filters a.is-active,.sera-moderation-filters a:hover{background:#e5f8fd;color:#086480;border-color:#9ddae8}
+.sera-moderation-report{border:1px solid #d9eaf0;border-radius:24px;padding:clamp(16px,3vw,26px);background:var(--white);box-shadow:0 12px 32px #153e5808}
+.sera-moderation-people{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+.sera-moderation-people>div{display:flex;align-items:center;gap:10px;background:#f4fafc;border-radius:16px;padding:12px;min-width:0}
+.sera-moderation-people span{display:grid;min-width:0}
+.sera-moderation-people small{font-size:10px;color:#69828e}
+.sera-moderation-people a{font-size:12px;font-weight:700;color:#164c60;overflow-wrap:anywhere}
+.sera-moderation-form{display:grid;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid #e4eef3}
+.sera-moderation-form label{font-size:12px;font-weight:650}
+.sera-moderation-form :is(select,textarea){width:100%;background:#f9fcfd}
+.sera-moderation-form .network-button{min-height:44px;border-radius:14px}
+@media(max-width:600px){.sera-moderation-people{grid-template-columns:1fr}.sera-member-hero{border-radius:20px}.sera-moderation-report{border-radius:20px}.sera-member-actions{gap:8px}}
