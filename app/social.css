@@ -688,3 +688,41 @@ button[disabled] {
 @media (prefers-reduced-motion: reduce) {
   .social-post-actions *, .social-lightbox * { animation: none !important; transition: none !important; }
 }
+
+/* Mobile feed release hardening: bleed media only to the actual card edge.
+   The post card uses 16px padding on small screens, not 28px. */
+.social-images {
+  margin-inline: -28px;
+}
+.social-images > .social-image-link {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  line-height: 0;
+}
+.social-images:not(.social-images-grid) .social-image-link img {
+  width: 100%;
+  height: auto;
+  max-height: min(80dvh, 820px);
+  object-fit: contain;
+}
+.social-images-grid .social-image-link {
+  height: 100%;
+}
+.social-images-grid .social-image-link img {
+  display: block;
+  aspect-ratio: 1 / 1;
+}
+@media (max-width: 520px) {
+  .social-images {
+    margin-inline: -16px;
+  }
+  .social-post-actions {
+    gap: 2px;
+  }
+  .social-post-actions > form,
+  .social-post-actions > a,
+  .social-post-actions > .social-share {
+    max-width: 100%;
+  }
+}
