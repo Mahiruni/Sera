@@ -2010,3 +2010,10 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   height: auto;
   line-height: 1.6;
 }
+
+
+/* App navigation lives in the fixed global header.
+   Suppress the duplicate wordmark/search/theme strip on inner pages. */
+.network-app > .network-toolbar {
+  display: none;
+}
