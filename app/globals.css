@@ -7025,3 +7025,29 @@ body:has(.auth-layout) .information-footer {
   opacity: 0.6;
   cursor: wait;
 }
+
+
+/* Phase 2: professional inbox — polished surfaces without covering the global dock. */
+.sera-inbox{max-width:1180px;margin:0 auto;padding:28px 20px calc(130px + env(safe-area-inset-bottom,0px))}
+.sera-inbox>h1{font-size:clamp(30px,4.5vw,48px);letter-spacing:-.055em;margin:6px 0 12px}
+.sera-inbox>p:not(.network-kicker){font-size:13px;color:var(--muted);margin:10px 0 24px}
+.sera-inbox-layout{display:grid;grid-template-columns:minmax(250px,330px) minmax(0,1fr);gap:18px;align-items:stretch}
+.sera-inbox-sidebar,.sera-inbox-thread{min-width:0;border:1px solid #d9e9f0;border-radius:26px;background:var(--white);box-shadow:0 14px 38px #123c5709}
+.sera-inbox-sidebar{padding:18px;max-height:740px;overflow-y:auto}
+.sera-inbox-sidebar h2{font-size:18px;margin-bottom:18px}
+.sera-inbox-sidebar a[aria-current="page"]{box-shadow:inset 3px 0 0 #087f9f}
+.sera-inbox-sidebar a:hover{background:#f0f9fc!important}
+.sera-inbox-thread{padding:24px;min-height:560px;display:flex;flex-direction:column}
+.sera-inbox-member{display:flex;align-items:center;gap:13px;padding-bottom:15px;border-bottom:1px solid #e6f0f4}
+.sera-inbox-member h2{font-size:18px;line-height:1.4}
+.sera-inbox-member small{font-size:11px;color:#668595}
+.sera-inbox-messages{display:flex;flex-direction:column;gap:12px;margin:18px 0;flex:1;min-height:150px;max-height:480px;overflow-y:auto;overscroll-behavior:contain;padding:4px}
+.sera-message-bubble{max-width:min(85%,510px);align-self:flex-start;padding:12px 16px;border:1px solid #e4edf2;border-radius:18px 18px 18px 5px;background:#f3f7f9;color:#173d4b;overflow-wrap:anywhere}
+.sera-message-bubble.is-mine{align-self:flex-end;border-color:#bce8f1;background:linear-gradient(145deg,#e3f9fd,#d7f1f9);border-radius:18px 18px 5px 18px}
+.sera-message-bubble small{display:block;color:#63808b;font-size:10px;margin-top:8px}
+.sera-inbox-composer{display:grid;gap:10px;padding:16px;background:#f5fafc;border:1px solid #e0eff4;border-radius:20px}
+.sera-inbox-composer input[type="file"]{width:100%;max-width:100%;font-size:12px}
+.sera-inbox-composer .network-button{min-height:44px;border-radius:13px}
+.sera-inbox :is(input,textarea,select){max-width:100%}
+@media(max-width:760px){.sera-inbox{padding:18px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-inbox-layout{grid-template-columns:minmax(0,1fr);gap:12px}.sera-inbox-sidebar{max-height:260px;padding:14px;border-radius:20px}.sera-inbox-thread{padding:16px;border-radius:20px;min-height:450px}.sera-inbox-messages{max-height:440px}.sera-message-bubble{max-width:92%}}
+@media(prefers-reduced-motion:reduce){.sera-inbox *{scroll-behavior:auto!important;transition:none!important}}
