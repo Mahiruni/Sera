@@ -1,5 +1,5 @@
 import { serverClient } from "@/lib/supabase/server";
-import { changeProfessionalRelationship } from "@/lib/network/relationships";
+import { changeProfessionalRelationship, reportProfessionalMember } from "@/lib/network/relationships";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { notFound } from "next/navigation";
@@ -91,6 +91,19 @@ export default async function Member({
             </form>
           </div>
         )}
+        {id !== user.id && member && <details style={{ maxWidth: 420, margin: "18px auto", textAlign: "left" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13 }}>Report this member</summary>
+          <form action={reportProfessionalMember} style={{ display: "grid", gap: 10, padding: 14, border: "1px solid #b9dce4", borderRadius: 16 }}>
+            <input type="hidden" name="target" value={id} />
+            <label htmlFor="report-reason">Reason</label>
+            <select id="report-reason" name="reason" required defaultValue="spam" style={{ padding: 10, borderRadius: 10 }}>
+              <option value="spam">Spam</option><option value="harassment">Harassment</option><option value="impersonation">Impersonation</option><option value="inappropriate">Inappropriate content</option><option value="other">Other</option>
+            </select>
+            <label htmlFor="report-details">Additional context (optional)</label>
+            <textarea id="report-details" name="details" maxLength={1000} rows={3} style={{ padding: 10, borderRadius: 10 }} />
+            <button type="submit" className="network-button">Submit confidential report</button>
+          </form>
+        </details>}
       </header>
       <PostList
         posts={result.posts}
