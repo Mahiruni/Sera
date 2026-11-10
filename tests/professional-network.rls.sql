@@ -240,9 +240,9 @@ do $notify$ begin
 end $notify$;
 reset role;
 set local role anon;
-do $notify$ begin
+do $anon$ begin
  begin perform * from public.professional_messages;raise exception 'Anonymous read allowed';exception when insufficient_privilege then null;end;
-end $$;
+end $anon$;
 reset role;
 rollback;
 select 'PASS: professional follows, invitations, message isolation and read receipts' as result;
