@@ -159,3 +159,27 @@ html[data-sera-theme="dark"] {
   outline-offset: 3px;
   border-radius: 3px;
 }
+
+/* Refined professional profile section hierarchy. */
+.professional-account .profile-section-heading h2,
+.professional-account .profile-section > h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.professional-account .profile-section-heading h2 svg,
+.professional-account .profile-section > h2 svg {
+  flex: none;
+  color: var(--sera-accent);
+}
+.professional-account :where(.profile-camera,.profile-edit,.profile-icon-button):focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+}
+.professional-account .profile-avatar .member-photo {
+  border: 3px solid var(--sera-surface, #fff);
+  box-shadow: 0 5px 18px rgba(18,65,82,.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .professional-account * { scroll-behavior: auto; }
+}
