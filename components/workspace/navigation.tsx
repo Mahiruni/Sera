@@ -20,13 +20,11 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
           label: "Hiring overview",
           icon: BriefcaseBusiness,
         },
-        { href: "/employer/post", label: "Post a job", icon: Plus },
         {
           href: "/dashboard?view=candidate",
           label: "Career workspace",
           icon: LayoutDashboard,
         },
-        { href: "/settings", label: "My profile", icon: UserRound },
         { href: "/network/messages", label: "Messages", icon: MessageCircle },
         { href: "/notifications", label: "Notifications", icon: Bell },
       ]
@@ -47,10 +45,12 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
       className="workspace-nav"
       aria-label={employer ? "Employer workspace" : "Career workspace"}
     >
-      <Link href="/feed" className={path === "/feed" ? "is-current" : ""}>
-        <LayoutDashboard size={16} />
-        <span>Community</span>
-      </Link>
+      {!employer && (
+        <Link href="/feed" className={path === "/feed" ? "is-current" : ""}>
+          <LayoutDashboard size={16} />
+          <span>Community</span>
+        </Link>
+      )}
       {items.map(({ href, label, icon: Icon }) => {
         const base = href.split("?")[0],
           active =
