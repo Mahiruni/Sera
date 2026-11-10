@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "../profile-identity.css";
 import { ProfessionalProfile } from "@/components/account/profile";
 import { accountAssets } from "@/lib/account/assets";
 import { requiredProfile } from "@/lib/auth/profile";
