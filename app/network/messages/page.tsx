@@ -112,7 +112,7 @@ export default async function ProfessionalInbox({ searchParams }: {
               {[...(messages ?? [])].reverse().map((m) => <article key={m.id} className={m.sender_id === user.id ? "sera-message-bubble is-mine" : "sera-message-bubble"}>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{m.body}</p>
                 {(fileLinks.get(m.id) ?? []).map((file) => <a key={file.url} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontWeight: 700, marginTop: 8, textDecoration: "underline" }}>📎 {file.name}</a>)}
-                <small>{new Date(m.created_at).toLocaleString()} {m.sender_id === user.id && m.read_at ? "· Read" : ""}</small>
+                <small><time dateTime={m.created_at}>{new Date(m.created_at).toLocaleString("en-GB", { timeZone: "Africa/Addis_Ababa", dateStyle: "medium", timeStyle: "short" })}</time> {m.sender_id === user.id && m.read_at ? "· Read" : ""}</small>
               </article>)}
               {!messages?.length && <p>{search ? "No matching messages found." : "Say hello and start a meaningful professional conversation."}</p>}
             </div>
