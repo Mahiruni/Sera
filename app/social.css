@@ -726,3 +726,30 @@ button[disabled] {
     max-width: 100%;
   }
 }
+
+/* Phase 3.3: compact social publishing and modal sheet */
+.sera-feed-compose{background:var(--net-surface,#fff);border:1px solid var(--net-line,#dce8ee);border-radius:22px;padding:16px 18px;margin-bottom:20px;box-shadow:0 10px 32px #193c5010}
+.sera-feed-compose-top{display:flex;align-items:center;gap:12px}
+.sera-feed-compose-trigger{flex:1;min-width:0;text-align:left;border:1px solid var(--net-line,#dce8ee);border-radius:999px;padding:13px 17px;background:var(--net-subtle,#f2f7fa);color:var(--net-muted,#637986);font-size:14px;min-height:48px}
+.sera-feed-compose-pencil{display:grid;place-items:center;color:var(--net-blue,#0796c8);border:0;background:transparent;min-width:44px;min-height:44px}
+.sera-feed-compose-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--net-line,#dce8ee);margin-top:14px;padding-top:10px}
+.sera-feed-compose-actions button{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:var(--net-muted,#637986);min-height:44px;font-size:13px}
+.sera-feed-compose-actions svg{color:var(--net-blue,#0796c8)}
+.sera-feed-compose :is(button):focus-visible,.sera-compose-dialog :is(button,input,textarea,summary):focus-visible{outline:3px solid var(--net-blue,#0796c8);outline-offset:2px}
+.sera-compose-backdrop{position:fixed;inset:0;z-index:10000;background:#091c2bb8;display:flex;justify-content:center;align-items:center;padding:20px}
+.sera-compose-dialog{background:var(--net-surface,#fff);color:var(--net-ink,#172e42);border-radius:24px;width:min(620px,100%);max-height:min(90dvh,900px);display:flex;flex-direction:column;box-shadow:0 30px 90px #06182466;overflow:hidden}
+.sera-compose-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;border-bottom:1px solid var(--net-line,#dce8ee)}
+.sera-compose-dialog-head h2{margin:0;font-size:18px}
+.sera-compose-dialog-head button{display:grid;place-items:center;min-width:44px;min-height:44px;border:0;border-radius:50%;background:var(--net-subtle,#edf3f7);color:var(--net-ink,#172e42)}
+.sera-compose-dialog-author{display:flex;align-items:center;gap:10px;padding:14px 22px 0}
+.sera-compose-dialog-author strong{display:block;font-size:13px}
+.sera-compose-dialog-author small{display:block;font-size:11px;color:var(--net-muted,#637986);margin-top:3px}
+.sera-compose-dialog-content{overflow-y:auto;overscroll-behavior:contain;padding:0 22px 22px}
+.sera-compose-dialog .social-composer{padding:12px 0;border:0;box-shadow:none;background:transparent}
+.sera-compose-dialog .social-section-heading{display:none}
+.sera-compose-dialog .social-composer textarea{min-height:150px;border:0;background:transparent;resize:vertical;font-size:16px;line-height:1.65;padding:14px 2px}
+.sera-compose-dialog .social-composer input:not([type=file]){background:var(--net-subtle,#f2f7fa)}
+.sera-compose-dialog .social-kind-tabs{display:flex;overflow-x:auto;flex-wrap:nowrap;gap:8px;padding-bottom:10px;scrollbar-width:thin}
+.sera-compose-dialog .social-kind-tabs button{flex-shrink:0}
+@media(max-width:600px){.sera-feed-compose{padding:12px;border-radius:18px}.sera-feed-compose-trigger{font-size:13px;padding:12px}.sera-feed-compose-actions button{font-size:12px;gap:6px}.sera-compose-backdrop{align-items:flex-end;padding:0}.sera-compose-dialog{width:100%;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 18px);border-radius:24px 24px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}.sera-compose-dialog-head{padding:12px 16px}.sera-compose-dialog-author{padding:12px 16px 0}.sera-compose-dialog-content{padding:0 16px 16px}.sera-compose-dialog .social-composer textarea{min-height:180px}}
+@media(prefers-reduced-motion:no-preference){.sera-compose-dialog{animation:sera-compose-enter .18s ease-out}@keyframes sera-compose-enter{from{opacity:.75;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}}
