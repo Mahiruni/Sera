@@ -1,17 +1,5 @@
-import Link from "next/link";
 import type { SocialPost } from "@/lib/social/data";
 import { PostCard } from "./PostCard";
-export function SocialNav() {
-  return (
-    <nav className="social-nav" aria-label="Community">
-      <Link href="/feed">Community feed</Link>
-      <Link href="/feed?view=mine">My stories</Link>
-      <Link href="/saved">Saved</Link>
-      <Link href="/jobs">Find opportunities</Link>
-      <Link href="/dashboard">Workspace</Link>
-    </nav>
-  );
-}
 export function PostList({
   posts,
   userId,
