@@ -7192,3 +7192,22 @@ body:has(.auth-layout) .information-footer {
     padding-top: var(--sera-header-content-offset);
   }
 }
+
+/* Approved compact SERA header: hamburger / centered wordmark / alerts + language. */
+.sera-header-wordmark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  text-decoration: none;
+  color: var(--text, #eef8ff);
+  font-size: clamp(1.15rem, 4vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  white-space: nowrap;
+}
+.sera-header-wordmark span { color: #36c5ea; }
+@media (max-width: 390px) {
+  .sera-header-wordmark { font-size: 1.12rem; }
+}
