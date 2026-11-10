@@ -187,7 +187,7 @@ export function NetworkHome({
             </Link>
           </nav>
           <details className="network-compose-toggle">
-            <summary>
+            <summary aria-label="Create a new professional post">
               <span className="network-compose-avatar">
                 <MemberAvatar name={name} photo={avatarUrl} />
               </span>
