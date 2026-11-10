@@ -10,16 +10,17 @@ import { pageMetadata, siteOrigin } from "@/lib/seo";
 import "./globals.css";
 import "./footer-x-glass.css";
 import "./social.css";
+import "./network.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",
-    "Opportunities & Education in Ethiopia",
-    "Practical career and education guidance for Ethiopia, with a clearly labelled recruitment demo.",
+    "Your Work, Your People, Your Next Chapter",
+    "Share your ideas, showcase your work and discover professional opportunities with Sera.et.",
     false,
   ),
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "Sera.et — Opportunities & Education in Ethiopia",
+    default: "Sera.et — Your Work, Your People, Your Next Chapter",
     template: "%s | Sera.et",
   },
   applicationName: "Sera.et",
@@ -51,7 +52,15 @@ export default async function RootLayout({
       lang={language}
       dir={language === "ar" ? "rtl" : "ltr"}
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var seraThemeChoice=localStorage.getItem("sera-theme");document.documentElement.dataset.seraTheme=seraThemeChoice==="dark"?"dark":"light"}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
         <WebsiteData />
         <Provider initialLocale={language}>

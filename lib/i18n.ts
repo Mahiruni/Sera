@@ -1,5 +1,6 @@
 import type { Lang } from "./model";
 const words = {
+  discover: ["Discover", "ያስሱ"],
   guides: ["Practical guides", "ተግባራዊ መመሪያዎች"],
   education: ["Education", "ትምህርት"],
   opportunities: ["Career guidance", "የሥራ መመሪያ"],
@@ -20,7 +21,7 @@ const words = {
   helpContact: ["Help & contact", "እገዛ እና ግንኙነት"],
   privacyTerms: ["Privacy & terms", "ግላዊነት እና ውሎች"],
   footerDescription: [
-    "Practical career and education guidance for Ethiopia. Explore original guides and a clearly labelled recruitment demo.",
+    "A home for professional ideas, meaningful work and your next chapter. Discover the people and possibilities on Sera.et.",
     "ወደ ትርጉም ያለው ሥራ የሚወስድ ግልጽ መንገድ። ሥራዎችን ያግኙ፣ የወደዷቸውን ያስቀምጡ፣ ቀጣዩን እርምጃዎንም ያስሱ።",
   ],
   draftNotice: ["Draft information · demo release", "ረቂቅ መረጃ · የሙከራ ስሪት"],

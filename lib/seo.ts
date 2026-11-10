@@ -37,9 +37,9 @@ export const amharicReviewed = process.env.SERA_AM_REVIEWED === "true";
 export const publicPages = [
   {
     path: "/",
-    title: "Opportunities, Education & Practical Guides in Ethiopia",
+    title: "Sera.et — Your Work, Your People, Your Next Chapter",
     description:
-      "Explore Sera.et: practical career and education guides for Ethiopia, with a clearly labelled recruitment demo and a roadmap for student and institution workspaces.",
+      "Share your ideas, showcase your professional work, discover people and explore career opportunities on Sera.et.",
   },
   {
     path: "/about",

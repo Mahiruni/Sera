@@ -44,6 +44,7 @@ export function Shell({
   const privateWorkspace =
     authenticated &&
     [
+      "/discover",
       "/feed",
       "/posts",
       "/members",
@@ -96,7 +97,7 @@ export function Shell({
   };
   const dock = [
     { href: authenticated ? "/feed" : "/", key: "home" as Key, Icon: Home },
-    { href: "/jobs", key: "jobs" as Key, Icon: Compass },
+    { href: "/discover", key: "discover" as Key, Icon: Compass },
     { href: "/saved", key: "saved" as Key, Icon: Bookmark },
     {
       href: authenticated ? "/dashboard" : "/workspace",

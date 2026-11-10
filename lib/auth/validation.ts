@@ -11,6 +11,7 @@ export function safeDestination(value: unknown, fallback = "/dashboard") {
       "/reset-password",
       "/settings/linkedin",
       "/feed",
+      "/discover",
       "/saved",
     ].includes(value)
   )

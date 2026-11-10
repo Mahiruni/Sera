@@ -10,7 +10,8 @@ export function navigationGroups(role: Role | null): NavGroup[] {
       items: [
         { href: "/", key: "home", icon: "home" },
         { href: "/feed", key: "community", icon: "messages" },
-        { href: "/jobs", key: "findJobs", icon: "discover" },
+        { href: "/discover", key: "discover", icon: "discover" },
+        { href: "/jobs", key: "findJobs", icon: "employer" },
         { href: "/guides", key: "guides", icon: "about" },
         { href: "/education", key: "education", icon: "about" },
         { href: "/saved", key: "saved", icon: "saved" },
