@@ -27,8 +27,8 @@ const labels: Record<PostKind, string> = {
   achievement: "Achievement",
   question: "Discussion",
 };
-export function PostComposer({ post }: { post?: SocialPost }) {
-  const [kind, setKind] = useState<PostKind>(post?.kind || "idea");
+export function PostComposer({ post, initialKind = "idea" }: { post?: SocialPost; initialKind?: PostKind }) {
+  const [kind, setKind] = useState<PostKind>(post?.kind || initialKind);
   const [previews, setPreviews] = useState<string[]>([]);
   const urls = useRef<string[]>([]);
   const [fileError, setFileError] = useState("");
@@ -61,8 +61,8 @@ export function PostComposer({ post }: { post?: SocialPost }) {
     >
       <div className="social-section-heading">
         <div>
-          <p className="eyebrow">YOUR VOICE MATTERS</p>
-          <h2>{post ? "Refine your story." : "What are you working on?"}</h2>
+          <p className="eyebrow">SHARE WITH YOUR COMMUNITY</p>
+          <h2>{post ? "Refine your story." : "What would you like to share?"}</h2>
         </div>
         <Send size={22} aria-hidden="true" />
       </div>
