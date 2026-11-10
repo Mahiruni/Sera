@@ -537,3 +537,85 @@ button[disabled] {
     margin-right: -28px;
   }
 }
+
+
+/* SERA premium feed: compact engagement controls and media mosaics. */
+.social-post-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  padding-top: 12px;
+}
+.social-post-actions > form,
+.social-post-actions > a,
+.social-post-actions > .social-share {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.social-post-actions button,
+.social-post-actions > a,
+.social-share > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 6px 3px;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+.social-reaction-icons {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 2px;
+}
+.social-reaction-icons svg:first-child {
+  color: #f24c69;
+  background: #f24c69;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  padding: 3px;
+  width: 25px;
+  height: 25px;
+  fill: white;
+  stroke: white;
+}
+.social-reaction-icons svg:last-child {
+  margin-left: -6px;
+  color: white;
+  background: #248eea;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  padding: 4px;
+  width: 25px;
+  height: 25px;
+  stroke: white;
+}
+.social-action-count { font-variant-numeric: tabular-nums; font-weight: 600; }
+.social-image-link { position: relative; overflow: hidden; }
+.social-more-images {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #07141bb8;
+  font-size: 1.5rem;
+  font-weight: 750;
+}
+.social-images-three { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.social-images-three .social-image-link:first-child { grid-row: span 2; }
+.social-images-grid .social-image-link img {
+  height: clamp(145px, 30vw, 260px);
+  width: 100%;
+  object-fit: cover;
+}
+.social-images-three .social-image-link:first-child img { height: calc(clamp(145px, 30vw, 260px) * 2 + 3px); }
+@media (max-width: 380px) {
+  .social-post-actions { gap: 0; }
+  .social-post-actions button,
+  .social-post-actions > a { gap: 4px; font-size: 0.75rem; }
+}
