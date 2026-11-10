@@ -265,3 +265,83 @@ html[data-sera-theme="dark"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phase 2.5.4, pass two: inbox, notifications and member profile. */
+.sera-inbox .sera-inbox-layout,
+.sera-inbox .sera-inbox-sidebar,
+.sera-inbox .sera-inbox-thread,
+.sera-inbox .sera-inbox-messages,
+.sera-notifications .sera-notifications-heading,
+.sera-notifications .sera-notification,
+.sera-member-page .sera-member-hero {
+  min-width: 0;
+  max-width: 100%;
+}
+.sera-inbox .sera-inbox-search {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.sera-inbox .sera-inbox-search input {
+  flex: 1 1 180px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 11px 13px;
+  border-radius: var(--sera-radius-sm);
+  border: 1px solid var(--sera-border);
+  background: var(--sera-surface);
+  color: var(--sera-text);
+  font: inherit;
+}
+.sera-inbox .sera-inbox-search-clear {
+  color: var(--sera-accent);
+  padding: 10px;
+  text-underline-offset: 3px;
+}
+.sera-inbox .sera-inbox-read-form { margin-top: 12px; }
+.sera-inbox .sera-inbox-read-button {
+  border: 1px solid var(--sera-border);
+  background: var(--sera-surface-soft);
+  color: var(--sera-text);
+  border-radius: var(--sera-radius-sm);
+  padding: 10px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  font: inherit;
+}
+.sera-inbox .sera-message-bubble,
+.sera-inbox .sera-message-bubble p,
+.sera-inbox .sera-message-bubble a,
+.sera-notifications .sera-notification-copy,
+.sera-member-page .sera-member-hero {
+  overflow-wrap: anywhere;
+}
+.sera-notifications :where(.sera-notification-link,.sera-notification-read,.sera-notifications-mark-all):focus-visible,
+.sera-member-page :where(button,summary,select,textarea):focus-visible,
+.sera-inbox :where(.sera-inbox-read-button,.sera-inbox-search-clear):focus-visible {
+  outline: 3px solid var(--sera-focus);
+  outline-offset: 3px;
+}
+.sera-member-page .sera-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.sera-member-page .sera-member-actions form { min-width: 0; }
+@media (max-width: 650px) {
+  .sera-inbox .sera-inbox-search .network-button {
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+  .sera-inbox .sera-inbox-read-button { width: 100%; }
+  .sera-notifications .sera-notifications-tools { flex-wrap: wrap; }
+  .sera-member-page .sera-member-actions .network-button { min-height: 44px; }
+}
+@media (max-width: 380px) {
+  .sera-inbox .sera-inbox-search input { flex-basis: 100%; }
+  .sera-inbox .sera-inbox-search .network-button { flex: 1; }
+  .sera-member-page .sera-member-actions form { flex: 1 1 auto; }
+}
