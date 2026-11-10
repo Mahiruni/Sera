@@ -97,3 +97,34 @@ body:has(.account-foundation) .dock-perimeter{border-color:#45484d}
 .account-foundation .sera-profile-complete-button{display:inline-flex;align-items:center;gap:7px;margin-top:13px;padding:9px 0;border:0;background:transparent;color:#007d89;font-size:12px;font-weight:750}
 @media(max-width:600px){.account-foundation .sera-profile-completion{padding:14px;margin-top:15px}.account-foundation .sera-profile-completion-heading h2{font-size:16px}.account-foundation .sera-profile-completion-heading>strong{font-size:23px}}
 @media(prefers-reduced-motion:reduce){.account-foundation .sera-profile-progress-track>span{transition:none}}
+
+/* Professional identity: private controls / member-facing profile handoff */
+.sera-profile-visibility-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 13px 15px;
+  border: 1px solid #cfe7eb;
+  border-radius: 16px;
+  background: #f1fafb;
+  color: #315b65;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sera-profile-visibility-note > svg { flex: 0 0 auto; color: #07859b; }
+.sera-profile-visibility-note > span { flex: 1 1 210px; }
+.sera-profile-visibility-note > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #087f9f;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sera-profile-visibility-note > a:focus-visible {
+  outline: 2px solid #087f9f;
+  outline-offset: 3px;
+}
