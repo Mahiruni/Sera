@@ -35,6 +35,8 @@ export default async function Member({
     db.from("professional_connection_requests").select("status").eq("requester_id", user.id).eq("recipient_id", id).maybeSingle(),
     db.from("professional_connection_requests").select("status").eq("requester_id", id).eq("recipient_id", user.id).maybeSingle(),
   ]);
+  const { data: block } = id === user.id ? { data: null } : await db.from("professional_blocks").select("blocker_id").eq("blocker_id", user.id).eq("blocked_id", id).maybeSingle();
+  const blocked = Boolean(block);
   const following = Boolean(follow?.data);
   const sentStatus = sent?.data?.status;
   const receivedStatus = received?.data?.status;
@@ -56,12 +58,12 @@ export default async function Member({
         {author?.location && <p>{author.location}</p>}
         {id !== user.id && member && (
           <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
-            <form action={changeProfessionalRelationship}>
+            {!blocked && <form action={changeProfessionalRelationship}>
               <input type="hidden" name="target" value={id} />
               <input type="hidden" name="action" value={following ? "unfollow" : "follow"} />
               <button type="submit" className="network-button">{following ? "Following ✓" : "Follow"}</button>
-            </form>
-            {receivedStatus === "pending" ? (
+            </form>}
+            {blocked ? <span>You blocked this member</span> : receivedStatus === "pending" ? (
               <form action={changeProfessionalRelationship}>
                 <input type="hidden" name="target" value={id} />
                 <input type="hidden" name="action" value="accept" />
@@ -82,6 +84,11 @@ export default async function Member({
                 <button type="submit" className="network-button">Connect</button>
               </form>
             ) : <span>Invitation {sentStatus || receivedStatus}</span>}
+            <form action={changeProfessionalRelationship}>
+              <input type="hidden" name="target" value={id} />
+              <input type="hidden" name="action" value={blocked ? "unblock" : "block"} />
+              <button type="submit" aria-label={blocked ? "Unblock member" : "Block member"} className="network-button">{blocked ? "Unblock" : "Block"}</button>
+            </form>
           </div>
         )}
       </header>
