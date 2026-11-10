@@ -1,6 +1,5 @@
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Heart,
   MessageCircle,
@@ -18,6 +17,7 @@ import {
 import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { ShareButton } from "./share";
+import { ExpandableCaption, PostMedia } from "./post-media";
 export function PostCard({
   post,
   currentUserId,
@@ -74,27 +74,9 @@ export function PostCard({
           {post.quote_source && <cite>— {post.quote_source}</cite>}
         </blockquote>
       ) : (
-        <p className="social-body">{post.body}</p>
+        <ExpandableCaption text={post.body} />
       )}
-      {!!post.images.length && (
-        <div
-          className={`social-images ${post.images.length > 1 ? "social-images-grid" : ""} ${post.images.length === 3 ? "social-images-three" : ""} ${post.images.length >= 5 ? "social-images-many" : ""}`}
-        >
-          {post.images.slice(0, post.images.length > 4 ? 4 : undefined).map((img, i) => (
-            <a href={img.url} target="_blank" rel="noopener noreferrer" key={i} className="social-image-link" aria-label={`Open photo ${i + 1} in full size`}>
-              <Image
-                unoptimized
-                src={img.url}
-                alt={img.alt}
-                width={1200}
-                height={900}
-                style={{ width: "100%", height: "auto", aspectRatio: "auto" }}
-              />
-              {post.images.length > 4 && i === 3 && <span className="social-more-images">+{post.images.length - 4}</span>}
-            </a>
-          ))}
-        </div>
-      )}
+      <PostMedia images={post.images} />
       {post.project_url && (
         <a
           className="social-project"
