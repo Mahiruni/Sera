@@ -1,4 +1,5 @@
 import { InboxRefresh } from "@/components/network/inbox-refresh";
+import { ConversationTyping } from "@/components/network/conversation-typing";
 import Link from "next/link";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -105,8 +106,7 @@ export default async function ProfessionalInbox({ searchParams }: {
             </div>
             <form action={sendProfessionalMessage} encType="multipart/form-data" style={{ display: "grid", gap: 8 }}>
               <input type="hidden" name="conversation" value={selected.id} />
-              <label htmlFor="professional-message">Your message</label>
-              <textarea id="professional-message" name="body" maxLength={4000} rows={3} placeholder="Write a thoughtful message…" style={{ width: "100%", padding: 12, borderRadius: 14, border: "1px solid #a8d5df" }} />
+              <ConversationTyping conversation={selected.id} />
               <label htmlFor="professional-attachment">Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
               <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
               <button type="submit" className="network-button">Send message</button>
