@@ -17,6 +17,7 @@ for select to authenticated using (
  and exists(select 1 from public.professional_message_attachments a
  join public.professional_messages m on m.id=a.message_id
  where a.storage_path=name)
+ or (owner_id=(select auth.uid())::text and not exists(select 1 from public.professional_message_attachments a where a.storage_path=name))
 );
 
  and exists(select 1 from public.professional_conversations c
