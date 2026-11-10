@@ -7134,3 +7134,23 @@ body:has(.auth-layout) .information-footer {
 
 .sera-toolbar-notifications{position:relative}
 .sera-toolbar-notification-badge{position:absolute;top:-5px;right:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:99px;display:grid;place-items:center;background:#d63355;color:white;border:2px solid white;font-size:9px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+
+
+/* Member profile: mobile-first, compact, accessible controls */
+.sera-member-page .sera-member-hero{padding:clamp(18px,4vw,30px);display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-height:0}
+.sera-member-page .sera-member-hero .eyebrow{margin:0;font-size:11px;letter-spacing:.11em}
+.sera-member-page .sera-member-hero h1{margin:0;font-size:clamp(30px,6vw,44px);line-height:1.1;overflow-wrap:anywhere}
+.sera-member-page .sera-member-hero>p:not(.eyebrow){margin:0;line-height:1.5}
+.sera-member-activity-row{margin-top:-5px}
+.sera-member-activity{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted,#657980)}
+.sera-presence-dot{height:7px;width:7px;border-radius:50%;background:#9caeb4;display:inline-block}
+.sera-presence-dot.is-online{background:#159b77;box-shadow:0 0 0 3px rgba(21,155,119,.12)}
+.sera-member-page .sera-member-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;width:100%;margin:8px 0 0}
+.sera-member-page .sera-member-actions form{display:inline-flex;flex:0 0 auto;margin:0}
+.sera-member-page .sera-member-actions .network-button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;min-width:90px;width:auto;padding:10px 17px;border-radius:14px;font-size:13px;font-weight:650;line-height:1.25;white-space:nowrap;border:1px solid #b6d5db;color:#17434b;background:#e8f6f7;box-shadow:none;opacity:1}
+.sera-member-page .sera-member-actions .network-button:focus-visible{outline:3px solid #138b9b;outline-offset:2px}
+.sera-member-page .sera-member-actions .network-button:hover{background:#d5eff1}
+.sera-member-page .sera-member-status{font-size:12px;color:var(--muted,#64777d);padding:8px 0}
+.sera-member-page .sera-member-report{width:100%;margin-top:8px}
+.sera-member-page .sera-member-report summary{padding:12px 14px}
+@media(max-width:600px){.sera-member-page .sera-member-hero{gap:10px}.sera-member-page .sera-member-actions{gap:8px}.sera-member-page .sera-member-actions .network-button{min-width:0;padding:10px 14px}.sera-member-page .social-card{margin-top:12px}}
