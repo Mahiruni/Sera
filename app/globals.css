@@ -7051,3 +7051,21 @@ body:has(.auth-layout) .information-footer {
 .sera-inbox :is(input,textarea,select){max-width:100%}
 @media(max-width:760px){.sera-inbox{padding:18px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-inbox-layout{grid-template-columns:minmax(0,1fr);gap:12px}.sera-inbox-sidebar{max-height:260px;padding:14px;border-radius:20px}.sera-inbox-thread{padding:16px;border-radius:20px;min-height:450px}.sera-inbox-messages{max-height:440px}.sera-message-bubble{max-width:92%}}
 @media(prefers-reduced-motion:reduce){.sera-inbox *{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Phase 2 professional relationships */
+.sera-connections{max-width:1020px;margin:auto;padding:28px 20px calc(130px + env(safe-area-inset-bottom,0px))}
+.sera-connections>h1{font-size:clamp(30px,4.5vw,48px);line-height:1.14;letter-spacing:-.05em;max-width:750px;margin:10px 0 16px}
+.sera-connections>p{color:var(--muted);margin:10px 0;font-size:13px;max-width:680px}
+.sera-connections>p a{color:var(--primary);font-weight:700}
+.sera-connection-section{background:var(--white);border:1px solid #dceaf0;border-radius:24px;padding:22px;margin:18px 0;box-shadow:0 12px 35px #123c5708}
+.sera-connection-section h2{font-size:18px;letter-spacing:-.035em;margin-bottom:12px}
+.sera-connection-section>p{font-size:13px;color:var(--muted);padding:14px 0}
+.sera-connection-section ul{margin:0}
+.sera-connection-person{display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:1px solid #e6eff3;flex-wrap:wrap}
+.sera-connection-person:last-child{border-bottom:0}
+.sera-connection-person>a{flex:1;min-width:130px;font-weight:700;font-size:13px;overflow-wrap:anywhere}
+.sera-connection-action{min-height:38px;border:1px solid #b3dfe9;border-radius:13px;padding:8px 14px;color:#075a74;background:#e8f8fb;font-size:12px;font-weight:700}
+.sera-connection-action:hover{background:#d6f2f9;border-color:#7ccddd;transform:translateY(-1px)}
+@media(max-width:760px){.sera-connections{padding:20px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-connection-section{padding:16px;border-radius:20px;margin:12px 0}.sera-connection-person{gap:10px}.sera-connection-person>a{min-width:100px}}
+@media(prefers-reduced-motion:reduce){.sera-connection-action:hover{transform:none}}
