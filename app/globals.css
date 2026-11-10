@@ -7098,3 +7098,28 @@ body:has(.auth-layout) .information-footer {
 .sera-moderation-form :is(select,textarea){width:100%;background:#f9fcfd}
 .sera-moderation-form .network-button{min-height:44px;border-radius:14px}
 @media(max-width:600px){.sera-moderation-people{grid-template-columns:1fr}.sera-member-hero{border-radius:20px}.sera-moderation-report{border-radius:20px}.sera-member-actions{gap:8px}}
+
+
+/* Phase 2 notifications */
+.sera-notifications{max-width:880px;margin:auto;padding:30px 18px calc(130px + env(safe-area-inset-bottom,0px))}
+.sera-notifications-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:24px}
+.sera-notifications-heading h1{font-size:clamp(30px,5vw,48px);margin:8px 0}
+.sera-notifications-heading p:not(.network-kicker){font-size:13px;color:var(--muted)}
+.sera-notifications-count{display:inline-flex;align-items:center;gap:8px;background:#e6f8fc;border:1px solid #c4eaf3;border-radius:99px;padding:10px 15px;color:#096b87;font-size:12px;font-weight:750}
+.sera-notifications-list{display:grid;gap:10px}
+.sera-notification{display:flex;align-items:center;gap:12px;padding:15px 18px;background:var(--white);border:1px solid #dceaf0;border-radius:19px;box-shadow:0 8px 26px #153e5806}
+.sera-notification.is-unread{background:linear-gradient(110deg,#e9f9fd,#fff 70%);border-color:#b2e2ee}
+.sera-notification-link{display:flex;align-items:center;gap:14px;flex:1;min-width:0}
+.sera-notification-avatar{position:relative;flex-shrink:0}
+.sera-notification-icon{position:absolute;right:-4px;bottom:-3px;display:grid;place-items:center;width:22px;height:22px;background:#087f9f;color:white;border:2px solid white;border-radius:50%}
+.sera-notification-copy{font-size:13px;line-height:1.55;color:#284b5b;overflow-wrap:anywhere}
+.sera-notification-copy strong{color:#123c4e}
+.sera-notification-copy small{display:block;color:#728b97;font-size:10px;margin-top:4px}
+.sera-notification-read{display:grid;place-items:center;width:38px;height:38px;border:1px solid #c6e6ef;border-radius:12px;color:#087f9f;background:#fff}
+.sera-notification-read:hover{background:#e0f7fc}
+.sera-notifications-empty{text-align:center;padding:64px 24px;background:#fff;border:1px dashed #b6dce6;border-radius:24px;color:#568093}
+.sera-notifications-empty>svg{color:#1598ba;margin-bottom:14px}
+.sera-notifications-empty h2{font-size:21px;color:#163c4e;margin-bottom:10px}
+.sera-notifications-empty p{font-size:13px;margin-bottom:18px}
+.sera-notifications-empty a{font-size:13px;font-weight:700;color:#087f9f}
+@media(max-width:600px){.sera-notifications{padding:18px 12px calc(130px + env(safe-area-inset-bottom,0px))}.sera-notification{padding:12px;border-radius:16px}.sera-notification-link{gap:10px}}
