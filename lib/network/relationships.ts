@@ -43,3 +43,19 @@ export async function changeProfessionalRelationship(form: FormData) {
   revalidatePath("/network/messages");
   revalidatePath("/members/" + target);
 }
+
+const reportReasons = new Set(["spam", "harassment", "impersonation", "inappropriate", "other"]);
+export async function reportProfessionalMember(form: FormData) {
+  const user = await currentUser();
+  const target = form.get("target");
+  const reason = form.get("reason");
+  const details = form.get("details");
+  if (!user?.email_confirmed_at || !validId(target) || target === user.id ||
+      typeof reason !== "string" || !reportReasons.has(reason) ||
+      typeof details !== "string" || details.length > 1000) return;
+  const db = await serverClient();
+  await db.from("professional_reports").insert({
+    reporter_id: user.id, reported_id: target, reason, details: details.trim(),
+  });
+  revalidatePath("/members/" + target);
+}
