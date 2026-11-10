@@ -26,11 +26,32 @@ export default async function Member({
   const { user } = await requiredProfile();
   const { id } = await params;
   if (!uuid(id)) notFound();
+  const db = await serverClient();
+  // Check audience before loading member cards, posts, or profile metadata.
+  // Missing preferences default to signed-in members. Errors fail closed.
+  if (id !== user.id) {
+    const { data: preference, error: preferenceError } = await db
+      .from("professional_profile_visibility")
+      .select("visibility")
+      .eq("user_id", id)
+      .maybeSingle();
+    if (preferenceError) notFound();
+    if (preference?.visibility === "connections") {
+      const { data: connection, error: connectionError } = await db
+        .from("professional_connection_requests")
+        .select("status")
+        .eq("status", "accepted")
+        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${id}),and(requester_id.eq.${id},recipient_id.eq.${user.id})`)
+        .limit(1)
+        .maybeSingle();
+      if (connectionError || !connection) notFound();
+    }
+    // "public" remains member-only until a separately reviewed anonymous route exists.
+  }
   const page = pageNumber((await searchParams).page);
   const result = await loadSocialFeed({ authorId: id, page });
   const author = result.posts[0]?.author;
   const member = (await memberCards([id])).get(id);
-  const db = await serverClient();
   const [follow, sent, received] = id === user.id ? [null, null, null] : await Promise.all([
     db.from("professional_follows").select("follower_id").eq("follower_id", user.id).eq("followed_id", id).maybeSingle(),
     db.from("professional_connection_requests").select("status").eq("requester_id", user.id).eq("recipient_id", id).maybeSingle(),
