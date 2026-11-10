@@ -2053,3 +2053,28 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   .network-hero-stage { margin-top: 0; margin-bottom: 12px; }
   .network-app { padding-top: var(--sera-header-content-offset, 78px); }
 }
+
+/* Mobile first-fold polish: the Shell header already occupies the top row. */
+@media (max-width: 520px) {
+  .network-public {
+    padding-top: clamp(14px, 4vw, 22px);
+  }
+  .network-public-top {
+    padding-bottom: 12px;
+  }
+  .network-public-hero {
+    padding-top: 0;
+    padding-bottom: 24px;
+    gap: 22px;
+  }
+  .network-hero-copy h1 {
+    margin-top: 18px;
+    margin-bottom: 20px;
+  }
+  .network-hero-actions {
+    margin-top: 22px;
+  }
+  .network-hero-note {
+    margin-top: 22px;
+  }
+}
