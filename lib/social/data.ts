@@ -114,12 +114,12 @@ export async function loadSocialFeed(
     posts: posts.map((p) => ({
       ...p,
       photo: people.get(p.author_id)?.photo,
-      author: authorMap.get(p.author_id) || {
+      author: { ...(authorMap.get(p.author_id) || {
         id: p.author_id,
         full_name: "Sera member",
         headline: "",
         location: "",
-      },
+      }), full_name: people.get(p.author_id)?.name || authorMap.get(p.author_id)?.full_name || "Sera member" },
       images: imageRows.flatMap((i, index) =>
         i.post_id === p.id && signed?.data?.[index]?.signedUrl
           ? [
