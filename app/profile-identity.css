@@ -128,3 +128,8 @@ body:has(.account-foundation) .dock-perimeter{border-color:#45484d}
   outline: 2px solid #087f9f;
   outline-offset: 3px;
 }
+
+.sera-visibility-form { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:15px; }
+.sera-visibility-form label { font-size:12px; font-weight:700; color:#285365; }
+.sera-visibility-form select { min-height:44px; flex:1 1 190px; min-width:0; border:1px solid #c6e2e8; border-radius:12px; background:#fff; color:#194554; padding:9px 12px; }
+.sera-visibility-form .button { min-height:44px; border-radius:12px; }
