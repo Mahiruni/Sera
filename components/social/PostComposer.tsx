@@ -27,7 +27,7 @@ const labels: Record<PostKind, string> = {
   achievement: "Achievement",
   question: "Discussion",
 };
-export function PostComposer({ post, initialKind = "idea" }: { post?: SocialPost; initialKind?: PostKind }) {
+export function PostComposer({ post, initialKind = "idea", onPublished }: { post?: SocialPost; initialKind?: PostKind; onPublished?: (postId: string) => void }) {
   const [kind, setKind] = useState<PostKind>(post?.kind || initialKind);
   const [previews, setPreviews] = useState<string[]>([]);
   const urls = useRef<string[]>([]);
@@ -50,6 +50,9 @@ export function PostComposer({ post, initialKind = "idea" }: { post?: SocialPost
     },
     {},
   );
+  useEffect(() => {
+    if (state.postId && onPublished) onPublished(state.postId);
+  }, [state.postId, onPublished]);
   useEffect(
     () => () => urls.current.forEach((url) => URL.revokeObjectURL(url)),
     [],
