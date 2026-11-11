@@ -104,12 +104,22 @@ export function SeraConversationSheet({
     return () => abort.abort();
   }, [open, postId, page, revision]);
 
+  // Focus restoration and body locking run only when the sheet opens/closes,
+  // NEVER on each typed character; otherwise the keyboard loses focus.
   useEffect(() => {
     if (!open) return;
     const oldOverflow = document.body.style.overflow;
     const restoreFocus = trigger.current;
     document.body.style.overflow = "hidden";
     closeButton.current?.focus();
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      restoreFocus?.focus();
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -117,20 +127,29 @@ export function SeraConversationSheet({
         else requestClose();
       }
       if (event.key !== "Tab") return;
-      const focusable = Array.from(dialog.current?.querySelectorAll<HTMLElement>(
+      const activeDialog = confirmDiscard
+        ? dialog.current?.querySelector<HTMLElement>(".sera-conversation-confirm")
+        : dialog.current;
+      const focusable = Array.from(activeDialog?.querySelectorAll<HTMLElement>(
         'button:not([disabled]), textarea:not([disabled]), a[href]'
       ) ?? []).filter(el => el.getClientRects().length > 0);
       if (!focusable.length) return;
       const first = focusable[0], last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !dialog.current?.contains(document.activeElement))) {
+      if (event.shiftKey && (document.activeElement === first || !activeDialog?.contains(document.activeElement))) {
         event.preventDefault(); last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !dialog.current?.contains(document.activeElement))) {
+      } else if (!event.shiftKey && (document.activeElement === last || !activeDialog?.contains(document.activeElement))) {
         event.preventDefault(); first.focus();
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; restoreFocus?.focus(); };
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, pending, draft, confirmDiscard]);
+
+  useEffect(() => {
+    if (confirmDiscard) {
+      dialog.current?.querySelector<HTMLButtonElement>(".sera-conversation-confirm button")?.focus();
+    }
+  }, [confirmDiscard]);
 
   function submitComment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
