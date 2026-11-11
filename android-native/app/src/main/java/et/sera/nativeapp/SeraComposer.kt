@@ -51,8 +51,10 @@ private class ComposerDrafts(context: Context) {
 fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val focus = LocalFocusManager.current
-    val drafts = remember(context) { ComposerDrafts(context) }
-    var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
+    val drafts = remember(context) { runCatching { ComposerDrafts(context) }.getOrNull() }
+    var body by rememberSaveable(userId) {
+        mutableStateOf(runCatching { drafts?.load(userId) }.getOrNull().orEmpty())
+    }
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
@@ -88,6 +90,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         onDismiss()
     }
     fun requestClose() {
+        if (publishing) return
         if (body.isNotBlank() || selectedImages.isNotEmpty() || selectedVideo != null) confirmClose = true
         else close()
     }
@@ -98,21 +101,22 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         text = { Text("Your writing is saved privately as a draft. Selected media is not saved.") },
         confirmButton = {
             TextButton(onClick = {
-                drafts.save(userId, body)
+                val stored = runCatching { drafts?.save(userId, body); drafts != null }.getOrDefault(false)
                 confirmClose = false
-                close()
+                if (stored) close()
+                else publishMessage = "Secure draft storage is unavailable. Copy your text before closing."
             }) { Text("Save and close") }
         },
         dismissButton = { TextButton(onClick = { confirmClose = false }) { Text("Keep editing") } },
         shape = RoundedCornerShape(22.dp)
     )
-    LaunchedEffect(userId, body) { drafts.save(userId, body) }
+    LaunchedEffect(userId, body) { runCatching { drafts?.save(userId, body) } }
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
     SeraSignatureSheet(onDismissRequest = { requestClose() }) {
         Column(
-            Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState())
+            Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding().navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -130,6 +134,11 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
                 TextButton(onClick = { requestClose() }) { Text("Close", color = accent) }
             }
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState())
+                    .padding(vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             OutlinedTextField(
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
@@ -182,27 +191,28 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
             }
+                Text(stringResource(R.string.composer_notice), style = MaterialTheme.typography.bodySmall)
+                if (selectedImages.isNotEmpty()) Text("Photos are checked for safety before your post appears.", style = MaterialTheme.typography.bodySmall, color = accent)
+            }
+            HorizontalDivider(color = Color(0xFFE4EFED))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = {
-                    drafts.save(userId, body)
-                    saved = true
+                    saved = runCatching { drafts?.save(userId, body); drafts != null }.getOrDefault(false)
+                    if (!saved) publishMessage = "Secure draft storage is unavailable."
                     focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(15.dp)) { Text(stringResource(R.string.save_draft)) }
-                Button(onClick = {
-                    drafts.save(userId, body)
-                    saved = true
-                    focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ink)) { Text(stringResource(R.string.keep_later)) }
+                }, enabled = hasContent && !publishing,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(15.dp)) { Text(stringResource(R.string.save_draft)) }
             }
             Button(onClick = {
+                if (publishing) return@Button
                 publishing = true; publishMessage = ""
                 scope.launch {
                     val result = if (selectedImages.isNotEmpty())
                         publishNativeImages(context, token, body, selectedImages.toList())
                     else publishNativeText(token, body)
                     publishing = false
-                    if (result.first) { drafts.clear(userId); body = ""; onPublished() }
+                    if (result.first) { runCatching { drafts?.clear(userId) }; body = ""; onPublished() }
                     else publishMessage = result.second
                 }
             }, enabled = !publishing && body.trim().length >= 3 && selectedVideo == null,
@@ -215,9 +225,6 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
             if (selectedVideo != null) Text("Video publishing is not available yet. Remove the video to publish.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            if (selectedImages.isNotEmpty()) Text("Photos are checked for safety before your post appears.", style = MaterialTheme.typography.bodySmall, color = accent)
-            Text(stringResource(R.string.composer_notice),
-                style = MaterialTheme.typography.bodySmall)
 
         }
     }
