@@ -8,8 +8,18 @@ ALTER TABLE public.posts
     ADD COLUMN IF NOT EXISTS repost_of uuid
         REFERENCES public.posts(id) ON DELETE CASCADE;
 
-ALTER TABLE public.posts
-    ADD CONSTRAINT repost_not_self CHECK (repost_of IS NULL OR repost_of <> id);
+DO $
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'repost_not_self'
+          AND conrelid = 'public.posts'::regclass
+    ) THEN
+        ALTER TABLE public.posts
+            ADD CONSTRAINT repost_not_self
+            CHECK (repost_of IS NULL OR repost_of <> id);
+    END IF;
+END $;
 
 CREATE UNIQUE INDEX IF NOT EXISTS posts_one_repost_per_author
     ON public.posts (author_id, repost_of) WHERE repost_of IS NOT NULL;
