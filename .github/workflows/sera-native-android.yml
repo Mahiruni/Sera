@@ -47,6 +47,19 @@ jobs:
           fi
           case "$SERA_URL" in https://*.supabase.co) ;; *) echo "::error::Invalid Supabase URL"; exit 1 ;; esac
           gradle :app:assembleDebug --no-daemon -PSERA_SUPABASE_URL="$SERA_URL" -PSERA_SUPABASE_ANON_KEY="$SERA_PUBLIC_KEY"
+      - name: Compile optimized unsigned release APK and measure download size
+        working-directory: android-native
+        env:
+          SERA_URL: https://okegwojigrtxadvgxpwm.supabase.co
+          SERA_PUBLIC_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          gradle :app:assembleRelease --no-daemon -PSERA_SUPABASE_URL="$SERA_URL" -PSERA_SUPABASE_ANON_KEY="$SERA_PUBLIC_KEY"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s "$APK"
+          BYTES="$(stat -c%s "$APK")"
+          printf "### SERA Android optimized release size\\n\\n**%s bytes (%.2f MiB)**\\n" "$BYTES" "$(awk "BEGIN {print $BYTES/1048576}")" >> "$GITHUB_STEP_SUMMARY"
+          echo "Optimized release APK size: $BYTES bytes"
       - uses: actions/upload-artifact@v4
         with:
           name: SERA-Native-Phase1-debug-apk
