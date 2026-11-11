@@ -8,3 +8,6 @@ Run GitHub Actions **SERA Android APK** on main or push changes under android/. 
 The debug APK is signed by Android's generated debug key. It is **not** a Play Store release. Do not distribute as a production signed release. Configure a secure release signing key and test login, OAuth redirects, uploads, Android back navigation, notifications, and real-device compatibility before a public release.
 
 This initial wrapper does not implement native push notifications or a native camera capture flow. Standard HTML file picker uploads are supported. External authentication flows may require additional verified redirect handling.
+
+## Build trigger
+This documentation update requests the GitHub Actions APK build on the main branch. Confirm the workflow run succeeds before distributing an APK.
