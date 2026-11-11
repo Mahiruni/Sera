@@ -21,7 +21,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
@@ -143,56 +142,48 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         shape = RoundedCornerShape(24.dp)
     )
     SeraSignatureSheet(onDismissRequest = { requestClose() }) {
-        Column(Modifier.fillMaxWidth().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding()
+                .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge, color = Color(0xFF18383D), fontWeight = FontWeight.Bold)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) } }
             if (!loading && comments.isEmpty() && error.isBlank()) Text(stringResource(R.string.no_comments))
-            LazyColumn(modifier = Modifier.heightIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(comments, key = { it.id }) { comment ->
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFF7FBFA)),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                if (!comment.avatarUrl.isNullOrBlank()) {
-                                    SeraMediaImage(
-                                        url = comment.avatarUrl,
-                                        description = "Profile photo of " + comment.author,
-                                        widthPx = 96, heightPx = 96,
-                                        modifier = Modifier.size(38.dp).clip(CircleShape)
+            // Keep parent comments and their replies together; the composer
+            // stays anchored while the discussion itself scrolls.
+            val roots = comments.filter { it.parentId == null }
+            val repliesByParent = remember(comments) {
+                comments.filter { it.parentId != null }.groupBy { it.parentId }
+            }
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(bottom = 12.dp)
+            ) {
+                items(roots, key = { it.id }) { root ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SeraThreadCommentCard(
+                            comment = root,
+                            onReply = { replyTarget = root }
+                        )
+                        repliesByParent[root.id].orEmpty().forEach { reply ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
+                                horizontalArrangement = Arrangement.spacedBy(9.dp)
+                            ) {
+                                Box(
+                                    Modifier.padding(top = 12.dp).width(2.dp).height(46.dp)
+                                        .background(Color(0xFFB9DBD7), RoundedCornerShape(4.dp))
+                                )
+                                Box(Modifier.weight(1f)) {
+                                    SeraThreadCommentCard(
+                                        comment = reply,
+                                        isReply = true,
+                                        onReply = { replyTarget = root }
                                     )
-                                } else {
-                                    Box(Modifier.size(38.dp).background(Color(0xFFE0F2EF), CircleShape),
-                                        contentAlignment = Alignment.Center) {
-                                        Text(comment.author.take(1).uppercase(), color = Color(0xFF087E83),
-                                            fontWeight = FontWeight.Bold)
-                                    }
                                 }
-                                Column(Modifier.weight(1f)) {
-                                    Text(comment.author, style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold, color = Color(0xFF18383D))
-                                    val date = remember(comment.createdAt) {
-                                        runCatching {
-                                            DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
-                                                .withZone(ZoneId.systemDefault())
-                                                .format(Instant.parse(comment.createdAt))
-                                        }.getOrDefault("")
-                                    }
-                                    if (date.isNotBlank()) Text(date, style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF688184))
-                                }
-                            }
-                            Text(comment.body, style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF18383D))
-                            TextButton(onClick = { replyTarget = comment },
-                                contentPadding = PaddingValues(0.dp)) {
-                                Text("Reply", color = Color(0xFF087E83),
-                                    style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -237,6 +228,85 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 Text(if (sending) "Publishing…" else if (replyTarget != null) "Publish reply" else "Publish comment")
             }
             TextButton(onClick = { requestClose() }, enabled = !sending) { Text(stringResource(R.string.close)) }
+        }
+    }
+}
+
+/** Dense professional thread cell shared by parent comments and replies. */
+@Composable
+private fun SeraThreadCommentCard(
+    comment: NativeComment,
+    isReply: Boolean = false,
+    onReply: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(if (isReply) 16.dp else 20.dp),
+        color = if (isReply) Color(0xFFF7FAF9) else Color(0xFFF1F7F6)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (isReply) 12.dp else 14.dp, vertical = 12.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (!comment.avatarUrl.isNullOrBlank()) {
+                    SeraMediaImage(
+                        url = comment.avatarUrl,
+                        description = "Profile photo of " + comment.author,
+                        widthPx = 96, heightPx = 96,
+                        modifier = Modifier.size(if (isReply) 32.dp else 38.dp).clip(CircleShape)
+                    )
+                } else {
+                    Box(
+                        Modifier.size(if (isReply) 32.dp else 38.dp)
+                            .background(Color(0xFFDBEEEB), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            comment.author.take(1).uppercase(),
+                            color = Color(0xFF087E83),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        comment.author,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF193A3F)
+                    )
+                    val date = remember(comment.createdAt) {
+                        runCatching {
+                            DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+                                .withZone(ZoneId.systemDefault())
+                                .format(Instant.parse(comment.createdAt))
+                        }.getOrDefault("")
+                    }
+                    if (date.isNotBlank()) Text(
+                        date, style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF688184)
+                    )
+                }
+            }
+            Text(
+                comment.body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF193A3F)
+            )
+            TextButton(
+                onClick = onReply,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.heightIn(min = 40.dp)
+            ) {
+                Text("Reply", color = Color(0xFF087E83),
+                    style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 }
