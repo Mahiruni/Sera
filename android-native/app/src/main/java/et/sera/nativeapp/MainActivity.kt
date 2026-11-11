@@ -537,37 +537,65 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                         }
                                     }
                                 }
-                                AnimatedVisibility(
+                                SeraChromeOverlays(
                                     visible = chromeVisible.value,
-                                    enter = fadeIn() + slideInVertically { -it },
-                                    exit = fadeOut() + slideOutVertically { -it },
-                                    modifier = Modifier.align(Alignment.TopCenter)
-                                ) {
-                                    SeraNativeHeader(
-                                        section = tab,
-                                        canCompose = authenticatedUserId.isNotBlank(),
-                                        onCompose = { showComposer = true },
-                                        onLanguage = { showLanguagePicker = true },
-                                        onMenu = { scope.launch { drawerState.open() } }
-                                    )
-                                }
-                                if (!expanded) AnimatedVisibility(
-                                    visible = chromeVisible.value,
-                                    enter = fadeIn() + slideInVertically { it },
-                                    exit = fadeOut() + slideOutVertically { it },
-                                    modifier = Modifier.align(Alignment.BottomCenter)
-                                ) {
-                                    SeraFloatingDock(
-                                        selected = tab, sections = sections,
-                                        onNavigate = ::navigateTo
-                                    )
-                                }
+                                    expanded = expanded,
+                                    selected = tab,
+                                    sections = sections,
+                                    canCompose = authenticatedUserId.isNotBlank(),
+                                    onCompose = { showComposer = true },
+                                    onLanguage = { showLanguagePicker = true },
+                                    onMenu = { scope.launch { drawerState.open() } },
+                                    onNavigate = ::navigateTo
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+
+/** Isolated BoxScope keeps the top/bottom chrome outside the RowScope overload. */
+@Composable
+private fun BoxScope.SeraChromeOverlays(
+    visible: Boolean,
+    expanded: Boolean,
+    selected: String,
+    sections: List<String>,
+    canCompose: Boolean,
+    onCompose: () -> Unit,
+    onLanguage: () -> Unit,
+    onMenu: () -> Unit,
+    onNavigate: (String) -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + slideInVertically { -it },
+        exit = fadeOut() + slideOutVertically { -it },
+        modifier = Modifier.align(Alignment.TopCenter)
+    ) {
+        SeraNativeHeader(
+            section = selected,
+            canCompose = canCompose,
+            onCompose = onCompose,
+            onLanguage = onLanguage,
+            onMenu = onMenu
+        )
+    }
+    if (!expanded) AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + slideInVertically { it },
+        exit = fadeOut() + slideOutVertically { it },
+        modifier = Modifier.align(Alignment.BottomCenter)
+    ) {
+        SeraFloatingDock(
+            selected = selected,
+            sections = sections,
+            onNavigate = onNavigate
+        )
     }
 }
 
