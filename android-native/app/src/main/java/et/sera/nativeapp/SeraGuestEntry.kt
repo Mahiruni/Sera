@@ -132,95 +132,6 @@ private fun SeraSocialFirstSignIn(
 ) {
     val context = LocalContext.current
 
-    if (!compact) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = entryDark,
-            shape = RoundedCornerShape(26.dp)
-        ) {
-            Column(
-                Modifier.background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFF10373D), Color(0xFF08656B), Color(0xFF079B98))
-                    )
-                ).padding(horizontal = 18.dp, vertical = 17.dp),
-                verticalArrangement = Arrangement.spacedBy(13.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            "YOUR PROFESSIONAL WORLD",
-                            fontWeight = FontWeight.Bold, fontSize = 9.sp,
-                            letterSpacing = 1.2.sp, color = Color(0xFFB9F0E7)
-                        )
-                        Text(
-                            "Connect.\nShowcase.\nGrow.",
-                            fontWeight = FontWeight.ExtraBold, fontSize = 25.sp,
-                            lineHeight = 27.sp, color = Color.White, letterSpacing = (-0.4).sp
-                        )
-                        Text(
-                            "Your people. Your work. Your next move.",
-                            fontSize = 11.sp, lineHeight = 15.sp,
-                            color = Color(0xFFD8F0EC)
-                        )
-                    }
-                    Box(Modifier.size(width = 116.dp, height = 118.dp), contentAlignment = Alignment.Center) {
-                        Box(
-                            Modifier.size(108.dp).clip(CircleShape)
-                                .background(Color.White.copy(alpha = .10f))
-                        )
-                        Surface(
-                            modifier = Modifier.align(Alignment.TopEnd).size(66.dp),
-                            shape = CircleShape, color = Color(0xFFB7EAE0),
-                            border = BorderStroke(3.dp, Color(0xFF166A70))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("S", color = Color(0xFF15545A), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-                            }
-                        }
-                        Surface(
-                            modifier = Modifier.align(Alignment.BottomStart).size(72.dp),
-                            shape = CircleShape, color = Color(0xFFFCDEB9),
-                            border = BorderStroke(3.dp, Color(0xFF166A70))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("M", color = Color(0xFF7E4C3C), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-                            }
-                        }
-                        Surface(
-                            modifier = Modifier.align(Alignment.BottomEnd).size(27.dp),
-                            shape = CircleShape, color = Color(0xFF29D6C4),
-                            border = BorderStroke(2.dp, entryDark)
-                        ) { Box(contentAlignment = Alignment.Center) { Text("✓", fontSize = 15.sp, color = entryDark) } }
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    val features = listOf(
-                        Triple("Jobs", Icons.Outlined.WorkOutline, "Jobs"),
-                        Triple("People", Icons.Outlined.PeopleOutline, "People"),
-                        Triple("Projects", Icons.Outlined.Layers, "Projects"),
-                        Triple("Ideas", Icons.Outlined.Lightbulb, "Ideas")
-                    )
-                    features.forEach { (title, symbol, description) ->
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.White.copy(alpha = .12f)
-                        ) {
-                            Column(
-                                Modifier.padding(vertical = 9.dp, horizontal = 2.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(symbol, contentDescription = description, tint = Color(0xFFC9FFF4), modifier = Modifier.size(17.dp))
-                                Text(title, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -230,21 +141,21 @@ private fun SeraSocialFirstSignIn(
         shadowElevation = 2.dp
     ) {
         Column(
-            Modifier.padding(horizontal = 16.dp, vertical = 17.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             Text(
-                "Welcome back to SERA",
-                fontSize = 23.sp, lineHeight = 27.sp, letterSpacing = (-0.6).sp,
+                "Welcome back",
+                fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.6).sp,
                 fontWeight = FontWeight.ExtraBold, color = entryInk
             )
             Text(
-                "Sign in to continue your professional journey.",
+                "Sign in to your account.",
                 fontSize = 12.sp, color = entryMuted
             )
             OutlinedButton(
                 onClick = { onOAuthError(beginNativeOAuth(context, "google")) },
-                modifier = Modifier.fillMaxWidth().height(49.dp),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Color(0xFFD4E1E1)),
                 colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
@@ -256,7 +167,7 @@ private fun SeraSocialFirstSignIn(
             }
             Button(
                 onClick = { onOAuthError(beginNativeOAuth(context, "linkedin_oidc")) },
-                modifier = Modifier.fillMaxWidth().height(49.dp),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A66C2)),
                 contentPadding = PaddingValues(horizontal = 12.dp)
@@ -322,7 +233,7 @@ private fun SeraSocialFirstSignIn(
             Button(
                 onClick = onSignIn,
                 enabled = !busy && email.contains("@") && password.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(47.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF006B6A),
                     disabledContainerColor = Color(0xFFD9E8E6),
@@ -348,12 +259,19 @@ private fun SeraSocialFirstSignIn(
                     Text("Create an account", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = entryTeal)
                 }
             }
-            Text(
-                "By continuing, you agree to SERA's terms and privacy policy.",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                fontSize = 10.sp, lineHeight = 14.sp, color = entryMuted
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { openSeraSite(context, "privacy") }) {
+                    Text("Privacy", fontSize = 11.sp, color = entryMuted)
+                }
+                Text("·", color = entryMuted)
+                TextButton(onClick = { openSeraSite(context, "terms") }) {
+                    Text("Terms", fontSize = 11.sp, color = entryMuted)
+                }
+            }
         }
     }
 }
@@ -388,7 +306,7 @@ fun SeraGuestEntry(
             Column(
                 modifier = Modifier.align(Alignment.TopCenter).widthIn(max = widthLimit).fillMaxWidth()
                     .verticalScroll(guestScroll).padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 GuestBrand(onLanguage)
                 if (entryPage == "welcome") {
@@ -465,8 +383,8 @@ fun SeraGuestEntry(
                         onTogglePassword = { showPassword = !showPassword }
                     )
                 }
-                Spacer(Modifier.height(5.dp))
-                Text("SERA.et  •  Your profile. Your work. Your future.",
+                if (entryPage != "signin") Spacer(Modifier.height(5.dp))
+                if (entryPage != "signin") Text("SERA.et  •  Your profile. Your work. Your future.",
                     style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
                     color = entryMuted, modifier = Modifier.fillMaxWidth())
             }
