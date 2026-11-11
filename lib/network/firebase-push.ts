@@ -70,7 +70,6 @@ export async function sendProfessionalPush(tokens: string[], payload: PushPayloa
             notification: { title: payload.title.slice(0, 100), body: payload.body.slice(0, 200) },
             data: { url: safeUrl, kind: payload.kind.slice(0, 50) },
             android: { priority: "high", notification: { click_action: "OPEN_SERA" } },
-            webpush: { fcm_options: { link: safeUrl } },
           } }),
           signal: AbortSignal.timeout(10000), cache: "no-store",
         },
