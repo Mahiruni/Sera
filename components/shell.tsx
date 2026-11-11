@@ -85,6 +85,31 @@ export function Shell({
     }
     if (el.open) el.close();
   }, [open]);
+  useEffect(() => {
+    const root = document.documentElement;
+    delete root.dataset.navHidden;
+    if (open) return;
+
+    let anchor = window.scrollY;
+    let hidden = false;
+    function onScroll() {
+      // Clamp elastic overscroll before deciding which way the reader is moving.
+      const bottom = Math.max(0, root.scrollHeight - root.clientHeight);
+      const y = Math.max(0, Math.min(window.scrollY, bottom));
+      if (hidden) anchor = Math.max(anchor, y);
+      else anchor = Math.min(anchor, y);
+      const next = hidden ? y > 16 && anchor - y < 10 : y > 72 && y - anchor >= 20;
+      if (next === hidden) return;
+      hidden = next;
+      anchor = y;
+      root.toggleAttribute("data-nav-hidden", hidden);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      delete root.dataset.navHidden;
+    };
+  }, [pathname, open]);
   const close = () => {
     setOpen(false);
     trigger.current?.focus();

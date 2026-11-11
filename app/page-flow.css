@@ -60,6 +60,10 @@ body:has(.sera-main) {
 .site-header.sera-app-header {
   position: fixed;
   height: var(--sera-header-height);
+  background: var(--sera-surface) !important;
+  border-bottom: 1px solid var(--sera-border);
+  pointer-events: auto;
+  transition: translate 180ms ease-out;
   padding: calc(12px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) 12px max(20px, env(safe-area-inset-left, 0px));
 }
 .sera-app-header .sera-header-wordmark {
@@ -368,4 +372,18 @@ html[data-sera-theme="dark"] .sera-main :is(.sera-feed-compose-trigger, .sera-fe
 }
 @media (prefers-reduced-motion: reduce) {
   .sera-main *, .sera-main *::before, .sera-main *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+html[data-nav-hidden] .sera-app-header:not(:has(:focus-visible)),
+html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
+  pointer-events: none;
+}
+html[data-nav-hidden] .sera-app-header:not(:has(:focus-visible)) {
+  translate: 0 -100%;
+}
+html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
+  translate: 0 calc(100% + 16px + env(safe-area-inset-bottom, 0px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header.sera-app-header, .footer-dock { transition: none; }
 }

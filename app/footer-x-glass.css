@@ -15,13 +15,20 @@
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(104, 241, 236, .28) !important;
+  border: 1px solid rgba(229, 249, 249, .32) !important;
   border-radius: 999px !important;
-  background: linear-gradient(120deg, rgba(0, 48, 58, .97), rgba(0, 34, 46, .98)) !important;
-  box-shadow: 0 12px 32px #003b4650, 0 0 18px #00bac02c !important;
+  background: #18262d !important;
+  box-shadow: inset 0 1px 0 #ffffff16, 0 6px 22px #101b2633 !important;
   color: #e2f6f7 !important;
-  backdrop-filter: blur(20px);
+  transition: translate 180ms ease-out;
   isolation: isolate;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .footer-dock {
+    background: linear-gradient(125deg, rgb(25 39 45 / 80%), rgb(12 22 30 / 74%)) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
 }
 .footer-dock .dock-perimeter, .footer-dock a > i, .footer-dock a::before { display: none !important; }
 .footer-dock a {
@@ -59,7 +66,7 @@
 .footer-dock .dock-icon svg { width: 22px; height: 22px; }
 .footer-dock a > span:last-of-type { white-space: nowrap; }
 .footer-dock a.active, .footer-dock a[aria-current="page"] { color: #75f9f4 !important; font-weight: 700; }
-.footer-dock a.active .dock-icon { filter: drop-shadow(0 0 7px #00d8e6); animation: active-footer-icon 2.8s ease-in-out infinite; }
+.footer-dock a.active .dock-icon { animation: active-footer-icon .24s ease-out; }
 .footer-dock a:focus-visible { outline: 2px solid #b4fffa !important; outline-offset: -2px; }
 @keyframes active-footer-icon { 0%, 70%, 100% { transform: translateY(0) scale(1); } 35% { transform: translateY(-2px) scale(1.08); } }
 @media (hover: hover) { .footer-dock a:hover { color: #fff !important; } }
