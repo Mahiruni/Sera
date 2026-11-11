@@ -116,7 +116,7 @@ fun SeraApp(context: Context) {
                     }, modifier = Modifier.fillMaxWidth()) { Text(name) }
                 }
             } },
-            confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text("Close") } })
+            confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
     BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
@@ -134,11 +134,11 @@ fun SeraApp(context: Context) {
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 32.sp)
-                        Text("Your professional world, connected.", color = ink)
+                        Text(stringResource(R.string.tagline), color = ink)
                         Spacer(Modifier.height(24.dp))
-                        Text("Welcome back", color = ink, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-                        OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(password, { password = it }, label = { Text("Password") },
+                        Text(stringResource(R.string.welcome), color = ink, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                        OutlinedTextField(email, { email = it }, label = { Text(stringResource(R.string.email)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.password)) },
                             visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
                         Button(
                             onClick = {
@@ -156,7 +156,7 @@ fun SeraApp(context: Context) {
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                             shape = RoundedCornerShape(16.dp)
                         ) { Text(if (busy) "Signing in…" else "Sign in") }
-                        Text("Sign in with your existing SERA account.", color = ink)
+                        Text(stringResource(R.string.signin_hint), color = ink)
                         if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.error)
                     }
                 }
