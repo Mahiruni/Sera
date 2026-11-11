@@ -128,6 +128,7 @@ fun SeraApp(context: Context) {
                                 scope.launch {
                                     val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
                                     if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
+                                    authenticatedUserId = ""
                                     accessToken = result.first
                                     message = result.second
                                     busy = false
@@ -201,6 +202,8 @@ fun SeraApp(context: Context) {
                                             SeraProfile(identity, dataLoading, dataError, { refresh++ }, {
                                                 session.clear()
                                                 accessToken = null
+                                                authenticatedUserId = ""
+                                                showComposer = false
                                                 password = ""
                                                 message = ""
                                                 tab = "Home"
