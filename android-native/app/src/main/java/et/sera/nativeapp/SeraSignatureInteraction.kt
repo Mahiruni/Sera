@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,14 +33,23 @@ internal fun SeraSignatureSheet(
         containerColor = Color.White,
         contentColor = Color(0xFF18383D),
         tonalElevation = 0.dp,
-        scrimColor = Color(0x990C262D),
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        scrimColor = Color(0xA60C262D),
+        // Keep editors readable on tablets and landscape without stretching fields edge to edge.
+        sheetMaxWidth = 640.dp,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
-            Box(
-                Modifier.padding(top = 12.dp, bottom = 13.dp)
-                    .size(width = 44.dp, height = 4.dp)
-                    .background(Color(0xFFC5D8D5), RoundedCornerShape(20.dp))
-            )
+            Surface(
+                modifier = Modifier.padding(top = 12.dp, bottom = 14.dp),
+                color = Color(0xFFF2F8F7),
+                shape = RoundedCornerShape(100.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2EFEC))
+            ) {
+                Box(
+                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        .size(width = 36.dp, height = 4.dp)
+                        .background(Color(0xFF97B9B5), RoundedCornerShape(20.dp))
+                )
+            }
         },
         content = content
     )
