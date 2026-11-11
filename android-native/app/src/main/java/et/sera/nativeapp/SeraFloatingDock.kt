@@ -8,7 +8,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -30,9 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val dockBackground = Color(0xDC173438)
-private val dockActive = Color(0xFF8EF3E4)
-private val dockIdle = Color(0xFFD3E0E0)
+private val dockBackground = Color(0xF21A3438)
+private val dockActive = Color(0xFFA0F6E6)
+private val dockIdle = Color(0xFFD7E5E4)
 
 private fun dockIcon(section: String): ImageVector = when (section) {
     "Home" -> Icons.Outlined.Home
@@ -53,15 +54,15 @@ internal fun SeraFloatingDock(
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(100.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .28f)),
-        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, Color(0xFFCEEDE6).copy(alpha = .35f)),
+        shadowElevation = 6.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)
     ) {
         Row(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xEE315257), dockBackground, Color(0xEE122D32))))
-                .padding(horizontal = 8.dp, vertical = 5.dp),
+                .background(Brush.verticalGradient(listOf(Color(0xE6335053), dockBackground, Color(0xF2132B30))))
+                .padding(horizontal = 6.dp, vertical = 3.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -72,14 +73,17 @@ internal fun SeraFloatingDock(
                     animationSpec = spring(),
                     label = "dock tint"
                 )
-                val scale by animateFloatAsState(if (active) 1.10f else 1f, spring(), label = "dock icon scale")
+                val scale by animateFloatAsState(if (active) 1.06f else 1f, spring(), label = "dock icon scale")
                 Column(
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                         .clip(RoundedCornerShape(28.dp))
-                        .clickable(
+                        .selectable(
+                            selected = active,
+                            role = Role.Tab,
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true)
-                        ) { onNavigate(section) }
+                            indication = ripple(bounded = true),
+                            onClick = { onNavigate(section) }
+                        )
                         .padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -93,10 +97,10 @@ internal fun SeraFloatingDock(
                         )
                     } else {
                         Icon(dockIcon(section), contentDescription = section, tint = tint,
-                            modifier = Modifier.size(25.dp).graphicsLayer { scaleX = scale; scaleY = scale })
+                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale })
                     }
-                    Spacer(Modifier.height(5.dp))
-                    Box(Modifier.size(width = if (active) 11.dp else 3.dp, height = 3.dp)
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.size(width = 10.dp, height = 2.dp)
                         .background(if (active) dockActive else Color.Transparent, CircleShape))
                     
                 }
