@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Smartphone, X } from "lucide-react";
+import { Copy, Smartphone, X } from "lucide-react";
 import { sharePost } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 
@@ -80,9 +80,9 @@ export function ShareButton({ id, title, count }: { id: string; title: string; c
           <div className="sera-share-options">
             <p>Pass a valuable idea to someone in your professional world.</p>
             <button type="button" disabled={pending} onClick={() => perform("copy")}>
-              <Copy size={21} /><span>Copy link<small>Keep a direct link to this story</small></span><Check size={17} className="sera-share-chevron" />
+              <Copy size={21} /><span>Copy link<small>Keep a direct link to this story</small></span>
             </button>
-            {typeof navigator.share === "function" && <button type="button" disabled={pending} onClick={() => perform("device")}>
+            {typeof navigator !== "undefined" && typeof navigator.share === "function" && <button type="button" disabled={pending} onClick={() => perform("device")}>
               <Smartphone size={21} /><span>Share with another app<small>Choose an available Android app</small></span>
             </button>}
           </div>
