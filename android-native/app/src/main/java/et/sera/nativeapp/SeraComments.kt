@@ -10,6 +10,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.layout.imePadding
+import kotlinx.coroutines.launch
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -45,6 +53,11 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
     var error by remember(postId) { mutableStateOf("") }
     var loading by remember(postId) { mutableStateOf(true) }
     var retry by remember(postId) { mutableIntStateOf(0) }
+    var draft by remember(postId) { mutableStateOf("") }
+    var sending by remember(postId) { mutableStateOf(false) }
+    var publishingError by remember(postId) { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val focus = LocalFocusManager.current
     LaunchedEffect(token, postId, retry) {
         loading = true
         error = ""
@@ -53,7 +66,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         loading = false
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Conversation", style = MaterialTheme.typography.titleLarge)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text("Retry") } }
@@ -68,9 +81,44 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                     }
                 }
             }
-            Text("Comment publishing is temporarily read-only until the native moderation gateway is connected.",
-                style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = draft, onValueChange = { if (it.length <= 2000) draft = it },
+                label = { Text("Write a comment") }, modifier = Modifier.fillMaxWidth(),
+                maxLines = 5, enabled = !sending,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
+            )
+            if (publishingError.isNotBlank()) Text(publishingError, color = MaterialTheme.colorScheme.error)
+            if (sending) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Button(onClick = {
+                sending = true
+                publishingError = ""
+                focus.clearFocus()
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) { publishNativeComment(token, postId, draft.trim()) }
+                    if (result.first) {
+                        draft = ""
+                        retry++
+                    } else publishingError = result.second
+                    sending = false
+                }
+            }, enabled = !sending && draft.isNotBlank()) { Text(if (sending) "Publishing…" else "Publish comment") }
             TextButton(onClick = onDismiss) { Text("Close") }
         }
     }
+}
+
+private fun publishNativeComment(token: String, postId: String, body: String): Pair<Boolean, String> {
+    return try {
+        val connection = (URL("https://sera.hisabtech.com/api/native/comments").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"; connectTimeout = 15000; readTimeout = 20000; doOutput = true
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "application/json")
+        }
+        connection.outputStream.use { it.write(JSONObject().put("post_id", postId).put("body", body).toString().toByteArray()) }
+        val status = connection.responseCode
+        val response = (if (status in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+        connection.disconnect()
+        if (status in 200..299) true to "" else false to (try { JSONObject(response).optString("error").ifBlank { "Unable to publish (HTTP $status)." } } catch (_: Exception) { "Unable to publish (HTTP $status)." })
+    } catch (_: Exception) { false to "Network unavailable. Your comment is still here." }
 }
