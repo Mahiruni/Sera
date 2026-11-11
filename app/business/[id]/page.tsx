@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Building2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { IdentityMark } from "@/components/identity/identity-mark";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { requireOrganizationMembership } from "@/lib/organizations/membership";
 import styles from "../page.module.css";
@@ -26,12 +27,13 @@ export default async function BusinessWorkspacePage({
     <div className={styles.shell}>
       <Link href="/business" style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:30,color:"var(--primary)",fontWeight:700}}><ArrowLeft size={17}/> Switch identity</Link>
       <header className={styles.header}>
-        <span className={styles.eyebrow}>SERA BUSINESS · {organization.kind.toUpperCase()}</span>
+        <IdentityMark kind={organization.kind} size="large" />
+        <span className={styles.eyebrow} style={{display:"block",marginTop:17}}>SERA BUSINESS · {organization.kind.toUpperCase()} PROFILE</span>
         <h1>{organization.name}</h1>
         <p>{organization.description || "Your professional organization workspace on SERA."}</p>
       </header>
       <section className={styles.card} style={{maxWidth:620}}>
-        <span className={styles.icon}><Building2 size={24}/></span>
+        <IdentityMark kind={organization.kind} />
         <span className={styles.content}>
           <strong>Organization overview</strong>
           <small>{organization.city || "Ethiopia"} · {organization.industry || "Industry not set"}</small>
