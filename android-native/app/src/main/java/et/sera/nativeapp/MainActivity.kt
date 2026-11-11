@@ -191,7 +191,7 @@ fun SeraApp(context: Context) {
                                         }
                                         OutlinedButton(onClick = { refresh++ }) { Text("Refresh") }
                                     }
-                                    "Profile" -> Text(identity.ifBlank { "Loading your account…" }, color = ink)
+                                    "Profile" -> SeraProfile(identity, dataLoading, dataError, { refresh++ }, { session.clear(); accessToken = null; password = ""; message = ""; tab = "Home" })
                                     else -> Text(sectionDescription(tab), color = ink)
                                 }
                                 if (tab == "Profile") {
