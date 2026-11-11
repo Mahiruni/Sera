@@ -16,12 +16,12 @@ export async function GET() {
     if (!response.ok) return NextResponse.json({ available: false }, { headers: jsonHeaders });
     const release = await response.json();
     const tag = typeof release.tag_name === "string" ? release.tag_name : "";
-    const match = /^android-v(\\d+\\.\\d+\\.\\d+)$/.exec(tag);
+    const match = /^android-v(\d+\.\d+\.\d+)$/.exec(tag);
     if (!match || release.draft || release.prerelease)
       return NextResponse.json({ available: false }, { headers: jsonHeaders });
     const versionName = match[1];
     const notes = typeof release.body === "string" ? release.body : "";
-    const codeMatch = /Android versionCode:\\s*(\\d+)/.exec(notes);
+    const codeMatch = /Android versionCode:\s*(\d+)/.exec(notes);
     const versionCode = codeMatch ? Number(codeMatch[1]) : 0;
     const asset = Array.isArray(release.assets) ? release.assets.find(
       (item: { name?: string; browser_download_url?: string }) =>
