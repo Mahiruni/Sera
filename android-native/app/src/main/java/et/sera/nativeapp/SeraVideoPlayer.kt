@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -31,6 +33,7 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
         Text("Video unavailable", color = MaterialTheme.colorScheme.error)
         return
     }
+    var fullscreen by remember(url) { mutableStateOf(false) }
     val player = remember(context, url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
@@ -56,6 +59,17 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
             update = { it.player = player },
             modifier = Modifier.fillMaxWidth().height(240.dp)
         )
+        TextButton(onClick = { fullscreen = true }) { Text("Fullscreen video") }
         Text("Playback starts when you press Play.", style = MaterialTheme.typography.bodySmall)
+    }
+    if (fullscreen) {
+        Dialog(onDismissRequest = { fullscreen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Column(Modifier.fillMaxWidth()) {
+                TextButton(onClick = { fullscreen = false }) { Text("Close fullscreen") }
+                AndroidView(factory = { ctx -> PlayerView(ctx).apply { useController = true } },
+                    update = { it.player = player },
+                    modifier = Modifier.fillMaxWidth().height(400.dp))
+            }
+        }
     }
 }
