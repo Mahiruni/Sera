@@ -1,9 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
 import { FileText, ImagePlus, Paperclip, X } from "lucide-react";
+import { checkMessageAttachmentMetadata } from "@/lib/network/attachment-policy";
 
-const MAX_SIZE = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
 export function MessageAttachmentPicker() {
   const input = useRef<HTMLInputElement>(null);
@@ -11,14 +10,9 @@ export function MessageAttachmentPicker() {
   const [error, setError] = useState("");
   const choose = (file?: File) => {
     if (!file) return;
-    if (!ALLOWED.has(file.type)) {
-      setError("Choose a JPG, PNG, WebP or PDF file.");
-      if (input.current) input.current.value = "";
-      setSelected(null);
-      return;
-    }
-    if (file.size > MAX_SIZE) {
-      setError("Files must be 5 MB or smaller.");
+    const issue = checkMessageAttachmentMetadata(file);
+    if (issue) {
+      setError(issue);
       if (input.current) input.current.value = "";
       setSelected(null);
       return;
