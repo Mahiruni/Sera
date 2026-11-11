@@ -69,6 +69,8 @@ class MainActivity : AppCompatActivity() {
         // Android 12+ and earlier versions show the same static S mark first.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Register a user-configurable channel; requesting notification consent is separate.
+        SeraNotificationChannels.register(this)
         callback.value = intent?.data?.takeIf { it.scheme == "sera" }
         // A warm start, configuration change, process restoration or OAuth
         // deep link must never replay the cinematic introduction.
@@ -558,10 +560,16 @@ fun SeraApp(
                     ) {
                         Row(Modifier.fillMaxSize()) {
                             if (expanded) NavigationRail {
-                                sections.forEach { item ->
+                                NavigationRailItem(
+                                    selected = false, onClick = { if (authenticatedUserId.isNotBlank()) showComposer = true },
+                                    enabled = authenticatedUserId.isNotBlank(),
+                                    icon = { SeraNavigationGlyph("Create", MaterialTheme.colorScheme.primary) },
+                                    label = { Text("Create") }
+                                )
+                                sections.filterNot { it == "Inbox" }.forEach { item ->
                                     NavigationRailItem(
                                         selected = tab == item, onClick = { navigateTo(item) },
-                                        icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
+                                        icon = { SeraNavigationGlyph(item, MaterialTheme.colorScheme.onSurface, active = tab == item) },
                                         label = { Text(sectionLabel(item)) }
                                     )
                                 }
@@ -669,8 +677,7 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraNativeHeader(
             section = selected,
-            canCompose = canCompose,
-            onCompose = onCompose,
+            onInbox = { onNavigate("Inbox") },
             onLanguage = onLanguage,
             onMenu = onMenu
         )
@@ -683,7 +690,8 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraFloatingDock(
             selected = selected,
-            sections = sections,
+            canCompose = canCompose,
+            onCompose = onCompose,
             onNavigate = onNavigate,
             profileAvatarUrl = profileAvatarUrl
         )

@@ -1,5 +1,9 @@
 name: SERA Native Android
 on:
+  pull_request:
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/sera-native-android.yml'
   push:
     branches: [main]
     paths:
@@ -64,6 +68,6 @@ jobs:
           echo "Optimized release APK size: $BYTES bytes"
       - uses: actions/upload-artifact@v4
         with:
-          name: SERA-Native-Phase1-debug-apk
+          name: SERA-Native-Phase4-preview-apk
           path: android-native/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

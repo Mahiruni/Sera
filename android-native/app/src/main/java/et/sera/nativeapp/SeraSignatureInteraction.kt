@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,14 +33,23 @@ internal fun SeraSignatureSheet(
         containerColor = Color.White,
         contentColor = Color(0xFF18383D),
         tonalElevation = 0.dp,
-        scrimColor = Color(0x990C262D),
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        scrimColor = Color(0xA60C262D),
+        // Keep editors readable on tablets and landscape without stretching fields edge to edge.
+        sheetMaxWidth = 640.dp,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
-            Box(
-                Modifier.padding(top = 12.dp, bottom = 13.dp)
-                    .size(width = 44.dp, height = 4.dp)
-                    .background(Color(0xFFC5D8D5), RoundedCornerShape(20.dp))
-            )
+            Surface(
+                modifier = Modifier.padding(top = 12.dp, bottom = 14.dp),
+                color = Color(0xFFF2F8F7),
+                shape = RoundedCornerShape(100.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2EFEC))
+            ) {
+                Box(
+                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        .size(width = 36.dp, height = 4.dp)
+                        .background(Color(0xFF97B9B5), RoundedCornerShape(20.dp))
+                )
+            }
         },
         content = content
     )
@@ -76,6 +86,37 @@ internal fun SeraReactionGlyph(
                 if (kind == SeraReactionKind.LIKE && active && index == 0) drawPath(path, ink)
                 else drawPath(path, ink, style = stroke)
             }
+        }
+    }
+}
+
+/** SERA navigation symbols: optical 24-unit grid, rounded 1.8-unit strokes. */
+@Composable
+internal fun SeraNavigationGlyph(
+    name: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    active: Boolean = false
+) {
+    val paths = remember(name) {
+        val segments = when (name) {
+            "Home" -> listOf("M3.5 10.5 L10.5 4.5 Q12 3.2 13.5 4.5 L20.5 10.5 V19 Q20.5 20.5 19 20.5 H15 V15.5 Q15 14 13.5 14 H10.5 Q9 14 9 15.5 V20.5 H5 Q3.5 20.5 3.5 19 Z")
+            "Network" -> listOf("M12 11 A3.5 3.5 0 1 0 12 4 A3.5 3.5 0 1 0 12 11 Z", "M5 20 V18 Q5 14 12 14 Q19 14 19 18 V20", "M5 7 Q2 7 2 10 Q2 13 5 13 M19 7 Q22 7 22 10 Q22 13 19 13 M2 19 V18 Q2 15 5 15 M22 19 V18 Q22 15 19 15")
+            "Create" -> listOf("M5 3.5 H19 Q20.5 3.5 20.5 5 V19 Q20.5 20.5 19 20.5 H5 Q3.5 20.5 3.5 19 V5 Q3.5 3.5 5 3.5 Z", "M12 7.5 V16.5 M7.5 12 H16.5")
+            "Jobs" -> listOf("M4.5 7 H19.5 Q21 7 21 8.5 V18.5 Q21 20 19.5 20 H4.5 Q3 20 3 18.5 V8.5 Q3 7 4.5 7 Z", "M8.5 7 V5 Q8.5 3.5 10 3.5 H14 Q15.5 3.5 15.5 5 V7", "M3 12 Q12 16 21 12 M10 14 H14")
+            "Profile" -> listOf("M12 11 A3.7 3.7 0 1 0 12 3.6 A3.7 3.7 0 1 0 12 11 Z", "M4.5 20.5 V18.5 Q4.5 14 12 14 Q19.5 14 19.5 18.5 V20.5 Z")
+            "Inbox" -> listOf("M4 5 H20 Q21 5 21 6 V16 Q21 17 20 17 H10 L5 21 V17 H4 Q3 17 3 16 V6 Q3 5 4 5 Z", "M7.5 9 H16.5 M7.5 13 H13.5")
+            "Menu" -> listOf("M4 6.5 H20 M4 12 H16 M4 17.5 H20")
+            "Language" -> listOf("M12 21 A9 9 0 1 0 12 3 A9 9 0 1 0 12 21 Z", "M3 12 H21 M12 3 C5 8 5 16 12 21 M12 3 C19 8 19 16 12 21")
+            else -> emptyList()
+        }
+        segments.map { PathParser().parsePathString(it).toPath() }
+    }
+    Canvas(modifier.size(24.dp)) {
+        val factor = size.minDimension / 24f
+        withTransform({ scale(factor, factor, pivot = Offset.Zero) }) {
+            val stroke = Stroke(width = if (active) 2.05f else 1.8f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            paths.forEach { drawPath(it, tint, style = stroke) }
         }
     }
 }
