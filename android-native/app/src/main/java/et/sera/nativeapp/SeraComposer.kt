@@ -1,6 +1,10 @@
 package et.sera.nativeapp
 
 import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import coil3.compose.AsyncImage
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
@@ -34,6 +38,14 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
     val drafts = remember(context) { ComposerDrafts(context) }
     var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
     var saved by remember { mutableStateOf(false) }
+    var selectedImage by remember { mutableStateOf<Uri?>(null) }
+    var selectedVideo by remember { mutableStateOf<Uri?>(null) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { selectedImage = uri; selectedVideo = null }
+    }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { selectedVideo = uri; selectedImage = null }
+    }
     val hasContent = body.isNotBlank()
     fun close() {
         focus.clearFocus()
@@ -62,6 +74,24 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
                 minLines = 5
             )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }, modifier = Modifier.weight(1f)) { Text("Add image") }
+                OutlinedButton(onClick = {
+                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                }, modifier = Modifier.weight(1f)) { Text("Add video") }
+            }
+            selectedImage?.let { uri ->
+                AsyncImage(model = uri, contentDescription = "Selected image preview",
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp))
+                TextButton(onClick = { selectedImage = null }) { Text("Remove image") }
+            }
+            selectedVideo?.let { uri ->
+                Text("Video selected for preview. Upload is not yet available.")
+                Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = {
                     drafts.save(userId, body)
