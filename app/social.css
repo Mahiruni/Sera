@@ -873,3 +873,32 @@ button[disabled] {
   .social-page .social-card .social-caption .social-body { margin-top: 0; margin-bottom: 0; }
   .social-page .social-card .social-images { margin-top: 10px; }
 }
+
+
+/* Premium editorial post cards: maintain original content and interactions. */
+.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card{
+ background:#fff!important;border:1px solid #deebee!important;border-radius:24px!important;
+ box-shadow:0 9px 30px #0b425312!important;margin:0 0 16px!important;
+ padding:18px 18px 16px!important;overflow:visible;
+}
+.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card+.social-card{
+ border-top:1px solid #deebee!important;
+}
+.sera-network.network-app:has(.sera-premium-hero) .social-card .social-post-header{margin-bottom:10px}
+.sera-network.network-app:has(.sera-premium-hero) .social-card .social-body{font-size:15px;line-height:1.6;color:#193643}
+.sera-network.network-app:has(.sera-premium-hero) .social-card .social-images{
+ width:100%;max-width:100%;margin:13px 0 14px;border-radius:15px;overflow:hidden;
+}
+.sera-network.network-app:has(.sera-premium-hero) .social-card .social-images img{border-radius:15px}
+.sera-network.network-app:has(.sera-premium-hero) .social-card .social-post-actions{
+ border-top:1px solid #e8eff1;padding-top:12px;margin-top:12px;
+}
+@media(max-width:600px){
+ .sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card{
+  padding:15px 14px!important;border-radius:20px!important;margin-bottom:13px!important;
+ }
+ .sera-network.network-app:has(.sera-premium-hero) .social-card .social-images{
+  width:100%;max-width:100%;margin:12px 0;border-radius:12px;
+ }
+ .sera-network.network-app:has(.sera-premium-hero) .social-card .social-images img{border-radius:12px}
+}
