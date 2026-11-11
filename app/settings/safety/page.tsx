@@ -26,7 +26,7 @@ export default async function SafetyPage() {
   const { data: appeals } = await db.from("moderation_appeals").select("decision_id,status").eq("appellant_id",user.id);
   const appealMap = new Map((appeals || []).map(a => [a.decision_id,a.status]));
   return <div className="container page account-foundation">
-    <PageIntro icon={ShieldCheck} eyebrow="YOUR PEACE OF MIND" title="Account safety"
+    <PageIntro icon={ShieldCheck} title="Account safety"
       description="Review your private reports, post decisions and appeals.">
       <Link className="button secondary" href="/settings"><ArrowLeft size={16} /> Your account</Link>
     </PageIntro>

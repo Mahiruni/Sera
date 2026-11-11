@@ -40,7 +40,6 @@ export default async function Page({
     <div className="container page live-market workspace-detail sera-saved-page">
       <PageIntro
         icon={Bookmark}
-        eyebrow="YOUR PRIVATE COLLECTION"
         title="Keep the possibilities close."
         description="The stories that inspire you. The opportunities you want to return to."
       >

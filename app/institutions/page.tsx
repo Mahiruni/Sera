@@ -11,7 +11,6 @@ export default function Page() {
           { name: "Institution research", path: "/institutions" },
         ]}
       />
-      <p className="eyebrow">Sera.et / INSTITUTIONS</p>
       <h1>
         Research universities, colleges and training providers with better
         questions.

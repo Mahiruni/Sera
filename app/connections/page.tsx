@@ -55,7 +55,7 @@ export default async function ConnectionsPage() {
   }
   return (
     <div className="sera-network network-app sera-connections">
-      <PageIntro icon={UsersRound} eyebrow="YOUR PROFESSIONAL CIRCLE" title="Good work starts with good people."
+      <PageIntro icon={UsersRound} title="Good work starts with good people."
         description="Build your circle. Keep up with the people who move you forward.">
         <Link href="/discover?tab=people" className="button secondary">Find your people <ArrowUpRight size={16} /></Link>
       </PageIntro>

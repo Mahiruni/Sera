@@ -66,7 +66,7 @@ export default async function Page({
   });
   return (
     <div className="container page live-market">
-      <PageIntro icon={BriefcaseBusiness} eyebrow="OPPORTUNITIES" title="Find your next chapter."
+      <PageIntro icon={BriefcaseBusiness} title="Find your next chapter."
         description="Explore employer-posted roles and introduce yourself with confidence.">
         <Link className="button" href="/employer/post">
           <Plus size={16} /> Post a job

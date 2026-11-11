@@ -79,7 +79,6 @@ export default async function Member({
       </aside>}
       <SocialNav />
       <header className="social-hero sera-member-hero">
-        <p className="eyebrow">SERA PROFESSIONAL COMMUNITY</p>
         {id === user.id && !preview && <div className="sera-member-owner-tools"><Link href="/settings">Edit private profile</Link><Link href={`/members/${id}?preview=visitor`}>View as visitor</Link></div>}
         <MemberAvatar
           name={member?.name || author?.full_name || "Community member"}

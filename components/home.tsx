@@ -47,10 +47,6 @@ export function HomePage() {
 
       <section className="search-banner" aria-labelledby="home-title">
         <div className="search-banner-copy">
-          <p className="eyebrow">
-            <Sparkles size={14} />
-            {en ? "A FRESH START, A BETTER FIT" : "አዲስ ጅማሬ፣ የተሻለ ዕድል"}
-          </p>
           <h1 id="home-title">
             <span className="home-title-first">
               {en ? "Find work." : "ሥራ ያግኙ።"}

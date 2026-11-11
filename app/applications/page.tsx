@@ -39,7 +39,7 @@ export default async function Page({
   const stageIndex = (value: string) => journey.findIndex((step) => step === value);
   return (
     <div className="container page live-market workspace-detail">
-      <PageIntro icon={FileText} eyebrow="YOUR NEXT MOVE" title="Every introduction, in one place."
+      <PageIntro icon={FileText} title="Every introduction, in one place."
         description="Follow your applications from first hello to your next opportunity." />
       <WorkspaceNav />
       <form className="panel live-search" method="get">

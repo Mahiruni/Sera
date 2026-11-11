@@ -57,12 +57,10 @@ export function WorkspaceEmpty({
   );
 }
 function SectionTitle({
-  eyebrow,
   title,
   href,
   label = "View all",
 }: {
-  eyebrow?: string;
   title: string;
   href?: string;
   label?: string;
@@ -70,7 +68,6 @@ function SectionTitle({
   return (
     <div className="ws-section-title">
       <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h2>{title}</h2>
       </div>
       {href && (
@@ -178,11 +175,6 @@ export function WorkspaceOverview({
             />
           </Link>
           <div>
-            <p className="eyebrow">
-              {employer
-                ? "A clearer view of your hiring"
-                : "Make room for your next chapter"}
-            </p>
             <h1>
               {employer ? "Let’s build your team." : `Welcome back, ${first}.`}
             </h1>
@@ -227,7 +219,6 @@ export function WorkspaceOverview({
           {employer && (
             <section className="ws-surface" id="postings">
               <SectionTitle
-                eyebrow="YOUR HIRING ACTIVITY"
                 title="Job postings"
               />
               <form className="ws-filters" action="/employer">
@@ -303,11 +294,6 @@ export function WorkspaceOverview({
           )}
           <section className="ws-surface" id="incoming">
             <SectionTitle
-              eyebrow={
-                employer
-                  ? "INTRODUCTIONS TO YOUR JOBS"
-                  : "YOUR JOURNEY, AT A GLANCE"
-              }
               title={employer ? "Incoming applications" : "Recent applications"}
               href={employer ? undefined : "/applications"}
             />
@@ -405,7 +391,6 @@ export function WorkspaceOverview({
           </section>
           <section className="ws-surface" id="conversations">
             <SectionTitle
-              eyebrow="KEEP THE CONVERSATION MOVING"
               title="Latest messages"
             />
             {data.messages.error ? (

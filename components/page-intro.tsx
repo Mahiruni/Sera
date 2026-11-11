@@ -3,13 +3,11 @@ import { Compass, type LucideIcon } from "lucide-react";
 
 /** The same compact introduction on community, career and information pages. */
 export function PageIntro({
-  eyebrow,
   title,
   description,
   icon: Icon = Compass,
   children,
 }: {
-  eyebrow?: string;
   title: string;
   description?: string;
   icon?: LucideIcon;
@@ -22,7 +20,6 @@ export function PageIntro({
           <Icon size={23} strokeWidth={1.7} />
         </span>
         <div>
-          {eyebrow && <p className="eyebrow">{eyebrow}</p>}
           <h1>{title}</h1>
           {description && <p className="subtext">{description}</p>}
         </div>

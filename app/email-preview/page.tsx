@@ -8,7 +8,6 @@ export const metadata = pageMetadata(
 export default function Page() {
   return (
     <div className="container page">
-      <p className="eyebrow">Sera.et / EMAIL DESIGN</p>
       <h1>A warm welcome, thoughtfully delivered.</h1>
       <p className="subtext">
         Design previews with fictional details. Email delivery is not activated

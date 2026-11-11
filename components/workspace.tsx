@@ -36,7 +36,6 @@ export function Gate({ children, role }: { children: ReactNode; role?: Role }) {
     return (
       <div className="container page">
         <Heading
-          eyebrow="SERA / DEMO WORKSPACE"
           title={t("account")}
           description={t("accountSub")}
         />
@@ -229,7 +228,6 @@ export function Dashboard({ employer = false }: { employer?: boolean }) {
     <Gate role={employer ? "employer" : "seeker"}>
       <div className="container page">
         <Heading
-          eyebrow={t("welcome")}
           title={employer ? state.company : state.name}
           description={t("overview")}
         >
@@ -342,7 +340,6 @@ export function ProfilePage() {
     <Gate>
       <div className="container page narrow">
         <Heading
-          eyebrow="SERA / PROFILE"
           title={t("profile")}
           description={t("localOnly")}
         />
@@ -423,7 +420,6 @@ export function Applications({ pipeline = false }: { pipeline?: boolean }) {
     <Gate role={pipeline ? "employer" : "seeker"}>
       <div className="container page">
         <Heading
-          eyebrow={`SERA / ${pipeline ? "HIRING" : "APPLICATIONS"}`}
           title={t(pipeline ? "pipeline" : "applications")}
           description={t("localOnly")}
         />
@@ -538,7 +534,6 @@ export function PostJob() {
     <Gate role="employer">
       <div className="container page narrow">
         <Heading
-          eyebrow="SERA / EMPLOYERS"
           title={t("newJob")}
           description={t("localOnly")}
         />
@@ -717,7 +712,6 @@ export function Messages() {
     <Gate>
       <div className="container page">
         <Heading
-          eyebrow="SERA / INBOX"
           title={t("messages")}
           description={t("localOnly")}
         />
@@ -841,7 +835,6 @@ export function Pricing() {
   return (
     <div className="container page narrow">
       <Heading
-        eyebrow="SERA / FEATURED"
         title={t("promote")}
         description={t("noPay")}
       />

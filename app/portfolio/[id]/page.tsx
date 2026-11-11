@@ -15,7 +15,6 @@ export default async function PublicPortfolio({ params }: { params: Promise<{ id
   if (error || !profile) notFound();
   return <main className="container page sera-public-portfolio">
     <div className="sera-public-portfolio-hero">
-      <p className="eyebrow">SERA.et / PROFESSIONAL PORTFOLIO</p>
       <div className="sera-public-portfolio-monogram" aria-hidden="true">{profile.full_name.trim().slice(0,1).toUpperCase()}</div>
       <h1>{profile.full_name}</h1>
       {profile.headline && <p className="sera-public-portfolio-headline">{profile.headline}</p>}

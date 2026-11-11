@@ -67,7 +67,7 @@ export default async function Discover({
   return (
     <div className="sera-network network-app">
       <NetworkToolbar query={query} discover />
-      <PageIntro icon={Compass} eyebrow="FOLLOW YOUR CURIOSITY" title="Discover your next connection."
+      <PageIntro icon={Compass} title="Discover your next connection."
         description="People, ideas, projects and opportunities worth exploring." />
       <form
         action="/discover"

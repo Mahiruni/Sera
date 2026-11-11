@@ -8,7 +8,6 @@ export default function Page() {
       <Breadcrumbs
         items={[{ name: "Career opportunities", path: "/opportunities" }]}
       />
-      <p className="eyebrow">Sera.et / CAREERS</p>
       <h1>A clearer starting point for your job search in Ethiopia.</h1>
       <p className="subtext">
         Build a focused application and check the source of an opportunity

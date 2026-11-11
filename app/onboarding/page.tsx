@@ -10,7 +10,6 @@ export default async function Page() {
   const { profile } = await requiredProfile();
   return (
     <div className="container page account-foundation">
-      <p className="eyebrow">Sera.et / GETTING STARTED</p>
       <h1>A little about you.</h1>
       <p className="subtext">
         Your email is verified. Add the details that help describe your next

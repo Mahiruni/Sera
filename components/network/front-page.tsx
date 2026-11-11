@@ -33,10 +33,6 @@ export function NetworkFrontPage() {
       </div>
       <section className="network-public-hero">
         <div className="network-hero-copy">
-          <p className="network-kicker">
-            <span className="network-live-dot" /> FOR THE WORK. AND THE PEOPLE
-            BEHIND IT.
-          </p>
           <h1>
             Your work.
             <br />
@@ -134,7 +130,6 @@ export function NetworkFrontPage() {
       </section>
       <section className="network-explore-strip">
         <div>
-          <span className="network-kicker">FOLLOW YOUR CURIOSITY</span>
           <h2>What’s your next move?</h2>
         </div>
         <form action="/jobs" role="search">
@@ -196,9 +191,6 @@ export function NetworkFrontPage() {
       </section>
       <section className="network-identity">
         <div className="network-identity-art">
-          <span className="network-kicker">
-            YOUR STORY, WITH MORE DIMENSION
-          </span>
           <div className="network-profile-example">
             <span className="network-profile-example-avatar">
               You<span>✦</span>
@@ -218,7 +210,6 @@ export function NetworkFrontPage() {
           </span>
         </div>
         <div>
-          <p className="network-kicker">LET THE WHOLE YOU SHOW UP</p>
           <h2>
             More than
             <br />a list of skills.
@@ -246,7 +237,6 @@ export function NetworkFrontPage() {
       </section>
       <NextOnSera />
       <section className="network-final-cta">
-        <span className="network-kicker">THE NEXT CHAPTER STARTS WITH YOU</span>
         <h2>Bring what makes you, you.</h2>
         <p>Your ideas deserve a home. Your work deserves to be seen.</p>
         <Link href="/sign-up" className="network-button">

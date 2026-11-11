@@ -6,7 +6,6 @@ export default function Page() {
   return (
     <div className="container page public-hub">
       <Breadcrumbs items={[{ name: "Education", path: "/education" }]} />
-      <p className="eyebrow">Sera.et / EDUCATION</p>
       <h1>Plan your studies, projects and next learning opportunity.</h1>
       <p className="subtext">
         Practical starting points for students, teachers and people comparing

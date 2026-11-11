@@ -23,7 +23,7 @@ export default async function NotificationsPage(){
  const people=await memberCards(notifications.map(n=>n.actor_id));
  const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
  return <div className="sera-network network-app sera-notifications"><NotificationRefresh />
-  <PageIntro icon={Bell} eyebrow="YOUR PROFESSIONAL ACTIVITY" title="Notifications" description="Keep up with the people and ideas that matter to you.">
+  <PageIntro icon={Bell} title="Notifications" description="Keep up with the people and ideas that matter to you.">
     <div className="sera-notifications-tools"><span className="sera-notifications-count" aria-live="polite"><Bell size={16}/>{unread} unread</span>{unread>0&&<form action={markAllNotificationsRead}><button className="sera-notifications-mark-all" type="submit"><CheckCheck size={16}/> Mark all read</button></form>}</div>
   </PageIntro>
   {error&&<p role="alert">Notifications are temporarily unavailable. Please try again.</p>}

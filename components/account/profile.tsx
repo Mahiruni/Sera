@@ -196,7 +196,6 @@ export function ProfessionalProfile({
   return (
     <div className="professional-account">
       <div className="profile-topline">
-        <p className="eyebrow">SERA / PROFESSIONAL PROFILE</p>
         <span>
           <LockKeyhole size={13} /> Private profile
         </span>
@@ -297,7 +296,7 @@ export function ProfessionalProfile({
               const complete = steps.filter(step => step.done).length;
               const percent = Math.round(complete / steps.length * 100);
               return <>
-                <div className="sera-profile-completion-heading"><div><span className="sera-profile-completion-eyebrow">YOUR PROFESSIONAL PRESENCE</span><h2>Complete your profile</h2><p>{complete === steps.length ? "Your essential profile details are complete." : "Make your profile more useful to your professional network."}</p></div><strong>{percent}%</strong></div>
+                <div className="sera-profile-completion-heading"><div><h2>Complete your profile</h2><p>{complete === steps.length ? "Your essential profile details are complete." : "Make your profile more useful to your professional network."}</p></div><strong>{percent}%</strong></div>
                 <div className="sera-profile-progress-track" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completion"><span style={{width:percent+"%"}}/></div>
                 <div className="sera-profile-step-list">{steps.map(step=><span key={step.label} className={step.done?"is-complete":""}>{step.done?<Check size={13}/>:<span className="sera-profile-step-dot"/>}{step.label}</span>)}</div>
                 {complete < steps.length && <button type="button" className="sera-profile-complete-button" onClick={()=>{if(steps.slice(0,5).some(step=>!step.done)){setEditing(true);}else{document.getElementById("cv")?.scrollIntoView({behavior:"smooth",block:"start"});}}}>Continue profile setup <ArrowUpRight size={16}/></button>}
@@ -416,7 +415,6 @@ export function ProfessionalProfile({
         >
           <div className="profile-section-heading">
             <div>
-              <p className="eyebrow">YOUR PROFESSIONAL STORY</p>
               <h2>Edit your profile</h2>
             </div>
           </div>
@@ -587,7 +585,6 @@ export function ProfessionalProfile({
       <section className="profile-section profile-cv panel" id="cv">
         <div className="profile-section-heading">
           <div>
-            <p className="eyebrow">READY FOR YOUR NEXT OPPORTUNITY</p>
             <h2>Your CV</h2>
           </div>
           <FileText size={26} />

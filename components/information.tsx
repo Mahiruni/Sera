@@ -20,7 +20,6 @@ export function InformationPage({ page }: { page: InformationSlug }) {
         {t("home")}
       </Link>
       <Heading
-        eyebrow="SERA / INFORMATION"
         title={content.title[i]}
         description={content.intro[i]}
       />
@@ -66,7 +65,6 @@ export function CategoriesPage() {
   return (
     <div className="container page">
       <Heading
-        eyebrow="SERA / EXPLORE"
         title={t("browseCategories")}
         description={t("featured")}
       />

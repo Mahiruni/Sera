@@ -15,7 +15,7 @@ export default async function ModerationPage() {
   const { data: appealRows } = await db.rpc("moderator_pending_appeals");
   const appeals = (appealRows || []) as {id:string;decision_id:string;post_id:string;explanation:string;created_at:string}[];
   return <div className="container page account-foundation">
-    <PageIntro icon={ShieldCheck} eyebrow="COMMUNITY CARE" title="Trust & Safety"
+    <PageIntro icon={ShieldCheck} title="Trust & Safety"
       description="Review reports and appeals. Every decision is explained and recorded." />
     <section className="account-security panel" aria-labelledby="queue-title">
       <h2 id="queue-title">Pending reports ({reports.length})</h2>

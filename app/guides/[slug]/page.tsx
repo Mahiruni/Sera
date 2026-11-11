@@ -33,7 +33,6 @@ export default async function Page({
           { name: guide.title, path: `/guides/${slug}` },
         ]}
       />
-      <p className="eyebrow">{guide.section} / Sera.et</p>
       <h1>{guide.title}</h1>
       <p className="subtext">{guide.description}</p>
       <p className="article-byline">

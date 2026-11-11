@@ -42,9 +42,6 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
   return (
     <div className="container public-home" lang={language}>
       <div className="public-intro">
-        <p className="public-kicker">
-          Sera.et · {am ? "ዕድሎች እና ትምህርት" : "OPPORTUNITIES & EDUCATION"}
-        </p>
         <h1>
           {am ? "ቀጣዩን እርምጃዎን" : "Your next move,"}
           <br />
@@ -110,9 +107,6 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
         ))}
       </section>
       <section className="public-editorial">
-        <p className="eyebrow">
-          {am ? "ግልጽ እና ተግባራዊ" : "CLEAR, PRACTICAL, USEFUL"}
-        </p>
         <h2>
           {am
             ? "ከእርምጃ በፊት ጥሩ ጥያቄዎችን ይጠይቁ።"
@@ -195,7 +189,6 @@ export function LanguageStatus({ locale }: { locale: LocaleCode }) {
       dir={arabic ? "rtl" : "ltr"}
       lang={arabic ? "ar" : "en"}
     >
-      <p className="eyebrow">Sera.et · {item.native}</p>
       <h1>
         {arabic
           ? "العربية قيد الإعداد"

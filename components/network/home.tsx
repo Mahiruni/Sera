@@ -14,7 +14,6 @@ import {
   UsersRound,
   Layers3,
   Lightbulb,
-  Sparkles,
   Plus,
 } from "lucide-react";
 import { FeedComposer } from "@/components/social/FeedComposer";
@@ -76,7 +75,6 @@ export function NetworkHome({
     <div className="sera-network network-app social-page">
       <section className="sera-premium-hero" aria-label="Welcome to SERA">
         <div className="sera-premium-hero-copy">
-          <span><Sparkles size={14} /> YOUR PROFESSIONAL COMMUNITY</span>
           <h1>A good place to grow your career.</h1>
           <p>Discover people, ideas, projects and opportunities.</p>
         </div>
@@ -124,7 +122,6 @@ export function NetworkHome({
           </section>
           <NetworkLinks />
           <div className="network-left-note">
-            <span className="network-kicker">YOUR INTERESTS, IN FOCUS</span>
             {topics.length ? (
               <div className="network-skills">
                 {topics.map((topic) => (
@@ -153,9 +150,6 @@ export function NetworkHome({
         >
           <header className="network-welcome sera-premium-old-welcome">
             <div>
-              <span className="network-kicker">
-                YOUR DAILY DOSE OF POSSIBILITY
-              </span>
               <h1>
                 {mine ? "Your work. Your voice." : "A good place to grow."}
               </h1>

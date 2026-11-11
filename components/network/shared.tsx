@@ -108,7 +108,6 @@ export function NextOnSera({ compact = false }: { compact?: boolean }) {
     >
       <div className="network-section-heading">
         <div>
-          <span className="network-kicker">A MORE CONNECTED SERA</span>
           <h2>
             {compact ? "Next on Sera" : "Good work brings people together."}
           </h2>

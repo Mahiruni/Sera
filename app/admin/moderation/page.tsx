@@ -21,7 +21,6 @@ export default async function ModerationQueue({searchParams}:{
   const reviewNotes=new Map((reviews??[]).map(r=>[r.report_id,r.note]));
   const people=await memberCards((reports??[]).flatMap(r=>[r.reporter_id,r.reported_id]));
   return <main className="sera-network network-app sera-moderation">
-    <p className="network-kicker">TRUST & SAFETY</p>
     <h1 style={{fontSize:"clamp(2rem,5vw,3rem)",letterSpacing:"-.04em"}}>Moderation workspace</h1>
     <p>Confidential member reports. Review evidence carefully and document every decision.</p>
     <nav aria-label="Report filters" className="sera-moderation-filters">

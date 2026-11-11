@@ -137,12 +137,6 @@ export function AuthForm({
           Sera<span>.et</span>
         </Link>
         <div className="auth-story-content">
-          <p className="auth-story-kicker">
-            <span />
-            {lang === "am"
-              ? "ለቀጣዩ እርምጃዎ"
-              : "A LITTLE CLARITY. A NEW POSSIBILITY."}
-          </p>
           <h2>
             {lang === "am" ? (
               <>

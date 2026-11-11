@@ -49,7 +49,6 @@ export function Discovery({
   return (
     <div className="container page">
       <Heading
-        eyebrow={`SERA / ${matches ? "SKILLS" : savedOnly ? "SAVED" : "DISCOVER"}`}
         title={t(matches ? "matches" : savedOnly ? "savedTitle" : "browseHint")}
         description={t(matches ? "matchNote" : "featured")}
       />

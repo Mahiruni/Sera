@@ -69,7 +69,7 @@ export default async function ProfessionalInbox({ searchParams }: {
   const candidatePeople = await memberCards(candidates);
   return (
     <div className="sera-network network-app sera-inbox">
-      <PageIntro icon={MessageCircle} eyebrow="ROOM FOR A CONVERSATION" title="Your messages"
+      <PageIntro icon={MessageCircle} title="Your messages"
         description="A private space to exchange ideas and move work forward.">
         <Link className="button secondary" href="/connections">Your connections</Link>
       </PageIntro>

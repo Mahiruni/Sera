@@ -95,18 +95,16 @@ export function JobCard({
   );
 }
 export function Heading({
-  eyebrow,
   title,
   description,
   children,
 }: {
-  eyebrow?: string;
   title: string;
   description?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <PageIntro eyebrow={eyebrow} title={title} description={description}>
+    <PageIntro title={title} description={description}>
       {children}
     </PageIntro>
   );
