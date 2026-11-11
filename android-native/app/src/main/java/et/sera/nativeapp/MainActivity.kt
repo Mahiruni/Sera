@@ -65,6 +65,25 @@ fun SeraApp(context: Context) {
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
     val scope = rememberCoroutineScope()
+    var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
+    var identity by remember { mutableStateOf("") }
+    var dataError by remember { mutableStateOf("") }
+    var dataLoading by remember { mutableStateOf(false) }
+    var refresh by remember { mutableIntStateOf(0) }
+    LaunchedEffect(accessToken, tab, refresh) {
+        val token = accessToken ?: return@LaunchedEffect
+        if (tab != "Home" && tab != "Profile") return@LaunchedEffect
+        dataLoading = true
+        dataError = ""
+        if (tab == "Home") {
+            val result = withContext(Dispatchers.IO) { loadSeraFeed(token) }
+            if (result.first != null) feed = result.first!! else dataError = result.second
+        } else {
+            val result = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
+            if (result.first != null) identity = result.first!! else dataError = result.second
+        }
+        dataLoading = false
+    }
     BackHandler(enabled = accessToken != null && tab != "Home") { tab = "Home" }
     MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
@@ -154,7 +173,25 @@ fun SeraApp(context: Context) {
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 Text(tab, color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                                Text(sectionDescription(tab), color = ink)
+                                if (dataLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                                if (dataError.isNotEmpty()) Text(dataError, color = MaterialTheme.colorScheme.error)
+                                when (tab) {
+                                    "Home" -> {
+                                        if (!dataLoading && feed.isEmpty() && dataError.isEmpty()) Text("No published posts yet.", color = ink)
+                                        feed.forEach { post ->
+                                            ElevatedCard(Modifier.fillMaxWidth()) {
+                                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Text(post.title.ifBlank { "Professional update" }, fontWeight = FontWeight.Bold, color = ink)
+                                                    Text(post.body, color = ink)
+                                                    Text("Likes: " + post.likes + " · Comments: " + post.comments, color = teal)
+                                                }
+                                            }
+                                        }
+                                        OutlinedButton(onClick = { refresh++ }) { Text("Refresh") }
+                                    }
+                                    "Profile" -> Text(identity.ifBlank { "Loading your account…" }, color = ink)
+                                    else -> Text(sectionDescription(tab), color = ink)
+                                }
                                 if (tab == "Profile") {
                                     TextButton(onClick = {
                                         session.clear(); accessToken = null; password = ""; message = ""; tab = "Home"
