@@ -373,7 +373,8 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
             confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
     BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
-    MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
+    MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg),
+        typography = SeraTypography) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
