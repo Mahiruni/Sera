@@ -245,6 +245,62 @@ export async function toggleSavePost(_: SocialState, form: FormData) {
 export async function sharePost(_: SocialState, form: FormData) {
   return setInteraction("post_shares", form);
 }
+/** Professionally attributed reposts follow the same moderation gate as original posts. */
+export async function repostPost(_: SocialState, form: FormData): Promise<SocialState> {
+  const session = await member();
+  const sourceId = form.get("post_id");
+  const note = form.get("note");
+  if (!session || !uuid(sourceId) || typeof note !== "string" || note.length > 400)
+    return { error: "Sign in and choose a valid post to repost." };
+  if (!moderationEnabled() || !securePublishingConfigured())
+    return { error: "Secure repost publishing is temporarily unavailable." };
+
+  const { data: source, error: missing } = await session.db.from("posts")
+    .select("id,author_id,title,body,repost_of")
+    .eq("id", sourceId).eq("status", "published").maybeSingle();
+  if (missing || !source) return { error: "This post is no longer available." };
+  if (source.author_id === session.user.id) return { error: "You cannot repost your own story." };
+  if (source.repost_of) return { error: "Please repost the original story instead." };
+
+  const { data: existing } = await session.db.from("posts").select("id")
+    .eq("author_id", session.user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
+  if (existing) return { error: "You have already reposted this update." };
+
+  const original = String(source.body || source.title || "Professional update").slice(0, 2000);
+  const prepared = new FormData();
+  prepared.set("kind", "idea");
+  prepared.set("title", \`Reposted: \${String(source.title || "Professional update")}\`.slice(0, 140));
+  prepared.set("body", [note.trim(), original, \`Original: https://sera.hisabtech.com/posts/\${sourceId}\`].filter(Boolean).join("\n\n"));
+  const input = readPost(prepared);
+  if (!input) return { error: "Could not prepare this repost." };
+  const verdict = await screenSubmission(input, []);
+  if (verdict.verdict !== "approved")
+    return { error: verdict.verdict === "rejected" ?
+      "The repost did not pass our community guidelines." :
+      "Safety screening is unavailable. Nothing was reposted." };
+
+  const draft = await session.db.from("posts").insert({
+    ...input, author_id: session.user.id, status: "draft", repost_of: sourceId,
+  }).select("id").single();
+  if (draft.error || !draft.data)
+    return { error: draft.error?.code === "23505" ?
+      "You have already reposted this update." : "Could not create this repost. Try again." };
+
+  const publisher = moderationWriter();
+  if (!publisher) return { error: "Secure publishing is temporarily unavailable." };
+  const id = draft.data.id as string;
+  const publish = await publisher.from("posts").update({ status: "published" })
+    .eq("id", id).eq("author_id", session.user.id)
+    .eq("status", "draft").select("id").single();
+  if (publish.error || !publish.data) {
+    await publisher.from("posts").delete().eq("id", id).eq("author_id", session.user.id).eq("status", "draft");
+    return { error: "Could not complete the repost. Please retry." };
+  }
+  refresh(String(sourceId));
+  refresh(id);
+  return { success: "Reposted to your network.", postId: id };
+}
+
 export async function addComment(
   _: SocialState,
   form: FormData,
