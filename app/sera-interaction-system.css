@@ -73,3 +73,54 @@
 .sera-share-options>button>svg{flex:none;color:#087e83}
 .sera-share-options>button>span{display:grid;gap:3px;font-size:14px;font-weight:750}
 .sera-share-options>button small{font-size:12px;font-weight:400;color:#668080}
+
+
+/* SERA in-feed conversation: scroll the discussion, not the composer. */
+.social-page .social-post-actions .sera-inline-comments{display:flex;min-width:0;width:100%}
+.social-page .social-post-actions .sera-conversation-trigger{display:inline-flex;width:100%;justify-content:center;align-items:center;gap:7px;min-height:48px}
+.sera-conversation-backdrop{position:fixed;inset:0;z-index:10035;display:flex;align-items:flex-end;justify-content:center;background:rgba(6,27,33,.60);backdrop-filter:blur(4px)}
+.sera-conversation-sheet{width:min(100%,620px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - 8px);display:flex;flex-direction:column;position:relative;overflow:hidden;border-radius:29px 29px 0 0;background:#fff;color:#19383f;box-shadow:0 -20px 70px #08212e35}
+.sera-conversation-handle{height:4px;width:44px;border-radius:30px;background:#bdd5d1;margin:12px auto 5px;flex:none}
+.sera-conversation-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;border-bottom:1px solid #e2eeeb;flex:none}
+.sera-conversation-header h2{display:flex;align-items:center;gap:10px;margin:0;font-size:21px;letter-spacing:-.035em}
+.sera-conversation-header h2 svg{color:#087e83}
+.sera-conversation-header button{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:#edf7f5;color:#16444a}
+.sera-conversation-context{color:#607c80;font-size:12px;padding:12px 21px;background:#fbfdfc;flex:none}
+.sera-conversation-scroll{overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#c1dcd8 transparent;min-height:0;flex:1;padding:8px 20px 16px}
+.sera-conversation-threads{display:grid;gap:8px}
+.sera-conversation-thread{padding:14px 0;border-bottom:1px solid #e3eeed}
+.sera-conversation-comment{display:flex;align-items:flex-start;gap:11px}
+.sera-conversation-comment-content{flex:1;min-width:0}
+.sera-conversation-byline{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sera-conversation-byline a{font-size:13px;font-weight:750;color:#18383d}
+.sera-conversation-byline time{color:#72898b;font-size:11px}
+.sera-conversation-comment-content p{font-size:14px;line-height:1.64;white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0 2px}
+.sera-conversation-comment-content button{border:0;background:none;color:#087e83;font-size:12px;font-weight:700;padding:7px 0;min-height:36px}
+.sera-conversation-reply{margin:12px 0 0 38px;padding:10px 0 0 12px;border-left:2px solid #b0dcd6}
+.sera-conversation-pages{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px}
+.sera-conversation-pages button{display:flex;align-items:center;gap:4px;border:1px solid #d7e7e5;border-radius:12px;background:#fff;padding:9px;color:#087e83;min-height:44px}
+.sera-conversation-pages span{font-size:12px;color:#647d80}
+.sera-conversation-state{padding:28px 12px;color:#647d80;text-align:center;display:grid;gap:12px;justify-items:center}
+.sera-conversation-state button{border:1px solid #b9d9d4;border-radius:13px;background:#eef8f6;padding:10px 16px;color:#087e83;font-weight:700}
+.sera-conversation-composer{flex:none;display:grid;gap:8px;padding:14px 20px max(16px,env(safe-area-inset-bottom,0px));border-top:1px solid #deebea;background:#fff}
+.sera-conversation-composer label{font-size:13px;font-weight:700;color:#193a3e}
+.sera-conversation-composer textarea{width:100%;min-height:67px;max-height:160px;resize:vertical;border:1px solid #d7e6e3;border-radius:16px;background:#fafdfc;padding:11px 14px;color:#17383f;font-size:16px;line-height:1.5}
+.sera-conversation-composer textarea:focus{outline:2px solid #087e83;outline-offset:1px}
+.sera-conversation-composer-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sera-conversation-composer-actions>a{font-size:12px;color:#58767a}
+.sera-conversation-composer-actions button{display:flex;align-items:center;gap:8px;justify-content:center;padding:10px 15px;min-height:47px;border:0;border-radius:14px;background:#087e83;color:white;font-size:13px;font-weight:750}
+.sera-conversation-composer-actions button:disabled{opacity:.55}
+.sera-conversation-composer-actions button svg{width:20px;height:20px}
+.sera-conversation-reply-target{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;color:#087e83}
+.sera-conversation-reply-target button{background:transparent;border:0;color:#697e81;padding:5px}
+.sera-conversation-confirm{position:absolute;inset:0;background:#0b252c87;display:grid;place-items:center;z-index:2;padding:20px}
+.sera-conversation-confirm>div{width:min(100%,330px);border-radius:22px;padding:23px;background:white;display:flex;flex-wrap:wrap;gap:12px;box-shadow:0 18px 45px #0b252c2d}
+.sera-conversation-confirm h3,.sera-conversation-confirm p{width:100%}
+.sera-conversation-confirm h3{font-size:20px}
+.sera-conversation-confirm p{font-size:13px;color:#637d80}
+.sera-conversation-confirm button{flex:1;min-height:44px;padding:10px;border-radius:13px;border:1px solid #d9e7e5;background:#fff;font-weight:700}
+.sera-conversation-confirm button:last-child{background:#173a40;color:white}
+@media(min-width:700px){.sera-conversation-backdrop{align-items:center}.sera-conversation-sheet{max-height:85dvh;border-radius:29px}.sera-conversation-handle{display:none}}
+@media(max-width:420px){.sera-conversation-header{padding:8px 16px}.sera-conversation-context{padding:10px 16px}.sera-conversation-scroll{padding:6px 14px}.sera-conversation-composer{padding:12px 14px max(12px,env(safe-area-inset-bottom))}.sera-conversation-composer-actions>a{max-width:105px}}
+@media(prefers-reduced-motion:no-preference){.sera-conversation-sheet{animation:sera-signature-rise .28s cubic-bezier(.2,.8,.2,1) both}}
+@media(prefers-reduced-motion:reduce){.sera-conversation-sheet *, .sera-conversation-sheet{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

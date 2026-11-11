@@ -17,6 +17,7 @@ import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { ShareButton } from "./share";
 import { RepostButton } from "./RepostButton";
+import { SeraConversationSheet } from "./SeraConversationSheet";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 import { ExpandableCaption, PostMedia } from "./post-media";
 export function PostCard({
@@ -114,13 +115,7 @@ export function PostCard({
             <span className="social-action-count">{post.like_count}</span>
           </Submit>
         </ActionForm>
-        <Link
-          href={"/posts/" + post.id + "#comments"}
-          aria-label={`${post.comment_count} comments, open conversation`}
-        >
-          <SeraReactionIcon kind="comment" />
-          <span className="social-action-count">{post.comment_count}</span>
-        </Link>
+        <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} />
         <RepostButton id={post.id} author={post.author.full_name} disabled={owner} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>
