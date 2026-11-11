@@ -1,10 +1,11 @@
 import { InboxRefresh } from "@/components/network/inbox-refresh";
+import { MarkVisibleMessagesRead } from "@/components/network/mark-visible-messages-read";
 import { MessageAttachmentPicker } from "@/components/network/message-attachment-picker";
 import { PageIntro } from "@/components/page-intro";
 import { ConversationTyping } from "@/components/network/conversation-typing";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
 import Link from "next/link";
-import { Send, Paperclip, Search, MessageCircle, ArrowLeft } from "lucide-react";
+import { Send, Search, MessageCircle, ArrowLeft } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
@@ -105,6 +106,7 @@ export default async function ProfessionalInbox({ searchParams }: {
           {selected ? <>
             <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2><Link href={"/members/" + (selected.member_a === user.id ? selected.member_b : selected.member_a)}>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</Link></h2><small>Private professional conversation</small></div></div>
             <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
+            <MarkVisibleMessagesRead conversation={selected.id} unreadCount={unreadCounts.get(selected.id) ?? 0} />
             <form method="get" action="/network/messages" role="search" className="sera-inbox-search">
               <input type="hidden" name="thread" value={selected.id} />
               <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} />
