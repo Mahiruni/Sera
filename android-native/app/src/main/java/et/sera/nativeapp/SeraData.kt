@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -58,6 +58,31 @@ fun loadSeraFeed(token: String): Pair<List<SeraPost>?, String> {
                 }
             }
         }
+        val avatars = mutableMapOf<String, String>()
+        if (authors.isNotEmpty()) {
+            try {
+                val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/rpc/member_cards").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 15000; readTimeout = 15000; doOutput = true
+                    setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                }
+                connection.outputStream.use { it.write(JSONObject().put("ids", JSONArray(authors)).toString().toByteArray()) }
+                if (connection.responseCode in 200..299) {
+                    val rows = JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+                    for (i in 0 until rows.length()) {
+                        val row = rows.getJSONObject(i)
+                        val id = row.optString("id")
+                        val avatarPath = row.optString("avatar_path")
+                        if (avatarPath.isNotBlank() && avatarPath != "null") {
+                            signedPostImage(token, avatarPath, "sera-account-private")?.let { avatars[id] = it }
+                        }
+                    }
+                }
+                connection.disconnect()
+            } catch (_: Exception) { /* Avatar fallback remains available. */ }
+        }
         val likedIds = mutableSetOf<String>()
         val idsForLikes = posts.map { it.id }.filter { it.isNotBlank() }.joinToString(",")
         if (idsForLikes.isNotBlank()) {
@@ -86,16 +111,16 @@ fun loadSeraFeed(token: String): Pair<List<SeraPost>?, String> {
         posts.map { post ->
             val author = names[post.authorId]
             post.copy(author = author?.first?.takeIf { it.isNotBlank() } ?: "SERA member",
-                headline = author?.second ?: "", imageUrl = images[post.id], liked = likedIds.contains(post.id))
+                headline = author?.second ?: "", imageUrl = images[post.id], liked = likedIds.contains(post.id), avatarUrl = avatars[post.authorId])
         } to ""
     } catch (e: Exception) { null to "Unable to read the feed response." }
 }
 
-private fun signedPostImage(token: String, path: String): String? {
+private fun signedPostImage(token: String, path: String, bucket: String = "sera-post-media"): String? {
     if (path.isBlank()) return null
     return try {
         val encodedPath = path.split("/").joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8") }
-        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1/object/sign/sera-post-media/" + encodedPath).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1/object/sign/" + bucket + "/" + encodedPath).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 10000
             readTimeout = 10000
