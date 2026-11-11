@@ -69,6 +69,8 @@ class MainActivity : AppCompatActivity() {
         // Android 12+ and earlier versions show the same static S mark first.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Register a user-configurable channel; requesting notification consent is separate.
+        SeraNotificationChannels.register(this)
         callback.value = intent?.data?.takeIf { it.scheme == "sera" }
         // A warm start, configuration change, process restoration or OAuth
         // deep link must never replay the cinematic introduction.
