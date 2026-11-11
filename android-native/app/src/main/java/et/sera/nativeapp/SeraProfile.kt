@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,7 +33,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error.isNotBlank()) {
             Text(error, color = MaterialTheme.colorScheme.error)
-            OutlinedButton(onClick = onRetry) { Text("Retry") }
+            OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
         }
         Text(stringResource(R.string.profile_pending), color = Color(0xFF50656A))
         OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_out)) }
