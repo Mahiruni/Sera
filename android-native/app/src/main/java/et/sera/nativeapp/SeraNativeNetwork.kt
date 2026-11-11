@@ -3,6 +3,7 @@ package et.sera.nativeapp
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -134,7 +135,8 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
             Text("${matches.size} professionals", color = Color(0xFF087E83), fontWeight = FontWeight.SemiBold)
             TextButton(onClick = { reload++ }, enabled = !loading) { Text("Refresh") }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (loading && people.isEmpty()) SeraLoadingCards(count = 3, modifier = Modifier.padding(vertical = 12.dp))
+        else if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (actionError.isNotBlank()) Text(actionError, color = MaterialTheme.colorScheme.error)
         val pendingReceived = relations.requests.filter { it.recipient == userId && it.status == "pending" }
         AnimatedVisibility(pendingReceived.isNotEmpty()) {
@@ -171,7 +173,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                 ElevatedCard(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().animateContentSize()
                 ) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
