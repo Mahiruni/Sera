@@ -36,7 +36,7 @@ export async function GET() {
         parsed.pathname !== `/${REPO}/releases/download/${tag}/SERA-${versionName}.apk`)
       return NextResponse.json({ available: false }, { headers: jsonHeaders });
     return NextResponse.json({
-      available: true, versionCode, versionName, apkUrl, sha256,
+      available: true, versionCode, versionName, apkUrl: `https://sera.hisabtech.com/downloads/sera-android.apk?version=${versionName}`, sha256,
       notes: "A new signed SERA Android release is available.",
     }, { headers: jsonHeaders });
   } catch {
