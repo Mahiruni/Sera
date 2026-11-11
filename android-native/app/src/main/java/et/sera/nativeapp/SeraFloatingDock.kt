@@ -47,7 +47,8 @@ private fun dockIcon(section: String): ImageVector = when (section) {
 internal fun SeraFloatingDock(
     selected: String,
     sections: List<String>,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    profileAvatarUrl: String? = null
 ) {
     Surface(
         color = Color.Transparent,
@@ -83,8 +84,17 @@ internal fun SeraFloatingDock(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(dockIcon(section), contentDescription = section, tint = tint,
-                        modifier = Modifier.size(25.dp).graphicsLayer { scaleX = scale; scaleY = scale })
+                    if (section == "Profile" && !profileAvatarUrl.isNullOrBlank()) {
+                        SeraMediaImage(
+                            url = profileAvatarUrl,
+                            description = "Your profile",
+                            widthPx = 96, heightPx = 96,
+                            modifier = Modifier.size(26.dp).clip(CircleShape)
+                        )
+                    } else {
+                        Icon(dockIcon(section), contentDescription = section, tint = tint,
+                            modifier = Modifier.size(25.dp).graphicsLayer { scaleX = scale; scaleY = scale })
+                    }
                     Spacer(Modifier.height(5.dp))
                     Box(Modifier.size(width = if (active) 11.dp else 3.dp, height = 3.dp)
                         .background(if (active) dockActive else Color.Transparent, CircleShape))
