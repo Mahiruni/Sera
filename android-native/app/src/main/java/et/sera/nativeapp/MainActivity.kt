@@ -212,6 +212,8 @@ fun SeraApp(context: Context) {
                                     }, Modifier.padding(padding))
                                 } else if (currentTab == "Jobs") {
                                     SeraNativeJobs(accessToken ?: "", Modifier.padding(padding))
+                                } else if (currentTab == "Network") {
+                                    SeraNativeNetwork(accessToken ?: "", authenticatedUserId, Modifier.padding(padding))
                                 } else {
                                     Column(
                                         Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
