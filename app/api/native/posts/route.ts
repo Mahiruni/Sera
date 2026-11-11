@@ -52,10 +52,26 @@ export async function POST(request: NextRequest) {
     );
   const writer = moderationWriter();
   if (!writer) return NextResponse.json({ error: "Secure publishing unavailable." }, { status: 503 });
-  const { data, error } = await writer.from("posts")
-    .insert({ ...input, author_id: user.id, status: "published" })
+  // Database security requires INSERT to occur as the verified member, in draft state.
+  // Only the trusted service-role client may promote an approved draft to published.
+  const draft = await client.from("posts")
+    .insert({ ...input, author_id: user.id, status: "draft" })
     .select("id").single();
-  if (error || !data)
-    return NextResponse.json({ error: "Could not publish. Please retry." }, { status: 409 });
-  return NextResponse.json({ success: true, post_id: data.id }, { status: 201, headers: { "Cache-Control": "no-store" } });
+  if (draft.error || !draft.data) {
+    console.error("native text draft insert failed", { code: draft.error?.code });
+    return NextResponse.json({ error: "Could not create your post. Please retry." }, { status: 409 });
+  }
+  const id = draft.data.id as string;
+  const published = await writer.from("posts")
+    .update({ status: "published" })
+    .eq("id", id).eq("author_id", user.id).eq("status", "draft")
+    .select("id").single();
+  if (published.error || !published.data) {
+    console.error("native text publication failed", { code: published.error?.code });
+    const cleanup = await writer.from("posts").delete()
+      .eq("id", id).eq("author_id", user.id).eq("status", "draft");
+    if (cleanup.error) console.error("native text draft cleanup failed", { code: cleanup.error.code });
+    return NextResponse.json({ error: "Could not finish publishing. Your draft is preserved in SERA; please retry." }, { status: 503 });
+  }
+  return NextResponse.json({ success: true, post_id: id }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
