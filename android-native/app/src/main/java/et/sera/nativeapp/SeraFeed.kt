@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,11 +25,13 @@ import coil.compose.AsyncImage
 private val deepTeal = Color(0xFF087E83)
 private val darkInk = Color(0xFF183B40)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, onLike: (SeraPost) -> Unit, token: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var commentPostId by remember { mutableStateOf<String?>(null) }
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    PullToRefreshBox(isRefreshing = loading, onRefresh = onRefresh, modifier = modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("Your professional world", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkInk)
             Text("Ideas, talent and opportunities", color = Color(0xFF63787C))
@@ -78,6 +81,7 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                 }
             }
         }
+    }
     }
     commentPostId?.let { id ->
         SeraCommentsSheet(token, id, onDismiss = { commentPostId = null })
