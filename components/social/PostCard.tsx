@@ -28,7 +28,7 @@ export function PostCard({
   detail?: boolean;
 }) {
   const owner = currentUserId === post.author_id;
-  const normalize = (value: string) => value.replace(/\\s+/g, " ").trim().toLocaleLowerCase();
+  const normalize = (value: string) => value.replace(/\s+/g, " ").trim().toLocaleLowerCase();
   const title = post.title?.trim() || "";
   const body = post.body?.trim() || "";
   // Legacy posts sometimes repeat the title verbatim at the beginning of the body.
