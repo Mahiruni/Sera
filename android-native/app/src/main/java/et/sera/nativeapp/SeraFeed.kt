@@ -25,7 +25,7 @@ private val deepTeal = Color(0xFF087E83)
 private val darkInk = Color(0xFF183B40)
 
 @Composable
-fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, modifier: Modifier = Modifier) {
+fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
@@ -64,7 +64,7 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                     }
                     HorizontalDivider(color = Color(0xFFE6EEEE))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("♥ " + post.likes, color = deepTeal)
+                        TextButton(onClick = { onLike(post) }) { Text((if (post.liked) "♥ " else "♡ ") + post.likes, color = deepTeal) }
                         Text("Comments " + post.comments, color = Color.Gray, fontSize = 12.sp)
                         TextButton(onClick = {
                             val share = Intent(Intent.ACTION_SEND).apply {
