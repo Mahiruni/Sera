@@ -46,7 +46,7 @@ export default async function SafetyPage() {
     <section className="account-security panel" aria-labelledby="safety-reports-title">
       <h2 id="safety-reports-title">Your reports</h2>
       {error ? <p role="alert">Unable to load reports right now.</p> :
-      !reports?.length ? <p>You haven't submitted any reports.</p> :
+      !reports?.length ? <p>You haven&apos;t submitted any reports.</p> :
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {reports.map(report => <li key={report.id} style={{ padding: "16px 0", borderBottom: "1px solid #dce7e9" }}>
           <strong>{labels[report.reason] || "Community report"}</strong>
