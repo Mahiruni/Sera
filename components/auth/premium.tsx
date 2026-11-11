@@ -61,9 +61,9 @@ const COUNTRIES = [
 const T = {
   en: {
     signinTitle: "Welcome back",
-    signinSub: "Welcome back to your professional community. Your people, ideas and opportunities are waiting.",
+    signinSub: "Sign in to SERA.",
     signupTitle: "Create your account",
-    signupSub: "Build your professional identity, share your work and connect with people who move you forward.",
+    signupSub: "Join SERA with your professional account.",
     name: "Full name",
     namePh: "Your full name",
     email: "Email address",
@@ -671,11 +671,12 @@ export function PremiumAuth({
             {signup ? t.signIn : t.create}
           </Link>
         </p>
-        <p className="ax-secure">
-          <LockKeyhole size={13} aria-hidden="true" />
-          {t.secure}
-        </p>
       </div>
+      <footer className="ax-footer" aria-label="Account information">
+        <span><LockKeyhole size={12} aria-hidden="true" /> {t.secure}</span>
+        <Link href="/privacy">{t.privacy}</Link>
+        <Link href="/terms">{t.terms}</Link>
+      </footer>
     </section>
   );
 }
