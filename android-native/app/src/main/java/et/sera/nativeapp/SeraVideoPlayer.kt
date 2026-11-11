@@ -1,6 +1,9 @@
 package et.sera.nativeapp
 
 import android.net.Uri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +39,17 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
             prepare()
         }
     }
-    DisposableEffect(player) { onDispose { player.release() } }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(player, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) player.pause()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            player.release()
+        }
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
