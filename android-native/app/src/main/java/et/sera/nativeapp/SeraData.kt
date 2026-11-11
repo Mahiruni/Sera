@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -26,7 +26,7 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
 }
 
 fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
-    val result = request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at&status=eq.published&order=published_at.desc&limit=20&offset=${page * 20}")
+    val result = request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of&status=eq.published&order=published_at.desc&limit=20&offset=${page * 20}")
     val body = result.first ?: return null to result.second
     return try {
         val array = JSONArray(body)
@@ -41,11 +41,26 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
                 comments = item.optInt("comment_count"),
                 shares = item.optInt("share_count"),
                 kind = item.optString("kind"),
-                publishedAt = item.optString("published_at")
+                publishedAt = item.optString("published_at"),
+                repostOf = item.optString("repost_of").takeIf { it.isNotBlank() && it != "null" }
             )
         }
         if (posts.isEmpty()) return emptyList<SeraPost>() to ""
-        val authors = posts.map { it.authorId }.filter { it.isNotBlank() }.distinct()
+        val sourceAuthors = mutableMapOf<String, String>()
+        val sourceIds = posts.mapNotNull { it.repostOf }.distinct()
+        if (sourceIds.isNotEmpty()) {
+            val originals = request(token,
+                "posts?select=id,author_id&status=eq.published&id=in.(${sourceIds.joinToString(",")})")
+            originals.first?.let { json ->
+                val rows = JSONArray(json)
+                for (i in 0 until rows.length()) {
+                    val row = rows.getJSONObject(i)
+                    sourceAuthors[row.optString("id")] = row.optString("author_id")
+                }
+            }
+        }
+        val authors = (posts.map { it.authorId } + sourceAuthors.values)
+            .filter { it.isNotBlank() }.distinct()
         // Resolve visible profile names and avatars through the live member_cards RPC.
         // The old post_authors relation does not exist in the hosted schema.
         val names = mutableMapOf<String, String>()
@@ -103,7 +118,9 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
         }
         posts.map { post ->
             post.copy(author = names[post.authorId] ?: "SERA member",
-                headline = "", imageUrl = images[post.id], liked = likedIds.contains(post.id), avatarUrl = avatars[post.authorId])
+                headline = "", imageUrl = images[post.id], liked = likedIds.contains(post.id),
+                avatarUrl = avatars[post.authorId],
+                repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } })
         } to ""
     } catch (e: Exception) { null to "Unable to read the feed response." }
 }
