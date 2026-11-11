@@ -15,6 +15,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 
@@ -26,7 +27,7 @@ import androidx.media3.ui.PlayerView
 @Composable
 fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Boolean = false) {
     val context = LocalContext.current
-    val allowed = remember(url) {
+    val allowed = remember(url, localPreview) {
         runCatching { val uri = Uri.parse(url); (uri.scheme == "https" && !uri.host.isNullOrBlank()) || (localPreview && uri.scheme == "content") }.getOrDefault(false)
     }
     if (!allowed) {
@@ -34,6 +35,9 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
         return
     }
     var fullscreen by remember(url) { mutableStateOf(false) }
+    var buffering by remember(url) { mutableStateOf(false) }
+    var playbackError by remember(url) { mutableStateOf(false) }
+    var muted by remember(url) { mutableStateOf(false) }
     val player = remember(context, url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
@@ -41,6 +45,20 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
             repeatMode = Player.REPEAT_MODE_OFF
             // Defer network and local decoding until the user presses Play.
         }
+    }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                buffering = state == Player.STATE_BUFFERING
+                if (state == Player.STATE_READY) playbackError = false
+            }
+            override fun onPlayerError(error: PlaybackException) {
+                playbackError = true
+                buffering = false
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(player, lifecycleOwner) {
@@ -54,7 +72,14 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
         }
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { player.prepare(); player.play() }) { Text("Play video") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { player.prepare(); player.play() }) { Text(if (playbackError) "Retry video" else "Play video") }
+            OutlinedButton(onClick = { muted = !muted; player.volume = if (muted) 0f else 1f }) {
+                Text(if (muted) "Unmute" else "Mute")
+            }
+        }
+        if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (playbackError) Text("Video could not be played. Check your connection or try again.", color = MaterialTheme.colorScheme.error)
         if (!fullscreen) AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
             update = { it.player = player },
