@@ -66,6 +66,13 @@ fun SeraApp(context: Context) {
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
+    val tabHistory = remember { mutableStateListOf<String>() }
+    fun navigateTo(destination: String) {
+        if (destination == tab) return
+        tabHistory.add(tab)
+        if (tabHistory.size > 12) tabHistory.removeAt(0)
+        tab = destination
+    }
     val scope = rememberCoroutineScope()
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
@@ -86,7 +93,7 @@ fun SeraApp(context: Context) {
         }
         dataLoading = false
     }
-    BackHandler(enabled = accessToken != null && tab != "Home") { tab = "Home" }
+    BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
             if (restoring) {
@@ -135,7 +142,7 @@ fun SeraApp(context: Context) {
                         if (expanded) NavigationRail {
                             sections.forEach { item ->
                                 NavigationRailItem(
-                                    selected = tab == item, onClick = { tab = item },
+                                    selected = tab == item, onClick = { navigateTo(item) },
                                     icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
                                     label = { Text(item) }
                                 )
@@ -160,7 +167,7 @@ fun SeraApp(context: Context) {
                                 if (!expanded) NavigationBar(containerColor = Color(0xFF173438)) {
                                     sections.forEach { item ->
                                         NavigationBarItem(
-                                            selected = tab == item, onClick = { tab = item },
+                                            selected = tab == item, onClick = { navigateTo(item) },
                                             icon = { Text(sectionSymbol(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White, fontSize = 20.sp) },
                                             label = { Text(item, color = if (tab == item) Color(0xFF7CE1D6) else Color.White) },
                                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
