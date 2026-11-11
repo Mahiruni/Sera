@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import android.content.Intent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,6 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,7 +55,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         ) {
             item {
                 Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                    Text(stringResource(R.string.feed_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = feedInk)
+                    Text("YOUR PROFESSIONAL COMMUNITY", color = feedTeal,
+                        fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.2.sp)
+                    Spacer(Modifier.height(5.dp))
+                    Text(stringResource(R.string.feed_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = feedInk)
                     Text(stringResource(R.string.feed_subtitle), style = MaterialTheme.typography.bodySmall, color = feedMuted)
                 }
             }
@@ -60,7 +69,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                         shape = RoundedCornerShape(22.dp),
                         colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().animateContentSize()
                     ) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
@@ -116,10 +125,17 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 TextButton(onClick = { onLike(post) }) {
-                                    Text((if (post.liked) "♥ " else "♡ ") + post.likes, color = if (post.liked) feedTeal else feedMuted)
+                                    Icon(if (post.liked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Like", tint = if (post.liked) feedTeal else feedMuted,
+                                        modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(post.likes.toString(), color = if (post.liked) feedTeal else feedMuted)
                                 }
                                 TextButton(onClick = { commentsPostId = post.id }) {
-                                    Text("◌ " + post.comments, color = feedMuted)
+                                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comments",
+                                        tint = feedMuted, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(post.comments.toString(), color = feedMuted)
                                 }
                                 TextButton(onClick = {
                                     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -127,12 +143,16 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         putExtra(Intent.EXTRA_TEXT, "https://sera.hisabtech.com/posts/" + post.id)
                                     }
                                     context.startActivity(Intent.createChooser(intent, shareTitle))
-                                }) { Text("↗ " + stringResource(R.string.share), color = feedMuted) }
+                                }) { Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.share),
+                                    tint = feedMuted, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(stringResource(R.string.share), color = feedMuted) }
                             }
                         }
                     }
                 }
             }
+            if (posts.loadState.refresh is LoadState.Loading && posts.itemCount == 0) item { SeraLoadingCards(count = 3) }
             if (posts.loadState.append is LoadState.Loading) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
