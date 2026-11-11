@@ -8,11 +8,13 @@ import {
   Pencil,
   Trash2,
   MoreHorizontal,
+  Flag,
 } from "lucide-react";
 import {
   toggleLikePost,
   toggleSavePost,
   deletePost,
+  reportPost,
 } from "@/lib/social/actions";
 import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
@@ -131,13 +133,12 @@ export function PostCard({
         </ActionForm>
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>
-      {owner && (
-        <details className="social-owner">
+      <details className="social-owner">
           <summary aria-label="Post options" title="Post options"><MoreHorizontal size={22} aria-hidden="true" /></summary>
-          <Link href={"/posts/" + post.id + "/edit"}>
+          {owner && <Link href={"/posts/" + post.id + "/edit"}>
             <Pencil size={15} /> Edit story
-          </Link>
-          <ActionForm
+          </Link>}
+          {owner && <ActionForm
             action={deletePost}
             fields={{ post_id: post.id, return_to: detail ? "/feed" : "" }}
             confirm="Remove this post and all its comments?"
@@ -146,14 +147,29 @@ export function PostCard({
             <Submit>
               <Trash2 size={15} /> Delete story
             </Submit>
-          </ActionForm>
-          {detail && (
+          </ActionForm>}
+          {!owner && <ActionForm action={reportPost} fields={{ post_id: post.id }} reset>
+            <label htmlFor={"report-reason-" + post.id}>Report reason</label>
+            <select id={"report-reason-" + post.id} name="reason" required defaultValue="">
+              <option value="" disabled>Choose a reason</option>
+              <option value="harassment">Harassment</option>
+              <option value="hate">Hate speech</option>
+              <option value="sexual">Sexual content</option>
+              <option value="fraud">Fraud or scam</option>
+              <option value="spam">Spam</option>
+              <option value="violence">Violence</option>
+              <option value="impersonation">Impersonation</option>
+              <option value="privacy">Privacy violation</option>
+              <option value="other">Other</option>
+            </select>
+            <Submit><Flag size={15} /> Submit report</Submit>
+          </ActionForm>}
+          {detail && owner && (
             <small>
               Deletion also removes this story from members’ saved posts.
             </small>
           )}
         </details>
-      )}
     </article>
   );
 }
