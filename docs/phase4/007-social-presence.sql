@@ -1,4 +1,8 @@
--- Phase 4: social activity visibility.
+-- Phase 4: INDIVIDUAL social activity visibility.
+-- Only personal profile authors use this presence table on feeds and profiles.
+-- Company/organization identities must never expose this presence on public surfaces.
+-- Company team availability belongs only inside an authorized company inbox,
+-- using a separate, consented inbox heartbeat, not an employee's presence.
 -- New activity records default to public for signed-in members; existing hidden
 -- and connections-only preferences stay unchanged.
 alter table public.professional_presence
