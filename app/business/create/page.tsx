@@ -13,6 +13,7 @@ export default function CreateOrganizationPage() {
   const [slugEdited, setSlugEdited] = useState(false);
   const [city, setCity] = useState("");
   const [industry, setIndustry] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -27,6 +28,10 @@ export default function CreateOrganizationPage() {
     if (busy) return;
     setMessage("");
     const validated = validateOrganizationDraft({ kind, name, slug, city, industry, description });
+    if (!contactEmail.trim() || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail.trim())) {
+      setErrors({ contactEmail: "Enter the email address of your verified SERA account." });
+      return;
+    }
     if (!validated.ok) { setErrors(validated.errors); return; }
     setErrors({});
     setBusy(true);
@@ -35,7 +40,7 @@ export default function CreateOrganizationPage() {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(validated.value),
+        body: JSON.stringify({ ...validated.value, contactEmail: contactEmail.trim().toLowerCase() }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -63,8 +68,8 @@ export default function CreateOrganizationPage() {
             <div className={styles.success} role="status">
               <CheckCircle2 size={38} />
               <h2 id="create-org-heading">Your organization is created</h2>
-              <p>Your business identity is registered. Profile management and account switching are coming in the next development milestone.</p>
-              <Link href="/account" className={styles.primary}>Back to your account <ArrowRight size={17} /></Link>
+              <p>Your business identity is registered. You can now switch between your personal identity and this organization from SERA Business.</p>
+              <Link href="/business" className={styles.primary}>Open your business identities <ArrowRight size={17} /></Link>
             </div>
           ) : (
             <>
@@ -91,6 +96,11 @@ export default function CreateOrganizationPage() {
                 <label className={styles.field}>SERA address
                   <div className={styles.slugField}><span>sera.et/business/</span><input required maxLength={80} value={slug} onChange={(e) => {setSlugEdited(true);setSlug(e.target.value);}} placeholder="your-company" aria-invalid={Boolean(errors.slug)} /></div>
                   {errors.slug && <small role="alert">{errors.slug}</small>}
+                </label>
+                <label className={styles.field}>Company contact email
+                  <input type="email" inputMode="email" autoComplete="email" required maxLength={254} value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="hr@yourcompany.et" aria-invalid={Boolean(errors.contactEmail)} />
+                  {errors.contactEmail && <small role="alert">{errors.contactEmail}</small>}
+                  <span className={styles.emailHelp}>Use the same confirmed email as your SERA account. A company-domain email is recommended but not required. <Link href="/sign-in?next=%2Fbusiness%2Fcreate">Switch account</Link></span>
                 </label>
                 <div className={styles.row}>
                   <label className={styles.field}>City<input maxLength={120} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Addis Ababa" />{errors.city && <small role="alert">{errors.city}</small>}</label>
