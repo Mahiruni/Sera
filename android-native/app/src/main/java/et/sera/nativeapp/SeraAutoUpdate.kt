@@ -1,7 +1,9 @@
 package et.sera.nativeapp
 
 import android.app.DownloadManager
-import android.content.ClipData
+import android.app.PendingIntent
+import android.content.pm.PackageInstaller
+import java.io.FileInputStream
 import android.os.Build
 import android.provider.Settings
 import android.content.Context
@@ -148,25 +150,68 @@ internal fun discardSeraDownload(context: Context, downloadId: Long) {
 }
 
 /** Opening the system installer still requires explicit Android user approval. */
+/**
+ * Stage the already SHA-256-verified APK in Android's own PackageInstaller.
+ * Unlike ACTION_VIEW with a DownloadManager content URI, commit produces a
+ * status callback and explicit user confirmation when Android requires it.
+ *
+ * Called on Dispatchers.IO because staging copies the APK into an OS session.
+ */
 internal fun openSeraInstaller(context: Context, downloadId: Long): SeraInstallResult {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         !context.packageManager.canRequestPackageInstalls()) {
         return SeraInstallResult.PERMISSION_REQUIRED
     }
+
+    val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val installer = context.packageManager.packageInstaller
+    var sessionId = -1
     return try {
-        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val uri = manager.getUriForDownloadedFile(downloadId) ?: return SeraInstallResult.FAILED
-        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            clipData = ClipData.newUri(context.contentResolver, "SERA verified update", uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(Intent.EXTRA_RETURN_RESULT, false)
+        manager.openDownloadedFile(downloadId).use { apk ->
+            val size = apk.statSize
+            val params = PackageInstaller.SessionParams(
+                PackageInstaller.SessionParams.MODE_FULL_INSTALL
+            ).apply {
+                setAppPackageName(context.packageName)
+                if (size > 0L) setSize(size)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    setRequireUserAction(
+                        PackageInstaller.SessionParams.USER_ACTION_REQUIRED
+                    )
+                }
+            }
+            sessionId = installer.createSession(params)
+            installer.openSession(sessionId).use { session ->
+                FileInputStream(apk.fileDescriptor).use { input ->
+                    session.openWrite("base.apk", 0, if (size > 0L) size else -1L).use { output ->
+                        val buffer = ByteArray(65536)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                        }
+                        session.fsync(output)
+                    }
+                }
+                val receiver = Intent(context, SeraInstallStatusReceiver::class.java).apply {
+                    action = "et.sera.nativeapp.INSTALL_STATUS"
+                }
+                // API 35+ requires a mutable status PendingIntent so Android
+                // can attach EXTRA_STATUS and its user-confirmation Intent.
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                        PendingIntent.FLAG_MUTABLE else 0
+                val callback = PendingIntent.getBroadcast(
+                    context, sessionId, receiver, flags
+                )
+                session.commit(callback.intentSender)
+            }
         }
-        context.startActivity(intent)
         SeraInstallResult.LAUNCHED
-    } catch (_: ActivityNotFoundException) { SeraInstallResult.FAILED }
-      catch (_: SecurityException) { SeraInstallResult.FAILED }
-      catch (_: IllegalArgumentException) { SeraInstallResult.FAILED }
+    } catch (_: Exception) {
+        if (sessionId >= 0) runCatching { installer.abandonSession(sessionId) }
+        SeraInstallResult.FAILED
+    }
 }
 
 internal fun requestSeraInstallPermission(context: Context): Boolean {
