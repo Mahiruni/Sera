@@ -6,6 +6,7 @@ import { CompanyProfileEditor } from "@/components/organizations/company-profile
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { requireOrganizationMembership } from "@/lib/organizations/membership";
 import styles from "../page.module.css";
+import brandStyles from "./brand.module.css";
 
 export const metadata = { title: "Business workspace | Sera.et", robots: { index: false, follow: false } };
 
@@ -35,8 +36,20 @@ export default async function BusinessWorkspacePage({
   return <main className={styles.page}>
     <div className={styles.shell}>
       <Link href="/business" style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:30,color:"var(--primary)",fontWeight:700}}><ArrowLeft size={17}/> Switch identity</Link>
+      <div className={brandStyles.cover} style={coverUrl ? { backgroundImage: `url("${coverUrl}")` } : undefined}>
+        {!coverUrl && <span className={brandStyles.coverPlaceholder}>SERA · PROFESSIONAL COMPANY IDENTITY</span>}
+      </div>
+      <div className={brandStyles.brandRow}>
+        <div className={brandStyles.avatar}>{logoUrl
+          ? <img src={logoUrl} alt={organization.name + " logo"} />
+          : <IdentityMark kind={organization.kind} size="large" />}
+        </div>
+        <div className={brandStyles.badges}>
+          <span>{organization.kind === "company" ? "Company profile" : "Organization profile"}</span>
+          <span>{organization.verification_status === "verified" ? "Verified organization" : "Verification pending or not approved"}</span>
+        </div>
+      </div>
       <header className={styles.header}>
-        <IdentityMark kind={organization.kind} size="large" />
         <span className={styles.eyebrow} style={{display:"block",marginTop:17}}>SERA BUSINESS · {organization.kind.toUpperCase()} PROFILE</span>
         <h1>{organization.name}</h1>
         <p>{organization.description || "Your professional organization workspace on SERA."}</p>
