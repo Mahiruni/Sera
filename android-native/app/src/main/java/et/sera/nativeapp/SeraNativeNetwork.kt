@@ -31,8 +31,10 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
         return null to "Professional directory is not configured."
     var conn: HttpURLConnection? = null
     return try {
+        // Profiles are private under RLS. Discover only authors of published
+        // posts, then resolve their public display cards through member_cards.
         conn = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') +
-            "/rest/v1/profiles?select=id,full_name,headline,location&order=updated_at.desc&limit=80")
+            "/rest/v1/posts?select=author_id&status=eq.published&order=created_at.desc&limit=150")
             .openConnection() as HttpURLConnection).apply {
             connectTimeout = 12000
             readTimeout = 15000
@@ -41,12 +43,34 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
         }
         if (conn.responseCode !in 200..299)
             return null to "Directory is unavailable (HTTP ${conn.responseCode})."
+        val authors = JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
+        val ids = (0 until authors.length()).mapNotNull { i ->
+            authors.getJSONObject(i).optString("author_id").takeIf { it.isNotBlank() }
+        }.distinct().take(80)
+        conn.disconnect()
+        conn = null
+        if (ids.isEmpty()) return emptyList<SeraProfessional>() to ""
+        conn = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/rpc/member_cards")
+            .openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 12000
+            readTimeout = 15000
+            doOutput = true
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "application/json")
+        }
+        conn.outputStream.use { output ->
+            output.write(org.json.JSONObject().put("ids", JSONArray(ids)).toString().toByteArray())
+        }
+        if (conn.responseCode !in 200..299)
+            return null to "Unable to load public member cards (HTTP ${conn.responseCode})."
         val data = JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
         val people = (0 until data.length()).map { i ->
             val p = data.getJSONObject(i)
-            SeraProfessional(p.optString("id"), p.optString("full_name").takeUnless { it == "null" }.orEmpty(),
-                p.optString("headline").takeUnless { it == "null" }.orEmpty(),
-                p.optString("location").takeUnless { it == "null" }.orEmpty())
+            SeraProfessional(p.optString("id"),
+                p.optString("full_name").takeUnless { it == "null" }.orEmpty(),
+                "", "")
         }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
         people to ""
     } catch (_: Exception) {
