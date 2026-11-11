@@ -60,6 +60,11 @@ export default async function Page() {
         </div>
         {visibilitySettings?.visibility !== "public" && !publicPortfolio?.published && <p>Choose Public internet above and save your preference before publishing.</p>}
       </section>
+      <section className="account-security panel" aria-labelledby="account-safety-title">
+        <h2 id="account-safety-title">Community safety</h2>
+        <p>Review the status of posts you have reported. Your reports are private.</p>
+        <Link className="inline-link" href="/settings/safety">View your safety reports</Link>
+      </section>
       <div className="account-security panel">
         <h2>Account security</h2>
         <p>
