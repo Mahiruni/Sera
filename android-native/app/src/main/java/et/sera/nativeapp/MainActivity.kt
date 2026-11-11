@@ -66,6 +66,12 @@ fun SeraApp(context: Context) {
         }
         restoring = false
     }
+    // Request the one-time welcome email promptly after any verified native sign-in.
+    // This is a separate IO coroutine so the dashboard never waits for SMTP.
+    LaunchedEffect(accessToken) {
+        val token = accessToken ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) { requestSeraWelcome(token) }
+    }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
