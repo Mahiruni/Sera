@@ -63,7 +63,7 @@ fun SeraNativeRegistrationFlow(
 
     BackHandler { if (emailPending) emailPending = false else onBack() }
     Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         TextButton(onClick = { if (emailPending) emailPending = false else onBack() },
