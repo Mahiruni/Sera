@@ -55,7 +55,7 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(onClick = { player.prepare(); player.play() }) { Text("Play video") }
-        AndroidView(
+        if (!fullscreen) AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
             update = { it.player = player },
             modifier = Modifier.fillMaxWidth().height(240.dp)
