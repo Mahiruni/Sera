@@ -25,8 +25,8 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
     } catch (e: Exception) { null to "Network unavailable. Please retry." }
 }
 
-fun loadSeraFeed(token: String): Pair<List<SeraPost>?, String> {
-    val result = request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at&status=eq.published&order=published_at.desc&limit=20")
+fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
+    val result = request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at&status=eq.published&order=published_at.desc&limit=20&offset=${page * 20}")
     val body = result.first ?: return null to result.second
     return try {
         val array = JSONArray(body)
