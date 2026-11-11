@@ -387,3 +387,68 @@ html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
 @media (prefers-reduced-motion: reduce) {
   .site-header.sera-app-header, .footer-dock { transition: none; }
 }
+
+/* SERA global navigation polish — shared across all routes. */
+:root {
+  --sera-header-content-offset: calc(var(--sera-header-height) + 12px);
+  --sera-dock-clearance: calc(90px + env(safe-area-inset-bottom, 0px));
+}
+.site-header.sera-app-header {
+  background: rgb(255 255 255 / 94%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 4px 24px rgb(9 56 65 / 5%);
+}
+html[data-sera-theme="dark"] .site-header.sera-app-header {
+  background: rgb(20 44 53 / 94%) !important;
+}
+.footer-dock {
+  --dock-surface: 29 37 41;
+  --dock-ink: #e6f0f1;
+  --dock-active: #69e0df;
+  inset: auto auto calc(12px + env(safe-area-inset-bottom, 0px)) 50% !important;
+  width: min(420px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important;
+  min-height: 64px !important;
+  padding: 6px !important;
+  transform: translateX(-50%) !important;
+  border: 1px solid rgb(255 255 255 / 20%) !important;
+  border-radius: 999px !important;
+  background: rgb(var(--dock-surface) / 92%) !important;
+  box-shadow: 0 12px 32px rgb(3 25 31 / 24%), inset 0 1px rgb(255 255 255 / 14%) !important;
+  overflow: hidden;
+}
+html[data-sera-theme="dark"] .footer-dock {
+  --dock-surface: 20 29 33;
+  --dock-ink: #e5efef;
+  --dock-active: #71dedf;
+}
+.footer-dock a {
+  min-height: 50px !important;
+  border-radius: 999px !important;
+  color: var(--dock-ink) !important;
+}
+.footer-dock a.active { color: var(--dock-active) !important; }
+.footer-dock a:hover { background: rgb(255 255 255 / 7%) !important; }
+.footer-dock .dock-icon { color: inherit !important; }
+#main-content > :is(.page, .network-app, .network-public, .home-app, .public-home) {
+  padding-top: 0;
+}
+.sera-main :is(.sera-page-intro, .ws-welcome) { margin-top: 0; }
+html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
+  translate: 0 calc(100% + 30px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 600px) {
+  :root {
+    --sera-header-content-offset: calc(var(--sera-header-height) + 8px);
+    --sera-dock-clearance: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .footer-dock {
+    width: min(390px, calc(100vw - 24px)) !important;
+    min-height: 60px !important;
+    padding: 4px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-dock, .site-header.sera-app-header { transition: none !important; }
+}
