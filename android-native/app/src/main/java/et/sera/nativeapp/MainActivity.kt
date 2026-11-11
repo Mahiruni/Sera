@@ -168,7 +168,13 @@ fun SeraApp(context: Context) {
                             }
                         ) { padding ->
                             if (tab == "Home") {
-                                SeraFeed(feed, dataLoading, dataError, { refresh++ }, Modifier.padding(padding))
+                                SeraFeed(feed, dataLoading, dataError, { refresh++ }, { post ->
+                                    val token = accessToken
+                                    if (token != null) scope.launch {
+                                        val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
+                                        if (result.first) refresh++ else dataError = result.second
+                                    }
+                                }, Modifier.padding(padding))
                             } else Column(
                                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
                                     .padding(24.dp),
