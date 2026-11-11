@@ -36,8 +36,8 @@ private val entryDark = Color(0xFF123A40)
 private const val SERA_PRODUCTION_ORIGIN = "https://sera.hisabtech.com"
 
 /**
- * Account creation and social OAuth stay on the established SERA website.
- * Do not bypass the website registration feature flag or simulate native OAuth.
+ * The SERA website hosts legal information and social OAuth.
+ * Account registration is handled by the native Supabase Auth flow.
  */
 private fun openSeraSite(context: Context, path: String) {
     val normalized = path.trimStart('/')
@@ -93,10 +93,11 @@ fun SeraGuestEntry(
     busy: Boolean,
     message: String,
     onSignIn: () -> Unit,
-    onLanguage: () -> Unit
+    onLanguage: () -> Unit,
+    onAuthenticated: (String, String) -> Unit
 ) {
     val context = LocalContext.current
-    var showSignIn by rememberSaveable { mutableStateOf(false) }
+    var entryPage by rememberSaveable { mutableStateOf("welcome") }
     var showPassword by remember { mutableStateOf(false) }
 
     Box(
@@ -112,7 +113,7 @@ fun SeraGuestEntry(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 GuestBrand(onLanguage)
-                if (!showSignIn) {
+                if (entryPage == "welcome") {
                     Spacer(Modifier.height(9.dp))
                     Surface(color = entryMint, shape = RoundedCornerShape(50)) {
                         Text(
@@ -143,27 +144,37 @@ fun SeraGuestEntry(
                     GuestFeature("▣", "Explore jobs and projects", "Discover career paths, opportunities and talent.")
                     GuestFeature("✦", "Showcase your work", "Share expertise, ideas and portfolios.")
                     Button(
-                        onClick = { openSeraSite(context, "sign-up") },
+                        onClick = { entryPage = "register" },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = entryTeal),
                         shape = RoundedCornerShape(17.dp)
                     ) { Text("Create your account  →", fontWeight = FontWeight.Bold) }
                     OutlinedButton(
-                        onClick = { showSignIn = true },
+                        onClick = { entryPage = "signin" },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         border = BorderStroke(1.dp, entryTeal),
                         shape = RoundedCornerShape(17.dp)
                     ) { Text("Sign in to SERA", fontWeight = FontWeight.SemiBold, color = entryTeal) }
-                    Text("Account creation opens the secure SERA website.", style = MaterialTheme.typography.bodySmall, color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text("Create your SERA profile without leaving the Android app.", style = MaterialTheme.typography.bodySmall, color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Continue with Google or LinkedIn on the web", color = entryTeal, textAlign = TextAlign.Center)
                     }
                     TextButton(onClick = { openSeraSite(context, "") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Explore SERA before joining", color = entryInk)
                     }
+                } else if (entryPage == "register") {
+                    SeraNativeRegistrationFlow(
+                        onBack = { entryPage = "welcome" },
+                        onSignIn = { registeredEmail ->
+                            onEmailChange(registeredEmail)
+                            onPasswordChange("")
+                            entryPage = "signin"
+                        },
+                        onAuthenticated = onAuthenticated
+                    )
                 } else {
                     Spacer(Modifier.height(18.dp))
-                    TextButton(onClick = { showSignIn = false }, contentPadding = PaddingValues(0.dp)) {
+                    TextButton(onClick = { entryPage = "welcome" }, contentPadding = PaddingValues(0.dp)) {
                         Text("←  Back to welcome", color = entryTeal)
                     }
                     Text("Welcome back.", fontSize = 33.sp, fontWeight = FontWeight.Bold, color = entryInk)
