@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Building2, ArrowUpRight, Plus, UserRound, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Plus, ShieldCheck } from "lucide-react";
+import { IdentityMark } from "@/components/identity/identity-mark";
 import { currentUser } from "@/lib/supabase/server";
 import { currentOrganizationMemberships } from "@/lib/organizations/membership";
 import styles from "./page.module.css";
@@ -22,12 +23,12 @@ export default async function BusinessAccountsPage() {
       </header>
       <div className={styles.grid}>
         <Link href="/account" className={styles.card}>
-          <span className={styles.icon}><UserRound size={23}/></span>
-          <span className={styles.content}><strong>Personal account</strong><small>Your individual SERA identity</small></span>
+          <IdentityMark kind="personal" />
+          <span className={styles.content}><strong>Personal account</strong><small>Personal profile · Your individual SERA identity</small></span>
           <ArrowUpRight className={styles.arrow} size={20}/>
         </Link>
         {memberships.map(({ organization, role }) => <Link className={styles.card} key={organization.id} href={`/business/${organization.id}`}>
-          <span className={styles.icon}><Building2 size={23}/></span>
+          <IdentityMark kind={organization.kind} />
           <span className={styles.content}><strong>{organization.name}</strong><small>{organization.kind === "company" ? "Company" : "Organization"} · {role} · {organization.verification_status === "verified" ? "Verified" : "Not verified"}</small></span>
           <ArrowUpRight className={styles.arrow} size={20}/>
         </Link>)}
