@@ -86,7 +86,7 @@ private fun signedPostImage(token: String, path: String): String? {
     if (path.isBlank()) return null
     return try {
         val encodedPath = path.split("/").joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8") }
-        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1/object/sign/post-media/" + encodedPath).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1/object/sign/sera-post-media/" + encodedPath).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 10000
             readTimeout = 10000
