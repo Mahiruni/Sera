@@ -319,3 +319,34 @@ html[data-sera-theme="dark"] .footer-dock a[aria-current="page"]::before { backg
   .footer-dock { padding-inline: 3px !important; gap: 0 !important; }
   .footer-dock a { font-size: 9px !important; }
 }
+
+
+/* Premium SERA floating navigation: approved charcoal capsule.
+   Overrides the earlier edge-to-edge white navigation across the app. */
+body:has(.sera-network) .footer-dock{
+ left:max(10px,env(safe-area-inset-left,0px))!important;
+ right:max(10px,env(safe-area-inset-right,0px))!important;
+ bottom:calc(9px + env(safe-area-inset-bottom,0px))!important;
+ width:auto!important;max-width:640px!important;margin-inline:auto!important;
+ min-height:68px!important;padding:7px 8px!important;
+ display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+ border:1px solid rgba(104,241,236,.28)!important;border-radius:999px!important;
+ background:linear-gradient(120deg,rgba(0,48,58,.97),rgba(0,34,46,.98))!important;
+ box-shadow:0 12px 32px #003b4650,0 0 18px #00bac02c!important;
+ color:#e2f6f7!important;
+}
+body:has(.sera-network) .footer-dock a{
+ min-height:52px!important;color:#b8d4d8!important;border-radius:999px!important;
+ background:transparent!important;font-size:10px!important;
+}
+body:has(.sera-network) .footer-dock a.active,
+body:has(.sera-network) .footer-dock a[aria-current=page]{
+ color:#75f9f4!important;background:transparent!important;
+}
+body:has(.sera-network) .footer-dock a.active::before,
+body:has(.sera-network) .footer-dock a[aria-current=page]::before{display:none!important}
+body:has(.sera-network) .footer-dock a.active .dock-icon{
+ filter:drop-shadow(0 0 7px #00d8e6);animation:active-footer-icon 2.8s ease-in-out infinite!important;
+}
+body:has(.sera-network) .footer-dock a:focus-visible{outline:2px solid #b4fffa!important;outline-offset:-2px}
+@media(prefers-reduced-motion:reduce){body:has(.sera-network) .footer-dock a.active .dock-icon{animation:none!important}}
