@@ -12,6 +12,10 @@ import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -51,6 +55,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }
+    var confirmClose by remember { mutableStateOf(false) }
     var publishMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val selectedImages = remember { mutableStateListOf<Uri>() }
@@ -82,12 +87,30 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         focus.clearFocus()
         onDismiss()
     }
-    BackHandler { close() }
+    fun requestClose() {
+        if (body.isNotBlank() || selectedImages.isNotEmpty() || selectedVideo != null) confirmClose = true
+        else close()
+    }
+    BackHandler { requestClose() }
+    if (confirmClose) AlertDialog(
+        onDismissRequest = { confirmClose = false },
+        title = { Text("Keep your idea?") },
+        text = { Text("Your writing is saved privately as a draft. Selected media is not saved.") },
+        confirmButton = {
+            TextButton(onClick = {
+                drafts.save(userId, body)
+                confirmClose = false
+                close()
+            }) { Text("Save and close") }
+        },
+        dismissButton = { TextButton(onClick = { confirmClose = false }) { Text("Keep editing") } },
+        shape = RoundedCornerShape(22.dp)
+    )
     LaunchedEffect(userId, body) { drafts.save(userId, body) }
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
-    ModalBottomSheet(onDismissRequest = { close() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
+    ModalBottomSheet(onDismissRequest = { requestClose() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(
             Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -105,7 +128,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     Text("Share something worth discovering.", style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF687C80))
                 }
-                TextButton(onClick = { close() }) { Text("Close", color = accent) }
+                TextButton(onClick = { requestClose() }) { Text("Close", color = accent) }
             }
             Surface(color = Color(0xFF173D40), shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth()) {
@@ -147,15 +170,17 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
             if (selectedImages.isNotEmpty()) {
                 Text("${selectedImages.size} of 4 images selected", style = MaterialTheme.typography.labelLarge)
-                selectedImages.toList().forEachIndexed { index, uri ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        AsyncImage(model = uri, contentDescription = "Image ${index + 1}",
-                            modifier = Modifier.size(112.dp).clickable { expandedImage = uri })
-                        Column {
-                            Text("Photo ${index + 1}", style = MaterialTheme.typography.titleSmall)
-                            TextButton(onClick = { selectedImages.remove(uri); if (expandedImage == uri) expandedImage = null }) {
-                                Text("Remove")
-                            }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(selectedImages.toList(), key = { it.toString() }) { uri ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            AsyncImage(model = uri, contentDescription = "Selected photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(132.dp).clip(RoundedCornerShape(15.dp))
+                                    .clickable { expandedImage = uri })
+                            TextButton(onClick = {
+                                selectedImages.remove(uri)
+                                if (expandedImage == uri) expandedImage = null
+                            }) { Text("Remove photo", fontSize = 12.sp, color = accent) }
                         }
                     }
                 }
@@ -199,7 +224,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (selectedImages.isNotEmpty() || selectedVideo != null) Text("Media publishing is not available yet. Remove attachments to publish a text post; selected files are not uploaded.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
+
         }
     }
 }
