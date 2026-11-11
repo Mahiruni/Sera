@@ -181,17 +181,13 @@ fun SeraApp(context: Context) {
                             modifier = Modifier.weight(1f),
                             contentWindowInsets = WindowInsets(0, 0, 0, 0),
                             topBar = {
-                                Surface(color = bg, tonalElevation = 2.dp) {
-                                    Row(
-                                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 25.sp)
-                                        TextButton(onClick = { showLanguagePicker = true }) { Text("🌐") }
-                                        if (tab == "Home") TextButton(onClick = { showComposer = true }, enabled = authenticatedUserId.isNotBlank()) { Text(stringResource(R.string.create_post)) } else Text(sectionLabel(tab), color = ink)
-                                    }
-                                }
+                                SeraNativeHeader(
+                                    section = tab,
+                                    canCompose = authenticatedUserId.isNotBlank(),
+                                    onCompose = { showComposer = true },
+                                    onLanguage = { showLanguagePicker = true },
+                                    onInbox = { navigateTo("Inbox") }
+                                )
                             },
                             bottomBar = {
                                 if (!expanded) SeraFloatingDock(
