@@ -2,9 +2,9 @@ package et.sera.nativeapp
 
 import android.content.Context
 import android.net.Uri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -12,9 +12,8 @@ import java.net.URL
 import kotlin.coroutines.coroutineContext
 
 /**
- * Transfer primitive for a future authenticated, short-lived upload ticket.
- * The server must issue and validate the destination; never accept arbitrary URLs from users.
- * This function does NOT publish media or bypass moderation.
+ * Transport only. A future authenticated backend must issue short-lived upload tickets
+ * and moderate content before any post becomes public.
  */
 internal suspend fun uploadMediaWithProgress(
     context: Context,
@@ -25,17 +24,8 @@ internal suspend fun uploadMediaWithProgress(
     onProgress: (Int) -> Unit
 ): Result<Unit> = withContext(Dispatchers.IO) {
     try {
-        Result.success(runUpload(context, uri, uploadUrl, contentType, size, onProgress))
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: Exception) {
-        Result.failure(error)
-}
-
-private suspend fun runUpload(context: Context, uri: Uri, uploadUrl: String, contentType: String, size: Long, onProgress: (Int) -> Unit) {
         val target = URL(uploadUrl)
-        require(target.protocol == "https") { "HTTPS is required" }
-        require(target.host.isNotBlank()) { "Missing upload host" }
+        require(target.protocol == "https" && target.host.isNotBlank()) { "HTTPS destination required" }
         require(size in 1..(100L * 1024 * 1024)) { "Invalid attachment size" }
         require(contentType.startsWith("image/") || contentType.startsWith("video/")) { "Invalid media type" }
         val connection = (target.openConnection() as HttpURLConnection).apply {
@@ -63,11 +53,16 @@ private suspend fun runUpload(context: Context, uri: Uri, uploadUrl: String, con
                     }
                     if (transferred != size) throw IOException("Attachment size changed")
                 }
-            } ?: throw IOException("Unable to read selected attachment")
+            } ?: throw IOException("Unable to read attachment")
             if (connection.responseCode !in 200..299) throw IOException("Upload rejected (HTTP ${connection.responseCode})")
             onProgress(100)
+            Result.success(Unit)
         } finally {
             connection.disconnect()
         }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
     }
 }
