@@ -125,7 +125,7 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
     } catch (e: Exception) { null to "Unable to read the feed response." }
 }
 
-private fun signedPostImage(token: String, path: String, bucket: String = "sera-post-media"): String? {
+internal fun signedPostImage(token: String, path: String, bucket: String = "sera-post-media"): String? {
     if (path.isBlank()) return null
     return try {
         val encodedPath = path.split("/").joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8") }
