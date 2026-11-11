@@ -97,7 +97,8 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                 TextButton(onClick = { selectedImage = null }) { Text("Remove image") }
             }
             selectedVideo?.let { uri ->
-                Text("Video selected for preview. Upload is not yet available.")
+                SeraVideoPlayer(url = uri.toString(), localPreview = true)
+                Text("Video preview only. Upload is not yet available.")
                 Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
             }
@@ -114,6 +115,7 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                 }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.keep_later)) }
             }
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
+            if (selectedImage != null || selectedVideo != null) Text("Attachments are temporary and are not saved with text drafts.", style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
