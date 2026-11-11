@@ -66,6 +66,7 @@ fun SeraApp(context: Context) {
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
+    var showComposer by remember { mutableStateOf(false) }
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
         if (destination == tab) return
@@ -93,6 +94,7 @@ fun SeraApp(context: Context) {
         }
         dataLoading = false
     }
+    if (showComposer && accessToken != null) SeraComposer(userId = email.ifBlank { "signed-in" }, onDismiss = { showComposer = false })
     BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
@@ -159,7 +161,7 @@ fun SeraApp(context: Context) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 25.sp)
-                                        Text(tab, color = ink)
+                                        if (tab == "Home") TextButton(onClick = { showComposer = true }) { Text("+ Post") } else Text(tab, color = ink)
                                     }
                                 }
                             },
