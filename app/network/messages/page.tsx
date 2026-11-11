@@ -54,13 +54,16 @@ export default async function ProfessionalInbox({ searchParams }: {
     });
   }
   const unreadCounts = new Map<string, number>();
+  const newestUnreadIds = new Map<string, string>();
   if (conversations.length) {
     const { data: unreadMessages } = await db.from("professional_messages")
-      .select("conversation_id")
+      .select("conversation_id,id,created_at")
       .in("conversation_id", conversations.map((conversation) => conversation.id))
-      .is("read_at", null).neq("sender_id", user.id).limit(1000);
+      .is("read_at", null).neq("sender_id", user.id)
+      .order("created_at", { ascending: false }).limit(1000);
     for (const message of unreadMessages ?? []) {
       unreadCounts.set(message.conversation_id, (unreadCounts.get(message.conversation_id) ?? 0) + 1);
+      if (!newestUnreadIds.has(message.conversation_id)) newestUnreadIds.set(message.conversation_id, message.id);
     }
   }
   const { data: accepted } = await db.from("professional_connection_requests")
@@ -106,7 +109,7 @@ export default async function ProfessionalInbox({ searchParams }: {
           {selected ? <>
             <div className="sera-inbox-member"><MemberAvatar name={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Sera member"} photo={people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.photo} size={48} /><div><h2><Link href={"/members/" + (selected.member_a === user.id ? selected.member_b : selected.member_a)}>{people.get(selected.member_a === user.id ? selected.member_b : selected.member_a)?.name ?? "Conversation"}</Link></h2><small>Private professional conversation</small></div></div>
             <ProfessionalPresence member={selected.member_a === user.id ? selected.member_b : selected.member_a} />
-            <MarkVisibleMessagesRead conversation={selected.id} unreadCount={unreadCounts.get(selected.id) ?? 0} />
+            <MarkVisibleMessagesRead conversation={selected.id} unreadCount={unreadCounts.get(selected.id) ?? 0} unreadKey={newestUnreadIds.get(selected.id) ?? ""} />
             <form method="get" action="/network/messages" role="search" className="sera-inbox-search">
               <input type="hidden" name="thread" value={selected.id} />
               <input name="q" type="search" aria-label="Search this conversation" placeholder="Search messages" defaultValue={search} maxLength={120} />
