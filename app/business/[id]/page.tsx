@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { IdentityMark } from "@/components/identity/identity-mark";
+import { CompanyProfileEditor } from "@/components/organizations/company-profile-editor";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { requireOrganizationMembership } from "@/lib/organizations/membership";
 import styles from "../page.module.css";
@@ -23,6 +24,14 @@ export default async function BusinessWorkspacePage({
     .select("id,name,kind,slug,description,city,industry,verification_status")
     .eq("id", id).single();
   if (error || !organization) notFound();
+  const { data: details } = await db.from("sera_organization_details")
+    .select("street_address,region,phone_public,email_public,website_url,services,business_hours,founded_year,company_size,linkedin_url,logo_path,cover_path")
+    .eq("organization_id", id).maybeSingle();
+  const logoUrl = details?.logo_path && details.logo_path.startsWith(id + "/logo/")
+    ? db.storage.from("sera-company-brand").getPublicUrl(details.logo_path).data.publicUrl : null;
+  const coverUrl = details?.cover_path && details.cover_path.startsWith(id + "/cover/")
+    ? db.storage.from("sera-company-brand").getPublicUrl(details.cover_path).data.publicUrl : null;
+  const canEdit = membership.role === "owner" || membership.role === "admin";
   return <main className={styles.page}>
     <div className={styles.shell}>
       <Link href="/business" style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:30,color:"var(--primary)",fontWeight:700}}><ArrowLeft size={17}/> Switch identity</Link>
@@ -40,7 +49,14 @@ export default async function BusinessWorkspacePage({
           <small>Membership: {membership.role} · Verification: {organization.verification_status}</small>
         </span>
       </section>
-      <p className={styles.footnote}><ShieldCheck size={16}/> This workspace checks your organization membership on the server. Company tools will be introduced in the next milestone.</p>
+      {canEdit && <CompanyProfileEditor organizationId={id} initial={{
+        street_address: details?.street_address ?? "", region: details?.region ?? "",
+        phone_public: details?.phone_public ?? "", email_public: details?.email_public ?? "",
+        website_url: details?.website_url ?? "", services: details?.services ?? "",
+        business_hours: details?.business_hours ?? "", founded_year: details?.founded_year ?? null,
+        company_size: details?.company_size ?? "", linkedin_url: details?.linkedin_url ?? "",
+      }} logoUrl={logoUrl} coverUrl={coverUrl} />}
+      <p className={styles.footnote}><ShieldCheck size={16}/> Members can view company details; only owners and admins can edit branding and contact information.</p>
     </div>
   </main>;
 }
