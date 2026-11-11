@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, MapPin, BriefcaseBusiness, CalendarDays } from "lucide-react";
 import { salary, type LiveJob } from "@/lib/recruitment/data";
+import { PublisherBadge } from "./publisher-badge";
 export function MarketNav() {
   return (
     <nav className="live-nav" aria-label="Recruitment">
@@ -26,7 +27,7 @@ export function LiveJobCard({ job }: { job: LiveJob }) {
         <span className="live-company-icon">
           <BriefcaseBusiness size={21} />
         </span>
-        <span className="live-badge">Employer provided</span>
+        <PublisherBadge publisher={{ type: "unclassified", displayName: job.company }} />
       </div>
       <p>{job.company}</p>
       <h2>
