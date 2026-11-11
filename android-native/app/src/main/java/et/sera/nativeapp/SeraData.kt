@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -58,6 +58,15 @@ fun loadSeraFeed(token: String): Pair<List<SeraPost>?, String> {
                 }
             }
         }
+        val likedIds = mutableSetOf<String>()
+        val idsForLikes = posts.map { it.id }.filter { it.isNotBlank() }.joinToString(",")
+        if (idsForLikes.isNotBlank()) {
+            val likes = request(token, "post_likes?select=post_id&post_id=in.($idsForLikes)")
+            likes.first?.let { json ->
+                val rows = JSONArray(json)
+                for (i in 0 until rows.length()) likedIds.add(rows.getJSONObject(i).optString("post_id"))
+            }
+        }
         val images = mutableMapOf<String, String>()
         val ids = posts.map { it.id }.filter { it.isNotBlank() }.joinToString(",")
         if (ids.isNotBlank()) {
@@ -77,7 +86,7 @@ fun loadSeraFeed(token: String): Pair<List<SeraPost>?, String> {
         posts.map { post ->
             val author = names[post.authorId]
             post.copy(author = author?.first?.takeIf { it.isNotBlank() } ?: "SERA member",
-                headline = author?.second ?: "", imageUrl = images[post.id])
+                headline = author?.second ?: "", imageUrl = images[post.id], liked = likedIds.contains(post.id))
         } to ""
     } catch (e: Exception) { null to "Unable to read the feed response." }
 }
@@ -111,4 +120,32 @@ fun loadSeraIdentity(token: String): Pair<String?, String> {
         val name = user.optJSONObject("user_metadata")?.optString("full_name")?.takeIf { it.isNotBlank() } ?: "SERA member"
         (name + "\n" + user.optString("email")) to ""
     } catch (e: Exception) { null to "Unable to read your account." }
+}
+
+fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, String> {
+    if (!Regex("^[0-9a-fA-F-]{36}$").matches(postId)) return false to "Invalid post."
+    return try {
+        val userResult = request(token, "user", true)
+        val userBody = userResult.first ?: return false to "Please sign in again."
+        val userId = JSONObject(userBody).optString("id")
+        if (userId.isBlank()) return false to "Please sign in again."
+        val path = if (liked) "post_likes?post_id=eq.$postId&user_id=eq.$userId" else "post_likes"
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/" + path).openConnection() as HttpURLConnection).apply {
+            requestMethod = if (liked) "DELETE" else "POST"
+            connectTimeout = 15000; readTimeout = 15000
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer $token")
+            if (!liked) {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "resolution=ignore-duplicates")
+            }
+        }
+        if (!liked) connection.outputStream.use {
+            it.write(JSONObject().put("post_id", postId).toString().toByteArray())
+        }
+        val status = connection.responseCode
+        connection.disconnect()
+        (status in 200..299) to if (status in 200..299) "" else "Unable to update reaction (HTTP $status)."
+    } catch (e: Exception) { false to "Connection failed. Please retry." }
 }
