@@ -1,0 +1,82 @@
+package et.sera.nativeapp
+
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
+
+/** The backend owns moderation, image normalization and final publication. */
+internal suspend fun publishNativeImages(
+    context: Context,
+    token: String,
+    body: String,
+    images: List<Uri>,
+): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+    if (body.trim().length < 3 || images.isEmpty() || images.size > 4)
+        return@withContext false to "Write a caption and select one to four photos."
+    val boundary = "sera-" + UUID.randomUUID().toString()
+    val newline = "\r\n"
+    var connection: HttpURLConnection? = null
+    try {
+        val files = images.map { uri ->
+            val mime = context.contentResolver.getType(uri) ?: ""
+            if (mime !in listOf("image/jpeg", "image/png", "image/webp"))
+                return@withContext false to "Only JPG, PNG and WebP photos are supported."
+            val size = context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getLong(0) else -1L
+            } ?: -1L
+            if (size !in 1..(3L * 1024 * 1024))
+                return@withContext false to "Each photo must be smaller than 3 MB."
+            Triple(uri, mime, size)
+        }
+        if (files.sumOf { it.third } > 3L * 1024 * 1024)
+            return@withContext false to "Photos must total 3 MB or less."
+        connection = (URL("https://sera.hisabtech.com/api/native/posts/media").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            chunkedStreamingMode = 64 * 1024
+            connectTimeout = 15000
+            readTimeout = 60000
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
+        connection.outputStream.use { output ->
+            fun write(value: String) { output.write(value.toByteArray(Charsets.UTF_8)) }
+            fun field(name: String, value: String) {
+                write("--$boundary$newline")
+                write("Content-Disposition: form-data; name=\"$name\"$newline$newline")
+                write(value)
+                write(newline)
+            }
+            field("kind", "photos")
+            field("title", body.trim().take(110))
+            field("body", body.trim())
+            files.forEachIndexed { index, (uri, mime, _) ->
+                write("--$boundary$newline")
+                write("Content-Disposition: form-data; name=\"media\"; filename=\"photo-$index\"$newline")
+                write("Content-Type: $mime$newline$newline")
+                context.contentResolver.openInputStream(uri)?.use { it.copyTo(output) }
+                    ?: throw IllegalStateException("Selected photo is no longer readable")
+                write(newline)
+            }
+            write("--$boundary--$newline")
+        }
+        val status = connection.responseCode
+        val raw = (if (status in 200..299) connection.inputStream else connection.errorStream)
+            ?.bufferedReader()?.use { it.readText() } ?: ""
+        val result = runCatching { JSONObject(raw) }.getOrNull()
+        if (status in 200..299 && result?.optBoolean("success") == true)
+            true to "Published to your community."
+        else false to (result?.optString("error")?.takeIf { it.isNotBlank() }
+            ?: "Photo publishing failed (HTTP $status).")
+    } catch (_: Exception) {
+        false to "Upload interrupted. Check your connection and retry."
+    } finally {
+        connection?.disconnect()
+    }
+}
