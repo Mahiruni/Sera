@@ -87,6 +87,7 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
     var people by remember { mutableStateOf<List<SeraProfessional>>(emptyList()) }
     var query by remember { mutableStateOf("") }
+    var reload by remember { mutableIntStateOf(0) }
     var relations by remember { mutableStateOf(SeraNetworkRelations(emptySet(), emptyList())) }
     var actionPeer by remember { mutableStateOf<String?>(null) }
     var actionError by remember { mutableStateOf("") }
@@ -103,7 +104,6 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
-    var reload by remember { mutableIntStateOf(0) }
     LaunchedEffect(token, reload) {
         loading = true
         val result = withContext(Dispatchers.IO) { loadProfessionals(token) }
