@@ -174,7 +174,7 @@ fun SeraApp(context: Context) {
                                         val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
                                         if (result.first) refresh++ else dataError = result.second
                                     }
-                                }, Modifier.padding(padding))
+                                }, accessToken ?: "", Modifier.padding(padding))
                             } else Column(
                                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
                                     .padding(24.dp),
