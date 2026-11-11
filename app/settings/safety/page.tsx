@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { submitModerationAppeal } from "@/lib/moderation/appeals";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { pageMetadata } from "@/lib/seo";
@@ -19,12 +20,28 @@ export default async function SafetyPage() {
     .eq("reporter_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
+  const { data: decisions, error: decisionsError } = await db.rpc("my_moderation_decisions");
+  const { data: appeals } = await db.from("moderation_appeals").select("decision_id,status").eq("appellant_id",user.id);
+  const appealMap = new Map((appeals || []).map(a => [a.decision_id,a.status]));
   return <main className="container page account-foundation">
     <div className="account-security panel">
       <Link className="inline-link" href="/settings">← Account settings</Link>
       <h1>Account safety</h1>
       <p>Reports are private. Reporting helps our team review possible guideline violations; a report does not automatically remove a post.</p>
     </div>
+    <section className="account-security panel" aria-labelledby="safety-decisions-title">
+      <h2 id="safety-decisions-title">Decisions on your posts</h2>
+      {decisionsError ? <p role="alert">Unable to load moderation decisions.</p> : !decisions?.length ? <p>No moderation decisions on your posts.</p> : decisions.map(d => <article key={d.id} style={{padding:"16px 0",borderBottom:"1px solid #dce7e9"}}>
+        <h3>{d.action === "quarantine" ? "Post temporarily hidden" : d.action === "remove" ? "Post removed from public view" : d.action === "restore" ? "Post restored" : "Post reviewed"}</h3>
+        <p>{d.explanation}</p><small>Policy: {d.policy} · {new Date(d.created_at).toLocaleDateString("en-GB")}</small>
+        {(d.action === "quarantine" || d.action === "remove") && (appealMap.has(d.id) ? <p>Appeal: {appealMap.get(d.id)}</p> : <form action={submitModerationAppeal} className="sera-visibility-form">
+          <input type="hidden" name="decision_id" value={d.id}/>
+          <label htmlFor={"appeal-"+d.id}>Request another review</label>
+          <textarea id={"appeal-"+d.id} name="explanation" minLength={20} maxLength={2000} rows={3} required placeholder="Explain why this decision should be reconsidered."/>
+          <button className="button" type="submit">Submit appeal</button>
+        </form>)}
+      </article>)}
+    </section>
     <section className="account-security panel" aria-labelledby="safety-reports-title">
       <h2 id="safety-reports-title">Your reports</h2>
       {error ? <p role="alert">Unable to load reports right now.</p> :
