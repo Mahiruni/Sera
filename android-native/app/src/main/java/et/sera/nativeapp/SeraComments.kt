@@ -44,7 +44,10 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
     var comments by remember(postId) { mutableStateOf<List<NativeComment>>(emptyList()) }
     var error by remember(postId) { mutableStateOf("") }
     var loading by remember(postId) { mutableStateOf(true) }
-    LaunchedEffect(token, postId) {
+    var retry by remember(postId) { mutableIntStateOf(0) }
+    LaunchedEffect(token, postId, retry) {
+        loading = true
+        error = ""
         val result = withContext(Dispatchers.IO) { fetchNativeComments(token, postId) }
         if (result.first != null) comments = result.first!! else error = result.second
         loading = false
@@ -53,7 +56,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Conversation", style = MaterialTheme.typography.titleLarge)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text("Retry") } }
             if (!loading && comments.isEmpty() && error.isBlank()) Text("No comments yet.")
             LazyColumn(modifier = Modifier.heightIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(comments, key = { it.id }) { comment ->
