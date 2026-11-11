@@ -222,7 +222,7 @@ fun SeraGuestEntry(
                     }
                     HorizontalDivider(color = Color(0xFFDCEAE9))
                     Text("New here?", color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    OutlinedButton(onClick = { openSeraSite(context, "sign-up") }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    OutlinedButton(onClick = { entryPage = "register" }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text("Create a SERA account", color = entryTeal, fontWeight = FontWeight.Bold)
                     }
                     TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
