@@ -15,3 +15,18 @@ export async function reviewReport(form: FormData) {
   revalidatePath("/moderation");
   revalidatePath("/feed");
 }
+
+export async function reviewAppeal(form: FormData) {
+  const db = await serverClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user?.email_confirmed_at) throw new Error("Sign in required");
+  const id = String(form.get("appeal_id") || "");
+  const choice = String(form.get("decision") || "");
+  const explanation = String(form.get("explanation") || "").trim();
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id) || !["accept","reject"].includes(choice) || explanation.length < 10 || explanation.length > 2000)
+    throw new Error("Invalid appeal review");
+  const { error } = await db.rpc("moderator_review_appeal", { p_appeal_id: id, p_accept: choice === "accept", p_explanation: explanation });
+  if (error) throw new Error("Could not review appeal.");
+  revalidatePath("/moderation");
+  revalidatePath("/feed");
+}
