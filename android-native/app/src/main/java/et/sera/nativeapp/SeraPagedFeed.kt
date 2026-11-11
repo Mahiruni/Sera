@@ -67,7 +67,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
+                top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // The app chrome already owns the brand/title. Keep the feed editorial.
