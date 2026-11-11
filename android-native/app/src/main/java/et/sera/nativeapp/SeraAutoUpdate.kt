@@ -19,7 +19,7 @@ import java.net.URL
 
 internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String)
 
-/** Only HTTPS downloads from the first-party release host are accepted. */
+/** Accept only published APK assets from the official SERA GitHub repository. */
 internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.IO) {
     try {
         val connection = URL("https://sera.hisabtech.com/api/native/updates").openConnection() as HttpURLConnection
@@ -34,7 +34,8 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
             val address = data.optString("apkUrl")
             val parsed = URL(address)
             if (code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
-                parsed.host != "sera.hisabtech.com" || parsed.userInfo != null)
+                parsed.host != "github.com" || parsed.userInfo != null ||
+                parsed.path != "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk")
                 return@withContext null
             SeraRelease(code, name, address, data.optString("notes").take(600))
         } finally { connection.disconnect() }
