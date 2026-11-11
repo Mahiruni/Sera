@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { ImagePlus, FolderKanban, Quote, PenLine, X, Users } from "lucide-react";
+import { ImagePlus, FolderKanban, Quote, PenLine, X, Users, Video } from "lucide-react";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { PostComposer } from "@/components/social/PostComposer";
 import type { PostKind } from "@/lib/social/validation";
@@ -44,11 +44,12 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     <section className="sera-feed-compose" aria-label="Create a post">
       <div className="sera-feed-compose-top">
         <MemberAvatar name={name} photo={avatarUrl} size={46} />
-        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}>What&apos;s on your mind?</button>
+        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}>What&apos;s on your mind, {name.split(" ")[0]}?</button>
         <button type="button" className="sera-feed-compose-pencil" aria-label="Create a post" onClick={() => launch("idea")}><PenLine size={19}/></button>
       </div>
       <div className="sera-feed-compose-actions">
         <button type="button" onClick={() => launch("photos")}><ImagePlus size={19}/> Photo</button>
+        <button type="button" onClick={() => launch("photos")}><Video size={19}/> Media</button>
         <button type="button" onClick={() => launch("project")}><FolderKanban size={19}/> Project</button>
         <button type="button" onClick={() => launch("quote")}><Quote size={19}/> Thought</button>
       </div>
