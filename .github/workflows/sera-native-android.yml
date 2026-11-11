@@ -1,0 +1,38 @@
+name: SERA Native Android
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/sera-native-android.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile native debug APK
+        working-directory: android-native
+        env:
+          SERA_URL: ${{ vars.SERA_SUPABASE_URL }}
+          SERA_PUBLIC_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+        run: gradle :app:assembleDebug --no-daemon -PSERA_SUPABASE_URL="$SERA_URL" -PSERA_SUPABASE_ANON_KEY="$SERA_PUBLIC_KEY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SERA-Native-Phase1-debug-apk
+          path: android-native/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
