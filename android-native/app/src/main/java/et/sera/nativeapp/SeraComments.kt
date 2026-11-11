@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -67,15 +68,15 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Conversation", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text("Retry") } }
-            if (!loading && comments.isEmpty() && error.isBlank()) Text("No comments yet.")
+            if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) } }
+            if (!loading && comments.isEmpty() && error.isBlank()) Text(stringResource(R.string.no_comments))
             LazyColumn(modifier = Modifier.heightIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(comments, key = { it.id }) { comment ->
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp)) {
-                            Text(if (comment.parentId == null) "Community comment" else "Reply", style = MaterialTheme.typography.labelMedium)
+                            Text(if (comment.parentId == null) stringResource(R.string.community_comment) else stringResource(R.string.reply), style = MaterialTheme.typography.labelMedium)
                             Text(comment.body)
                         }
                     }
@@ -83,7 +84,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
             }
             OutlinedTextField(
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
-                label = { Text("Write a comment") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.fillMaxWidth(),
                 maxLines = 5, enabled = !sending,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
@@ -103,7 +104,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                     sending = false
                 }
             }, enabled = !sending && draft.isNotBlank()) { Text(if (sending) "Publishing…" else "Publish comment") }
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     }
 }
