@@ -26,7 +26,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
                 }
                 Text(name, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color(0xFF183B40))
                 if (email.isNotBlank()) Text(email, color = Color.Gray, fontSize = 14.sp)
-                Text("Your professional identity", color = Color(0xFF087E83), fontSize = 13.sp)
+                Text(stringResource(R.string.profile_identity), color = Color(0xFF087E83), fontSize = 13.sp)
             }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -34,7 +34,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
             Text(error, color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = onRetry) { Text("Retry") }
         }
-        Text("Profile editing, CV uploads and portfolio management are being connected to the native app.", color = Color(0xFF50656A))
-        OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Sign out securely") }
+        Text(stringResource(R.string.profile_pending), color = Color(0xFF50656A))
+        OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_out)) }
     }
 }
