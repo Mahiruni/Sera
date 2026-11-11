@@ -37,9 +37,12 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
             val address = data.optString("apkUrl")
             val parsed = URL(address)
             val sha256 = data.optString("sha256").lowercase()
+            val firstParty = parsed.host == "sera.hisabtech.com" &&
+                parsed.path == "/downloads/sera-android.apk" && parsed.query == "version=$name"
+            val officialRelease = parsed.host == "github.com" &&
+                parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
             if (!sha256.matches(Regex("[0-9a-f]{64}")) || code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
-                parsed.host != "github.com" || parsed.userInfo != null ||
-                parsed.path != "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk")
+                parsed.userInfo != null || !(firstParty || officialRelease))
                 return@withContext null
             SeraRelease(code, name, address, data.optString("notes").take(600), sha256)
         } finally { connection.disconnect() }
