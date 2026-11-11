@@ -1,4 +1,5 @@
 "use server";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
@@ -51,18 +52,21 @@ export async function sendProfessionalMessage(form: FormData) {
     });
     if (recorded.error) await bucket.remove([path]);
   }
-  // Push is best-effort: a Firebase outage must never undo a persisted message.
+  // Persist and acknowledge the message without waiting on FCM provider latency.
+  // after() runs during the hosting function lifecycle, after the action response.
   const recipient = membership.member_a === user.id ? membership.member_b : membership.member_a;
-  try {
-    await notifyProfessionalDevices(recipient, {
-      title: "New SERA message",
-      body: "You have a new professional message.",
-      url: "/network/messages",
-      kind: "message",
-    });
-  } catch (error) {
-    console.error("Professional message push delivery failed", error instanceof Error ? error.message : "unknown error");
-  }
+  after(async () => {
+    try {
+      await notifyProfessionalDevices(recipient, {
+        title: "New SERA message",
+        body: "You have a new professional message.",
+        url: "/network/messages",
+        kind: "message",
+      });
+    } catch (error) {
+      console.error("Professional message push delivery failed", error instanceof Error ? error.message : "unknown error");
+    }
+  });
   revalidatePath("/network/messages");
 }
 export async function markProfessionalMessagesRead(form: FormData) {
