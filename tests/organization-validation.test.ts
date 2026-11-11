@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeOrganizationSlug, validateOrganizationDraft } from "../lib/organizations/validation.ts";
+import { normalizeOrganizationSlug, validateOrganizationDraft } from "../lib/organizations/validation";
 
 test("normalizes company slugs", () => {
   assert.equal(normalizeOrganizationSlug("  Hisab Technologies PLC  "), "hisab-technologies-plc");
