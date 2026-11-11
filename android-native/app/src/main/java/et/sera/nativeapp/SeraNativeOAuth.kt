@@ -32,10 +32,10 @@ internal fun beginNativeOAuth(context: Context, provider: String): String {
         .putLong("created", System.currentTimeMillis()).apply()
     val url = Uri.parse(BuildConfig.SUPABASE_URL.trimEnd('/') + "/auth/v1/authorize")
         .buildUpon().appendQueryParameter("provider", provider)
-        .appendQueryParameter("redirect_to", CALLBACK)
+        .appendQueryParameter("redirect_to", "$CALLBACK?state=$state")
         .appendQueryParameter("code_challenge", challenge)
         .appendQueryParameter("code_challenge_method", "s256")
-        .appendQueryParameter("state", state).build()
+        .build()
     return try {
         CustomTabsIntent.Builder().build().launchUrl(context, url)
         ""
