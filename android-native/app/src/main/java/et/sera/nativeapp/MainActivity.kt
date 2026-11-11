@@ -596,7 +596,7 @@ fun SeraApp(
                                             },
                                             modifier = Modifier.fillMaxSize()
                                         )
-                                        "Jobs" -> SeraNativeJobs(accessToken ?: "", pageModifier)
+                                        "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )

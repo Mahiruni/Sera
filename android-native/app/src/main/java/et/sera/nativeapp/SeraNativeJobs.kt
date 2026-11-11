@@ -76,7 +76,7 @@ private fun fetchOpenJobs(token: String): Pair<List<NativeJob>?, String> {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
+fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var search by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<NativeJob>>(emptyList()) }
@@ -173,6 +173,7 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
     if (showCreate) {
         SeraNativeJobComposer(
             token = token,
+            userId = userId,
             onDismiss = { showCreate = false },
             onPublished = {
                 showCreate = false

@@ -1,5 +1,11 @@
 package et.sera.nativeapp
 
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.delay
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +30,23 @@ import java.net.URL
 private val nativeWorkTypes = listOf("Full-time", "Part-time", "Contract", "Internship")
 private val jobTeal = Color(0xFF087E83)
 private val jobInk = Color(0xFF18383D)
+
+/** Persist unfinished hiring drafts securely, scoped to the authenticated member. */
+private class SeraJobDraftStorage(context: Context) {
+    private val store = EncryptedSharedPreferences.create(
+        context, "sera_job_drafts",
+        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+    fun read(userId: String): JSONObject? = runCatching {
+        store.getString(userId, null)?.let(::JSONObject)
+    }.getOrNull()
+    fun save(userId: String, document: JSONObject): Boolean = runCatching {
+        store.edit().putString(userId, document.toString()).commit()
+    }.getOrDefault(false)
+    fun clear(userId: String) { store.edit().remove(userId).apply() }
+}
 
 private data class JobDraft(
     val title: String,
@@ -82,22 +105,42 @@ private fun publishNativeJob(token: String, job: JobDraft): Pair<String?, String
 @Composable
 internal fun SeraNativeJobComposer(
     token: String,
+    userId: String,
     onDismiss: () -> Unit,
     onPublished: (String) -> Unit
 ) {
-    var title by rememberSaveable { mutableStateOf("") }
-    var company by rememberSaveable { mutableStateOf("") }
-    var location by rememberSaveable { mutableStateOf("") }
-    var workType by rememberSaveable { mutableStateOf("Full-time") }
-    var salaryMin by rememberSaveable { mutableStateOf("0") }
-    var salaryMax by rememberSaveable { mutableStateOf("0") }
-    var description by rememberSaveable { mutableStateOf("") }
-    var requirements by rememberSaveable { mutableStateOf("") }
-    var acknowledged by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    // Never write professional drafts to unencrypted preferences.
+    val secureDrafts = remember(context) {
+        runCatching { SeraJobDraftStorage(context) }.getOrNull()
+    }
+    val restored = remember(secureDrafts, userId) { secureDrafts?.read(userId) }
+    var title by rememberSaveable(userId) { mutableStateOf(restored?.optString("title").orEmpty().take(160)) }
+    var company by rememberSaveable(userId) { mutableStateOf(restored?.optString("company").orEmpty().take(160)) }
+    var location by rememberSaveable(userId) { mutableStateOf(restored?.optString("location").orEmpty().take(160)) }
+    var workType by rememberSaveable(userId) {
+        val old = restored?.optString("work_type").orEmpty()
+        mutableStateOf(old.takeIf { it in nativeWorkTypes } ?: "Full-time")
+    }
+    var salaryMin by rememberSaveable(userId) {
+        mutableStateOf(restored?.optString("salary_min")?.takeIf {
+            it.isNotBlank() && it.length <= 10 && it.all(Char::isDigit)
+        } ?: "0")
+    }
+    var salaryMax by rememberSaveable(userId) {
+        mutableStateOf(restored?.optString("salary_max")?.takeIf {
+            it.isNotBlank() && it.length <= 10 && it.all(Char::isDigit)
+        } ?: "0")
+    }
+    var description by rememberSaveable(userId) { mutableStateOf(restored?.optString("description").orEmpty().take(12000)) }
+    var requirements by rememberSaveable(userId) { mutableStateOf(restored?.optString("requirements").orEmpty().take(8000)) }
+    // Consent is intentionally NOT restored. Reaffirm before every publication.
+    var acknowledged by rememberSaveable(userId) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var showDiscard by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    var published by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val minSalary = salaryMin.toIntOrNull()
@@ -111,7 +154,33 @@ internal fun SeraNativeJobComposer(
         requirements.trim().length in 10..8000 &&
         salaryValid && acknowledged && workType in nativeWorkTypes
     val edited = title.isNotBlank() || company.isNotBlank() || location.isNotBlank() ||
-        description.isNotBlank() || requirements.isNotBlank() || acknowledged
+        description.isNotBlank() || requirements.isNotBlank() || acknowledged ||
+        salaryMin != "0" || salaryMax != "0" || workType != "Full-time"
+
+    fun snapshot(): JSONObject = JSONObject()
+        .put("title", title).put("company", company).put("location", location)
+        .put("work_type", workType).put("salary_min", salaryMin)
+        .put("salary_max", salaryMax).put("description", description)
+        .put("requirements", requirements)
+
+    // Save after a short idle period; closing the sheet also flushes immediately.
+    LaunchedEffect(userId, title, company, location, workType, salaryMin,
+        salaryMax, description, requirements, acknowledged, published) {
+        if (published || userId.isBlank()) return@LaunchedEffect
+        delay(350)
+        if (edited) secureDrafts?.save(userId, snapshot())
+        else secureDrafts?.clear(userId)
+    }
+
+    fun preserveAndClose() {
+        if (userId.isBlank() || secureDrafts?.save(userId, snapshot()) != true) {
+            error = "Secure draft storage is unavailable. Copy your details before closing."
+            showDiscard = false
+            return
+        }
+        showDiscard = false
+        onDismiss()
+    }
     fun requestClose() {
         if (sending) return
         if (edited) showDiscard = true else onDismiss()
@@ -119,11 +188,11 @@ internal fun SeraNativeJobComposer(
 
     if (showDiscard) AlertDialog(
         onDismissRequest = { showDiscard = false },
-        title = { Text("Discard your job draft?") },
-        text = { Text("The information you entered will be lost if you close this editor.") },
+        title = { Text("Save your opportunity?") },
+        text = { Text("Your unpublished job details can be saved securely on this device. You can resume them later.") },
         confirmButton = {
-            TextButton(onClick = { showDiscard = false; onDismiss() }) {
-                Text("Discard", color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = { preserveAndClose() }) {
+                Text("Save and close", color = jobTeal)
             }
         },
         dismissButton = {
@@ -145,7 +214,7 @@ internal fun SeraNativeJobComposer(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("Publish an opportunity", style = MaterialTheme.typography.titleLarge,
                         color = jobInk, fontWeight = FontWeight.Bold)
-                    Text("A clear role brings the right people together.",
+                    Text(if (restored != null) "Draft restored. Confirm the details before publishing." else "A clear role brings the right people together.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF687E81))
                 }
@@ -247,7 +316,11 @@ internal fun SeraNativeJobComposer(
                                     minSalary, maxSalary, description, requirements))
                             }
                             sending = false
-                            if (id != null) onPublished(id) else error = reason
+                            if (id != null) {
+                                published = true
+                                runCatching { secureDrafts?.clear(userId) }
+                                onPublished(id)
+                            } else error = reason
                         }
                     },
                     enabled = valid && !sending,
