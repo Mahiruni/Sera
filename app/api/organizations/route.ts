@@ -14,6 +14,10 @@ export async function POST(req: NextRequest) {
   if (length > 8192) return fail("Organization details are too large.", 413);
   let input: unknown;
   try { input = await req.json(); } catch { return fail("Invalid JSON.", 400); }
+  const email = typeof input === "object" && input !== null && !Array.isArray(input) && "contactEmail" in input && typeof input.contactEmail === "string"
+    ? input.contactEmail.trim().toLowerCase() : "";
+  const accountEmail = user.email?.trim().toLowerCase();
+  if (!accountEmail || email !== accountEmail) return NextResponse.json({ errors: { contactEmail: "Use the confirmed email address of your signed-in SERA account." } }, { status: 422 });
   const result = validateOrganizationDraft(input);
   if (!result.ok) return NextResponse.json({ errors: result.errors }, { status: 422 });
   const { kind, name, slug, description, city, industry } = result.value;
