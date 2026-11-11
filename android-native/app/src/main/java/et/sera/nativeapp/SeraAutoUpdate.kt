@@ -4,6 +4,8 @@ import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.database.Cursor
+import android.content.ActivityNotFoundException
 import android.os.Environment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,7 +44,7 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
     } catch (_: Exception) { null }
 }
 
-internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Boolean {
+internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
     return try {
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(release.url))
@@ -52,8 +54,7 @@ internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Boolean
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "sera-update-${release.versionCode}.apk")
             .setMimeType("application/vnd.android.package-archive")
         manager.enqueue(request)
-        true
-    } catch (_: Exception) { false }
+    } catch (_: Exception) { null }
 }
 
 @Composable
@@ -72,4 +73,35 @@ internal fun SeraUpdatePrompt(release: SeraRelease, onDismiss: () -> Unit, onDow
         dismissButton = { TextButton(onClick = onDismiss) { Text("Later") } },
         shape = RoundedCornerShape(22.dp)
     )
+}
+
+internal data class SeraDownloadStatus(val progress: Int, val complete: Boolean, val failed: Boolean)
+
+internal fun seraDownloadStatus(context: Context, downloadId: Long): SeraDownloadStatus {
+    val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val cursor: Cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
+    cursor.use {
+        if (!it.moveToFirst()) return SeraDownloadStatus(0, false, true)
+        val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+        val downloaded = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+        val progress = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
+        return SeraDownloadStatus(progress, status == DownloadManager.STATUS_SUCCESSFUL,
+            status == DownloadManager.STATUS_FAILED)
+    }
+}
+
+/** Android always requires user approval to install an update. */
+internal fun openSeraInstaller(context: Context, downloadId: Long): Boolean {
+    return try {
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val uri = manager.getUriForDownloadedFile(downloadId) ?: return false
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        true
+    } catch (_: ActivityNotFoundException) { false }
+      catch (_: SecurityException) { false }
 }
