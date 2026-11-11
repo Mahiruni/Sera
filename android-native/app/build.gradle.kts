@@ -17,6 +17,15 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\""+supabaseUrl+"\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\""+supabaseAnonKey+"\"")
     }
+    // Smaller signed release APKs: R8 removes unused code/resources while debug
+    // remains unminified for reproducible diagnostics.
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
+    }
     val releaseStore = providers.environmentVariable("SERA_RELEASE_KEYSTORE").orNull
     val releaseStorePassword = providers.environmentVariable("SERA_RELEASE_STORE_PASSWORD").orNull
     val releaseKeyAlias = providers.environmentVariable("SERA_RELEASE_KEY_ALIAS").orNull
