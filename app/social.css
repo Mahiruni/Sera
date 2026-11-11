@@ -864,3 +864,12 @@ button[disabled] {
     border-radius: 0;
   }
 }
+
+/* Compact author-to-content rhythm; remove the apparent header gap. */
+@media (max-width: 600px) {
+  .social-page .social-card .social-post-header { margin-bottom: 6px; }
+  .social-page .social-card h2 { margin-top: 4px; margin-bottom: 7px; }
+  .social-page .social-card .social-caption { margin-top: 0; }
+  .social-page .social-card .social-caption .social-body { margin-top: 0; margin-bottom: 0; }
+  .social-page .social-card .social-images { margin-top: 10px; }
+}
