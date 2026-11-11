@@ -6,6 +6,8 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.WindowInsets
@@ -167,43 +169,33 @@ fun SeraApp(context: Context) {
                                 }
                             }
                         ) { padding ->
-                            if (tab == "Home") {
-                                SeraFeed(feed, dataLoading, dataError, { refresh++ }, { post ->
-                                    val token = accessToken
-                                    if (token != null) scope.launch {
-                                        val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
-                                        if (result.first) refresh++ else dataError = result.second
-                                    }
-                                }, accessToken ?: "", Modifier.padding(padding))
-                            } else Column(
-                                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-                                    .padding(24.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(tab, color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                                if (dataLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                                if (dataError.isNotEmpty()) Text(dataError, color = MaterialTheme.colorScheme.error)
-                                when (tab) {
-                                    "Home" -> {
-                                        if (!dataLoading && feed.isEmpty() && dataError.isEmpty()) Text("No published posts yet.", color = ink)
-                                        feed.forEach { post ->
-                                            ElevatedCard(Modifier.fillMaxWidth()) {
-                                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Text(post.title.ifBlank { "Professional update" }, fontWeight = FontWeight.Bold, color = ink)
-                                                    Text(post.body, color = ink)
-                                                    Text("Likes: " + post.likes + " · Comments: " + post.comments, color = teal)
-                                                }
-                                            }
+                            Crossfade(targetState = tab, animationSpec = tween(durationMillis = 180), label = "section transition") { currentTab ->
+                                if (currentTab == "Home") {
+                                    SeraFeed(feed, dataLoading, dataError, { refresh++ }, { post ->
+                                        val token = accessToken
+                                        if (token != null) scope.launch {
+                                            val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
+                                            if (result.first) refresh++ else dataError = result.second
                                         }
-                                        OutlinedButton(onClick = { refresh++ }) { Text("Refresh") }
+                                    }, accessToken ?: "", Modifier.padding(padding))
+                                } else {
+                                    Column(
+                                        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        if (currentTab == "Profile") {
+                                            SeraProfile(identity, dataLoading, dataError, { refresh++ }, {
+                                                session.clear()
+                                                accessToken = null
+                                                password = ""
+                                                message = ""
+                                                tab = "Home"
+                                            })
+                                        } else {
+                                            Text(currentTab, color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                                            Text(sectionDescription(currentTab), color = ink)
+                                        }
                                     }
-                                    "Profile" -> SeraProfile(identity, dataLoading, dataError, { refresh++ }, { session.clear(); accessToken = null; password = ""; message = ""; tab = "Home" })
-                                    else -> Text(sectionDescription(tab), color = ink)
-                                }
-                                if (tab == "Profile") {
-                                    TextButton(onClick = {
-                                        session.clear(); accessToken = null; password = ""; message = ""; tab = "Home"
-                                    }) { Text("Sign out") }
                                 }
                             }
                         }
