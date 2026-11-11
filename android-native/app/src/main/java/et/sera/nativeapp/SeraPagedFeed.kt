@@ -13,6 +13,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -205,44 +207,105 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         }
     }
     repostTarget?.let { selected ->
-        AlertDialog(
-            onDismissRequest = { if (!reposting) repostTarget = null },
-            title = { Text("Repost to your network", color = feedInk, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Share this professional update with attribution to its original author.",
-                        color = feedMuted, fontSize = 13.sp)
-                    OutlinedTextField(value = repostNote, onValueChange = {
-                        if (it.length <= 400) repostNote = it
-                    }, label = { Text("Add your thoughts (optional)") },
-                        shape = RoundedCornerShape(14.dp), maxLines = 4,
-                        modifier = Modifier.fillMaxWidth())
-                    if (repostMessage.isNotBlank()) Text(repostMessage,
-                        color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (reposting) return@Button
-                    reposting = true
-                    scope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            repostNativePost(token, selected.repostOf ?: selected.id, repostNote)
-                        }
-                        reposting = false
-                        if (result.first) { repostTarget = null; posts.refresh() }
-                        else repostMessage = result.second
+        SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {
+            Column(
+                Modifier.fillMaxWidth().imePadding().navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Repost to your network",
+                            style = MaterialTheme.typography.titleLarge, color = feedInk,
+                            fontWeight = FontWeight.Bold)
+                        Text("Share a professional insight with proper attribution.",
+                            style = MaterialTheme.typography.bodySmall, color = feedMuted)
                     }
-                }, enabled = !reposting) { Text(if (reposting) "Reposting…" else "Repost") }
-            },
-            dismissButton = {
-                TextButton(onClick = { repostTarget = null }, enabled = !reposting) { Text("Cancel") }
-            },
-            shape = RoundedCornerShape(28.dp),
-            containerColor = Color.White,
-            titleContentColor = feedInk,
-            textContentColor = feedMuted
-        )
+                    TextButton(onClick = { repostTarget = null }, enabled = !reposting) {
+                        Text("Close", color = feedTeal)
+                    }
+                }
+                HorizontalDivider(color = Color(0xFFE0ECEA))
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 430.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Surface(
+                        color = Color(0xFFF0F8F7),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("ORIGINAL UPDATE", fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold, color = feedTeal)
+                            Text(selected.author, color = feedInk,
+                                fontWeight = FontWeight.SemiBold)
+                            Text((selected.body.ifBlank { selected.title }).take(260),
+                                maxLines = 4, overflow = TextOverflow.Ellipsis,
+                                color = feedMuted, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = repostNote,
+                        onValueChange = { if (it.length <= 400) repostNote = it },
+                        label = { Text("Your perspective (optional)") },
+                        placeholder = { Text("Why is this useful to your network?") },
+                        supportingText = { Text("${repostNote.length} / 400") },
+                        shape = RoundedCornerShape(18.dp), maxLines = 5,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !reposting
+                    )
+                    if (repostMessage.isNotBlank())
+                        Text(repostMessage, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                }
+                HorizontalDivider(color = Color(0xFFE0ECEA))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { repostTarget = null },
+                        enabled = !reposting,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 50.dp)
+                    ) { Text("Cancel") }
+                    Button(
+                        onClick = {
+                            if (reposting) return@Button
+                            reposting = true
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) {
+                                    repostNativePost(token, selected.repostOf ?: selected.id, repostNote)
+                                }
+                                reposting = false
+                                if (result.first) { repostTarget = null; posts.refresh() }
+                                else repostMessage = result.second
+                            }
+                        },
+                        enabled = !reposting,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = feedTeal),
+                        modifier = Modifier.weight(1.5f).heightIn(min = 50.dp)
+                    ) {
+                        if (reposting) {
+                            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White,
+                                strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Reposting…")
+                        } else {
+                            SeraReactionGlyph(SeraReactionKind.REPOST, active = true)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Repost")
+                        }
+                    }
+                }
+            }
+        }
     }
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }
     commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }) }
