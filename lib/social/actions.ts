@@ -252,3 +252,24 @@ export async function deleteComment(
   refresh(postId);
   return { success: "Comment removed." };
 }
+
+/** Report an existing published post for moderator review. Reports do not auto-delete content. */
+export async function reportPost(_: SocialState, form: FormData): Promise<SocialState> {
+  const session = await member();
+  const id = form.get("post_id");
+  const reason = form.get("reason");
+  const allowed = ["harassment", "hate", "sexual", "fraud", "spam", "violence", "impersonation", "privacy", "other"];
+  if (!session || !uuid(id) || typeof reason !== "string" || !allowed.includes(reason))
+    return { error: "Sign in and choose a valid report reason." };
+  const details = String(form.get("details") || "").trim().slice(0, 1000);
+  const result = await session.db.from("moderation_reports").insert({
+    post_id: id,
+    reason,
+    details,
+  });
+  if (result.error) {
+    if (result.error.code === "23505") return { success: "You already reported this post. Thank you." };
+    return { error: "Could not submit the report. Please try again." };
+  }
+  return { success: "Report received. Our moderation team can review it." };
+}
