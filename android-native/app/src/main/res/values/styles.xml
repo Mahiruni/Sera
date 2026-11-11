@@ -1,1 +1,13 @@
-<resources><style name="Theme.Sera.Launch" parent="Theme.AppCompat.Light.NoActionBar"><item name="android:windowBackground">@drawable/sera_splash</item><item name="android:statusBarColor">@color/sera_teal</item><item name="android:navigationBarColor">@color/sera_teal</item></style></resources>
+<resources>
+    <!-- Shared native brand splash; OS splash and Compose use the same S shape. -->
+    <style name="Theme.Sera.Launch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/sera_teal</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/sera_signature_system</item>
+        <item name="postSplashScreenTheme">@style/Theme.Sera</item>
+    </style>
+    <style name="Theme.Sera" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/sera_teal</item>
+        <item name="android:statusBarColor">@color/sera_teal</item>
+        <item name="android:navigationBarColor">@color/sera_teal</item>
+    </style>
+</resources>

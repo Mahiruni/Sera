@@ -8,6 +8,8 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
@@ -64,10 +66,41 @@ private val bg = Color(0xFFF5FAFB)
 class MainActivity : AppCompatActivity() {
     private val callback = mutableStateOf<Uri?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Android 12+ and earlier versions show the same static S mark first.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         callback.value = intent?.data?.takeIf { it.scheme == "sera" }
+        // A warm start, configuration change, process restoration or OAuth
+        // deep link must never replay the cinematic introduction.
+        val playIntro = savedInstanceState == null &&
+            intent?.action == Intent.ACTION_MAIN && callback.value == null
         enableEdgeToEdge()
-        setContent { SeraApp(this, callback.value, onCallbackConsumed = { callback.value = null }) }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !playIntro
+            isAppearanceLightNavigationBars = !playIntro
+        }
+        setContent {
+            var introVisible by remember { mutableStateOf(playIntro) }
+            var destinationReady by remember { mutableStateOf(false) }
+            Box(Modifier.fillMaxSize()) {
+                SeraApp(
+                    context = this@MainActivity,
+                    oauthCallback = callback.value,
+                    onCallbackConsumed = { callback.value = null },
+                    onInitialDestinationReady = { destinationReady = true }
+                )
+                if (introVisible) SeraSignatureIntro(
+                    destinationReady = destinationReady,
+                    onWhiteFrame = {
+                        WindowCompat.getInsetsController(window, window.decorView).apply {
+                            isAppearanceLightStatusBars = true
+                            isAppearanceLightNavigationBars = true
+                        }
+                    },
+                    onComplete = { introVisible = false }
+                )
+            }
+        }
     }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -77,7 +110,12 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: () -> Unit = {}) {
+fun SeraApp(
+    context: Context,
+    oauthCallback: Uri? = null,
+    onCallbackConsumed: () -> Unit = {},
+    onInitialDestinationReady: () -> Unit = {}
+) {
     val session = remember { SessionStore(context) }
     val haptics = LocalHapticFeedback.current
     var email by remember { mutableStateOf("") }
@@ -92,6 +130,9 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
             else session.clear()
         }
         restoring = false
+    }
+    LaunchedEffect(restoring) {
+        if (!restoring) onInitialDestinationReady()
     }
     // Request the one-time welcome email promptly after any verified native sign-in.
     // This is a separate IO coroutine so the dashboard never waits for SMTP.
