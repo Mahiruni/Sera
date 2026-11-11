@@ -156,12 +156,14 @@ fun SeraGuestEntry(
                         shape = RoundedCornerShape(17.dp)
                     ) { Text("Sign in to SERA", fontWeight = FontWeight.SemiBold, color = entryTeal) }
                     Text("Create your SERA profile without leaving the Android app.", style = MaterialTheme.typography.bodySmall, color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Continue with Google or LinkedIn on the web", color = entryTeal, textAlign = TextAlign.Center)
+                    TextButton(onClick = { entryPage = "signin" }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Sign in with email to continue in the Android app", color = entryTeal, textAlign = TextAlign.Center)
                     }
                     TextButton(onClick = { openSeraSite(context, "") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Explore SERA before joining", color = entryInk)
                     }
+                } else if (entryPage == "recover") {
+                    SeraNativePasswordRecovery(onBack = { entryPage = "signin" })
                 } else if (entryPage == "register") {
                     SeraNativeRegistrationFlow(
                         onBack = { entryPage = "welcome" },
@@ -199,7 +201,7 @@ fun SeraGuestEntry(
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    TextButton(onClick = { openSeraSite(context, "forgot-password") }, modifier = Modifier.align(Alignment.End)) {
+                    TextButton(onClick = { entryPage = "recover" }, modifier = Modifier.align(Alignment.End)) {
                         Text("Forgot password?", color = entryTeal)
                     }
                     Button(
@@ -226,7 +228,7 @@ fun SeraGuestEntry(
                         Text("Create a SERA account", color = entryTeal, fontWeight = FontWeight.Bold)
                     }
                     TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Google or LinkedIn sign-in opens the website", color = entryTeal)
+                        Text("Google and LinkedIn native sign-in is being prepared", color = entryMuted)
                     }
                 }
                 Spacer(Modifier.height(5.dp))
