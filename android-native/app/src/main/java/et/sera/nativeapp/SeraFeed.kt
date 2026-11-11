@@ -30,6 +30,7 @@ private val darkInk = Color(0xFF183B40)
 @Composable
 fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, onLike: (SeraPost) -> Unit, token: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val shareTitle = stringResource(R.string.share_post)
     var commentPostId by remember { mutableStateOf<String?>(null) }
     PullToRefreshBox(isRefreshing = loading, onRefresh = onRefresh, modifier = modifier.fillMaxSize()) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -70,14 +71,14 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                     HorizontalDivider(color = Color(0xFFE6EEEE))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onLike(post) }) { Text((if (post.liked) "♥ " else "♡ ") + post.likes, color = deepTeal) }
-                        TextButton(onClick = { commentPostId = post.id }) { Text("Comments " + post.comments, color = Color.Gray, fontSize = 12.sp) }
+                        TextButton(onClick = { commentPostId = post.id }) { Text(stringResource(R.string.comments) + " " + post.comments, color = Color.Gray, fontSize = 12.sp) }
                         TextButton(onClick = {
                             val share = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, "https://sera.hisabtech.com/posts/" + post.id)
                             }
-                            context.startActivity(Intent.createChooser(share, "Share SERA post"))
-                        }) { Text("Share") }
+                            context.startActivity(Intent.createChooser(share, shareTitle))
+                        }) { Text(stringResource(R.string.share)) }
                     }
                 }
             }
