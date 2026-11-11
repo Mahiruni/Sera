@@ -36,7 +36,7 @@ jobs:
       - name: Compile native debug APK
         working-directory: android-native
         env:
-          SERA_URL: ${{ vars.SERA_SUPABASE_URL }}
+          SERA_URL: https://okegwojigrtxadvgxpwm.supabase.co
           SERA_PUBLIC_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SERA_URL" ] || [ -z "$SERA_PUBLIC_KEY" ]; then
