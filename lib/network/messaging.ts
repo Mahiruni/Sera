@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
+import { checkMessageAttachment } from "@/lib/network/attachment-policy";
 const uuid = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 export async function startConversation(form: FormData) {
   const user = await currentUser();
@@ -22,8 +23,7 @@ export async function sendProfessionalMessage(form: FormData) {
   const body = form.get("body");
   const attachment = form.get("attachment");
   const file = attachment instanceof File && attachment.size > 0 ? attachment : null;
-  const allowed = new Set(["image/jpeg","image/png","image/webp","application/pdf"]);
-  if (file && (file.size > 5 * 1024 * 1024 || !allowed.has(file.type))) return;
+  if (file && await checkMessageAttachment(file)) return;
   if (!user?.email_confirmed_at || !uuid(conversation) || typeof body !== "string" ||
       (!body.trim() && !file) || body.trim().length > 4000) return;
   const db = await serverClient();
