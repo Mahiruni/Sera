@@ -836,3 +836,31 @@ button[disabled] {
   .social-page .social-card .social-post-header { gap: 10px; padding-right: 40px; }
   .social-page .social-card .social-owner { top: 18px; }
 }
+
+/* True viewport-width post hero media on narrow screens.
+   Do not use a fixed negative margin: feed padding differs across routes. */
+@media (max-width: 600px) {
+  .social-page .social-card .social-images {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none;
+    margin-inline: calc(50% - 50vw);
+    margin-block: 10px 12px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .social-page .social-card .social-images > .social-image-link {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border-radius: 0;
+  }
+  .social-page .social-card .social-images:not(.social-images-grid) img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+  }
+}
