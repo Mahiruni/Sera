@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
+import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
 import {
   MEDIA_BUCKET,
   MEDIA_LIMIT,
@@ -46,6 +47,24 @@ export async function createPost(
       error:
         "Check the post details. Choose up to four JPG, PNG or WebP images, totaling at most 3 MB.",
     };
+  if (moderationEnabled()) {
+    try {
+      const normalizedImages: Buffer[] = [];
+      for (const file of files) {
+        normalizedImages.push(await sharp(new Uint8Array(await file.arrayBuffer()), {
+          limitInputPixels: 16000000, animated: false,
+        }).rotate().resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 70 }).toBuffer());
+      }
+      const verdict = await screenSubmission(input, normalizedImages);
+      if (verdict.verdict === "rejected")
+        return { error: "Your post may violate our community safety guidelines. Please revise the content or contact support for review." };
+      if (verdict.verdict === "review")
+        return { error: "Safety screening is temporarily unavailable. Your post has not been published. Please try again later." };
+    } catch {
+      return { error: "We could not safely check your images. Nothing has been published." };
+    }
+  }
   const { db } = session;
   // Draft -> images -> publication. A failed upload never leaves a partial post in the feed.
   const draft = await db
@@ -129,6 +148,11 @@ export async function updatePost(
     id = form.get("post_id");
   if (!session || !input || !uuid(id))
     return { error: "Check your post details and sign in again." };
+  if (moderationEnabled()) {
+    const verdict = await screenSubmission(input, []);
+    if (verdict.verdict !== "approved")
+      return { error: verdict.verdict === "rejected" ? "Your changes may violate community guidelines. Please revise them." : "Safety screening is unavailable. Changes were not saved." };
+  }
   // Kind is immutable. Restrict the update to its original type as well as its owner.
   const { kind, ...fields } = input;
   const result = await session.db
