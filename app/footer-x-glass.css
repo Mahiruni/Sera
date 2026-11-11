@@ -84,3 +84,30 @@ body:has(.auth-layout) .footer-dock { display: none !important; }
   outline: 2px solid #087f9f;
   outline-offset: 3px;
 }
+
+
+/* Final navigation consistency: one floating dock across signed-in routes. */
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock{
+ left:max(10px,env(safe-area-inset-left,0px))!important;
+ right:max(10px,env(safe-area-inset-right,0px))!important;
+ bottom:calc(9px + env(safe-area-inset-bottom,0px))!important;
+ width:auto!important;max-width:640px!important;margin-inline:auto!important;
+ min-height:68px!important;padding:7px 8px!important;
+ border:1px solid rgba(104,241,236,.28)!important;border-radius:999px!important;
+ background:linear-gradient(120deg,rgba(0,48,58,.97),rgba(0,34,46,.98))!important;
+ box-shadow:0 12px 32px #003b4650,0 0 18px #00bac02c!important;
+}
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a{color:#b8d4d8!important}
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a.active,
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a[aria-current=page]{color:#75f9f4!important}
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a.active::before,
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a[aria-current=page]::before{display:none!important}
+body:has(.site-header):not(:has(.auth-layout)) .footer-dock a.active .dock-icon{filter:drop-shadow(0 0 7px #00d8e6)}
+@media(max-width:600px){
+ .site-header{isolation:isolate}
+ .site-header .sera-header-wordmark{font-size:clamp(20px,5.2vw,25px);letter-spacing:-.065em}
+ .site-header .header-account-controls{position:relative;z-index:2}
+ .site-header .hamburger{position:relative;z-index:2}
+ body:has(.site-header):not(:has(.auth-layout)) .footer-dock{min-height:64px!important;padding:5px 6px!important}
+ body:has(.site-header):not(:has(.auth-layout)) .footer-dock a{font-size:9px!important}
+}
