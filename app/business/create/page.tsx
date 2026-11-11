@@ -104,7 +104,7 @@ export default function CreateOrganizationPage() {
                 <button className={styles.primary} type="submit" disabled={busy}>
                   {busy ? <><LoaderCircle size={17} className={styles.spin} /> Creating…</> : <>Create organization <ArrowRight size={17} /></>}
                 </button>
-                <p className={styles.note}>You'll need a verified SERA account. Creating an organization does not grant a verification badge.</p>
+                <p className={styles.note}>You will need a verified SERA account. Creating an organization does not grant a verification badge.</p>
               </form>
             </>
           )}
