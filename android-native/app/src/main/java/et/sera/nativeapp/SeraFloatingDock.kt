@@ -3,8 +3,6 @@ package et.sera.nativeapp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
@@ -27,9 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 private val dockBackground = Color(0xF21A3438)
 private val dockActive = Color(0xFFA0F6E6)
@@ -43,7 +39,7 @@ private fun dockIcon(section: String): ImageVector = when (section) {
     else -> Icons.Outlined.AccountCircle
 }
 
-/** Floating pill dock: equal-sized, accessible destinations with no selection background. */
+/** Bottom-attached navigation bar: five equal targets, no floating margins. */
 @Composable
 internal fun SeraFloatingDock(
     selected: String,
@@ -53,16 +49,15 @@ internal fun SeraFloatingDock(
 ) {
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(100.dp),
-        border = BorderStroke(1.dp, Color(0xFFCEEDE6).copy(alpha = .35f)),
-        shadowElevation = 6.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        shadowElevation = 0.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color(0xE6335053), dockBackground, Color(0xF2132B30))))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -75,7 +70,7 @@ internal fun SeraFloatingDock(
                 )
                 val scale by animateFloatAsState(if (active) 1.06f else 1f, spring(), label = "dock icon scale")
                 Column(
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .selectable(
                             selected = active,
