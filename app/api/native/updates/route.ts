@@ -3,22 +3,41 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Fail closed until a stable-key, signed release is published to our own host. */
+const REPO = "Mahiruni/Sera";
+const jsonHeaders = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
+
+/** Discover only public, published, production-signed Android releases. */
 export async function GET() {
-  const versionCode = Number(process.env.SERA_ANDROID_RELEASE_VERSION_CODE || 0);
-  const versionName = process.env.SERA_ANDROID_RELEASE_VERSION_NAME || "";
-  const apkUrl = process.env.SERA_ANDROID_RELEASE_APK_URL || "";
-  const notes = process.env.SERA_ANDROID_RELEASE_NOTES || "";
-  let valid = false;
   try {
+    const response = await fetch(
+      `https://api.github.com/repos/${REPO}/releases/latest`,
+      { headers: { Accept: "application/vnd.github+json", "User-Agent": "SERA-Android-Update" }, cache: "no-store", signal: AbortSignal.timeout(7000) },
+    );
+    if (!response.ok) return NextResponse.json({ available: false }, { headers: jsonHeaders });
+    const release = await response.json();
+    const tag = typeof release.tag_name === "string" ? release.tag_name : "";
+    const match = /^android-v(\\d+\\.\\d+\\.\\d+)$/.exec(tag);
+    if (!match || release.draft || release.prerelease)
+      return NextResponse.json({ available: false }, { headers: jsonHeaders });
+    const versionName = match[1];
+    const notes = typeof release.body === "string" ? release.body : "";
+    const codeMatch = /Android versionCode:\\s*(\\d+)/.exec(notes);
+    const versionCode = codeMatch ? Number(codeMatch[1]) : 0;
+    const asset = Array.isArray(release.assets) ? release.assets.find(
+      (item: { name?: string; browser_download_url?: string }) =>
+        item.name === `SERA-${versionName}.apk`,
+    ) : null;
+    const apkUrl = asset?.browser_download_url || "";
     const parsed = new URL(apkUrl);
-    valid = parsed.protocol === "https:" && parsed.hostname === "sera.hisabtech.com" &&
-      !parsed.username && !parsed.password && parsed.pathname.endsWith(".apk");
-  } catch { /* No release configured. */ }
-  if (!Number.isSafeInteger(versionCode) || versionCode < 2 || !versionName ||
-      !valid || process.env.SERA_ANDROID_RELEASE_ENABLED !== "true")
-    return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
-  return NextResponse.json({ available: true, versionCode, versionName, apkUrl, notes }, {
-    headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
-  });
+    if (!Number.isSafeInteger(versionCode) || versionCode < 2 ||
+        parsed.protocol !== "https:" || parsed.hostname !== "github.com" ||
+        parsed.pathname !== `/${REPO}/releases/download/${tag}/SERA-${versionName}.apk`)
+      return NextResponse.json({ available: false }, { headers: jsonHeaders });
+    return NextResponse.json({
+      available: true, versionCode, versionName, apkUrl,
+      notes: "A new signed SERA Android release is available.",
+    }, { headers: jsonHeaders });
+  } catch {
+    return NextResponse.json({ available: false }, { headers: jsonHeaders });
+  }
 }
