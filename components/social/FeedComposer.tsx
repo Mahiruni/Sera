@@ -15,24 +15,6 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const triggerElement = trigger.current;
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    close.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); dismiss(); }
-      if (event.key !== "Tab") return;
-      const elements = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, a[href]') ?? []).filter(el => el.getClientRects().length > 0);
-      if (!elements.length) return;
-      const first = elements[0], last = elements[elements.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !dialog.current?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !dialog.current?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; triggerElement?.focus(); };
-  }, [open, dismiss]);
   const dismiss = useCallback(() => {
     const form = dialog.current?.querySelector("form");
     const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) =>
@@ -51,6 +33,24 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
     }
     setOpen(false);
   }, [userId, initialKind]);
+  useEffect(() => {
+    if (!open) return;
+    const triggerElement = trigger.current;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    close.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); dismiss(); }
+      if (event.key !== "Tab") return;
+      const elements = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, a[href]') ?? []).filter(el => el.getClientRects().length > 0);
+      if (!elements.length) return;
+      const first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.current?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog.current?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; triggerElement?.focus(); };
+  }, [open, dismiss]);
   const launch = (kind: PostKind) => { setInitialKind(kind); setOpen(true); };
   const onPublished = useCallback((id: string) => { setOpen(false); router.push("/posts/" + id); router.refresh(); }, [router]);
 
