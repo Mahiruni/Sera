@@ -12,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,8 +23,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun SeraNativeHeader(
     section: String,
-    canCompose: Boolean,
-    onCompose: () -> Unit,
+    onInbox: () -> Unit,
     onLanguage: () -> Unit,
     onMenu: () -> Unit
 ) {
@@ -32,8 +33,7 @@ internal fun SeraNativeHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onMenu, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Outlined.Menu, contentDescription = "Open navigation menu",
-                    tint = Color(0xFF123D42), modifier = Modifier.size(25.dp))
+                SeraNavigationGlyph("Menu", Color(0xFF123D42), Modifier.semantics { contentDescription = "Open navigation menu" })
             }
             Spacer(Modifier.width(3.dp))
             Text("SERA", color = Color(0xFF087E83), fontSize = 25.sp, letterSpacing = (-1.1).sp,
@@ -41,15 +41,12 @@ internal fun SeraNativeHeader(
             Text(".et", color = Color(0xFF183B40), fontSize = 25.sp, letterSpacing = (-1.2).sp,
                 fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
-            if (section == "Home") {
-                IconButton(onClick = onCompose, enabled = canCompose, modifier = Modifier.size(44.dp)) {
-                    Icon(Icons.Outlined.AddCircleOutline, contentDescription = "Create post",
-                        tint = Color(0xFF087E83))
-                }
+            IconButton(onClick = onInbox, modifier = Modifier.size(48.dp)) {
+                SeraNavigationGlyph("Inbox", if (section == "Inbox") Color(0xFF087E83) else Color(0xFF183B40),
+                    Modifier.semantics { contentDescription = "Messages" }, active = section == "Inbox")
             }
             IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.Language, contentDescription = "Language",
-                    tint = Color(0xFF183B40))
+                SeraNavigationGlyph("Language", Color(0xFF183B40), Modifier.semantics { contentDescription = "Language" })
             }
         }
     }

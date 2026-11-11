@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -31,19 +33,13 @@ private val dockBackground = Color(0xF21A3438)
 private val dockActive = Color(0xFFA0F6E6)
 private val dockIdle = Color(0xFFD7E5E4)
 
-private fun dockIcon(section: String): ImageVector = when (section) {
-    "Home" -> Icons.Outlined.Home
-    "Network" -> Icons.Outlined.PeopleOutline
-    "Jobs" -> Icons.Outlined.WorkOutline
-    "Inbox" -> Icons.Outlined.ChatBubbleOutline
-    else -> Icons.Outlined.AccountCircle
-}
 
 /** Bottom-attached navigation bar: five equal targets, no floating margins. */
 @Composable
 internal fun SeraFloatingDock(
     selected: String,
-    sections: List<String>,
+    canCompose: Boolean,
+    onCompose: () -> Unit,
     onNavigate: (String) -> Unit,
     profileAvatarUrl: String? = null
 ) {
@@ -61,7 +57,16 @@ internal fun SeraFloatingDock(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            sections.forEach { section ->
+            listOf("Home", "Network", "Create", "Jobs", "Profile").forEach { section ->
+                if (section == "Create") {
+                    Box(Modifier.weight(1f).heightIn(min = 56.dp), contentAlignment = Alignment.Center) {
+                        IconButton(onClick = onCompose, enabled = canCompose, modifier = Modifier.size(48.dp)) {
+                            SeraNavigationGlyph("Create", if (canCompose) dockActive else dockIdle.copy(alpha = .45f),
+                                Modifier.semantics { contentDescription = "Create post" })
+                        }
+                    }
+                    return@forEach
+                }
                 val active = selected == section
                 val tint by animateColorAsState(
                     targetValue = if (active) dockActive else dockIdle,
@@ -91,8 +96,9 @@ internal fun SeraFloatingDock(
                             modifier = Modifier.size(26.dp).clip(CircleShape)
                         )
                     } else {
-                        Icon(dockIcon(section), contentDescription = section, tint = tint,
-                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale })
+                        SeraNavigationGlyph(section, tint,
+                            modifier = Modifier.semantics { contentDescription = section }
+                                .graphicsLayer { scaleX = scale; scaleY = scale }, active = active)
                     }
                     Spacer(Modifier.height(4.dp))
                     Box(Modifier.size(width = 10.dp, height = 2.dp)
