@@ -31,7 +31,7 @@ export default async function SafetyPage() {
     </div>
     <section className="account-security panel" aria-labelledby="safety-decisions-title">
       <h2 id="safety-decisions-title">Decisions on your posts</h2>
-      {decisionsError ? <p role="alert">Unable to load moderation decisions.</p> : !decisions?.length ? <p>No moderation decisions on your posts.</p> : decisions.map(d => <article key={d.id} style={{padding:"16px 0",borderBottom:"1px solid #dce7e9"}}>
+      {decisionsError ? <p role="alert">Unable to load moderation decisions.</p> : !decisions?.length ? <p>No moderation decisions on your posts.</p> : decisions.map((d: { id: string; action: string; explanation: string | null; policy: string; created_at: string }) => <article key={d.id} style={{padding:"16px 0",borderBottom:"1px solid #dce7e9"}}>
         <h3>{d.action === "quarantine" ? "Post temporarily hidden" : d.action === "remove" ? "Post removed from public view" : d.action === "restore" ? "Post restored" : "Post reviewed"}</h3>
         <p>{d.explanation}</p><small>Policy: {d.policy} · {new Date(d.created_at).toLocaleDateString("en-GB")}</small>
         {(d.action === "quarantine" || d.action === "remove") && (appealMap.has(d.id) ? <p>Appeal: {appealMap.get(d.id)}</p> : <form action={submitModerationAppeal} className="sera-visibility-form">
