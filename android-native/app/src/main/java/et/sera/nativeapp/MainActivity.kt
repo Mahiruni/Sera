@@ -1,10 +1,18 @@
 package et.sera.nativeapp
 
-import android.app.Activity
 import android.os.Bundle
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -32,8 +40,7 @@ private val bg = Color(0xFFF5FAFB)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(245,250,251)
-        window.navigationBarColor = android.graphics.Color.rgb(245,250,251)
+        enableEdgeToEdge()
         setContent { SeraApp(this) }
     }
 }
@@ -58,44 +65,105 @@ fun SeraApp(context: Context) {
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
     val scope = rememberCoroutineScope()
-    MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg)) {
+    BackHandler(enabled = accessToken != null && tab != "Home") { tab = "Home" }
+    MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
-            Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 30.sp)
-                Text("Your professional world, connected.", color = ink, fontSize = 16.sp)
-                if (restoring) {
+            if (restoring) {
+                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
-                } else if (accessToken == null) {
-                    Spacer(Modifier.height(20.dp))
-                    Text("Welcome back", fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
-                    OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(password, { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Button(onClick = {
-                        busy = true; message = ""
-                        scope.launch {
-                            val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
-                            if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
-                            accessToken = result.first
-                            message = result.second
-                            busy = false
-                        }
-                    }, enabled = !busy && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                        Text(if (busy) "Signing in…" else "Sign in")
-                    }
-                    Text("Sign in with your existing SERA account.", color = ink)
-                } else {
-                    Text("Signed in", color = teal, fontWeight = FontWeight.Bold)
-                    Text("Native Android foundation is ready. Feed, messaging and profile data are coming in Phase 2.", color = ink)
-                    Spacer(Modifier.weight(1f))
-                    NavigationBar {
-                        listOf("Home", "Network", "Jobs", "Inbox", "Profile").forEach { item ->
-                            NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Text("•") }, label = { Text(item) })
-                        }
-                    }
-                    Text("Selected: $tab", color = ink)
-                    TextButton(onClick = { session.clear(); accessToken = null; password = ""; message = "" }) { Text("Sign out") }
                 }
-                if (message.isNotEmpty()) Text(message, color = ink)
+            } else if (accessToken == null) {
+                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    val contentWidth = if (maxWidth > 600.dp) 480.dp else maxWidth
+                    Column(
+                        Modifier.widthIn(max = contentWidth).fillMaxWidth().align(Alignment.Center)
+                            .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 32.sp)
+                        Text("Your professional world, connected.", color = ink)
+                        Spacer(Modifier.height(24.dp))
+                        Text("Welcome back", color = ink, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                        OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(password, { password = it }, label = { Text("Password") },
+                            visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Button(
+                            onClick = {
+                                busy = true; message = ""
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
+                                    if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
+                                    accessToken = result.first
+                                    message = result.second
+                                    busy = false
+                                }
+                            },
+                            enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) { Text(if (busy) "Signing in…" else "Sign in") }
+                        Text("Sign in with your existing SERA account.", color = ink)
+                        if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            } else {
+                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    val expanded = maxWidth >= 700.dp
+                    val sections = listOf("Home", "Network", "Jobs", "Inbox", "Profile")
+                    Row(Modifier.fillMaxSize()) {
+                        if (expanded) NavigationRail {
+                            sections.forEach { item ->
+                                NavigationRailItem(
+                                    selected = tab == item, onClick = { tab = item },
+                                    icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
+                                    label = { Text(item) }
+                                )
+                            }
+                        }
+                        Scaffold(
+                            modifier = Modifier.weight(1f),
+                            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                            topBar = {
+                                Surface(color = bg, tonalElevation = 2.dp) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                                        Text(tab, color = ink)
+                                    }
+                                }
+                            },
+                            bottomBar = {
+                                if (!expanded) NavigationBar(containerColor = Color(0xFF173438)) {
+                                    sections.forEach { item ->
+                                        NavigationBarItem(
+                                            selected = tab == item, onClick = { tab = item },
+                                            icon = { Text(sectionSymbol(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White, fontSize = 20.sp) },
+                                            label = { Text(item, color = if (tab == item) Color(0xFF7CE1D6) else Color.White) },
+                                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                                        )
+                                    }
+                                }
+                            }
+                        ) { padding ->
+                            Column(
+                                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+                                    .padding(24.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(tab, color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                                Text(sectionDescription(tab), color = ink)
+                                if (tab == "Profile") {
+                                    TextButton(onClick = {
+                                        session.clear(); accessToken = null; password = ""; message = ""; tab = "Home"
+                                    }) { Text("Sign out") }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -137,4 +205,20 @@ private class SessionStore(context: Context) {
     fun readRefreshToken(): String? = prefs.getString("refresh_token", null)
     fun saveRefreshToken(value: String) { prefs.edit().putString("refresh_token", value).apply() }
     fun clear() { prefs.edit().clear().apply() }
+}
+
+private fun sectionSymbol(section: String): String = when (section) {
+    "Home" -> "⌂"
+    "Network" -> "◎"
+    "Jobs" -> "▣"
+    "Inbox" -> "✉"
+    else -> "◉"
+}
+
+private fun sectionDescription(section: String): String = when (section) {
+    "Home" -> "Your professional feed will appear here when the native feed integration is ready."
+    "Network" -> "Discover and connect with professionals. Network data integration is next."
+    "Jobs" -> "Find relevant opportunities. Native job discovery is coming."
+    "Inbox" -> "Your conversations will appear here after messaging integration."
+    else -> "Your professional identity. Profile data integration is coming."
 }
