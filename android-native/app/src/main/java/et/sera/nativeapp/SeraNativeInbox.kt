@@ -102,6 +102,30 @@ private fun loadNativeMessages(token: String, conversationId: String): Pair<List
     } catch (_: Exception) { null to "Unable to display messages." }
 }
 
+private fun markNativeMessagesRead(token: String, conversationId: String, userId: String) {
+    if (conversationId.isBlank() || userId.isBlank()) return
+    var conn: HttpURLConnection? = null
+    try {
+        val path = "professional_messages?conversation_id=eq.$conversationId&sender_id=neq.$userId&read_at=is.null"
+        conn = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/" + path)
+            .openConnection() as HttpURLConnection).apply {
+            requestMethod = "PATCH"
+            doOutput = true
+            connectTimeout = 10000
+            readTimeout = 10000
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "application/json")
+        }
+        conn.outputStream.use {
+            it.write(JSONObject().put("read_at", java.time.Instant.now().toString()).toString().toByteArray())
+        }
+        conn.responseCode
+    } catch (_: Exception) {
+        // Reading the conversation remains possible even if receipt sync fails.
+    } finally { conn?.disconnect() }
+}
+
 @Composable
 fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier) {
     var conversations by remember { mutableStateOf<List<NativeConversation>>(emptyList()) }
@@ -126,7 +150,12 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         val conversation = selected ?: return@LaunchedEffect
         while (true) {
             val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
-            result.first?.let { messages = it }
+            result.first?.let { latest ->
+                messages = latest
+                if (latest.any { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }) {
+                    withContext(Dispatchers.IO) { markNativeMessagesRead(token, conversation.id, userId) }
+                }
+            }
             if (result.second.isNotBlank()) error = result.second else error = ""
             delay(5000)
         }
