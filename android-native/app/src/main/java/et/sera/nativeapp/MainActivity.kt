@@ -126,40 +126,27 @@ fun SeraApp(context: Context) {
                     CircularProgressIndicator()
                 }
             } else if (accessToken == null) {
-                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                    val contentWidth = if (maxWidth > 600.dp) 480.dp else maxWidth
-                    Column(
-                        Modifier.widthIn(max = contentWidth).fillMaxWidth().align(Alignment.Center)
-                            .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 32.sp)
-                        Text(stringResource(R.string.tagline), color = ink)
-                        Spacer(Modifier.height(24.dp))
-                        Text(stringResource(R.string.welcome), color = ink, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-                        OutlinedTextField(email, { email = it }, label = { Text(stringResource(R.string.email)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.password)) },
-                            visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Button(
-                            onClick = {
-                                busy = true; message = ""
-                                scope.launch {
-                                    val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
-                                    if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
-                                    authenticatedUserId = ""
-                                    accessToken = result.first
-                                    message = result.second
-                                    busy = false
-                                }
-                            },
-                            enabled = !busy && email.isNotBlank() && password.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) { Text(if (busy) stringResource(R.string.signing_in) else stringResource(R.string.sign_in)) }
-                        Text(stringResource(R.string.signin_hint), color = ink)
-                        if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.error)
-                    }
-                }
+                SeraGuestEntry(
+                    email = email,
+                    password = password,
+                    onEmailChange = { email = it; message = "" },
+                    onPasswordChange = { password = it; message = "" },
+                    busy = busy,
+                    message = message,
+                    onSignIn = {
+                        busy = true
+                        message = ""
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
+                            if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
+                            authenticatedUserId = ""
+                            accessToken = result.first
+                            message = result.second
+                            busy = false
+                        }
+                    },
+                    onLanguage = { showLanguagePicker = true }
+                )
             } else {
                 BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                     val expanded = maxWidth >= 700.dp
