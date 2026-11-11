@@ -97,7 +97,7 @@ fun SeraGuestEntry(
     onAuthenticated: (String, String) -> Unit
 ) {
     val context = LocalContext.current
-    var entryPage by rememberSaveable { mutableStateOf("welcome") }
+    var entryPage by rememberSaveable { mutableStateOf("signin") }
     var showPassword by remember { mutableStateOf(false) }
 
     Box(
@@ -175,10 +175,10 @@ fun SeraGuestEntry(
                 } else {
                     Spacer(Modifier.height(18.dp))
                     TextButton(onClick = { entryPage = "welcome" }, contentPadding = PaddingValues(0.dp)) {
-                        Text("←  Back to welcome", color = entryTeal)
+                        Text("Explore SERA", color = entryTeal)
                     }
-                    Text("Welcome back.", fontSize = 33.sp, fontWeight = FontWeight.Bold, color = entryInk)
-                    Text("Continue to your professional world.", color = entryMuted)
+                    Text("Welcome to SERA.", fontSize = 33.sp, fontWeight = FontWeight.Bold, color = entryInk)
+                    Text("Sign in to your professional network, or create an account below.", color = entryMuted)
                     OutlinedTextField(
                         value = email, onValueChange = onEmailChange,
                         label = { Text("Email address") },
@@ -226,7 +226,7 @@ fun SeraGuestEntry(
                         Text("Create a SERA account", color = entryTeal, fontWeight = FontWeight.Bold)
                     }
                     TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Google or LinkedIn sign-in (web)", color = entryTeal)
+                        Text("Google or LinkedIn sign-in opens the website", color = entryTeal)
                     }
                 }
                 Spacer(Modifier.height(5.dp))
