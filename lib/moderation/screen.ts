@@ -15,7 +15,7 @@ export async function screenSubmission(
   images: Buffer[],
 ): Promise<ModerationResult> {
   const key = process.env.SERA_MODERATION_API_KEY;
-  if (!key) return { verdict: "review", reason: "Moderation provider is not configured." };
+  if (!key) { console.error("[sera-moderation] Missing server-side key"); return { verdict: "review", reason: "Moderation provider is not configured." }; }
   const text = [post.title, post.body, post.quote_source, post.category, ...post.skills].filter(Boolean).join("\n").slice(0, 16000);
   const input: Array<Record<string, string>> = [];
   if (text) input.push({ type: "text", text });
@@ -31,15 +31,26 @@ export async function screenSubmission(
       signal: controller.signal,
       cache: "no-store",
     });
-    if (!response.ok) return { verdict: "review", reason: "Moderation service unavailable." };
+    if (!response.ok) {
+      // Log only diagnostic metadata. Never log the key, posts, images, or provider body.
+      const errorData = await response.json().catch(() => null) as
+        { error?: { code?: unknown } } | null;
+      const rawCode = errorData?.error?.code;
+      const code = typeof rawCode === "string" && /^[a-z0-9_]{1,80}$/i.test(rawCode) ? rawCode : "unspecified";
+      console.warn("[sera-moderation] API error", {
+        status: response.status, code, requestId: response.headers.get("x-request-id") || "unavailable",
+      });
+      return { verdict: "review", reason: "Moderation service unavailable." };
+    }
     const data = await response.json() as ModerationResponse;
-    if (!data.results?.length) return { verdict: "review", reason: "No moderation verdict returned." };
+    if (!data.results?.length) { console.warn("[sera-moderation] Invalid API response: no verdict"); return { verdict: "review", reason: "No moderation verdict returned." }; }
     const flagged = data.results.some(r => r.flagged);
     if (!flagged) return { verdict: "approved" };
     // Flagged content is held for review, not automatically deleted.
     const categories = [...new Set(data.results.flatMap(r => Object.entries(r.categories || {}).filter(([,value]) => value).map(([name]) => name)))];
     return { verdict: "rejected", reason: categories.join(", ").slice(0, 200) || "Safety policy" };
-  } catch {
+  } catch (error) {
+    console.warn("[sera-moderation] Provider connection failure", { category: error instanceof Error && error.name === "AbortError" ? "timeout" : "network" });
     return { verdict: "review", reason: "Moderation service unavailable." };
   } finally {
     clearTimeout(timeout);
