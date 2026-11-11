@@ -38,15 +38,14 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                     ElevatedCard(shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                post.avatarUrl?.let { AsyncImage(model = it, contentDescription = stringResource(R.string.profile_photo), modifier = Modifier.size(42.dp)) }
+                                post.avatarUrl?.let { SeraMediaImage(url = it, description = stringResource(R.string.profile_photo), widthPx = 128, heightPx = 128, modifier = Modifier.size(42.dp)) }
                                 Text(post.author, style = MaterialTheme.typography.titleMedium)
                             }
                             if (post.title.isNotBlank()) Text(post.title, style = MaterialTheme.typography.titleMedium)
                             if (post.body.isNotBlank()) Text(post.body, style = MaterialTheme.typography.bodyLarge)
                             post.imageUrl?.let {
-                                AsyncImage(model = it, contentDescription = stringResource(R.string.post_image),
-                                    modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
-                                    contentScale = ContentScale.Crop)
+                                SeraMediaImage(url = it, description = stringResource(R.string.post_image), widthPx = 1080, heightPx = 720,
+                                    modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp))
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 TextButton(onClick = { onLike(post) }) { Text("♡ " + post.likes) }
