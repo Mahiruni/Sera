@@ -194,16 +194,11 @@ fun SeraApp(context: Context) {
                                 }
                             },
                             bottomBar = {
-                                if (!expanded) NavigationBar(containerColor = Color(0xFF173438)) {
-                                    sections.forEach { item ->
-                                        NavigationBarItem(
-                                            selected = tab == item, onClick = { navigateTo(item) },
-                                            icon = { Text(sectionSymbol(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White, fontSize = 20.sp) },
-                                            label = { Text(sectionLabel(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White) },
-                                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-                                        )
-                                    }
-                                }
+                                if (!expanded) SeraFloatingDock(
+                                    selected = tab,
+                                    sections = sections,
+                                    onNavigate = ::navigateTo
+                                )
                             }
                         ) { padding ->
                             Crossfade(targetState = tab, animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy), label = "section transition") { currentTab ->
