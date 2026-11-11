@@ -2,6 +2,9 @@ package et.sera.nativeapp
 
 import android.app.Activity
 import android.os.Bundle
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -31,15 +34,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.rgb(245,250,251)
         window.navigationBarColor = android.graphics.Color.rgb(245,250,251)
-        setContent { SeraApp() }
+        setContent { SeraApp(this) }
     }
 }
 
 @Composable
-fun SeraApp() {
+fun SeraApp(context: Context) {
+    val session = remember { SessionStore(context) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf<String?>(null) }
+    var restoring by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        val refresh = session.readRefreshToken()
+        if (refresh != null) {
+            val result = withContext(Dispatchers.IO) { authenticate("refresh_token", refresh) }
+            if (result.first != null) { accessToken = result.first; result.third?.let { session.saveRefreshToken(it) } }
+            else session.clear()
+        }
+        restoring = false
+    }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
@@ -49,7 +63,9 @@ fun SeraApp() {
             Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 30.sp)
                 Text("Your professional world, connected.", color = ink, fontSize = 16.sp)
-                if (accessToken == null) {
+                if (restoring) {
+                    CircularProgressIndicator()
+                } else if (accessToken == null) {
                     Spacer(Modifier.height(20.dp))
                     Text("Welcome back", fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
                     OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -58,6 +74,7 @@ fun SeraApp() {
                         busy = true; message = ""
                         scope.launch {
                             val result = withContext(Dispatchers.IO) { signIn(email.trim(), password) }
+                            if (result.first != null) result.third?.let { session.saveRefreshToken(it) }
                             accessToken = result.first
                             message = result.second
                             busy = false
@@ -76,7 +93,7 @@ fun SeraApp() {
                         }
                     }
                     Text("Selected: $tab", color = ink)
-                    TextButton(onClick = { accessToken = null; password = ""; message = "" }) { Text("Sign out") }
+                    TextButton(onClick = { session.clear(); accessToken = null; password = ""; message = "" }) { Text("Sign out") }
                 }
                 if (message.isNotEmpty()) Text(message, color = ink)
             }
@@ -84,11 +101,13 @@ fun SeraApp() {
     }
 }
 
-private fun signIn(email: String, password: String): Pair<String?, String> {
+private fun signIn(email: String, password: String): Triple<String?, String, String?> = authenticate("password", password, email)
+
+private fun authenticate(grantType: String, credential: String, email: String = ""): Triple<String?, String, String?> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
-        return null to "Supabase public configuration is missing from the build."
+        return Triple(null, "Supabase public configuration is missing from the build.", null)
     return try {
-        val url = URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/auth/v1/token?grant_type=password")
+        val url = URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/auth/v1/token?grant_type=" + grantType)
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15000; readTimeout = 15000
@@ -96,10 +115,26 @@ private fun signIn(email: String, password: String): Pair<String?, String> {
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
         }
-        connection.outputStream.use { it.write(JSONObject().put("email", email).put("password", password).toString().toByteArray()) }
+        connection.outputStream.use { it.write((if (grantType == "password") JSONObject().put("email", email).put("password", credential) else JSONObject().put("refresh_token", credential)).toString().toByteArray()) }
         val response = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream)
             ?.bufferedReader()?.use { it.readText() } ?: ""
-        if (connection.responseCode in 200..299) JSONObject(response).optString("access_token").takeIf { it.isNotEmpty() } to "Signed in successfully"
-        else null to (JSONObject(response).optString("msg").ifBlank { "Sign-in failed" })
-    } catch (e: Exception) { null to "Connection failed. Please retry." }
+        if (connection.responseCode in 200..299) {
+            val data = JSONObject(response)
+            Triple(data.optString("access_token").takeIf { it.isNotEmpty() }, "Signed in successfully", data.optString("refresh_token").takeIf { it.isNotEmpty() })
+        } else Triple(null, JSONObject(response).optString("msg").ifBlank { "Sign-in failed" }, null)
+    } catch (e: Exception) { Triple(null, "Connection failed. Please retry.", null) }
+}
+
+
+private class SessionStore(context: Context) {
+    private val prefs = EncryptedSharedPreferences.create(
+        context,
+        "sera_native_session",
+        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+    fun readRefreshToken(): String? = prefs.getString("refresh_token", null)
+    fun saveRefreshToken(value: String) { prefs.edit().putString("refresh_token", value).apply() }
+    fun clear() { prefs.edit().clear().apply() }
 }
