@@ -209,7 +209,7 @@ export function NetworkHome({
               </Link>
             ))}
           </nav>
-          <FeedComposer name={name} avatarUrl={avatarUrl} />
+          <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} />
           <nav className="social-filters" aria-label="Filter stories">
             <Link
               href={mine ? "/feed?view=mine" : "/feed"}

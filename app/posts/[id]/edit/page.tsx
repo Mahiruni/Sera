@@ -21,7 +21,7 @@ export default async function Edit({
   return (
     <div className="container page social-page social-detail">
       <SocialNav />
-      <PostComposer post={posts[0]} />
+      <PostComposer post={posts[0]} draftOwnerId={user.id} />
     </div>
   );
 }

@@ -6,8 +6,9 @@ import { ImagePlus, FolderKanban, Quote, PenLine, X, Users } from "lucide-react"
 import { MemberAvatar } from "@/components/activity/avatar";
 import { PostComposer } from "@/components/social/PostComposer";
 import type { PostKind } from "@/lib/social/validation";
+import { seraDraftKey, draftFromSeraForm, saveSeraDraft } from "./post-drafts";
 
-export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatarUrl?: string | null; userId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [initialKind, setInitialKind] = useState<PostKind>("idea");
@@ -21,7 +22,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     document.body.style.overflow = "hidden";
     close.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); setOpen(false); }
+      if (event.key === "Escape") { event.preventDefault(); dismiss(); }
       if (event.key !== "Tab") return;
       const elements = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, a[href]') ?? []).filter(el => el.getClientRects().length > 0);
       if (!elements.length) return;
@@ -31,15 +32,28 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
     };
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; triggerElement?.focus(); };
-  }, [open]);
+  }, [open, dismiss]);
+  const dismiss = useCallback(() => {
+    const form = dialog.current?.querySelector("form");
+    const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) =>
+      !["kind", "quote_source"].includes(key) &&
+      (typeof value === "string" ? value.trim().length > 0 : value.size > 0)
+    ) : false;
+    if (dirty) {
+      const confirmed = window.confirm(
+        "Close the editor? Your text will be saved on this device. Media attachments must be reselected."
+      );
+      if (!confirmed) return;
+      if (form && !saveSeraDraft(seraDraftKey(userId), draftFromSeraForm(form, initialKind))) {
+        window.alert("Draft storage is unavailable. Copy your writing before closing.");
+        return;
+      }
+    }
+    setOpen(false);
+  }, [userId, initialKind]);
   const launch = (kind: PostKind) => { setInitialKind(kind); setOpen(true); };
   const onPublished = useCallback((id: string) => { setOpen(false); router.push("/posts/" + id); router.refresh(); }, [router]);
-  const dismiss = () => {
-    const form = dialog.current?.querySelector("form");
-    const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) => !["kind", "quote_source"].includes(key) && (typeof value === "string" ? value.trim().length > 0 : value.size > 0)) : false;
-    if (dirty && !window.confirm("Close the editor? Any unsaved changes will be lost.")) return;
-    setOpen(false);
-  };
+
   return <>
     <section className="sera-feed-compose" aria-label="Create a post">
       <div className="sera-feed-compose-top">
@@ -58,7 +72,7 @@ export function FeedComposer({ name, avatarUrl }: { name: string; avatarUrl?: st
         <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet">
           <div className="sera-compose-dialog-head"><h2 id="sera-compose-heading"><span className="sera-premium-heading-icon"><PenLine size={21}/></span> Create Post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
           <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small className="sera-premium-audience"><Users size={14}/> SERA members</small></div></div>
-          <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} onPublished={onPublished} /></div>
+          <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} draftOwnerId={userId} onPublished={onPublished} /></div>
         </div>
       </div>, document.body
     )}
