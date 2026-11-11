@@ -1,4 +1,5 @@
 import { InboxRefresh } from "@/components/network/inbox-refresh";
+import { MessageAttachmentPicker } from "@/components/network/message-attachment-picker";
 import { PageIntro } from "@/components/page-intro";
 import { ConversationTyping } from "@/components/network/conversation-typing";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
@@ -121,8 +122,7 @@ export default async function ProfessionalInbox({ searchParams }: {
             <form action={sendProfessionalMessage} encType="multipart/form-data" className="sera-inbox-composer">
               <input type="hidden" name="conversation" value={selected.id} />
               <ConversationTyping conversation={selected.id} />
-              <label htmlFor="professional-attachment"><Paperclip size={16} aria-hidden="true" /> Optional private attachment (JPG, PNG, WebP, PDF; up to 5 MB)</label>
-              <input id="professional-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
+              <MessageAttachmentPicker />
               <button type="submit" className="network-button"><Send size={16} aria-hidden="true" /> Send message</button>
             </form>
             <form action={markProfessionalMessagesRead} className="sera-inbox-read-form">
