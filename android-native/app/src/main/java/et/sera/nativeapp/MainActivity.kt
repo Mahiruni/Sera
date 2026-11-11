@@ -518,7 +518,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                                     if (result.first) refresh++ else dataError = result.second
                                                 }
                                             },
-                                            modifier = pageModifier
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", pageModifier)
                                         "Network" -> SeraNativeNetwork(
@@ -528,8 +528,9 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         else -> Column(
-                                            pageModifier.verticalScroll(rememberScrollState())
-                                                .padding(20.dp),
+                                            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                                                .padding(start = 20.dp, end = 20.dp,
+                                                    top = 68.dp, bottom = if (expanded) 18.dp else 92.dp),
                                             verticalArrangement = Arrangement.spacedBy(16.dp)
                                         ) {
                                             SeraProfile(
