@@ -1,6 +1,8 @@
 package et.sera.nativeapp
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +18,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.unit.dp
 
 private class ComposerDrafts(context: Context) {
-    private val preferences = context.getSharedPreferences("sera_composer_drafts", Context.MODE_PRIVATE)
+    private val preferences = EncryptedSharedPreferences.create(context, "sera_composer_drafts", MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(), EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
     fun load(userId: String) = preferences.getString(userId, "") ?: ""
     fun save(userId: String, text: String) { preferences.edit().putString(userId, text).apply() }
     fun clear(userId: String) { preferences.edit().remove(userId).apply() }
@@ -29,12 +31,11 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
     val focus = LocalFocusManager.current
     val drafts = remember(context) { ComposerDrafts(context) }
     var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
-    var confirmDiscard by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     val hasContent = body.isNotBlank()
     fun close() {
         focus.clearFocus()
-        if (hasContent) onDismiss() else onDismiss()
+        onDismiss()
     }
     BackHandler { close() }
     DisposableEffect(userId, body) {
