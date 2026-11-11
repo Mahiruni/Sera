@@ -30,7 +30,11 @@ jobs:
         env:
           SERA_URL: ${{ vars.SERA_SUPABASE_URL }}
           SERA_PUBLIC_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
-        run: gradle :app:assembleDebug --no-daemon -PSERA_SUPABASE_URL="$SERA_URL" -PSERA_SUPABASE_ANON_KEY="$SERA_PUBLIC_KEY"
+        run: |
+          if [ -z "$SERA_URL" ] || [ -z "$SERA_PUBLIC_KEY" ]; then
+            echo "::warning::Supabase configuration missing; APK will compile but login cannot work until SERA_SUPABASE_URL and SERA_SUPABASE_ANON_KEY are configured."
+          fi
+          gradle :app:assembleDebug --no-daemon -PSERA_SUPABASE_URL="$SERA_URL" -PSERA_SUPABASE_ANON_KEY="$SERA_PUBLIC_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: SERA-Native-Phase1-debug-apk
