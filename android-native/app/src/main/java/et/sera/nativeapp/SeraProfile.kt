@@ -67,6 +67,16 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
             Button(onClick = { editing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 shape = RoundedCornerShape(16.dp)) { Text("Edit profile") }
         }
+        if (token.isNotBlank() && userId.isNotBlank()) {
+            ElevatedCard(
+                colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Box(Modifier.fillMaxWidth().padding(18.dp)) {
+                    SeraNativeAccountFiles(token, userId, onUploaded = onRetry)
+                }
+            }
+        }
         if (loading) SeraLoadingCards(count = 1)
         if (error.isNotBlank()) {
             Text(error, color = MaterialTheme.colorScheme.error)
