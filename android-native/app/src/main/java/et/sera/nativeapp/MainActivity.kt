@@ -85,6 +85,24 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
         val token = accessToken ?: return@LaunchedEffect
         withContext(Dispatchers.IO) { requestSeraWelcome(token) }
     }
+    var availableUpdate by remember { mutableStateOf<SeraRelease?>(null) }
+    var updateNotice by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        availableUpdate = checkSeraUpdate()
+    }
+    availableUpdate?.let { release ->
+        SeraUpdatePrompt(release, onDismiss = { availableUpdate = null }, onDownload = {
+            val queued = downloadSeraUpdate(context, release)
+            updateNotice = if (queued) "SERA update downloading. Open the completed download notification to install." else "Unable to start download. Please retry."
+            availableUpdate = null
+        })
+    }
+    if (updateNotice.isNotBlank()) AlertDialog(
+        onDismissRequest = { updateNotice = "" },
+        title = { Text("SERA update") },
+        text = { Text(updateNotice) },
+        confirmButton = { TextButton(onClick = { updateNotice = "" }) { Text("OK") } }
+    )
     var oauthFailure by remember { mutableStateOf("") }
     LaunchedEffect(oauthCallback) {
         val callbackUri = oauthCallback ?: return@LaunchedEffect
