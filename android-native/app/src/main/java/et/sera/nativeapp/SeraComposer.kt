@@ -64,9 +64,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         onDismiss()
     }
     BackHandler { close() }
-    DisposableEffect(userId, body) {
-        onDispose { drafts.save(userId, body) }
-    }
+    LaunchedEffect(userId, body) { drafts.save(userId, body) }
     ModalBottomSheet(onDismissRequest = { close() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(
             Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState())
