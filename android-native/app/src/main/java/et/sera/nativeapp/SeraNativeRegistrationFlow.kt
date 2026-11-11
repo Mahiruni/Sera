@@ -2,6 +2,8 @@ package et.sera.nativeapp
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -69,6 +72,17 @@ fun SeraNativeRegistrationFlow(
         TextButton(onClick = { if (emailPending) emailPending = false else onBack() },
             contentPadding = PaddingValues(0.dp)) { Text("←  Back", color = authTeal) }
         if (emailPending) {
+            Surface(color = Color(0xFF163D40), shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ONE MORE STEP", fontSize = 10.sp, letterSpacing = 1.5.sp,
+                        color = Color(0xFF91E8D9), fontWeight = FontWeight.Bold)
+                    Text("Your future starts here.", fontSize = 23.sp,
+                        fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Secure your professional identity with email verification.",
+                        fontSize = 13.sp, color = Color(0xFFCAE4E0))
+                }
+            }
             Text("Check your inbox", fontSize = 31.sp, fontWeight = FontWeight.Bold, color = authInk)
             Text("We received your account request for:", color = authGray)
             Text(email.trim(), fontWeight = FontWeight.SemiBold, color = authInk)
@@ -124,18 +138,31 @@ fun SeraNativeRegistrationFlow(
                 shape = RoundedCornerShape(16.dp)
             ) { Text("I've verified my email — Sign in") }
         } else {
-            Text("Create your account", fontSize = 31.sp, lineHeight = 37.sp, color = authInk, fontWeight = FontWeight.Bold)
-            Text("Join the professional SERA community — right here in the app.", color = authGray)
+            Surface(color = Color(0xFF163D40), shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("JOIN THE SERA COMMUNITY", fontSize = 10.sp, letterSpacing = 1.4.sp,
+                        color = Color(0xFF9AE8DB), fontWeight = FontWeight.Bold)
+                    Text("Build a profile.\nOpen new doors.", fontSize = 27.sp,
+                        lineHeight = 33.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("People, ideas, projects and opportunities — together.",
+                        fontSize = 13.sp, color = Color(0xFFD1E8E4))
+                }
+            }
+            Text("Create your account", fontSize = 25.sp, color = authInk,
+                fontWeight = FontWeight.Bold)
+            Text("Start with the essentials. You can complete your profile later.",
+                color = authGray, fontSize = 13.sp)
             OutlinedTextField(
                 value = name, onValueChange = { if (it.length <= 100) name = it },
                 label = { Text("Full name") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
             )
             OutlinedTextField(
                 value = email, onValueChange = { if (it.length <= 254) email = it },
                 label = { Text("Email address") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
             )
             OutlinedTextField(
                 value = password, onValueChange = { if (it.length <= 128) password = it },
@@ -152,7 +179,9 @@ fun SeraNativeRegistrationFlow(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
-            Text("I am joining as", color = authInk, fontWeight = FontWeight.SemiBold)
+            Text("YOUR PROFESSIONAL PATH", color = authGray, fontSize = 11.sp,
+                letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+            Text("How will you use SERA?", color = authInk, fontWeight = FontWeight.SemiBold)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FilterChip(
                     selected = journey == "candidate",
@@ -170,7 +199,7 @@ fun SeraNativeRegistrationFlow(
             Text("Preferred language", color = authInk, fontWeight = FontWeight.SemiBold)
             var languageMenu by remember { mutableStateOf(false) }
             Box {
-                OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), shape = RoundedCornerShape(16.dp)) {
                     Text(nativeLocales.first { it.first == locale }.second + "  ▾", color = authInk)
                 }
                 DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
@@ -220,7 +249,7 @@ fun SeraNativeRegistrationFlow(
                 enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = authTeal),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(18.dp)
             ) {
                 if (busy) {
                     CircularProgressIndicator(modifier = Modifier.size(21.dp), strokeWidth = 2.dp, color = Color.White)
