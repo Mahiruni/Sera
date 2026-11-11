@@ -7,7 +7,6 @@ import android.provider.Settings
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.database.Cursor
 import android.content.ActivityNotFoundException
 import android.os.Environment
 import androidx.compose.foundation.layout.*
@@ -83,22 +82,26 @@ internal fun SeraUpdatePrompt(release: SeraRelease, onDismiss: () -> Unit, onDow
     )
 }
 
-internal data class SeraDownloadStatus(val progress: Int, val complete: Boolean, val failed: Boolean)
+internal data class SeraDownloadStatus(
+    val progress: Int, val complete: Boolean, val failed: Boolean,
+    val downloadedBytes: Long = 0L, val totalBytes: Long = -1L
+)
 
 internal fun seraDownloadStatus(context: Context, downloadId: Long): SeraDownloadStatus {
-    val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    val cursor: Cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
-    cursor.use {
-        if (!it.moveToFirst()) return SeraDownloadStatus(0, false, true)
-        val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-        val downloaded = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-        val progress = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
-        return SeraDownloadStatus(progress, status == DownloadManager.STATUS_SUCCESSFUL,
-            status == DownloadManager.STATUS_FAILED)
-    }
+    return try {
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        manager.query(DownloadManager.Query().setFilterById(downloadId)).use { cursor ->
+            if (!cursor.moveToFirst()) return SeraDownloadStatus(0, false, true)
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+            val progress = if (total > 0L) ((downloaded * 100L) / total).toInt().coerceIn(0, 100) else 0
+            SeraDownloadStatus(progress, status == DownloadManager.STATUS_SUCCESSFUL,
+                status == DownloadManager.STATUS_FAILED,
+                downloadedBytes = downloaded, totalBytes = total)
+        }
+    } catch (_: Exception) { SeraDownloadStatus(0, false, true) }
 }
-
 
 internal enum class SeraInstallResult { LAUNCHED, PERMISSION_REQUIRED, FAILED }
 
