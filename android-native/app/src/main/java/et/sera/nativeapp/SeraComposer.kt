@@ -207,21 +207,24 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             Button(onClick = {
                 publishing = true; publishMessage = ""
                 scope.launch {
-                    val result = publishNativeText(token, body)
+                    val result = if (selectedImages.isNotEmpty())
+                        publishNativeImages(context, token, body, selectedImages.toList())
+                    else publishNativeText(token, body)
                     publishing = false
                     if (result.first) { drafts.clear(userId); body = ""; onPublished() }
                     else publishMessage = result.second
                 }
-            }, enabled = !publishing && body.trim().length >= 3 && selectedImages.isEmpty() && selectedVideo == null,
+            }, enabled = !publishing && body.trim().length >= 3 && selectedVideo == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 shape = RoundedCornerShape(17.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = accent)) {
-                Text(if (publishing) "Publishing…" else "Publish post", fontWeight = FontWeight.Bold)
+                Text(if (publishing) "Publishing…" else if (selectedImages.isNotEmpty()) "Publish photo post" else "Publish post", fontWeight = FontWeight.Bold)
             }
             if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
-            if (selectedImages.isNotEmpty() || selectedVideo != null) Text("Media publishing is not available yet. Remove attachments to publish a text post; selected files are not uploaded.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            if (selectedVideo != null) Text("Video publishing is not available yet. Remove the video to publish.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            if (selectedImages.isNotEmpty()) Text("Photos are checked for safety before your post appears.", style = MaterialTheme.typography.bodySmall, color = accent)
             Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
 
