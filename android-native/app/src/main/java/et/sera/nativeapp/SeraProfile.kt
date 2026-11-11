@@ -7,7 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +19,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 
 @Composable
-fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -> Unit, onSignOut: () -> Unit) {
+fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -> Unit, onSignOut: () -> Unit, token: String = "", userId: String = "") {
+    var editing by remember { mutableStateOf(false) }
+    if (editing && token.isNotBlank() && userId.isNotBlank()) SeraNativeProfileEditor(token, userId, onDismiss = { editing = false }, onSaved = { editing = false; onRetry() })
     val name = identity.lineSequence().firstOrNull().orEmpty().ifBlank { "SERA member" }
     val email = identity.lineSequence().drop(1).firstOrNull().orEmpty()
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -60,6 +62,10 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
                     }
                 }
             }
+        }
+        if (token.isNotBlank() && userId.isNotBlank()) {
+            Button(onClick = { editing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                shape = RoundedCornerShape(16.dp)) { Text("Edit profile") }
         }
         if (loading) SeraLoadingCards(count = 1)
         if (error.isNotBlank()) {
