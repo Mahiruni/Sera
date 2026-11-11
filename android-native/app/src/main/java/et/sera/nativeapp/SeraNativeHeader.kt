@@ -5,7 +5,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,25 +24,28 @@ internal fun SeraNativeHeader(
     canCompose: Boolean,
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
-    onInbox: () -> Unit
+    onMenu: () -> Unit
 ) {
-    Surface(color = Color(0xFFF5FAFB), shadowElevation = 1.dp) {
+    Surface(color = Color(0xF8F5FAFB), shadowElevation = 1.dp) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("SERA", color = Color(0xFF087E83), fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
-            Text(".et", color = Color(0xFF183B40), fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = onMenu, modifier = Modifier.size(44.dp)) {
+                Icon(Icons.Outlined.Menu, contentDescription = "Open navigation menu",
+                    tint = Color(0xFF123D42), modifier = Modifier.size(25.dp))
+            }
+            Spacer(Modifier.width(3.dp))
+            Text("SERA", color = Color(0xFF087E83), fontSize = 25.sp, letterSpacing = (-1.1).sp,
+                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black)
+            Text(".et", color = Color(0xFF183B40), fontSize = 25.sp, letterSpacing = (-1.2).sp,
+                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             if (section == "Home") {
-                IconButton(onClick = onCompose, enabled = canCompose, modifier = Modifier.size(48.dp)) {
+                IconButton(onClick = onCompose, enabled = canCompose, modifier = Modifier.size(44.dp)) {
                     Icon(Icons.Outlined.AddCircleOutline, contentDescription = "Create post",
                         tint = Color(0xFF087E83))
                 }
-            }
-            IconButton(onClick = onInbox, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Inbox",
-                    tint = Color(0xFF183B40))
             }
             IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.Outlined.Language, contentDescription = "Language",
