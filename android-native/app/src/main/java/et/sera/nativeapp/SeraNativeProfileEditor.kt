@@ -82,22 +82,36 @@ internal fun SeraNativeProfileEditor(
     onSaved: () -> Unit
 ) {
     var form by remember { mutableStateOf(NativeProfileFields()) }
+    var original by remember { mutableStateOf(NativeProfileFields()) }
+    var showDiscard by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(token, userId) {
         val result = withContext(Dispatchers.IO) { loadNativeProfile(token, userId) }
-        result.first?.let { form = it }
+        result.first?.let { form = it; original = it }
         error = result.second
         loading = false
     }
-    SeraSignatureSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 690.dp)
+    fun requestClose() {
+        if (saving) return
+        if (form != original) showDiscard = true else onDismiss()
+    }
+    if (showDiscard) AlertDialog(
+        onDismissRequest = { showDiscard = false },
+        title = { Text("Discard profile changes?") },
+        text = { Text("Unsaved changes to your professional profile will be lost.") },
+        confirmButton = { TextButton(onClick = { showDiscard = false; onDismiss() }) { Text("Discard") } },
+        dismissButton = { TextButton(onClick = { showDiscard = false }) { Text("Continue editing") } },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    )
+    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 690.dp).imePadding()
             .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Edit professional profile", style = MaterialTheme.typography.headlineSmall)
-            Text("Your identity, skills and experience on SERA.",
+            Text("Present your skills, experience and professional story.",
                 style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)

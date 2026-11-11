@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -115,10 +116,11 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
     var error by remember(postId) { mutableStateOf("") }
     var loading by remember(postId) { mutableStateOf(true) }
     var retry by remember(postId) { mutableIntStateOf(0) }
-    var draft by remember(postId) { mutableStateOf("") }
+    var draft by rememberSaveable(postId) { mutableStateOf("") }
     var sending by remember(postId) { mutableStateOf(false) }
     var publishingError by remember(postId) { mutableStateOf("") }
     var replyTarget by remember(postId) { mutableStateOf<NativeComment?>(null) }
+    var confirmDiscard by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
     LaunchedEffect(token, postId, retry) {
@@ -128,7 +130,19 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         if (result.first != null) comments = result.first!! else error = result.second
         loading = false
     }
-    SeraSignatureSheet(onDismissRequest = onDismiss) {
+    fun requestClose() {
+        if (sending) return
+        if (draft.isNotBlank()) confirmDiscard = true else onDismiss()
+    }
+    if (confirmDiscard) AlertDialog(
+        onDismissRequest = { confirmDiscard = false },
+        title = { Text("Discard your comment?") },
+        text = { Text("Your unsent message will be lost.") },
+        confirmButton = { TextButton(onClick = { confirmDiscard = false; onDismiss() }) { Text("Discard") } },
+        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Continue writing") } },
+        shape = RoundedCornerShape(24.dp)
+    )
+    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
         Column(Modifier.fillMaxWidth().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge, color = Color(0xFF18383D), fontWeight = FontWeight.Bold)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -222,7 +236,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83))) {
                 Text(if (sending) "Publishing…" else if (replyTarget != null) "Publish reply" else "Publish comment")
             }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            TextButton(onClick = { requestClose() }, enabled = !sending) { Text(stringResource(R.string.close)) }
         }
     }
 }
