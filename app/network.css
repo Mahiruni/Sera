@@ -2078,3 +2078,16 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
     margin-top: 22px;
   }
 }
+
+/* Approved mobile first-fold layout: remove the double header clearance.
+   Shell owns the fixed navigation; the feed must not reserve a second tall row.
+   Limit this correction to the community feed, leaving other network pages intact. */
+@media (max-width: 600px) {
+  .sera-network.network-app:has(.network-welcome) {
+    padding-top: 0;
+    margin-top: -48px;
+  }
+  .sera-network.network-app:has(.network-welcome) .network-welcome {
+    margin-top: 0;
+  }
+}
