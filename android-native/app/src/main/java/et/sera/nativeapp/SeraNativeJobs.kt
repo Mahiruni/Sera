@@ -2,6 +2,7 @@ package et.sera.nativeapp
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -113,7 +114,8 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
             Text("${filtered.size} opportunities", color = Color(0xFF087E83), fontWeight = FontWeight.SemiBold)
             TextButton(onClick = { reload++ }, enabled = !loading) { Text("Refresh") }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (loading && jobs.isEmpty()) SeraLoadingCards(count = 3, modifier = Modifier.padding(vertical = 12.dp))
+        else if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error.isNotBlank()) {
             Text(error, color = MaterialTheme.colorScheme.error)
             Button(onClick = { reload++ }) { Text("Retry") }
@@ -130,7 +132,7 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
                     onClick = { selected = job },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().animateContentSize()
                 ) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(job.title, color = Color(0xFF183B40), fontSize = 18.sp, fontWeight = FontWeight.Bold)
