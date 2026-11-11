@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Pencil,
   Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   toggleLikePost,
@@ -27,6 +28,12 @@ export function PostCard({
   detail?: boolean;
 }) {
   const owner = currentUserId === post.author_id;
+  const normalize = (value: string) => value.replace(/\\s+/g, " ").trim().toLocaleLowerCase();
+  const title = post.title?.trim() || "";
+  const body = post.body?.trim() || "";
+  // Legacy posts sometimes repeat the title verbatim at the beginning of the body.
+  // Keep the full original body; suppress only a redundant title presentation.
+  const showTitle = Boolean(title) && !(normalize(body) === normalize(title) || normalize(body).startsWith(normalize(title) + " "));
   return (
     <article className={`social-card social-card-${post.kind}`}>
       <header className="social-post-header">
@@ -62,9 +69,9 @@ export function PostCard({
           {post.kind === "question" ? "Discussion" : post.kind}
         </span>
       </header>
-      {post.title && (
+      {showTitle && (
         <h2>
-          <Link href={"/posts/" + post.id}>{post.title}</Link>
+          <Link href={"/posts/" + post.id}>{title}</Link>
         </h2>
       )}
       {post.kind === "quote" ? (
@@ -126,7 +133,7 @@ export function PostCard({
       </footer>
       {owner && (
         <details className="social-owner">
-          <summary>Manage your post</summary>
+          <summary aria-label="Post options" title="Post options"><MoreHorizontal size={22} aria-hidden="true" /></summary>
           <Link href={"/posts/" + post.id + "/edit"}>
             <Pencil size={15} /> Edit story
           </Link>
