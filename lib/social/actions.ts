@@ -246,6 +246,15 @@ export async function addComment(
       error:
         "Write a comment of 1–2,000 characters and sign in again if needed.",
     };
+  if (moderationEnabled()) {
+    const verdict = await screenSubmission({
+      kind: "idea", title: "", body: input.body, quote_source: "", category: "", skills: [],
+    }, []);
+    if (verdict.verdict === "rejected")
+      return { error: "Your comment may violate our community guidelines. Please revise it." };
+    if (verdict.verdict !== "approved")
+      return { error: "Comment safety screening is unavailable. Please try again later." };
+  }
   const result = await session.db.from("post_comments").insert(input);
   if (result.error)
     return {
