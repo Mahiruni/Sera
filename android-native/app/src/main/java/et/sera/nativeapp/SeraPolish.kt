@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -47,3 +52,28 @@ internal fun SeraLoadingCards(count: Int = 3, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * SERA's shared editorial type scale. System sans-serif retains dependable
+ * glyph coverage for Ethiopian languages and avoids increasing APK size.
+ */
+internal val SeraTypography = Typography(
+    headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp),
+    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 31.sp),
+    titleLarge = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 27.sp),
+    titleMedium = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 23.sp),
+    bodyLarge = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp),
+    bodySmall = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
+    labelMedium = TextStyle(fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp)
+)
