@@ -336,6 +336,14 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     val scope = rememberCoroutineScope()
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
+    var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(accessToken, authenticatedUserId) {
+        val token = accessToken ?: return@LaunchedEffect
+        val id = authenticatedUserId.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val member = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
+        member.first?.let { identity = it }
+        profileAvatarUrl = withContext(Dispatchers.IO) { loadSeraCurrentAvatar(token, id) }
+    }
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -544,6 +552,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                     selected = tab,
                                     sections = sections,
                                     canCompose = authenticatedUserId.isNotBlank(),
+                                    profileAvatarUrl = profileAvatarUrl,
                                     onCompose = { showComposer = true },
                                     onLanguage = { showLanguagePicker = true },
                                     onMenu = { scope.launch { drawerState.open() } },
@@ -567,6 +576,7 @@ private fun BoxScope.SeraChromeOverlays(
     selected: String,
     sections: List<String>,
     canCompose: Boolean,
+    profileAvatarUrl: String?,
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
     onMenu: () -> Unit,
@@ -595,7 +605,8 @@ private fun BoxScope.SeraChromeOverlays(
         SeraFloatingDock(
             selected = selected,
             sections = sections,
-            onNavigate = onNavigate
+            onNavigate = onNavigate,
+            profileAvatarUrl = profileAvatarUrl
         )
     }
 }
