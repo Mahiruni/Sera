@@ -15,6 +15,7 @@ import {
   Layers3,
   Lightbulb,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { FeedComposer } from "@/components/social/FeedComposer";
 import { PostList, SocialPagination } from "@/components/social/feed";
@@ -201,6 +202,18 @@ export function NetworkHome({
             <Link href="/discover?tab=projects">
               Explore projects <ArrowUpRight size={11} />
             </Link>
+          </nav>
+          <nav className="sera-premium-people" aria-label="Professionals to discover">
+            <Link href="/discover?tab=people" className="sera-premium-person sera-premium-add">
+              <span className="sera-premium-person-avatar"><Plus size={27} /></span>
+              <small>Find people</small>
+            </Link>
+            {people.slice(0, 6).map((person) => (
+              <Link href={"/members/" + person.id} className="sera-premium-person" key={person.id}>
+                <span className="sera-premium-person-avatar"><MemberAvatar name={person.full_name} photo={person.photo} size={52} /></span>
+                <small>{person.full_name.split(" ")[0] || "Member"}</small>
+              </Link>
+            ))}
           </nav>
           <FeedComposer name={name} avatarUrl={avatarUrl} />
           <nav className="social-filters" aria-label="Filter stories">
