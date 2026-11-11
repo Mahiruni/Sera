@@ -122,3 +122,27 @@ private fun nativeAuthRequest(path: String, body: JSONObject): SeraAccountRespon
         conn?.disconnect()
     }
 }
+
+
+/** Welcome mail is requested independently of login; failures never block account access. */
+internal fun requestSeraWelcome(accessToken: String) {
+    if (accessToken.isBlank()) return
+    var conn: HttpURLConnection? = null
+    try {
+        val url = URL("https://sera.hisabtech.com/api/native/auth/welcome")
+        conn = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 6000
+            readTimeout = 16000
+            doOutput = false
+            setRequestProperty("Authorization", "Bearer $accessToken")
+            setRequestProperty("Accept", "application/json")
+        }
+        val result = conn.responseCode
+        if (result in 200..299) conn.inputStream?.close() else conn.errorStream?.close()
+    } catch (_: Exception) {
+        // Welcome delivery is best-effort and does not interrupt a verified session.
+    } finally {
+        conn?.disconnect()
+    }
+}
