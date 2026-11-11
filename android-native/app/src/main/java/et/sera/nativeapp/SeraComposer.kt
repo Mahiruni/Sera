@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import android.content.Context
+import kotlinx.coroutines.launch
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,12 +34,15 @@ private class ComposerDrafts(context: Context) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraComposer(userId: String, onDismiss: () -> Unit) {
+fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val focus = LocalFocusManager.current
     val drafts = remember(context) { ComposerDrafts(context) }
     var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
     var saved by remember { mutableStateOf(false) }
+    var publishing by remember { mutableStateOf(false) }
+    var publishMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
     var selectedImage by remember { mutableStateOf<Uri?>(null) }
     var mediaError by remember { mutableStateOf("") }
     var selectedVideo by remember { mutableStateOf<Uri?>(null) }
@@ -114,6 +118,18 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                     focus.clearFocus()
                 }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.keep_later)) }
             }
+            Button(onClick = {
+                publishing = true; publishMessage = ""
+                scope.launch {
+                    val result = publishNativeText(token, body)
+                    publishing = false
+                    if (result.first) { drafts.clear(userId); body = ""; onPublished() }
+                    else publishMessage = result.second
+                }
+            }, enabled = !publishing && body.trim().length >= 3 && selectedImage == null && selectedVideo == null,
+                modifier = Modifier.fillMaxWidth()) { Text(if (publishing) "Publishing…" else "Publish text post") }
+            if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
             if (selectedImage != null || selectedVideo != null) Text("Attachments are temporary and are not saved with text drafts.", style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.composer_notice),
