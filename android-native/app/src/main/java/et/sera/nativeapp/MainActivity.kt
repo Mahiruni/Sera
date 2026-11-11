@@ -1,6 +1,8 @@
 package et.sera.nativeapp
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -46,15 +48,22 @@ private val ink = Color(0xFF183B40)
 private val bg = Color(0xFFF5FAFB)
 
 class MainActivity : AppCompatActivity() {
+    private val callback = mutableStateOf<Uri?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        callback.value = intent?.data?.takeIf { it.scheme == "sera" }
         enableEdgeToEdge()
-        setContent { SeraApp(this) }
+        setContent { SeraApp(this, callback.value, onCallbackConsumed = { callback.value = null }) }
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        callback.value = intent.data?.takeIf { it.scheme == "sera" }
     }
 }
 
 @Composable
-fun SeraApp(context: Context) {
+fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: () -> Unit = {}) {
     val session = remember { SessionStore(context) }
     val haptics = LocalHapticFeedback.current
     var email by remember { mutableStateOf("") }
@@ -75,6 +84,19 @@ fun SeraApp(context: Context) {
     LaunchedEffect(accessToken) {
         val token = accessToken ?: return@LaunchedEffect
         withContext(Dispatchers.IO) { requestSeraWelcome(token) }
+    }
+    var oauthFailure by remember { mutableStateOf("") }
+    LaunchedEffect(oauthCallback) {
+        val callbackUri = oauthCallback ?: return@LaunchedEffect
+        onCallbackConsumed()
+        val result = withContext(Dispatchers.IO) { finishNativeOAuth(context, callbackUri) }
+        if (result.first != null) {
+            val (token, refreshToken) = result.first!!
+            session.saveRefreshToken(refreshToken)
+            accessToken = token
+        }
+        // Failures are surfaced on the sign-in screen below.
+        if (result.second.isNotBlank()) oauthFailure = result.second
     }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -143,7 +165,7 @@ fun SeraApp(context: Context) {
                     onEmailChange = { email = it; message = "" },
                     onPasswordChange = { password = it; message = "" },
                     busy = busy,
-                    message = message,
+                    message = if (oauthFailure.isNotBlank()) oauthFailure else message,
                     onSignIn = {
                         busy = true
                         message = ""
