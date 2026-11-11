@@ -266,6 +266,14 @@ export async function addComment(
     if (verdict.verdict !== "approved")
       return { error: "Comment safety screening is unavailable. Please try again later." };
   }
+  if (moderationEnabled()) {
+    const visible = await session.db.from("posts").select("id").eq("id", input.post_id).eq("status", "published").maybeSingle();
+    if (visible.error || !visible.data) return { error: "This post is unavailable for comments." };
+    if (input.parent_id) {
+      const parent = await session.db.from("post_comments").select("id").eq("id", input.parent_id).eq("post_id", input.post_id).maybeSingle();
+      if (parent.error || !parent.data) return { error: "The parent comment is unavailable." };
+    }
+  }
   const commenter = moderationEnabled() ? moderationWriter() : session.db;
   if (!commenter) return { error: "Secure commenting is unavailable." };
   const result = await commenter.from("post_comments").insert({ ...input, author_id: session.user.id });
