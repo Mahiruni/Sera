@@ -13,7 +13,7 @@
   --sera-shadow: 0 8px 28px #0b42530b;
   --sera-header-height: calc(72px + env(safe-area-inset-top, 0px));
   --sera-header-content-offset: calc(var(--sera-header-height) + 20px);
-  --sera-dock-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
+  --sera-dock-clearance: calc(70px + env(safe-area-inset-bottom, 0px));
   --sera-gutter: 32px;
   --bg: var(--sera-bg);
   --white: var(--sera-surface);

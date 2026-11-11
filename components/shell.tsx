@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MemberAvatar } from "./activity/avatar";
 import { ActivityBell } from "./activity/bell";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,6 +8,7 @@ import {
   Compass,
   Bookmark,
   LayoutDashboard,
+  CircleUserRound,
   UserRound,
   X,
   ArrowUpRight,
@@ -37,12 +37,10 @@ export function Shell({
   children,
   authenticated = false,
   verified = false,
-  identity,
 }: {
   children: React.ReactNode;
   authenticated?: boolean;
   verified?: boolean;
-  identity?: { name: string; photo: string | null };
 }) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
@@ -144,7 +142,7 @@ export function Shell({
     {
       href: authenticated ? "/settings" : "/sign-in",
       key: "profile" as Key,
-      Icon: UserRound,
+      Icon: CircleUserRound,
     },
   ];
   return (
@@ -321,8 +319,7 @@ export function Shell({
       </main>
       {!privateWorkspace && <SiteFooter />}
       <nav lang={lang} className="footer-dock" aria-label={t("quickNav")}>
-        <span className="dock-perimeter" aria-hidden="true" />
-        {dock.map(({ href, key, Icon }, i) => {
+        {dock.map(({ href, key, Icon }) => {
           const active = dockSection(pathname) === key;
           return (
             <Link
@@ -330,21 +327,16 @@ export function Shell({
               href={href}
               className={active ? "active" : ""}
               aria-current={active ? "page" : undefined}
+              aria-label={t(key)}
               title={t(key)}
             >
-              <span className={`dock-icon dock-${i}`}>
-                {key === "profile" && identity ? (
-                  <MemberAvatar
-                    name={identity.name}
-                    photo={identity.photo}
-                    size={23}
-                  />
-                ) : (
-                  <Icon size={19} strokeWidth={1.8} />
-                )}
+              <span className="dock-icon" aria-hidden="true">
+                {active && key === "home" ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 10.5 12 2l10 8.5V21a1 1 0 0 1-1 1h-6v-8H9v8H3a1 1 0 0 1-1-1z" />
+                  </svg>
+                ) : <Icon size={24} strokeWidth={1.8} />}
               </span>
-              <span>{t(key)}</span>
-              {active && <i />}
             </Link>
           );
         })}

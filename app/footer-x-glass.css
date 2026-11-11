@@ -1,77 +1,64 @@
-/* The approved floating dock is shared by every SERA page. */
 .footer-dock {
+  --dock-surface: 250 252 252;
+  --dock-ink: #24282a;
+  --dock-active: #00534f;
   position: fixed !important;
-  z-index: 60;
-  left: max(10px, env(safe-area-inset-left, 0px)) !important;
-  right: max(10px, env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(9px + env(safe-area-inset-bottom, 0px)) !important;
+  inset: auto 0 0 !important;
   width: auto !important;
-  max-width: 640px !important;
-  margin-inline: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
   transform: none !important;
-  min-height: 68px !important;
-  padding: 7px 8px !important;
+  min-height: 54px !important;
+  padding: 0 max(env(safe-area-inset-right), calc((100% - 640px) / 2)) env(safe-area-inset-bottom) max(env(safe-area-inset-left), calc((100% - 640px) / 2)) !important;
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid rgba(229, 249, 249, .32) !important;
-  border-radius: 999px !important;
-  background: #18262d !important;
-  box-shadow: inset 0 1px 0 #ffffff16, 0 6px 22px #101b2633 !important;
-  color: #e2f6f7 !important;
+  gap: 0;
+  border: 0 !important;
+  border-top: 1px solid rgb(121 134 138 / 35%) !important;
+  border-radius: 0 !important;
+  background: rgb(var(--dock-surface)) !important;
+  box-shadow: none !important;
+  z-index: 60;
   transition: translate 180ms ease-out;
-  isolation: isolate;
+}
+html[data-sera-theme="dark"] .footer-dock {
+  --dock-surface: 21 30 33;
+  --dock-ink: #e5efef;
+  --dock-active: #6ce3dc;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .footer-dock {
-    background: linear-gradient(125deg, rgb(25 39 45 / 80%), rgb(12 22 30 / 74%)) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    backdrop-filter: blur(18px) saturate(140%);
+    background: rgb(var(--dock-surface) / 76%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%);
   }
 }
-.footer-dock .dock-perimeter, .footer-dock a > i, .footer-dock a::before { display: none !important; }
 .footer-dock a {
-  display: flex !important;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 0;
-  width: 100% !important;
-  min-height: 52px !important;
-  padding: 5px 2px !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  background: transparent !important;
-  color: #b8d4d8 !important;
-  font-size: 10px !important;
-  font-weight: 550;
-  line-height: 1.3;
-  text-align: center;
-  box-shadow: none !important;
-}
-.footer-dock .dock-icon {
   display: grid !important;
   place-items: center;
-  width: 27px;
-  height: 27px;
+  width: 100% !important;
+  min-width: 0;
+  min-height: 53px !important;
   padding: 0 !important;
+  background: transparent !important;
   border: 0 !important;
-  border-radius: 0 !important;
-  background: none !important;
-  color: inherit !important;
   box-shadow: none !important;
+  color: var(--dock-ink) !important;
 }
-.footer-dock .dock-icon svg { width: 22px; height: 22px; }
-.footer-dock a > span:last-of-type { white-space: nowrap; }
-.footer-dock a.active, .footer-dock a[aria-current="page"] { color: #75f9f4 !important; font-weight: 700; }
-.footer-dock a.active .dock-icon { animation: active-footer-icon .24s ease-out; }
-.footer-dock a:focus-visible { outline: 2px solid #b4fffa !important; outline-offset: -2px; }
-@keyframes active-footer-icon { 0%, 70%, 100% { transform: translateY(0) scale(1); } 35% { transform: translateY(-2px) scale(1.08); } }
-@media (hover: hover) { .footer-dock a:hover { color: #fff !important; } }
-@media (max-width: 380px) { .footer-dock { padding-inline: 5px !important; gap: 1px; } .footer-dock a { font-size: 9px !important; } }
-@media (prefers-reduced-motion: reduce) { .footer-dock a.active .dock-icon { animation: none; } }
+.footer-dock .dock-icon {
+  display: grid;
+  place-items: center;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+.footer-dock a.active { color: var(--dock-active) !important; }
+.footer-dock a:focus-visible { outline: 2px solid var(--dock-active); outline-offset: -4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .footer-dock a.active .dock-icon { animation: dock-select 180ms ease-out; }
+  @keyframes dock-select { from { transform: scale(.9); } to { transform: scale(1); } }
+}
 body:has(.auth-layout) .footer-dock { display: none !important; }
 
 .header-language-picker {
