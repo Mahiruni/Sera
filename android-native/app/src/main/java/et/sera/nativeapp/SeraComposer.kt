@@ -11,6 +11,15 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -67,6 +76,8 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         }
     }
     val hasContent = body.isNotBlank()
+    val accent = Color(0xFF087E83)
+    val ink = Color(0xFF173A3F)
     fun close() {
         focus.clearFocus()
         onDismiss()
@@ -82,13 +93,35 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.composer_title), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(R.string.composer_hint), style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(color = Color(0xFFE4F5F2), shape = RoundedCornerShape(15.dp)) {
+                    Icon(Icons.Outlined.EditNote, contentDescription = null, tint = accent,
+                        modifier = Modifier.padding(12.dp).size(25.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Create a post", style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = ink)
+                    Text("Share something worth discovering.", style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF687C80))
+                }
+                TextButton(onClick = { close() }) { Text("Close", color = accent) }
+            }
+            Surface(color = Color(0xFF173D40), shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("YOUR VOICE MATTERS", fontSize = 10.sp, letterSpacing = 1.2.sp,
+                        fontWeight = FontWeight.Bold, color = Color(0xFF91E5D6))
+                    Text("Ideas become opportunities when you share them.",
+                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
             OutlinedTextField(
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp),
+                shape = RoundedCornerShape(18.dp),
                 placeholder = { Text(stringResource(R.string.composer_placeholder)) },
                 supportingText = { Text("${body.length} / 4000 characters") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -98,10 +131,18 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = {
                     imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, modifier = Modifier.weight(1f)) { Text("Add photos") }
+                }, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(15.dp)) {
+                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Photos")
+                }
                 OutlinedButton(onClick = {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }, modifier = Modifier.weight(1f)) { Text("Add video") }
+                }, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(15.dp)) {
+                    Icon(Icons.Outlined.Videocam, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Video")
+                }
             }
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
             if (selectedImages.isNotEmpty()) {
@@ -130,12 +171,13 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     drafts.save(userId, body)
                     saved = true
                     focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.save_draft)) }
+                }, enabled = hasContent, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(15.dp)) { Text(stringResource(R.string.save_draft)) }
                 Button(onClick = {
                     drafts.save(userId, body)
                     saved = true
                     focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.keep_later)) }
+                }, enabled = hasContent, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(15.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ink)) { Text(stringResource(R.string.keep_later)) }
             }
             Button(onClick = {
                 publishing = true; publishMessage = ""
@@ -146,11 +188,15 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     else publishMessage = result.second
                 }
             }, enabled = !publishing && body.trim().length >= 3 && selectedImages.isEmpty() && selectedVideo == null,
-                modifier = Modifier.fillMaxWidth()) { Text(if (publishing) "Publishing…" else "Publish text post") }
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                shape = RoundedCornerShape(17.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = accent)) {
+                Text(if (publishing) "Publishing…" else "Publish post", fontWeight = FontWeight.Bold)
+            }
             if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
-            if (selectedImages.isNotEmpty() || selectedVideo != null) Text("Attachments are temporary and are not saved with text drafts.", style = MaterialTheme.typography.bodySmall)
+            if (selectedImages.isNotEmpty() || selectedVideo != null) Text("Media publishing is not available yet. Remove attachments to publish a text post; selected files are not uploaded.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
