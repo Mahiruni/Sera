@@ -49,7 +49,7 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFE1F5F2)), contentAlignment = Alignment.Center) {
-                            Text(post.author.take(1).uppercase(), color = deepTeal, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            if (post.avatarUrl != null) AsyncImage(model = post.avatarUrl, contentDescription = "Profile photo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) else Text(post.author.take(1).uppercase(), color = deepTeal, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(post.author, color = darkInk, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
