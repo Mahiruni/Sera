@@ -174,3 +174,10 @@ fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, St
         (status in 200..299) to if (status in 200..299) "" else "Unable to update reaction (HTTP $status)."
     } catch (e: Exception) { false to "Connection failed. Please retry." }
 }
+
+fun loadSeraUserId(token: String): Pair<String?, String> {
+    val response = request(token, "user", true)
+    val body = response.first ?: return null to response.second
+    return try { JSONObject(body).optString("id").takeIf { it.isNotBlank() } to "" }
+    catch (e: Exception) { null to "Unable to identify signed-in user." }
+}
