@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,16 +88,64 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     }
     var availableUpdate by remember { mutableStateOf<SeraRelease?>(null) }
     var updateNotice by remember { mutableStateOf("") }
+    var activeDownloadId by remember { mutableStateOf<Long?>(null) }
+    var updateProgress by remember { mutableIntStateOf(0) }
+    var updateDownloaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         availableUpdate = checkSeraUpdate()
     }
+    LaunchedEffect(activeDownloadId) {
+        val id = activeDownloadId ?: return@LaunchedEffect
+        while (true) {
+            val status = withContext(Dispatchers.IO) { seraDownloadStatus(context, id) }
+            updateProgress = status.progress
+            if (status.complete) {
+                updateDownloaded = true
+                break
+            }
+            if (status.failed) {
+                updateNotice = "Download failed. Please retry when your connection is stable."
+                activeDownloadId = null
+                break
+            }
+            delay(700)
+        }
+    }
     availableUpdate?.let { release ->
         SeraUpdatePrompt(release, onDismiss = { availableUpdate = null }, onDownload = {
-            val queued = downloadSeraUpdate(context, release)
-            updateNotice = if (queued) "SERA update downloading. Open the completed download notification to install." else "Unable to start download. Please retry."
+            val id = downloadSeraUpdate(context, release)
+            if (id != null) {
+                activeDownloadId = id
+                updateProgress = 0
+                updateDownloaded = false
+            } else updateNotice = "Unable to start the download. Please retry."
             availableUpdate = null
         })
     }
+    if (activeDownloadId != null) AlertDialog(
+        onDismissRequest = { if (updateDownloaded) activeDownloadId = null },
+        title = { Text(if (updateDownloaded) "SERA update downloaded" else "Updating SERA") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (updateDownloaded) "Ready to install. Android will ask you to approve the update."
+                    else "Downloading securely inside SERA… $updateProgress%")
+                if (!updateDownloaded) LinearProgressIndicator(
+                    progress = { updateProgress / 100f }, modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            if (updateDownloaded) Button(onClick = {
+                val id = activeDownloadId
+                if (id != null && !openSeraInstaller(context, id))
+                    updateNotice = "Could not open the Android installer. Try the completed download notification."
+                activeDownloadId = null
+            }) { Text("Install update") }
+        },
+        dismissButton = {
+            if (updateDownloaded) TextButton(onClick = { activeDownloadId = null }) { Text("Later") }
+        }
+    )
     if (updateNotice.isNotBlank()) AlertDialog(
         onDismissRequest = { updateNotice = "" },
         title = { Text("SERA update") },
