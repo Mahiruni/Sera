@@ -170,6 +170,7 @@ export async function updatePost(
     .eq("id", id)
     .eq("author_id", session.user.id)
     .eq("kind", kind)
+    .eq("status", "published")
     .select("id")
     .single();
   if (result.error)
