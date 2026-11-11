@@ -97,6 +97,7 @@ fun SeraGuestEntry(
     onAuthenticated: (String, String) -> Unit
 ) {
     val context = LocalContext.current
+    var oauthError by remember { mutableStateOf("") }
     var entryPage by rememberSaveable { mutableStateOf("signin") }
     var showPassword by remember { mutableStateOf(false) }
 
@@ -181,6 +182,35 @@ fun SeraGuestEntry(
                     }
                     Text("Welcome to SERA.", fontSize = 33.sp, fontWeight = FontWeight.Bold, color = entryInk)
                     Text("Sign in to your professional network, or create an account below.", color = entryMuted)
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { oauthError = beginNativeOAuth(context, "google") },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color(0xFFD9E2E2))
+                        ) {
+                            Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Bold, fontSize = 21.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Text("Continue with Google", color = entryInk, fontWeight = FontWeight.SemiBold)
+                        }
+                        OutlinedButton(
+                            onClick = { oauthError = beginNativeOAuth(context, "linkedin_oidc") },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color(0xFFD9E2E2))
+                        ) {
+                            Surface(color = Color(0xFF0A66C2), shape = RoundedCornerShape(3.dp)) {
+                                Text("in", color = Color.White, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text("Continue with LinkedIn", color = entryInk, fontWeight = FontWeight.SemiBold)
+                        }
+                        if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error)
+                    }
+
                     OutlinedTextField(
                         value = email, onValueChange = onEmailChange,
                         label = { Text("Email address") },
