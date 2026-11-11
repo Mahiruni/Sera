@@ -100,6 +100,8 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     var checkingApkIntegrity by remember { mutableStateOf(false) }
     var installerPermissionRequired by remember { mutableStateOf(false) }
     var installerRequested by remember { mutableStateOf(false) }
+    var preparingInstaller by remember { mutableStateOf(false) }
+    val installScope = rememberCoroutineScope()
 
     // A user-initiated update survives activity recreation, keyboard changes,
     // backgrounding and process restarts. Never re-enqueue the same download.
@@ -115,19 +117,28 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
 
     fun launchVerifiedInstaller() {
         val id = activeDownloadId ?: return
-        if (!updateDownloaded) return
-        when (openSeraInstaller(context, id)) {
-            SeraInstallResult.LAUNCHED -> {
-                installerRequested = true
-                installerPermissionRequired = false
+        if (!updateDownloaded || preparingInstaller) return
+        preparingInstaller = true
+        installScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                openSeraInstaller(context, id)
             }
-            SeraInstallResult.PERMISSION_REQUIRED -> {
-                installerPermissionRequired = true
-                installerRequested = false
-            }
-            SeraInstallResult.FAILED -> {
-                installerRequested = false
-                updateNotice = "Android could not open the installer. The verified APK is still saved; tap Install update to retry."
+            preparingInstaller = false
+            when (result) {
+                SeraInstallResult.LAUNCHED -> {
+                    // OS session is committed, but not installed yet. The
+                    // private receiver launches Android's user approval.
+                    installerRequested = true
+                    installerPermissionRequired = false
+                }
+                SeraInstallResult.PERMISSION_REQUIRED -> {
+                    installerPermissionRequired = true
+                    installerRequested = false
+                }
+                SeraInstallResult.FAILED -> {
+                    installerRequested = false
+                    updateNotice = "Could not prepare the Android installer. Your verified APK is saved; tap Install update to retry."
+                }
             }
         }
     }
@@ -135,6 +146,10 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     // The user may have returned from Android's per-app install permission page.
     // Resume only the already downloaded and verified update.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        consumeSeraInstallError(context)?.let { reason ->
+            updateNotice = reason
+            installerRequested = false
+        }
         if (installerPermissionRequired && updateDownloaded && activeDownloadId != null &&
             context.packageManager.canRequestPackageInstalls()) {
             launchVerifiedInstaller()
@@ -192,6 +207,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                     checkingApkIntegrity = false
                     installerPermissionRequired = false
                     installerRequested = false
+                    preparingInstaller = false
                     updateProgress = 0
                     updateBytes = 0L
                     updateTotalBytes = -1L
@@ -207,6 +223,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
         title = {
             Text(when {
                 checkingApkIntegrity -> "Verifying SERA update"
+                preparingInstaller -> "Preparing Android installer"
                 installerPermissionRequired -> "Allow SERA updates"
                 updateDownloaded -> "SERA update is ready"
                 else -> "Updating SERA"
@@ -219,6 +236,10 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                         Text("Download complete. Checking APK integrity before installation…")
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
+                    preparingInstaller -> {
+                        Text("Passing your verified APK to Android's installation service…")
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
                     installerPermissionRequired -> Text(
                         "Android requires one-time permission to install updates from SERA. " +
                         "Choose Allow from this source in Android settings, then return to SERA. " +
@@ -226,8 +247,8 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                     )
                     updateDownloaded -> Text(
                         if (installerRequested)
-                            "Android's installer has been opened. Approve the installation to finish updating SERA. " +
-                            "If you cancelled, tap Install update to try again."
+                            "Waiting for Android to show the installation approval. " +
+                            "If you cancelled the prompt, tap Install update again."
                         else "The downloaded APK passed verification. Tap Install update to continue with Android's approval."
                     )
                     else -> {
@@ -257,13 +278,13 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                     if (!requestSeraInstallPermission(context))
                         updateNotice = "Open Android Settings → Apps → Special app access → Install unknown apps → SERA."
                 }) { Text("Allow installation") }
-                updateDownloaded -> Button(onClick = { launchVerifiedInstaller() }) {
+                updateDownloaded && !preparingInstaller -> Button(onClick = { launchVerifiedInstaller() }) {
                     Text("Install update")
                 }
             }
         },
         dismissButton = {
-            if (updateDownloaded) TextButton(onClick = { activeDownloadId = null }) {
+            if (updateDownloaded && !preparingInstaller) TextButton(onClick = { activeDownloadId = null }) {
                 Text("Later")
             }
         }
