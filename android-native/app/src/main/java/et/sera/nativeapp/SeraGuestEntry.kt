@@ -22,6 +22,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material.icons.outlined.PeopleOutline
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,14 +67,25 @@ private fun openSeraSite(context: Context, path: String) {
 
 @Composable
 private fun GuestBrand(onLanguage: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("SERA.et", fontWeight = FontWeight.ExtraBold, fontSize = 27.sp, color = entryTeal)
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 42.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("SERA", fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.7).sp, color = entryTeal)
+            Text(".et", fontWeight = FontWeight.Bold, fontSize = 25.sp, letterSpacing = (-0.7).sp, color = entryInk)
+        }
         OutlinedButton(
             onClick = onLanguage,
             shape = RoundedCornerShape(50),
-            border = BorderStroke(1.dp, Color(0xFFD6E8E6)),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
-        ) { Text("Language  ·  🌐", style = MaterialTheme.typography.labelMedium, color = entryInk) }
+            border = BorderStroke(1.dp, Color(0xFFCFE5E2)),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 1.dp)
+        ) {
+            Icon(Icons.Outlined.Language, contentDescription = null, tint = entryTeal, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Language", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
+        }
     }
 }
 
@@ -86,6 +111,253 @@ private fun GuestFeature(symbol: String, heading: String, detail: String) {
     }
 }
 
+
+/** Concept 04: social-first native sign-in. All existing auth callbacks remain unchanged. */
+@Composable
+private fun SeraSocialFirstSignIn(
+    email: String,
+    password: String,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    busy: Boolean,
+    message: String,
+    oauthError: String,
+    onOAuthError: (String) -> Unit,
+    onSignIn: () -> Unit,
+    onRecover: () -> Unit,
+    onRegister: () -> Unit,
+    compact: Boolean,
+    showPassword: Boolean,
+    onTogglePassword: () -> Unit
+) {
+    val context = LocalContext.current
+
+    if (!compact) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = entryDark,
+            shape = RoundedCornerShape(26.dp)
+        ) {
+            Column(
+                Modifier.background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF10373D), Color(0xFF08656B), Color(0xFF079B98))
+                    )
+                ).padding(horizontal = 18.dp, vertical = 17.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "YOUR PROFESSIONAL WORLD",
+                            fontWeight = FontWeight.Bold, fontSize = 9.sp,
+                            letterSpacing = 1.2.sp, color = Color(0xFFB9F0E7)
+                        )
+                        Text(
+                            "Connect.\nShowcase.\nGrow.",
+                            fontWeight = FontWeight.ExtraBold, fontSize = 25.sp,
+                            lineHeight = 27.sp, color = Color.White, letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            "Your people. Your work. Your next move.",
+                            fontSize = 11.sp, lineHeight = 15.sp,
+                            color = Color(0xFFD8F0EC)
+                        )
+                    }
+                    Box(Modifier.size(width = 116.dp, height = 118.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier.size(108.dp).clip(CircleShape)
+                                .background(Color.White.copy(alpha = .10f))
+                        )
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopEnd).size(66.dp),
+                            shape = CircleShape, color = Color(0xFFB7EAE0),
+                            border = BorderStroke(3.dp, Color(0xFF166A70))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("S", color = Color(0xFF15545A), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomStart).size(72.dp),
+                            shape = CircleShape, color = Color(0xFFFCDEB9),
+                            border = BorderStroke(3.dp, Color(0xFF166A70))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("M", color = Color(0xFF7E4C3C), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomEnd).size(27.dp),
+                            shape = CircleShape, color = Color(0xFF29D6C4),
+                            border = BorderStroke(2.dp, entryDark)
+                        ) { Box(contentAlignment = Alignment.Center) { Text("✓", fontSize = 15.sp, color = entryDark) } }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    val features = listOf(
+                        Triple("Jobs", Icons.Outlined.WorkOutline, "Jobs"),
+                        Triple("People", Icons.Outlined.PeopleOutline, "People"),
+                        Triple("Projects", Icons.Outlined.Layers, "Projects"),
+                        Triple("Ideas", Icons.Outlined.Lightbulb, "Ideas")
+                    )
+                    features.forEach { (title, symbol, description) ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White.copy(alpha = .12f)
+                        ) {
+                            Column(
+                                Modifier.padding(vertical = 9.dp, horizontal = 2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(symbol, contentDescription = description, tint = Color(0xFFC9FFF4), modifier = Modifier.size(17.dp))
+                                Text(title, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shape = RoundedCornerShape(26.dp),
+        border = BorderStroke(1.dp, Color(0xFFDEEAE8)),
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            Modifier.padding(horizontal = 16.dp, vertical = 17.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                "Welcome back to SERA",
+                fontSize = 23.sp, lineHeight = 27.sp, letterSpacing = (-0.6).sp,
+                fontWeight = FontWeight.ExtraBold, color = entryInk
+            )
+            Text(
+                "Sign in to continue your professional journey.",
+                fontSize = 12.sp, color = entryMuted
+            )
+            OutlinedButton(
+                onClick = { onOAuthError(beginNativeOAuth(context, "google")) },
+                modifier = Modifier.fillMaxWidth().height(49.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color(0xFFD4E1E1)),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Text("G", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4285F4))
+                Spacer(Modifier.width(11.dp))
+                Text("Continue with Google", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
+            }
+            Button(
+                onClick = { onOAuthError(beginNativeOAuth(context, "linkedin_oidc")) },
+                modifier = Modifier.fillMaxWidth().height(49.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A66C2)),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Surface(shape = RoundedCornerShape(3.dp), color = Color.White) {
+                    Text(
+                        "in", modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                        fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0A66C2)
+                    )
+                }
+                Spacer(Modifier.width(11.dp))
+                Text("Continue with LinkedIn", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            }
+            if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+
+            Row(
+                Modifier.padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                HorizontalDivider(Modifier.weight(1f), color = Color(0xFFDDE9E8))
+                Text("or sign in with email", fontSize = 11.sp, color = entryMuted)
+                HorizontalDivider(Modifier.weight(1f), color = Color(0xFFDDE9E8))
+            }
+            OutlinedTextField(
+                value = email, onValueChange = onEmailChange, singleLine = true,
+                placeholder = { Text("Email address", fontSize = 13.sp) },
+                leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null, tint = entryMuted, modifier = Modifier.size(19.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = entryTeal, unfocusedBorderColor = Color(0xFFD1DEDD),
+                    focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                )
+            )
+            OutlinedTextField(
+                value = password, onValueChange = onPasswordChange, singleLine = true,
+                placeholder = { Text("Password", fontSize = 13.sp) },
+                leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = entryMuted, modifier = Modifier.size(19.dp)) },
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(onClick = onTogglePassword) {
+                        Icon(if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (showPassword) "Hide password" else "Show password",
+                            tint = entryTeal, modifier = Modifier.size(19.dp))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = entryTeal, unfocusedBorderColor = Color(0xFFD1DEDD),
+                    focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                )
+            )
+            TextButton(
+                onClick = onRecover, modifier = Modifier.align(Alignment.End).height(30.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp)
+            ) {
+                Text("Forgot password?", fontSize = 12.sp, color = entryTeal, fontWeight = FontWeight.SemiBold)
+            }
+            Button(
+                onClick = onSignIn,
+                enabled = !busy && email.contains("@") && password.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF006B6A),
+                    disabledContainerColor = Color(0xFFD9E8E6),
+                    disabledContentColor = Color(0xFF698481)
+                ),
+                shape = RoundedCornerShape(15.dp)
+            ) {
+                if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                else {
+                    Text("Sign in", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            }
+            if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("New to SERA? ", fontSize = 12.sp, color = entryMuted)
+                TextButton(onClick = onRegister, contentPadding = PaddingValues(horizontal = 2.dp)) {
+                    Text("Create an account", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = entryTeal)
+                }
+            }
+            Text(
+                "By continuing, you agree to SERA's terms and privacy policy.",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp, lineHeight = 14.sp, color = entryMuted
+            )
+        }
+    }
+}
+
 @Composable
 fun SeraGuestEntry(
     email: String,
@@ -102,17 +374,20 @@ fun SeraGuestEntry(
     var oauthError by remember { mutableStateOf("") }
     var entryPage by rememberSaveable { mutableStateOf("signin") }
     var showPassword by remember { mutableStateOf(false) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val guestScroll = rememberScrollState()
+    LaunchedEffect(entryPage) { guestScroll.scrollTo(0) }
 
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFF6FCFB), Color(0xFFF0F8F7), Color.White))
-        )
+            Brush.verticalGradient(listOf(Color(0xFFF6FCFB), Color(0xFFEAF7F4), Color.White))
+        ).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val widthLimit = if (maxWidth > 600.dp) 500.dp else maxWidth
             Column(
                 modifier = Modifier.align(Alignment.TopCenter).widthIn(max = widthLimit).fillMaxWidth()
-                    .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 24.dp),
+                    .verticalScroll(guestScroll).padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 GuestBrand(onLanguage)
@@ -178,108 +453,17 @@ fun SeraGuestEntry(
                         onAuthenticated = onAuthenticated
                     )
                 } else {
-                    Spacer(Modifier.height(6.dp))
-                    Surface(color = entryDark, shape = RoundedCornerShape(26.dp),
-                        modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("YOUR PROFESSIONAL WORLD", fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp,
-                                color = Color(0xFF8CE5D6))
-                            Text("Make your next move.", fontSize = 27.sp, lineHeight = 32.sp,
-                                fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("Connect with people. Showcase your work. Discover what's next.",
-                                fontSize = 13.sp, color = Color(0xFFCEE5E2))
-                        }
-                    }
-                    Text("Welcome back", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = entryInk)
-                    Text("Sign in securely, or create your professional identity.", color = entryMuted)
-                    Text("CONTINUE WITH", fontSize = 10.sp, letterSpacing = 1.2.sp,
-                        fontWeight = FontWeight.Bold, color = entryMuted)
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = { oauthError = beginNativeOAuth(context, "google") },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, Color(0xFFD9E2E2))
-                        ) {
-                            Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Bold, fontSize = 21.sp)
-                            Spacer(Modifier.width(12.dp))
-                            Text("Continue with Google", color = entryInk, fontWeight = FontWeight.SemiBold)
-                        }
-                        OutlinedButton(
-                            onClick = { oauthError = beginNativeOAuth(context, "linkedin_oidc") },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, Color(0xFFD9E2E2))
-                        ) {
-                            Surface(color = Color(0xFF0A66C2), shape = RoundedCornerShape(3.dp)) {
-                                Text("in", color = Color.White, fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text("Continue with LinkedIn", color = entryInk, fontWeight = FontWeight.SemiBold)
-                        }
-                        if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error)
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        HorizontalDivider(Modifier.weight(1f), color = Color(0xFFD5E7E5))
-                        Text("or sign in with email", color = entryMuted, fontSize = 12.sp)
-                        HorizontalDivider(Modifier.weight(1f), color = Color(0xFFD5E7E5))
-                    }
-                    OutlinedTextField(
-                        value = email, onValueChange = onEmailChange,
-                        label = { Text("Email address") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
+                    SeraSocialFirstSignIn(
+                        email = email, password = password, onEmailChange = onEmailChange,
+                        onPasswordChange = onPasswordChange, busy = busy, message = message,
+                        oauthError = oauthError, onOAuthError = { oauthError = it },
+                        onSignIn = onSignIn,
+                        onRecover = { entryPage = "recover" },
+                        onRegister = { entryPage = "register" },
+                        compact = keyboardVisible,
+                        showPassword = showPassword,
+                        onTogglePassword = { showPassword = !showPassword }
                     )
-                    OutlinedTextField(
-                        value = password, onValueChange = onPasswordChange,
-                        label = { Text("Password") },
-                        singleLine = true,
-                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            TextButton(onClick = { showPassword = !showPassword }) {
-                                Text(if (showPassword) "Hide" else "Show")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    TextButton(onClick = { entryPage = "recover" }, modifier = Modifier.align(Alignment.End)) {
-                        Text("Forgot password?", color = entryTeal)
-                    }
-                    Button(
-                        onClick = onSignIn,
-                        enabled = !busy && email.contains("@") && password.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = entryTeal),
-                        shape = RoundedCornerShape(17.dp)
-                    ) {
-                        if (busy) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
-                        else Text("Sign in  →", fontWeight = FontWeight.Bold)
-                    }
-                    if (message.isNotEmpty()) {
-                        Text(
-                            message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text("Check your password and email verification, or use password recovery.", color = entryMuted, style = MaterialTheme.typography.bodySmall)
-                    }
-                    HorizontalDivider(color = Color(0xFFDCEAE9))
-                    Text("New here?", color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    OutlinedButton(onClick = { entryPage = "register" }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Text("Create a SERA account", color = entryTeal, fontWeight = FontWeight.Bold)
-                    }
-                    Text("By continuing, you agree to SERA’s terms and privacy policy.",
-                        fontSize = 11.sp, color = entryMuted, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(5.dp))
                 Text("SERA.et  •  Your profile. Your work. Your future.",
