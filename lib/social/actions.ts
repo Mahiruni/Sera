@@ -269,8 +269,8 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
   const original = String(source.body || source.title || "Professional update").slice(0, 2000);
   const prepared = new FormData();
   prepared.set("kind", "idea");
-  prepared.set("title", \`Reposted: \${String(source.title || "Professional update")}\`.slice(0, 140));
-  prepared.set("body", [note.trim(), original, \`Original: https://sera.hisabtech.com/posts/\${sourceId}\`].filter(Boolean).join("\n\n"));
+  prepared.set("title", ("Reposted: " + String(source.title || "Professional update")).slice(0, 140));
+  prepared.set("body", [note.trim(), original, "Original: https://sera.hisabtech.com/posts/" + String(sourceId)].filter(Boolean).join("\n\n"));
   const input = readPost(prepared);
   if (!input) return { error: "Could not prepare this repost." };
   const verdict = await screenSubmission(input, []);
