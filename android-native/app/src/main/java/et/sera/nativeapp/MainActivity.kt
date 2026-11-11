@@ -20,6 +20,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.verticalScroll
@@ -419,6 +420,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                 BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                     val expanded = maxWidth >= 700.dp
                     val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
+                    val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                     val chromeVisible = remember(tab) { mutableStateOf(true) }
                     // Listen to the actual nested scroll consumption of the active page.
@@ -547,7 +549,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                     }
                                 }
                                 SeraChromeOverlays(
-                                    visible = chromeVisible.value,
+                                    visible = chromeVisible.value && !keyboardOpen,
                                     expanded = expanded,
                                     selected = tab,
                                     sections = sections,
