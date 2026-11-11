@@ -16,6 +16,7 @@ import {
 import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { ShareButton } from "./share";
+import { RepostButton } from "./RepostButton";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 import { ExpandableCaption, PostMedia } from "./post-media";
 export function PostCard({
@@ -120,19 +121,17 @@ export function PostCard({
           <SeraReactionIcon kind="comment" />
           <span className="social-action-count">{post.comment_count}</span>
         </Link>
-        <ActionForm
-          action={toggleSavePost}
-          fields={{ post_id: post.id, remove: post.saved ? "yes" : "no" }}
-        >
-          <Submit aria-pressed={post.saved} aria-label={post.saved ? "Remove saved post" : "Save post"}>
-            <SeraReactionIcon kind="save" active={post.saved} />
-            <span>{post.saved ? "Saved" : "Save"}</span>
-          </Submit>
-        </ActionForm>
+        <RepostButton id={post.id} author={post.author.full_name} disabled={owner} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>
       <details className="social-owner">
           <summary aria-label="Post options" title="Post options"><MoreHorizontal size={22} aria-hidden="true" /></summary>
+          <ActionForm action={toggleSavePost} fields={{ post_id: post.id, remove: post.saved ? "yes" : "no" }}>
+            <Submit aria-pressed={post.saved} aria-label={post.saved ? "Remove saved post" : "Save post"}>
+              <SeraReactionIcon kind="save" active={post.saved} />
+              {post.saved ? "Saved" : "Save post"}
+            </Submit>
+          </ActionForm>
           {owner && <Link href={"/posts/" + post.id + "/edit"}>
             <Pencil size={15} /> Edit story
           </Link>}
