@@ -10,12 +10,31 @@ android {
         applicationId = "et.sera.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("SERA_VERSION_CODE").orElse("1").get().toInt()
+        versionName = providers.gradleProperty("SERA_VERSION_NAME").orElse("0.1.0").get()
         val supabaseUrl = providers.gradleProperty("SERA_SUPABASE_URL").orElse("").get()
         val supabaseAnonKey = providers.gradleProperty("SERA_SUPABASE_ANON_KEY").orElse("").get()
         buildConfigField("String", "SUPABASE_URL", "\""+supabaseUrl+"\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\""+supabaseAnonKey+"\"")
+    }
+    val releaseStore = providers.environmentVariable("SERA_RELEASE_KEYSTORE").orNull
+    val releaseStorePassword = providers.environmentVariable("SERA_RELEASE_STORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.environmentVariable("SERA_RELEASE_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.environmentVariable("SERA_RELEASE_KEY_PASSWORD").orNull
+    if (listOf(releaseStore, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }) {
+        signingConfigs {
+            create("seraRelease") {
+                storeFile = file(releaseStore!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+        buildTypes {
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("seraRelease")
+            }
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
