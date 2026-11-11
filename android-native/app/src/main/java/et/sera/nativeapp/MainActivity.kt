@@ -9,6 +9,15 @@ import androidx.security.crypto.MasterKey
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -400,72 +409,158 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
             } else {
                 BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                     val expanded = maxWidth >= 700.dp
-                    val sections = listOf("Home", "Network", "Jobs", "Inbox", "Profile")
-                    Row(Modifier.fillMaxSize()) {
-                        if (expanded) NavigationRail {
-                            sections.forEach { item ->
-                                NavigationRailItem(
-                                    selected = tab == item, onClick = { navigateTo(item) },
-                                    icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
-                                    label = { Text(sectionLabel(item)) }
-                                )
+                    val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
+                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                    val chromeVisible = remember(tab) { mutableStateOf(true) }
+                    // Listen to the actual nested scroll consumption of the active page.
+                    // No scroll distance is consumed here; gestures stay natural.
+                    val scrollObserver = remember(tab) {
+                        object : NestedScrollConnection {
+                            var travel = 0f
+                            override fun onPostScroll(
+                                consumed: Offset,
+                                available: Offset,
+                                source: NestedScrollSource
+                            ): Offset {
+                                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                                val delta = consumed.y
+                                if (delta == 0f) {
+                                    if (available.y > 5f) chromeVisible.value = true
+                                    return Offset.Zero
+                                }
+                                if (travel * delta < 0f) travel = 0f
+                                travel = (travel + delta).coerceIn(-90f, 90f)
+                                if (travel < -25f) chromeVisible.value = false
+                                if (travel > 18f) chromeVisible.value = true
+                                return Offset.Zero
                             }
                         }
-                        Scaffold(
-                            modifier = Modifier.weight(1f),
-                            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                            topBar = {
-                                SeraNativeHeader(
-                                    section = tab,
-                                    canCompose = authenticatedUserId.isNotBlank(),
-                                    onCompose = { showComposer = true },
-                                    onLanguage = { showLanguagePicker = true },
-                                    onInbox = { navigateTo("Inbox") }
-                                )
-                            },
-                            bottomBar = {
-                                if (!expanded) SeraFloatingDock(
-                                    selected = tab,
-                                    sections = sections,
-                                    onNavigate = ::navigateTo
-                                )
+                    }
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        gesturesEnabled = !expanded,
+                        drawerContent = {
+                            SeraNavigationDrawer(
+                                selected = tab,
+                                identity = identity,
+                                onNavigate = { destination ->
+                                    navigateTo(destination)
+                                    scope.launch { drawerState.close() }
+                                },
+                                onCompose = {
+                                    scope.launch { drawerState.close() }
+                                    if (authenticatedUserId.isNotBlank()) showComposer = true
+                                },
+                                onLanguage = {
+                                    scope.launch { drawerState.close() }
+                                    showLanguagePicker = true
+                                },
+                                onSignOut = {
+                                    scope.launch { drawerState.close() }
+                                    session.clear()
+                                    accessToken = null
+                                    authenticatedUserId = ""
+                                    showComposer = false
+                                    password = ""
+                                    message = ""
+                                    tab = "Home"
+                                    tabHistory.clear()
+                                }
+                            )
+                        }
+                    ) {
+                        Row(Modifier.fillMaxSize()) {
+                            if (expanded) NavigationRail {
+                                sections.forEach { item ->
+                                    NavigationRailItem(
+                                        selected = tab == item, onClick = { navigateTo(item) },
+                                        icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
+                                        label = { Text(sectionLabel(item)) }
+                                    )
+                                }
                             }
-                        ) { padding ->
-                            Crossfade(targetState = tab, animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy), label = "section transition") { currentTab ->
-                                if (currentTab == "Home") {
-                                    SeraPagedFeed(accessToken ?: "", refresh, { post ->
-                                        val token = accessToken
-                                        if (token != null) scope.launch {
-                                            val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
-                                            if (result.first) refresh++ else dataError = result.second
-                                        }
-                                    }, Modifier.padding(padding))
-                                } else if (currentTab == "Jobs") {
-                                    SeraNativeJobs(accessToken ?: "", Modifier.padding(padding))
-                                } else if (currentTab == "Network") {
-                                    SeraNativeNetwork(accessToken ?: "", authenticatedUserId, Modifier.padding(padding))
-                                } else if (currentTab == "Inbox") {
-                                    SeraNativeInbox(accessToken ?: "", authenticatedUserId, Modifier.padding(padding))
-                                } else {
-                                    Column(
-                                        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        if (currentTab == "Profile") {
-                                            SeraProfile(identity, dataLoading, dataError, { refresh++ }, {
-                                                session.clear()
-                                                accessToken = null
-                                                authenticatedUserId = ""
-                                                showComposer = false
-                                                password = ""
-                                                message = ""
-                                                tab = "Home"
-                                            }, accessToken ?: "", authenticatedUserId)
-                                        } else {
-                                            Text(sectionLabel(currentTab), color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                                            Text(sectionDescription(currentTab), color = ink)
+                            // Chrome is an overlay, not a Scaffold bottomBar. This
+                            // removes the opaque rectangle behind the floating dock.
+                            Box(
+                                Modifier.weight(1f).fillMaxHeight()
+                                    .nestedScroll(scrollObserver)
+                            ) {
+                                val pageModifier = Modifier.fillMaxSize()
+                                    .padding(top = 60.dp, bottom = if (expanded) 0.dp else 78.dp)
+                                Crossfade(
+                                    targetState = tab,
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioNoBouncy
+                                    ),
+                                    label = "section transition"
+                                ) { currentTab ->
+                                    when (currentTab) {
+                                        "Home" -> SeraPagedFeed(
+                                            accessToken ?: "", refresh,
+                                            onLike = { post ->
+                                                val token = accessToken
+                                                if (token != null) scope.launch {
+                                                    val result = withContext(Dispatchers.IO) {
+                                                        setSeraLike(token, post.id, post.liked)
+                                                    }
+                                                    if (result.first) refresh++ else dataError = result.second
+                                                }
+                                            },
+                                            modifier = pageModifier
+                                        )
+                                        "Jobs" -> SeraNativeJobs(accessToken ?: "", pageModifier)
+                                        "Network" -> SeraNativeNetwork(
+                                            accessToken ?: "", authenticatedUserId, pageModifier
+                                        )
+                                        "Inbox" -> SeraNativeInbox(
+                                            accessToken ?: "", authenticatedUserId, pageModifier
+                                        )
+                                        else -> Column(
+                                            pageModifier.verticalScroll(rememberScrollState())
+                                                .padding(20.dp),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            SeraProfile(
+                                                identity, dataLoading, dataError, { refresh++ }, {
+                                                    session.clear()
+                                                    accessToken = null
+                                                    authenticatedUserId = ""
+                                                    showComposer = false
+                                                    password = ""
+                                                    message = ""
+                                                    tab = "Home"
+                                                    tabHistory.clear()
+                                                },
+                                                accessToken ?: "", authenticatedUserId
+                                            )
                                         }
                                     }
+                                }
+                                AnimatedVisibility(
+                                    visible = chromeVisible.value,
+                                    enter = fadeIn() + slideInVertically { -it },
+                                    exit = fadeOut() + slideOutVertically { -it },
+                                    modifier = Modifier.align(Alignment.TopCenter)
+                                ) {
+                                    SeraNativeHeader(
+                                        section = tab,
+                                        canCompose = authenticatedUserId.isNotBlank(),
+                                        onCompose = { showComposer = true },
+                                        onLanguage = { showLanguagePicker = true },
+                                        onMenu = { scope.launch { drawerState.open() } }
+                                    )
+                                }
+                                if (!expanded) AnimatedVisibility(
+                                    visible = chromeVisible.value,
+                                    enter = fadeIn() + slideInVertically { it },
+                                    exit = fadeOut() + slideOutVertically { it },
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                ) {
+                                    SeraFloatingDock(
+                                        selected = tab, sections = sections,
+                                        onNavigate = ::navigateTo
+                                    )
                                 }
                             }
                         }
