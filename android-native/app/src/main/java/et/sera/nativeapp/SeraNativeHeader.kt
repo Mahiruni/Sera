@@ -5,7 +5,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,7 +22,7 @@ internal fun SeraNativeHeader(
     canCompose: Boolean,
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
-    onNotifications: () -> Unit
+    onInbox: () -> Unit
 ) {
     Surface(color = Color(0xFFF5FAFB), shadowElevation = 1.dp) {
         Row(
@@ -38,8 +38,8 @@ internal fun SeraNativeHeader(
                         tint = Color(0xFF087E83))
                 }
             }
-            IconButton(onClick = onNotifications, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.NotificationsNone, contentDescription = "Notifications",
+            IconButton(onClick = onInbox, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Inbox",
                     tint = Color(0xFF183B40))
             }
             IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) {
