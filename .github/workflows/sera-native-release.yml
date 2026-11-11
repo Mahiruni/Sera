@@ -1,5 +1,11 @@
 name: SERA Native Signed Release
 on:
+  # A version-file change requests one signed native release from trusted main.
+  # UI-only commits don't publish unverified Android packages.
+  push:
+    branches: [main]
+    paths:
+      - 'android-native/release-version.properties'
   workflow_dispatch:
     inputs:
       version_code:
@@ -24,23 +30,39 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Validate release version and required secrets
+      - name: Resolve version and validate release secrets
         shell: bash
         env:
-          VERSION_CODE: ${{ inputs.version_code }}
-          VERSION_NAME: ${{ inputs.version_name }}
+          REQUESTED_CODE: ${{ inputs.version_code }}
+          REQUESTED_NAME: ${{ inputs.version_name }}
           KEYSTORE_BASE64: ${{ secrets.SERA_RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.SERA_RELEASE_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
           SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && (( VERSION_CODE >= 2 )) || { echo "::error::version_code must be >= 2"; exit 1; }
-          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version_name must be semver"; exit 1; }
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION_CODE="$REQUESTED_CODE"
+            VERSION_NAME="$REQUESTED_NAME"
+          else
+            VERSION_CODE="$(sed -n 's/^version_code=//p' android-native/release-version.properties)"
+            VERSION_NAME="$(sed -n 's/^version_name=//p' android-native/release-version.properties)"
+          fi
+          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && (( VERSION_CODE >= 2 )) || { echo "::error::Invalid version_code"; exit 1; }
+          [[ "$VERSION_NAME" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]] || { echo "::error::Invalid version_name"; exit 1; }
           for key in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD SUPABASE_ANON_KEY; do
             [[ -n "${!key}" ]] || { echo "::error::Missing release secret: $key"; exit 1; }
           done
+          if gh release view "android-v${VERSION_NAME}" >/dev/null 2>&1; then
+            echo "::error::Android version ${VERSION_NAME} is already published."
+            exit 1
+          fi
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+      - name: Validate seven-language Android resources
+        run: python3 android-native/scripts/check_locales.py
       - name: Install Android SDK
         shell: bash
         run: |
@@ -58,8 +80,6 @@ jobs:
           SERA_RELEASE_KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
           SERA_RELEASE_KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
           SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
-          VERSION_CODE: ${{ inputs.version_code }}
-          VERSION_NAME: ${{ inputs.version_name }}
         run: |
           set -euo pipefail
           umask 077
@@ -80,8 +100,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_CODE: ${{ inputs.version_code }}
-          VERSION_NAME: ${{ inputs.version_name }}
         run: |
           set -euo pipefail
           APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"

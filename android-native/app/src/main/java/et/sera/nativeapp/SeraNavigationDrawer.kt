@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.PeopleOutline
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -42,6 +43,7 @@ internal fun SeraNavigationDrawer(
     onNavigate: (String) -> Unit,
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
+    onCheckUpdates: () -> Unit,
     onSignOut: () -> Unit
 ) {
     ModalDrawerSheet(
@@ -95,11 +97,14 @@ internal fun SeraNavigationDrawer(
             NavigationDrawerItem(label = { Text("Language") }, selected = false,
                 icon = { Icon(Icons.Outlined.Language, contentDescription = null) },
                 onClick = onLanguage)
+            NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
+                icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
+                onClick = onCheckUpdates)
             Spacer(Modifier.weight(1f))
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
                 onClick = onSignOut)
-            Text("SERA.et · Built for people and ideas",
+            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Built for people and ideas",
                 fontSize = 10.sp, color = Color(0xFF71888A),
                 modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }

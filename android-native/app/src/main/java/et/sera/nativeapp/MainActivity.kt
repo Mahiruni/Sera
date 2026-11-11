@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.content.Intent
 import android.net.Uri
 import android.content.Context
@@ -100,6 +101,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     }
 
     var availableUpdate by remember { mutableStateOf<SeraRelease?>(null) }
+    var lastUpdateCheckElapsed by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     var updateNotice by remember { mutableStateOf("") }
     var activeDownloadId by remember { mutableStateOf<Long?>(null) }
     var activeRelease by remember { mutableStateOf<SeraRelease?>(null) }
@@ -121,6 +123,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
             activeRelease = pending.release
             activeDownloadId = pending.id
         } else {
+            lastUpdateCheckElapsed = SystemClock.elapsedRealtime()
             availableUpdate = checkSeraUpdate()
         }
     }
@@ -163,6 +166,15 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
         if (installerPermissionRequired && updateDownloaded && activeDownloadId != null &&
             context.packageManager.canRequestPackageInstalls()) {
             launchVerifiedInstaller()
+        }
+        // Detect new signed releases when returning to SERA after a long background
+        // session. Avoid repeated requests when the installer or a download is active.
+        val now = SystemClock.elapsedRealtime()
+        if (activeDownloadId == null && now - lastUpdateCheckElapsed >= 30L * 60L * 1000L) {
+            lastUpdateCheckElapsed = now
+            installScope.launch {
+                checkSeraUpdate()?.let { availableUpdate = it }
+            }
         }
     }
 
@@ -465,6 +477,19 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
                                 onLanguage = {
                                     scope.launch { drawerState.close() }
                                     showLanguagePicker = true
+                                },
+                                onCheckUpdates = {
+                                    scope.launch { drawerState.close() }
+                                    if (activeDownloadId != null) {
+                                        updateNotice = "Your current SERA update is already downloading or ready to install."
+                                    } else {
+                                        installScope.launch {
+                                            lastUpdateCheckElapsed = SystemClock.elapsedRealtime()
+                                            val release = checkSeraUpdate()
+                                            if (release != null) availableUpdate = release
+                                            else updateNotice = "No newer signed SERA version was found, or the update service is temporarily unavailable."
+                                        }
+                                    }
                                 },
                                 onSignOut = {
                                     scope.launch { drawerState.close() }
