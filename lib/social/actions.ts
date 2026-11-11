@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
+import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import {
   MEDIA_BUCKET,
   MEDIA_LIMIT,
@@ -47,6 +48,8 @@ export async function createPost(
       error:
         "Check the post details. Choose up to four JPG, PNG or WebP images, totaling at most 3 MB.",
     };
+  if (moderationEnabled() && !securePublishingConfigured())
+    return { error: "Secure publishing is not configured. Please try again later." };
   if (moderationEnabled()) {
     try {
       const normalizedImages: Buffer[] = [];
@@ -112,7 +115,9 @@ export async function createPost(
       });
       if (row.error) throw row.error;
     }
-    const publish = await db
+    const publisher = moderationEnabled() ? moderationWriter() : db;
+    if (!publisher) throw new Error("Trusted publisher unavailable");
+    const publish = await publisher
       .from("posts")
       .update({ status: "published" })
       .eq("id", id)
@@ -148,6 +153,8 @@ export async function updatePost(
     id = form.get("post_id");
   if (!session || !input || !uuid(id))
     return { error: "Check your post details and sign in again." };
+  if (moderationEnabled() && !securePublishingConfigured())
+    return { error: "Secure publishing is unavailable." };
   if (moderationEnabled()) {
     const verdict = await screenSubmission(input, []);
     if (verdict.verdict !== "approved")
@@ -155,7 +162,9 @@ export async function updatePost(
   }
   // Kind is immutable. Restrict the update to its original type as well as its owner.
   const { kind, ...fields } = input;
-  const result = await session.db
+  const editor = moderationEnabled() ? moderationWriter() : session.db;
+  if (!editor) return { error: "Secure publishing is unavailable." };
+  const result = await editor
     .from("posts")
     .update(fields)
     .eq("id", id)
@@ -246,6 +255,8 @@ export async function addComment(
       error:
         "Write a comment of 1–2,000 characters and sign in again if needed.",
     };
+  if (moderationEnabled() && !securePublishingConfigured())
+    return { error: "Secure commenting is unavailable." };
   if (moderationEnabled()) {
     const verdict = await screenSubmission({
       kind: "idea", title: "", body: input.body, quote_source: "", category: "", skills: [],
@@ -255,7 +266,9 @@ export async function addComment(
     if (verdict.verdict !== "approved")
       return { error: "Comment safety screening is unavailable. Please try again later." };
   }
-  const result = await session.db.from("post_comments").insert(input);
+  const commenter = moderationEnabled() ? moderationWriter() : session.db;
+  if (!commenter) return { error: "Secure commenting is unavailable." };
+  const result = await commenter.from("post_comments").insert({ ...input, author_id: session.user.id });
   if (result.error)
     return {
       error:
