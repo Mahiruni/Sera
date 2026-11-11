@@ -16,8 +16,8 @@ import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
-    val stream = remember(token) { pagedSeraPosts(token) }
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
+    val stream = remember(token, refreshKey) { pagedSeraPosts(token) }
     val posts = stream.collectAsLazyPagingItems()
     var commentsPostId by remember { mutableStateOf<String?>(null) }
     PullToRefreshBox(
