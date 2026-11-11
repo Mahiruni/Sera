@@ -2,6 +2,7 @@ package et.sera.nativeapp
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import coil3.compose.AsyncImage
@@ -39,12 +40,19 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
     var body by rememberSaveable(userId) { mutableStateOf(drafts.load(userId)) }
     var saved by remember { mutableStateOf(false) }
     var selectedImage by remember { mutableStateOf<Uri?>(null) }
+    var mediaError by remember { mutableStateOf("") }
     var selectedVideo by remember { mutableStateOf<Uri?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedImage = uri; selectedVideo = null }
+        if (uri != null) {
+            if (mediaSizeAllowed(context, uri, 20L * 1024 * 1024)) { selectedImage = uri; selectedVideo = null; mediaError = "" }
+            else mediaError = "Image exceeds the 20 MB attachment limit or cannot be read."
+        }
     }
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) { selectedVideo = uri; selectedImage = null }
+        if (uri != null) {
+            if (mediaSizeAllowed(context, uri, 100L * 1024 * 1024)) { selectedVideo = uri; selectedImage = null; mediaError = "" }
+            else mediaError = "Video exceeds the 100 MB attachment limit or cannot be read."
+        }
     }
     val hasContent = body.isNotBlank()
     fun close() {
@@ -82,6 +90,7 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                 }, modifier = Modifier.weight(1f)) { Text("Add video") }
             }
+            if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
             selectedImage?.let { uri ->
                 AsyncImage(model = uri, contentDescription = "Selected image preview",
                     modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp))
@@ -110,4 +119,16 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
             TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
         }
     }
+}
+
+private fun mediaSizeAllowed(context: Context, uri: Uri, maxBytes: Long): Boolean {
+    return try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            if (!cursor.moveToFirst()) return false
+            val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (index < 0 || cursor.isNull(index)) return false
+            val size = cursor.getLong(index)
+            size in 1..maxBytes
+        } ?: false
+    } catch (_: Exception) { false }
 }
