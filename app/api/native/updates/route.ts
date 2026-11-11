@@ -28,13 +28,15 @@ export async function GET() {
         item.name === `SERA-${versionName}.apk`,
     ) : null;
     const apkUrl = asset?.browser_download_url || "";
+    const digest = typeof asset?.digest === "string" ? asset.digest : "";
+    const sha256 = /^sha256:([a-fA-F0-9]{64})$/.exec(digest)?.[1]?.toLowerCase() || "";
     const parsed = new URL(apkUrl);
-    if (!Number.isSafeInteger(versionCode) || versionCode < 2 ||
+    if (!sha256 || !Number.isSafeInteger(versionCode) || versionCode < 2 ||
         parsed.protocol !== "https:" || parsed.hostname !== "github.com" ||
         parsed.pathname !== `/${REPO}/releases/download/${tag}/SERA-${versionName}.apk`)
       return NextResponse.json({ available: false }, { headers: jsonHeaders });
     return NextResponse.json({
-      available: true, versionCode, versionName, apkUrl,
+      available: true, versionCode, versionName, apkUrl, sha256,
       notes: "A new signed SERA Android release is available.",
     }, { headers: jsonHeaders });
   } catch {
