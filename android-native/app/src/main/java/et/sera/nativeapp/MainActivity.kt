@@ -435,8 +435,18 @@ fun SeraApp(
             confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
     BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
-    MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg),
-        typography = SeraTypography) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = teal, onPrimary = Color.White,
+            secondary = Color(0xFF126F70),
+            background = bg, surface = Color.White,
+            onSurface = ink, onSurfaceVariant = Color(0xFF607B7D),
+            surfaceVariant = Color(0xFFF0F7F6),
+            outline = Color(0xFFC6DCDA)
+        ),
+        typography = SeraTypography,
+        shapes = SeraShapes
+    ) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {

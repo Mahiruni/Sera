@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.Shapes
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -76,4 +77,13 @@ internal val SeraTypography = Typography(
         fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
     labelMedium = TextStyle(fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp)
+)
+
+/** SERA's native optical shape scale. Controls inherit it across the app. */
+internal val SeraShapes = Shapes(
+    extraSmall = RoundedCornerShape(9.dp),
+    small = RoundedCornerShape(13.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(30.dp)
 )
