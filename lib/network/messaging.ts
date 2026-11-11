@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { currentUser, serverClient } from "@/lib/supabase/server";
+import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
 const uuid = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 export async function startConversation(form: FormData) {
   const user = await currentUser();
@@ -25,7 +26,7 @@ export async function sendProfessionalMessage(form: FormData) {
   if (!user?.email_confirmed_at || !uuid(conversation) || typeof body !== "string" ||
       (!body.trim() && !file) || body.trim().length > 4000) return;
   const db = await serverClient();
-  const { data: membership, error: membershipError } = await db.from("professional_conversations").select("id").eq("id", conversation).or("member_a.eq." + user.id + ",member_b.eq." + user.id).maybeSingle();
+  const { data: membership, error: membershipError } = await db.from("professional_conversations").select("id,member_a,member_b").eq("id", conversation).or("member_a.eq." + user.id + ",member_b.eq." + user.id).maybeSingle();
   if (membershipError || !membership) return;
   // Upload first: a rejected or oversized file must not create an empty message.
   let path: string | null = null;
@@ -49,6 +50,18 @@ export async function sendProfessionalMessage(form: FormData) {
       file_name: file.name.slice(0, 180) || "attachment", mime_type: file.type, byte_size: file.size,
     });
     if (recorded.error) await bucket.remove([path]);
+  }
+  // Push is best-effort: a Firebase outage must never undo a persisted message.
+  const recipient = membership.member_a === user.id ? membership.member_b : membership.member_a;
+  try {
+    await notifyProfessionalDevices(recipient, {
+      title: "New SERA message",
+      body: "You have a new professional message.",
+      url: "/network/messages",
+      kind: "message",
+    });
+  } catch (error) {
+    console.error("Professional message push delivery failed", error instanceof Error ? error.message : "unknown error");
   }
   revalidatePath("/network/messages");
 }
