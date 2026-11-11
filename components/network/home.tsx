@@ -11,6 +11,10 @@ import {
   Compass,
   MessageCircle,
   Bell,
+  UsersRound,
+  Layers3,
+  Lightbulb,
+  Sparkles,
 } from "lucide-react";
 import { FeedComposer } from "@/components/social/FeedComposer";
 import { PostList, SocialPagination } from "@/components/social/feed";
@@ -69,6 +73,20 @@ export function NetworkHome({
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page">
+      <section className="sera-premium-hero" aria-label="Welcome to SERA">
+        <div className="sera-premium-hero-copy">
+          <span><Sparkles size={14} /> YOUR PROFESSIONAL COMMUNITY</span>
+          <h1>A good place to grow your career.</h1>
+          <p>Discover people, ideas, projects and opportunities.</p>
+        </div>
+        <div className="sera-premium-hero-art" aria-hidden="true">SERA.et</div>
+      </section>
+      <nav className="sera-premium-quicklinks" aria-label="Explore SERA">
+        <Link href="/jobs"><BriefcaseBusiness /><span>Jobs &amp; Opportunities</span></Link>
+        <Link href="/discover?tab=people"><UsersRound /><span>People &amp; Connections</span></Link>
+        <Link href="/discover?tab=projects"><Layers3 /><span>Projects &amp; Portfolios</span></Link>
+        <Link href="/feed?kind=idea"><Lightbulb /><span>Ideas &amp; Innovation</span></Link>
+      </nav>
       <div className="network-app-grid">
         <aside className="network-left" aria-label="Your professional identity">
           <section className="network-profile-card">
@@ -132,7 +150,7 @@ export function NetworkHome({
           className="network-content"
           aria-label="Professional community feed"
         >
-          <header className="network-welcome">
+          <header className="network-welcome sera-premium-old-welcome">
             <div>
               <span className="network-kicker">
                 YOUR DAILY DOSE OF POSSIBILITY
@@ -149,7 +167,7 @@ export function NetworkHome({
             <span>People · Ideas · Opportunities</span>
           </header>
           <nav
-            className="network-mobile-shortcuts"
+            className="network-mobile-shortcuts sera-premium-old-shortcuts"
             aria-label="Community shortcuts"
           >
             <Link href="/discover">
