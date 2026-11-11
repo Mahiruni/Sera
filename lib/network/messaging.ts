@@ -25,6 +25,8 @@ export async function sendProfessionalMessage(form: FormData) {
   if (!user?.email_confirmed_at || !uuid(conversation) || typeof body !== "string" ||
       (!body.trim() && !file) || body.trim().length > 4000) return;
   const db = await serverClient();
+  const { data: membership, error: membershipError } = await db.from("professional_conversations").select("id").eq("id", conversation).or("member_a.eq." + user.id + ",member_b.eq." + user.id).maybeSingle();
+  if (membershipError || !membership) return;
   // Upload first: a rejected or oversized file must not create an empty message.
   let path: string | null = null;
   const bucket = db.storage.from("professional-message-files");
@@ -55,6 +57,8 @@ export async function markProfessionalMessagesRead(form: FormData) {
   const conversation = form.get("conversation");
   if (!user?.email_confirmed_at || !uuid(conversation)) return;
   const db = await serverClient();
+  const { data: membership, error: membershipError } = await db.from("professional_conversations").select("id").eq("id", conversation).or("member_a.eq." + user.id + ",member_b.eq." + user.id).maybeSingle();
+  if (membershipError || !membership) return;
   await db.from("professional_messages").update({ read_at: new Date().toISOString() })
     .eq("conversation_id", conversation).neq("sender_id", user.id).is("read_at", null);
   revalidatePath("/network/messages");
