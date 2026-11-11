@@ -145,7 +145,12 @@ fun SeraApp(context: Context) {
                             busy = false
                         }
                     },
-                    onLanguage = { showLanguagePicker = true }
+                    onLanguage = { showLanguagePicker = true },
+                    onAuthenticated = { token, refreshToken ->
+                        session.saveRefreshToken(refreshToken)
+                        authenticatedUserId = ""
+                        accessToken = token
+                    }
                 )
             } else {
                 BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
