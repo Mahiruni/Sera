@@ -105,7 +105,7 @@ fun SeraApp(context: Context) {
     }
     if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, onDismiss = { showComposer = false })
     if (showLanguagePicker) {
-        val locales = listOf("" to stringResource(R.string.system_default), "en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromoo", "ti" to "ትግርኛ", "ar" to "العربية", "aa" to "Qafar af", "so" to "Soomaali")
+        val locales = listOf("" to stringResource(R.string.system_language), "en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromoo", "ti" to "ትግርኛ", "ar" to "العربية", "aa" to "Qafar af", "so" to "Soomaali")
         AlertDialog(onDismissRequest = { showLanguagePicker = false },
             title = { Text(stringResource(R.string.language)) },
             text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
