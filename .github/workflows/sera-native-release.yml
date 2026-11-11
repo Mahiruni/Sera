@@ -1,0 +1,86 @@
+name: SERA Native Signed Release
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Monotonically increasing Android versionCode (integer >= 2)'
+        required: true
+        type: string
+      version_name:
+        description: 'Public version name, e.g. 1.0.0'
+        required: true
+        type: string
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Validate release version and required secrets
+        shell: bash
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          KEYSTORE_BASE64: ${{ secrets.SERA_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SERA_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
+          SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && (( VERSION_CODE >= 2 )) || { echo "::error::version_code must be >= 2"; exit 1; }
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version_name must be semver"; exit 1; }
+          for key in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD SUPABASE_ANON_KEY; do
+            [[ -n "${!key}" ]] || { echo "::error::Missing release secret: $key"; exit 1; }
+          done
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Build signed production APK
+        shell: bash
+        working-directory: android-native
+        env:
+          SERA_RELEASE_KEYSTORE_BASE64: ${{ secrets.SERA_RELEASE_KEYSTORE_BASE64 }}
+          SERA_RELEASE_STORE_PASSWORD: ${{ secrets.SERA_RELEASE_STORE_PASSWORD }}
+          SERA_RELEASE_KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
+          SERA_RELEASE_KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
+          SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE="$(mktemp --suffix=.jks)"
+          trap 'rm -f "$KEYSTORE"' EXIT
+          printf '%s' "$SERA_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          export SERA_RELEASE_KEYSTORE="$KEYSTORE"
+          gradle :app:assembleRelease --no-daemon \
+            -PSERA_VERSION_CODE="$VERSION_CODE" \
+            -PSERA_VERSION_NAME="$VERSION_NAME" \
+            -PSERA_SUPABASE_URL="https://okegwojigrtxadvgxpwm.supabase.co" \
+            -PSERA_SUPABASE_ANON_KEY="$SERA_SUPABASE_ANON_KEY"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          sha256sum "$APK" > "$APK.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SERA-signed-release-${{ inputs.version_name }}
+          path: |
+            android-native/app/build/outputs/apk/release/*.apk
+            android-native/app/build/outputs/apk/release/*.sha256
+          if-no-files-found: error
+          retention-days: 30
