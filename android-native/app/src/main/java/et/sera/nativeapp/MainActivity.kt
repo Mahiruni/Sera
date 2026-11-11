@@ -205,13 +205,13 @@ fun SeraApp(context: Context) {
                         ) { padding ->
                             Crossfade(targetState = tab, animationSpec = tween(durationMillis = 180), label = "section transition") { currentTab ->
                                 if (currentTab == "Home") {
-                                    SeraFeed(feed, dataLoading, dataError, { refresh++ }, { post ->
+                                    SeraPagedFeed(accessToken ?: "", refresh, { post ->
                                         val token = accessToken
                                         if (token != null) scope.launch {
                                             val result = withContext(Dispatchers.IO) { setSeraLike(token, post.id, post.liked) }
                                             if (result.first) refresh++ else dataError = result.second
                                         }
-                                    }, accessToken ?: "", Modifier.padding(padding))
+                                    }, Modifier.padding(padding))
                                 } else {
                                     Column(
                                         Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
