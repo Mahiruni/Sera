@@ -38,9 +38,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (uploaded.error) return fail("Could not upload company branding.", 500);
   const field = kind === "logo" ? "logo_path" : "cover_path";
   const previous = await db.from("sera_organization_details").select("logo_path,cover_path").eq("organization_id", id).maybeSingle();
-  const saved = await db.from("sera_organization_details").upsert({
-    organization_id: id, [field]: path, updated_at: new Date().toISOString(),
-  }, { onConflict: "organization_id" });
+  if (previous.error) {
+    await db.storage.from(BUCKET).remove([path]);
+    return fail("Company branding could not be loaded.", 500);
+  }
+  const update = { [field]: path, updated_at: new Date().toISOString() };
+  const saved = previous.data
+    ? await db.from("sera_organization_details").update(update).eq("organization_id", id)
+    : await db.from("sera_organization_details").insert({ organization_id: id, ...update });
   if (saved.error) {
     await db.storage.from(BUCKET).remove([path]);
     return fail("Could not save your company branding.", 500);
