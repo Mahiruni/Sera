@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -23,7 +24,15 @@ internal suspend fun uploadMediaWithProgress(
     size: Long,
     onProgress: (Int) -> Unit
 ): Result<Unit> = withContext(Dispatchers.IO) {
-    runCatching {
+    try {
+        Result.success(runUpload(context, uri, uploadUrl, contentType, size, onProgress))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
+}
+
+private suspend fun runUpload(context: Context, uri: Uri, uploadUrl: String, contentType: String, size: Long, onProgress: (Int) -> Unit) {
         val target = URL(uploadUrl)
         require(target.protocol == "https") { "HTTPS is required" }
         require(target.host.isNotBlank()) { "Missing upload host" }
