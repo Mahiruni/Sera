@@ -39,7 +39,7 @@ internal suspend fun publishNativeImages(
         connection = (URL("https://sera.hisabtech.com/api/native/posts/media").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             doOutput = true
-            chunkedStreamingMode = 64 * 1024
+            setChunkedStreamingMode(64 * 1024)
             connectTimeout = 15000
             readTimeout = 60000
             setRequestProperty("Authorization", "Bearer $token")
