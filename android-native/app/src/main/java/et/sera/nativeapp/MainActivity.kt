@@ -167,7 +167,9 @@ fun SeraApp(context: Context) {
                                 }
                             }
                         ) { padding ->
-                            Column(
+                            if (tab == "Home") {
+                                SeraFeed(feed, dataLoading, dataError, { refresh++ }, Modifier.padding(padding))
+                            } else Column(
                                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
                                     .padding(24.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
