@@ -24,10 +24,10 @@ import androidx.media3.ui.PlayerView
  * Only pass server-authorized HTTPS media URLs.
  */
 @Composable
-fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
+fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Boolean = false) {
     val context = LocalContext.current
     val allowed = remember(url) {
-        runCatching { val uri = Uri.parse(url); uri.scheme == "https" && !uri.host.isNullOrBlank() }.getOrDefault(false)
+        runCatching { val uri = Uri.parse(url); (uri.scheme == "https" && !uri.host.isNullOrBlank()) || (localPreview && uri.scheme == "content") }.getOrDefault(false)
     }
     if (!allowed) {
         Text("Video unavailable", color = MaterialTheme.colorScheme.error)
@@ -39,7 +39,7 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
             setMediaItem(MediaItem.fromUri(url))
             playWhenReady = false
             repeatMode = Player.REPEAT_MODE_OFF
-            prepare()
+            // Defer network and local decoding until the user presses Play.
         }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -54,6 +54,7 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier) {
         }
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = { player.prepare(); player.play() }) { Text("Play video") }
         AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
             update = { it.player = player },
