@@ -43,10 +43,17 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
                 parsed.path == "/downloads/sera-android.apk" && parsed.query == "version=$name"
             val officialRelease = parsed.host == "github.com" &&
                 parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
-            if (!sha256.matches(Regex("[0-9a-f]{64}")) || code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
+            if (!name.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) ||
+                !sha256.matches(Regex("[0-9a-f]{64}")) ||
+                code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
                 parsed.userInfo != null || !(firstParty || officialRelease))
                 return@withContext null
-            SeraRelease(code, name, address, data.optString("notes").take(600), sha256)
+            // Eliminate the extra first-party redirect for new clients.
+            // Legacy clients still use the compatible URL served by the API.
+            val directDownload = if (firstParty)
+                "https://github.com/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
+                else address
+            SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256)
         } finally { connection.disconnect() }
     } catch (_: Exception) { null }
 }
