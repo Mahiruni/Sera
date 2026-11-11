@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,8 +25,9 @@ private val deepTeal = Color(0xFF087E83)
 private val darkInk = Color(0xFF183B40)
 
 @Composable
-fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
+fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: () -> Unit, onLike: (SeraPost) -> Unit, token: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    var commentPostId by remember { mutableStateOf<String?>(null) }
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("Your professional world", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkInk)
@@ -65,7 +66,7 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                     HorizontalDivider(color = Color(0xFFE6EEEE))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onLike(post) }) { Text((if (post.liked) "♥ " else "♡ ") + post.likes, color = deepTeal) }
-                        Text("Comments " + post.comments, color = Color.Gray, fontSize = 12.sp)
+                        TextButton(onClick = { commentPostId = post.id }) { Text("Comments " + post.comments, color = Color.Gray, fontSize = 12.sp) }
                         TextButton(onClick = {
                             val share = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
@@ -77,5 +78,8 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                 }
             }
         }
+    }
+    commentPostId?.let { id ->
+        SeraCommentsSheet(token, id, onDismiss = { commentPostId = null })
     }
 }
