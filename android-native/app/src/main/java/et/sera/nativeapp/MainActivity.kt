@@ -7,7 +7,10 @@ import androidx.security.crypto.MasterKey
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.WindowInsets
@@ -53,6 +56,7 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun SeraApp(context: Context) {
     val session = remember { SessionStore(context) }
+    val haptics = LocalHapticFeedback.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf<String?>(null) }
@@ -81,6 +85,7 @@ fun SeraApp(context: Context) {
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
         if (destination == tab) return
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         tabHistory.add(tab)
         if (tabHistory.size > 12) tabHistory.removeAt(0)
         tab = destination
@@ -201,7 +206,7 @@ fun SeraApp(context: Context) {
                                 }
                             }
                         ) { padding ->
-                            Crossfade(targetState = tab, animationSpec = tween(durationMillis = 180), label = "section transition") { currentTab ->
+                            Crossfade(targetState = tab, animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy), label = "section transition") { currentTab ->
                                 if (currentTab == "Home") {
                                     SeraPagedFeed(accessToken ?: "", refresh, { post ->
                                         val token = accessToken
