@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
@@ -84,6 +87,20 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
     var people by remember { mutableStateOf<List<SeraProfessional>>(emptyList()) }
     var query by remember { mutableStateOf("") }
+    var relations by remember { mutableStateOf(SeraNetworkRelations(emptySet(), emptyList())) }
+    var actionPeer by remember { mutableStateOf<String?>(null) }
+    var actionError by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    fun perform(peerId: String, operation: suspend () -> String) {
+        if (actionPeer != null) return
+        actionPeer = peerId
+        actionError = ""
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { operation() }
+            if (result.isNotBlank()) actionError = result else reload++
+            actionPeer = null
+        }
+    }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var reload by remember { mutableIntStateOf(0) }
@@ -92,6 +109,11 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         val result = withContext(Dispatchers.IO) { loadProfessionals(token) }
         result.first?.let { people = it }
         error = result.second
+        if (userId.isNotBlank()) {
+            val relationships = withContext(Dispatchers.IO) { loadSeraRelations(token, userId) }
+            relationships.first?.let { relations = it }
+            if (relationships.second.isNotBlank()) actionError = relationships.second
+        }
         loading = false
     }
     val matches = remember(people, query, userId) {
@@ -113,6 +135,30 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
             TextButton(onClick = { reload++ }, enabled = !loading) { Text("Refresh") }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (actionError.isNotBlank()) Text(actionError, color = MaterialTheme.colorScheme.error)
+        val pendingReceived = relations.requests.filter { it.recipient == userId && it.status == "pending" }
+        AnimatedVisibility(pendingReceived.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Connection invitations · ${pendingReceived.size}", color = Color(0xFF087E83),
+                    fontWeight = FontWeight.Bold)
+                pendingReceived.forEach { request ->
+                    val senderName = people.firstOrNull { it.id == request.requester }?.name ?: "Professional"
+                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                            Text(senderName, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { perform(request.id) {
+                                    resolveSeraConnection(token, request, userId, "accepted")
+                                } }, enabled = actionPeer == null) { Text("Accept") }
+                                OutlinedButton(onClick = { perform(request.id) {
+                                    resolveSeraConnection(token, request, userId, "declined")
+                                } }, enabled = actionPeer == null) { Text("Decline") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if (error.isNotBlank()) {
             Text(error, color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = { reload++ }) { Text("Retry") }
@@ -142,6 +188,39 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                                 overflow = TextOverflow.Ellipsis)
                             if (person.location.isNotBlank()) Text(person.location,
                                 color = Color(0xFF087E83), fontSize = 12.sp)
+                        }
+                    }
+                    val followed = person.id in relations.follows
+                    val request = relations.requests.firstOrNull {
+                        it.status == "pending" && (
+                            (it.requester == userId && it.recipient == person.id) ||
+                            (it.recipient == userId && it.requester == person.id))
+                    }
+                    val connected = relations.requests.any {
+                        it.status == "accepted" && (
+                            (it.requester == userId && it.recipient == person.id) ||
+                            (it.recipient == userId && it.requester == person.id))
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp).animateContentSize(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(onClick = { perform(person.id) {
+                            changeSeraFollow(token, userId, person.id, !followed)
+                        } }, enabled = actionPeer == null) { Text(if (followed) "Following" else "Follow") }
+                        when {
+                            connected -> Text("Connected", modifier = Modifier.padding(12.dp), color = Color(0xFF087E83))
+                            request != null && request.requester == userId ->
+                                TextButton(onClick = { perform(person.id) {
+                                    resolveSeraConnection(token, request, userId, "withdrawn")
+                                } }, enabled = actionPeer == null) { Text("Withdraw") }
+                            request != null ->
+                                Button(onClick = { perform(person.id) {
+                                    resolveSeraConnection(token, request, userId, "accepted")
+                                } }, enabled = actionPeer == null) { Text("Accept") }
+                            else -> Button(onClick = { perform(person.id) {
+                                requestSeraConnection(token, userId, person.id)
+                            } }, enabled = actionPeer == null) { Text("Connect") }
                         }
                     }
                 }
