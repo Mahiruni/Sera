@@ -277,7 +277,11 @@ export async function addComment(
   }
   const commenter = moderationEnabled() ? moderationWriter() : session.db;
   if (!commenter) return { error: "Secure commenting is unavailable." };
-  const result = await commenter.from("post_comments").insert({ ...input, author_id: session.user.id });
+  // The member role can insert only post_id, parent_id and body. PostgreSQL
+  // assigns auth.uid(); the privileged moderation writer needs an explicit author.
+  const result = moderationEnabled()
+    ? await commenter.from("post_comments").insert({ ...input, author_id: session.user.id })
+    : await commenter.from("post_comments").insert(input);
   if (result.error)
     return {
       error:

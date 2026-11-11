@@ -14,6 +14,7 @@ import "./footer-x-glass.css";
 import "./social.css";
 import "./network.css";
 import "./activity.css";
+import "./page-flow.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f5f8fc",
+  themeColor: "#f5fafb",
 };
 export default async function RootLayout({
   children,

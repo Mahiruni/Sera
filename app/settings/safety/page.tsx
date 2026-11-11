@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
+import { ShieldCheck, ArrowLeft } from "lucide-react";
 import { submitModerationAppeal } from "@/lib/moderation/appeals";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -23,12 +25,11 @@ export default async function SafetyPage() {
   const { data: decisions, error: decisionsError } = await db.rpc("my_moderation_decisions");
   const { data: appeals } = await db.from("moderation_appeals").select("decision_id,status").eq("appellant_id",user.id);
   const appealMap = new Map((appeals || []).map(a => [a.decision_id,a.status]));
-  return <main className="container page account-foundation">
-    <div className="account-security panel">
-      <Link className="inline-link" href="/settings">← Account settings</Link>
-      <h1>Account safety</h1>
-      <p>Reports are private. Reporting helps our team review possible guideline violations; a report does not automatically remove a post.</p>
-    </div>
+  return <div className="container page account-foundation">
+    <PageIntro icon={ShieldCheck} eyebrow="YOUR PEACE OF MIND" title="Account safety"
+      description="Review your private reports, post decisions and appeals.">
+      <Link className="button secondary" href="/settings"><ArrowLeft size={16} /> Your account</Link>
+    </PageIntro>
     <section className="account-security panel" aria-labelledby="safety-decisions-title">
       <h2 id="safety-decisions-title">Decisions on your posts</h2>
       {decisionsError ? <p role="alert">Unable to load moderation decisions.</p> : !decisions?.length ? <p>No moderation decisions on your posts.</p> : decisions.map((d: { id: string; action: string; explanation: string | null; policy: string; created_at: string }) => <article key={d.id} style={{padding:"16px 0",borderBottom:"1px solid #dce7e9"}}>
@@ -54,5 +55,5 @@ export default async function SafetyPage() {
         </li>)}
       </ul>}
     </section>
-  </main>;
+  </div>;
 }

@@ -31,7 +31,7 @@ import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
 import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
-import { navigationGroups, navIsActive } from "@/lib/navigation";
+import { dockSection, navigationGroups, navIsActive } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({
   children,
@@ -64,6 +64,10 @@ export function Shell({
       "/connections",
       "/workspace",
       "/profile",
+      "/jobs",
+      "/matches",
+      "/moderation",
+      "/admin/moderation",
     ].some((route) => pathname === route || pathname.startsWith(route + "/"));
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -123,7 +127,7 @@ export function Shell({
       <a href="#main-content" className="skip-link">
         {t("skipContent")}
       </a>
-      <header className="site-header" lang={lang} dir="ltr">
+      <header className="site-header sera-app-header" lang={lang} dir="ltr">
         <button
           ref={trigger}
           type="button"
@@ -286,7 +290,7 @@ export function Shell({
           </p>
         </div>
       </dialog>
-      <main id="main-content" tabIndex={-1}>
+      <main id="main-content" className="sera-main" tabIndex={-1}>
         <TranslationNotice />
         {children}
       </main>
@@ -294,30 +298,7 @@ export function Shell({
       <nav lang={lang} className="footer-dock" aria-label={t("quickNav")}>
         <span className="dock-perimeter" aria-hidden="true" />
         {dock.map(({ href, key, Icon }, i) => {
-          const active =
-            href === "/settings" && (pathname === "/settings" || pathname.startsWith("/settings/"))
-              ? true
-              : href === "/"
-              ? pathname === "/"
-              : href === "/workspace" || href === "/dashboard"
-                ? [
-                    "/workspace",
-                    "/dashboard",
-                    "/profile",
-                    "/applications",
-                    "/messages",
-                    "/network/messages",
-                    "/connections",
-                    "/notifications",
-                    "/matches",
-                    "/employer",
-                    "/employer/post",
-                    "/employer/pipeline",
-                  ].some(
-                    (route) =>
-                      pathname === route || pathname.startsWith(route + "/"),
-                  )
-                : pathname === href || pathname.startsWith(href + "/");
+          const active = dockSection(pathname) === key;
           return (
             <Link
               key={href}

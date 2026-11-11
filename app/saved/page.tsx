@@ -6,13 +6,14 @@ import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { type LiveJob } from "@/lib/recruitment/data";
 import { LiveJobCard, Empty } from "@/components/recruitment/ui";
-import { WorkspaceNav } from "@/components/workspace/navigation";
+import { PageIntro } from "@/components/page-intro";
+import { Bookmark, BriefcaseBusiness, ArrowUpRight } from "lucide-react";
 import { toggleSavedJob } from "@/lib/recruitment/actions";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/saved",
-  "Saved jobs",
-  "Your private saved roles, synchronized with your account.",
+  "Saved stories and jobs",
+  "Your private collection of stories and opportunities, synchronized with your account.",
 );
 export default async function Page({
   searchParams,
@@ -36,12 +37,32 @@ export default async function Page({
     jobs: LiveJob | null;
   }[];
   return (
-    <div className="container page live-market workspace-detail">
-      <p className="eyebrow">SERA / SAVED FOR LATER</p>
-      <h1>Keep the possibilities close.</h1>
-      <WorkspaceNav />
-      <section className="social-page">
-        <h2>Saved stories</h2>
+    <div className="container page live-market workspace-detail sera-saved-page">
+      <PageIntro
+        icon={Bookmark}
+        eyebrow="YOUR PRIVATE COLLECTION"
+        title="Keep the possibilities close."
+        description="The stories that inspire you. The opportunities you want to return to."
+      >
+        <Link className="button secondary" href="/discover">
+          Explore more <ArrowUpRight size={16} />
+        </Link>
+      </PageIntro>
+      <nav className="sera-section-tabs" aria-label="Saved collections">
+        <a href="#saved-stories">
+          <Bookmark size={17} /> Stories
+        </a>
+        <a href="#saved-jobs">
+          <BriefcaseBusiness size={17} /> Jobs
+        </a>
+      </nav>
+      <section
+        className="social-page sera-saved-stories"
+        aria-labelledby="saved-stories"
+      >
+        <h2 id="saved-stories" className="sera-section-title">
+          Saved stories
+        </h2>
         {social ? (
           <>
             <PostList
@@ -59,40 +80,45 @@ export default async function Page({
           <p role="alert">Saved stories could not be loaded. Please refresh.</p>
         )}
       </section>
-      <h2>Saved jobs</h2>
-      {error ? (
-        <Empty title="Saved jobs could not be loaded">
-          <p>Please refresh.</p>
-        </Empty>
-      ) : rows.length ? (
-        <div className="live-job-grid">
-          {rows.map((r) => (
-            <div key={r.job_id}>
-              {r.jobs ? (
-                <LiveJobCard job={r.jobs} />
-              ) : (
-                <Empty title="This posting is no longer public">
-                  <p>It may have closed.</p>
-                </Empty>
-              )}
-              <form action={toggleSavedJob} className="live-remove">
-                <input name="job_id" type="hidden" value={r.job_id} />
-                <input name="remove" type="hidden" value="yes" />
-                <button className="button secondary">Remove</button>
-              </form>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <Empty title="A little room for possibilities">
-          <p>
-            Save roles from their detail page and find them here on any device.
-          </p>
-          <Link className="inline-link" href="/jobs">
-            Explore jobs →
-          </Link>
-        </Empty>
-      )}
+      <section aria-labelledby="saved-jobs" className="sera-saved-jobs">
+        <h2 id="saved-jobs" className="sera-section-title">
+          Saved jobs
+        </h2>
+        {error ? (
+          <Empty title="Saved jobs could not be loaded">
+            <p>Please refresh.</p>
+          </Empty>
+        ) : rows.length ? (
+          <div className="live-job-grid">
+            {rows.map((r) => (
+              <div key={r.job_id}>
+                {r.jobs ? (
+                  <LiveJobCard job={r.jobs} />
+                ) : (
+                  <Empty title="This posting is no longer public">
+                    <p>It may have closed.</p>
+                  </Empty>
+                )}
+                <form action={toggleSavedJob} className="live-remove">
+                  <input name="job_id" type="hidden" value={r.job_id} />
+                  <input name="remove" type="hidden" value="yes" />
+                  <button className="button secondary">Remove</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty title="A little room for possibilities">
+            <p>
+              Save roles from their detail page and find them here on any
+              device.
+            </p>
+            <Link className="inline-link" href="/jobs">
+              Explore jobs →
+            </Link>
+          </Empty>
+        )}
+      </section>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 import type { Job } from "@/lib/model";
 import { pay, categories } from "@/lib/model";
 import { useSera } from "./store";
+import { PageIntro } from "./page-intro";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <Link
@@ -105,16 +106,9 @@ export function Heading({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="page-heading">
-      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <div className="heading-line">
-        <div>
-          <h1>{title}</h1>
-          {description && <p className="subtext">{description}</p>}
-        </div>
-        {children}
-      </div>
-    </div>
+    <PageIntro eyebrow={eyebrow} title={title} description={description}>
+      {children}
+    </PageIntro>
   );
 }
 export function Empty({

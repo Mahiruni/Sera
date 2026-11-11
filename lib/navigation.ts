@@ -2,6 +2,38 @@ import type { Key } from "./i18n";
 import type { Role } from "./model";
 export type NavEntry = { href: string; key: Key; icon: string };
 export type NavGroup = { id: string; title: Key; items: NavEntry[] };
+export type DockSection =
+  "home" | "discover" | "saved" | "workspace" | "profile";
+
+export function dockSection(pathname: string): DockSection | null {
+  const within = (routes: string[]) =>
+    routes.some(
+      (route) => pathname === route || pathname.startsWith(route + "/"),
+    );
+  if (pathname === "/" || within(["/feed", "/posts"])) return "home";
+  if (within(["/discover", "/jobs", "/members", "/categories"]))
+    return "discover";
+  if (within(["/saved"])) return "saved";
+  if (within(["/settings", "/profile", "/account", "/sign-in", "/sign-up"]))
+    return "profile";
+  if (
+    within([
+      "/workspace",
+      "/dashboard",
+      "/employer",
+      "/applications",
+      "/messages",
+      "/network/messages",
+      "/connections",
+      "/notifications",
+      "/matches",
+      "/moderation",
+      "/admin/moderation",
+    ])
+  )
+    return "workspace";
+  return null;
+}
 export function navigationGroups(role: Role | null): NavGroup[] {
   return [
     {
@@ -70,7 +102,5 @@ export function navIsActive(pathname: string, href: string) {
   if (href === "/privacy") return ["/privacy", "/terms"].includes(pathname);
   if (href === "/help")
     return ["/help", "/contact", "/how-it-works"].includes(pathname);
-  return (
-    pathname === href || pathname.startsWith(href + "/")
-  );
+  return pathname === href || pathname.startsWith(href + "/");
 }

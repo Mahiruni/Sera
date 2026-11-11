@@ -1,4 +1,5 @@
 import { InboxRefresh } from "@/components/network/inbox-refresh";
+import { PageIntro } from "@/components/page-intro";
 import { ConversationTyping } from "@/components/network/conversation-typing";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
 import Link from "next/link";
@@ -67,11 +68,12 @@ export default async function ProfessionalInbox({ searchParams }: {
   const candidates = [...new Set((accepted ?? []).map((r) => r.requester_id === user.id ? r.recipient_id : r.requester_id))].filter((id) => !existing.has(id));
   const candidatePeople = await memberCards(candidates);
   return (
-    <main className="sera-network network-app sera-inbox">
-      <p className="network-kicker">PRIVATE PROFESSIONAL CONVERSATIONS</p>
-      <h1 className="sera-inbox-title">Your messages</h1>
+    <div className="sera-network network-app sera-inbox">
+      <PageIntro icon={MessageCircle} eyebrow="ROOM FOR A CONVERSATION" title="Your messages"
+        description="A private space to exchange ideas and move work forward.">
+        <Link className="button secondary" href="/connections">Your connections</Link>
+      </PageIntro>
       <InboxRefresh />
-      <p>Conversations are visible only to their participants. <Link href="/connections">Manage connections</Link></p>
       <div className="sera-inbox-layout">
         <aside aria-label="Conversations" className="sera-inbox-sidebar">
           <h2>Inbox ({conversations.length})</h2>
@@ -130,6 +132,6 @@ export default async function ProfessionalInbox({ searchParams }: {
           </> : <div className="sera-inbox-empty"><MessageCircle size={34} aria-hidden="true" /><p>Select a conversation or start one with an accepted connection.</p><Link href="/connections"><ArrowLeft size={15} aria-hidden="true" /> Explore connections</Link></div>}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

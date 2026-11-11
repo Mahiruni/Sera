@@ -54,33 +54,15 @@
 @media(max-width:680px){.account-foundation .profile-cover{min-height:172px;background-position:center}.account-foundation .profile-avatar-row{margin-top:-49px}.account-foundation .sera-profile-tabs{justify-content:flex-start}.account-foundation .sera-profile-tabs button{flex:none;padding:12px 10px;font-size:11px}.account-foundation .sera-profile-extra-sections{grid-template-columns:1fr;gap:12px}}
 
 /* Mobile first-fold correction: account starts directly below fixed site controls. */
-.page.account-foundation{padding-top:92px!important}
 .page.account-foundation .profile-topline{margin-bottom:10px}
 .page.account-foundation .profile-hero-card{margin-top:0}
-@media(max-width:800px){.page.account-foundation{padding-top:86px!important}}
 @media(max-width:600px){
-  .page.account-foundation{padding-top:82px!important;padding-left:14px;padding-right:14px}
   .page.account-foundation .profile-topline{margin-bottom:9px}
   .page.account-foundation .profile-cover{min-height:145px;padding:18px}
   .page.account-foundation .profile-cover .sera-cover-title{font-size:19px;line-height:1.16}
   .page.account-foundation .profile-avatar-row{margin-top:-43px}
   .page.account-foundation .profile-hero-body h1{font-size:32px}
 }
-/* Preserve the approved dark floating navigation on this profile route only. */
-body:has(.account-foundation) .footer-dock{
-  width:min(650px,calc(100vw - 28px));max-width:calc(100vw - 28px);
-  bottom:calc(12px + env(safe-area-inset-bottom,0px));
-  border:1px solid #45484d;border-radius:999px;
-  background:#292c32!important;color:#b4b7be;
-  box-shadow:0 12px 34px #10182038;
-  backdrop-filter:none;
-}
-body:has(.account-foundation) .footer-dock > a{color:#b4b7be;background:transparent!important;box-shadow:none!important}
-body:has(.account-foundation) .footer-dock > a.active{color:#61d9e4!important}
-body:has(.account-foundation) .footer-dock > a.active .dock-icon{color:#61d9e4!important}
-body:has(.account-foundation) .footer-dock .dock-icon{color:inherit}
-body:has(.account-foundation) .dock-perimeter{border-color:#45484d}
-
 /* Profile completion: real field-backed progress instead of decorative statistics. */
 .account-foundation .sera-profile-completion{margin-top:18px;padding:18px;border:1px solid #dbe9ef;border-radius:20px;background:linear-gradient(145deg,#f7fbfd,#eff8fa)}
 .account-foundation .sera-profile-completion-heading{display:flex;justify-content:space-between;align-items:center;gap:14px}

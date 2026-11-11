@@ -50,6 +50,17 @@ test("server actions publish actual media, handle replies and idempotent interac
       Uint8Array,
       console,
       require: (name: string) => {
+        // Keep this database/RLS suite isolated from optional external screening.
+        if (name === "@/lib/moderation/screen")
+          return {
+            moderationEnabled: () => false,
+            screenSubmission: () => { throw new Error("Unexpected external screening"); },
+          };
+        if (name === "@/lib/moderation/writer")
+          return {
+            securePublishingConfigured: () => false,
+            moderationWriter: () => { throw new Error("Unexpected privileged writer"); },
+          };
         if (name === "@/lib/supabase/server")
           return { serverClient: async () => client };
         if (name === "next/cache")

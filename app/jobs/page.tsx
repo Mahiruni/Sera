@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
+import { BriefcaseBusiness, Plus } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 import { serverClient } from "@/lib/supabase/server";
 import { workTypes } from "@/lib/recruitment/validation";
@@ -64,19 +66,12 @@ export default async function Page({
   });
   return (
     <div className="container page live-market">
-      <div className="live-heading">
-        <div>
-          <p className="eyebrow">SERA / OPPORTUNITIES</p>
-          <h1>Find your next chapter.</h1>
-          <p className="subtext">
-            Real posts from employers. A direct, private way to introduce
-            yourself.
-          </p>
-        </div>
+      <PageIntro icon={BriefcaseBusiness} eyebrow="OPPORTUNITIES" title="Find your next chapter."
+        description="Explore employer-posted roles and introduce yourself with confidence.">
         <Link className="button" href="/employer/post">
-          Post a job
+          <Plus size={16} /> Post a job
         </Link>
-      </div>
+      </PageIntro>
       <MarketNav />
       <form className="panel live-search">
         <label>

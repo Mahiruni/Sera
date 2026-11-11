@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { Bell, Heart, MessageCircle, Share2, UserPlus, CheckCheck } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -21,8 +22,10 @@ export default async function NotificationsPage(){
  const notifications=rows??[];
  const people=await memberCards(notifications.map(n=>n.actor_id));
  const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
- return <main className="sera-network network-app sera-notifications"><NotificationRefresh />
-  <div className="sera-notifications-heading"><div><p className="network-kicker">YOUR PROFESSIONAL ACTIVITY</p><h1>Notifications</h1><p>Keep up with the people and ideas that matter to you.</p></div><div className="sera-notifications-tools"><span className="sera-notifications-count" aria-live="polite"><Bell size={16}/>{unread} unread</span>{unread>0&&<form action={markAllNotificationsRead}><button className="sera-notifications-mark-all" type="submit"><CheckCheck size={16}/> Mark all read</button></form>}</div></div>
+ return <div className="sera-network network-app sera-notifications"><NotificationRefresh />
+  <PageIntro icon={Bell} eyebrow="YOUR PROFESSIONAL ACTIVITY" title="Notifications" description="Keep up with the people and ideas that matter to you.">
+    <div className="sera-notifications-tools"><span className="sera-notifications-count" aria-live="polite"><Bell size={16}/>{unread} unread</span>{unread>0&&<form action={markAllNotificationsRead}><button className="sera-notifications-mark-all" type="submit"><CheckCheck size={16}/> Mark all read</button></form>}</div>
+  </PageIntro>
   {error&&<p role="alert">Notifications are temporarily unavailable. Please try again.</p>}
   <div className="sera-notifications-list">
   {notifications.map(n=>{
@@ -39,5 +42,5 @@ export default async function NotificationsPage(){
   })}
   {!error&&!notifications.length&&<div className="sera-notifications-empty"><Bell size={32}/><h2>You&apos;re all caught up</h2><p>New likes, comments, shares, follows and connection invitations will appear here.</p><Link href="/discover?tab=people">Discover professionals</Link></div>}
   </div>
- </main>;
+ </div>;
 }

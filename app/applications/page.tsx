@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
+import { FileText } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { type LiveApplication } from "@/lib/recruitment/data";
@@ -37,8 +39,8 @@ export default async function Page({
   const stageIndex = (value: string) => journey.findIndex((step) => step === value);
   return (
     <div className="container page live-market workspace-detail">
-      <p className="eyebrow">SERA / YOUR NEXT MOVE</p>
-      <h1>Every introduction, in one place.</h1>
+      <PageIntro icon={FileText} eyebrow="YOUR NEXT MOVE" title="Every introduction, in one place."
+        description="Follow your applications from first hello to your next opportunity." />
       <WorkspaceNav />
       <form className="panel live-search" method="get">
         <label>

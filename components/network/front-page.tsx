@@ -13,13 +13,12 @@ import {
   Check,
   ChevronRight,
 } from "lucide-react";
-import { NetworkBrand, NextOnSera } from "./shared";
+import { NextOnSera } from "./shared";
 import { ThemeToggle } from "./theme-toggle";
 export function NetworkFrontPage() {
   return (
     <div className="sera-network network-public">
       <div className="network-public-top">
-        <NetworkBrand />
         <nav aria-label="Explore Sera">
           <Link href="/discover">Discover</Link>
           <Link href="/jobs">Opportunities</Link>

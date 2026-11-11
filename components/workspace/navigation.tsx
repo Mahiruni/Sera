@@ -5,8 +5,6 @@ import {
   LayoutDashboard,
   BriefcaseBusiness,
   FileText,
-  Bookmark,
-  UserRound,
   MessageCircle,
   Bell,
 } from "lucide-react";
@@ -34,8 +32,6 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
           icon: LayoutDashboard,
         },
         { href: "/applications", label: "Applications", icon: FileText },
-        { href: "/saved", label: "Saved jobs", icon: Bookmark },
-        { href: "/settings", label: "My profile", icon: UserRound },
         { href: "/network/messages", label: "Messages", icon: MessageCircle },
         { href: "/notifications", label: "Notifications", icon: Bell },
       ];
@@ -44,12 +40,6 @@ export function WorkspaceNav({ employer = false }: { employer?: boolean }) {
       className="workspace-nav"
       aria-label={employer ? "Employer workspace" : "Career workspace"}
     >
-      {!employer && (
-        <Link href="/feed" className={path === "/feed" ? "is-current" : ""}>
-          <LayoutDashboard size={16} />
-          <span>Community</span>
-        </Link>
-      )}
       {items.map(({ href, label, icon: Icon }) => {
         const base = href.split("?")[0],
           active =

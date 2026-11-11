@@ -71,15 +71,7 @@ html[data-sera-theme="dark"] {
 }
 
 /* Phase 2.5: consistent marketing-to-community surface language. */
-.sera-network {
-  --sera-surface: var(--net-surface);
-  --sera-surface-soft: var(--net-subtle);
-  --sera-border: var(--net-line);
-  --sera-text: var(--net-ink);
-  --sera-text-secondary: var(--net-muted);
-  --sera-accent: var(--net-blue);
-  --sera-shadow: var(--net-shadow);
-}
+/* Community and career pages inherit the shared tokens in page-flow.css. */
 .sera-network :where(.network-button,.network-signin,.network-text-link,.network-feed-tabs a,.social-filters a) {
   text-underline-offset: 3px;
 }

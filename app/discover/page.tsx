@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import {
   UsersRound,
   PenLine,
@@ -8,6 +9,7 @@ import {
   Hash,
   Search,
   ArrowRight,
+  Compass,
 } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
@@ -65,17 +67,8 @@ export default async function Discover({
   return (
     <div className="sera-network network-app">
       <NetworkToolbar query={query} discover />
-      <header className="network-discover-heading">
-        <p className="network-kicker">FOLLOW YOUR CURIOSITY</p>
-        <h1>
-          Your world.
-          <br />A little wider.
-        </h1>
-        <p>
-          Find people with a perspective, projects with a purpose and
-          opportunities that take you somewhere new.
-        </p>
-      </header>
+      <PageIntro icon={Compass} eyebrow="FOLLOW YOUR CURIOSITY" title="Discover your next connection."
+        description="People, ideas, projects and opportunities worth exploring." />
       <form
         action="/discover"
         className="network-search network-discover-search"

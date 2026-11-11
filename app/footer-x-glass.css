@@ -1,133 +1,72 @@
-/* X-inspired monochrome liquid-glass navigation for Sera */
+/* The approved floating dock is shared by every SERA page. */
 .footer-dock {
   position: fixed !important;
-  z-index: 80 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
+  z-index: 60;
+  left: max(10px, env(safe-area-inset-left, 0px)) !important;
+  right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(9px + env(safe-area-inset-bottom, 0px)) !important;
+  width: auto !important;
+  max-width: 640px !important;
+  margin-inline: auto !important;
   transform: none !important;
-  width: 100% !important;
-  max-width: none !important;
-  min-height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
-  padding: 5px max(8px, calc((100vw - 600px) / 2))
-    calc(5px + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: 68px !important;
+  padding: 7px 8px !important;
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  align-items: center !important;
-  gap: 4px !important;
-  border: 0 !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 30px 30px 0 0 !important;
-  background: rgba(14, 14, 16, 0.84) !important;
-  color: #fff !important;
-  box-shadow: none !important;
-  -webkit-backdrop-filter: blur(24px) saturate(135%) !important;
-  backdrop-filter: blur(24px) saturate(135%) !important;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(104, 241, 236, .28) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(120deg, rgba(0, 48, 58, .97), rgba(0, 34, 46, .98)) !important;
+  box-shadow: 0 12px 32px #003b4650, 0 0 18px #00bac02c !important;
+  color: #e2f6f7 !important;
+  backdrop-filter: blur(20px);
   isolation: isolate;
 }
-.footer-dock .dock-perimeter {
-  display: none !important;
-}
+.footer-dock .dock-perimeter, .footer-dock a > i, .footer-dock a::before { display: none !important; }
 .footer-dock a {
-  position: relative;
   display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 2px !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   min-width: 0;
-  width: 100%;
-  min-height: 51px !important;
+  width: 100% !important;
+  min-height: 52px !important;
   padding: 5px 2px !important;
   border: 0 !important;
-  border-radius: 16px !important;
+  border-radius: 999px !important;
   background: transparent !important;
-  color: #a1a1aa !important;
+  color: #b8d4d8 !important;
   font-size: 10px !important;
-  font-weight: 550 !important;
-  line-height: 1.3 !important;
+  font-weight: 550;
+  line-height: 1.3;
+  text-align: center;
   box-shadow: none !important;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease !important;
 }
-.footer-dock a .dock-icon {
+.footer-dock .dock-icon {
   display: grid !important;
-  place-items: center !important;
-  width: 27px !important;
-  height: 27px !important;
+  place-items: center;
+  width: 27px;
+  height: 27px;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: none !important;
   color: inherit !important;
   box-shadow: none !important;
-  transform: none;
 }
-.footer-dock a.active .dock-icon {
-  animation: active-footer-icon 2.8s ease-in-out infinite;
-}
-@keyframes active-footer-icon {
-  0%,
-  70%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  35% {
-    transform: translateY(-2px) scale(1.08);
-  }
-}
-.footer-dock a .dock-icon svg {
-  width: 22px;
-  height: 22px;
-  stroke: currentColor;
-}
-.footer-dock a.active,
-.footer-dock a[aria-current="page"] {
-  color: #36c4e6 !important;
-  background: transparent !important;
-  font-weight: 700 !important;
-}
-.footer-dock a.active .dock-icon svg {
-  stroke-width: 2.5;
-}
-.footer-dock a > i {
-  display: none !important;
-}
-.footer-dock a:not(.active):not([aria-current="page"]):hover {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-.footer-dock a:active {
-  transform: scale(0.95) !important;
-}
-.footer-dock a:focus-visible {
-  outline: 2px solid white !important;
-  outline-offset: 2px;
-}
-@media (max-width: 380px) {
-  .footer-dock a {
-    font-size: 9px !important;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .footer-dock a.active .dock-icon {
-    animation: none;
-  }
-  .footer-dock a {
-    transition: none !important;
-  }
-}
-/* Keep account forms clear of the fixed navigation. */
-body:has(.auth-layout) .footer-dock {
-  display: none !important;
-}
-@supports not (backdrop-filter: blur(24px)) {
-  .footer-dock {
-    background: #0e0e10 !important;
-  }
-}
+.footer-dock .dock-icon svg { width: 22px; height: 22px; }
+.footer-dock a > span:last-of-type { white-space: nowrap; }
+.footer-dock a.active, .footer-dock a[aria-current="page"] { color: #75f9f4 !important; font-weight: 700; }
+.footer-dock a.active .dock-icon { filter: drop-shadow(0 0 7px #00d8e6); animation: active-footer-icon 2.8s ease-in-out infinite; }
+.footer-dock a:focus-visible { outline: 2px solid #b4fffa !important; outline-offset: -2px; }
+@keyframes active-footer-icon { 0%, 70%, 100% { transform: translateY(0) scale(1); } 35% { transform: translateY(-2px) scale(1.08); } }
+@media (hover: hover) { .footer-dock a:hover { color: #fff !important; } }
+@media (max-width: 380px) { .footer-dock { padding-inline: 5px !important; gap: 1px; } .footer-dock a { font-size: 9px !important; } }
+@media (prefers-reduced-motion: reduce) { .footer-dock a.active .dock-icon { animation: none; } }
+body:has(.auth-layout) .footer-dock { display: none !important; }
+
 .header-language-picker {
   position: relative;
   flex-shrink: 0;
@@ -151,202 +90,3 @@ body:has(.auth-layout) .footer-dock {
   outline: 2px solid #087f9f;
   outline-offset: 3px;
 }
-
-/* SERA navigation refinement: calm, centered brand and compact glass dock. */
-.site-header { position: relative; }
-.sera-header-wordmark {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-  color: var(--sera-text, #17323b);
-  text-decoration: none;
-  white-space: nowrap;
-  font-size: clamp(17px, 4.4vw, 22px);
-  font-weight: 800;
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-.sera-header-wordmark span { color: #0c9fbd; }
-.sera-header-wordmark:focus-visible {
-  outline: 3px solid #0c9fbd;
-  outline-offset: 5px;
-  border-radius: 4px;
-}
-@media (max-width: 390px) {
-  .sera-header-wordmark { font-size: 17px; }
-  .header-account-controls { gap: 5px; }
-}
-@media (max-width: 340px) {
-  .sera-header-wordmark { position: static; transform: none; margin-inline: auto; }
-}
-.footer-dock {
-  background: rgba(20, 23, 28, 0.9) !important;
-  border-top-color: rgba(255,255,255,.11) !important;
-  box-shadow: 0 -8px 30px rgba(8,17,26,.09) !important;
-}
-.footer-dock a { min-height: 54px !important; }
-.footer-dock a.active,
-.footer-dock a[aria-current="page"] { color: #55d7f0 !important; }
-@media (hover: none) {
-  .footer-dock a:not(.active):not([aria-current="page"]):hover {
-    background: transparent !important;
-    color: #a1a1aa !important;
-  }
-}
-
-/* Phase 3.3 — floating curved premium dock, aligned with approved preview. */
-.footer-dock {
-  left: max(10px, env(safe-area-inset-left, 0px)) !important;
-  right: max(10px, env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-  width: auto !important;
-  max-width: 620px !important;
-  min-height: 70px !important;
-  margin-inline: auto !important;
-  padding: 8px 10px !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
-  border-radius: 999px !important;
-  background: rgba(34,37,43,.96) !important;
-  box-shadow: 0 12px 38px rgba(8,17,26,.24) !important;
-}
-.footer-dock a {
-  min-height: 54px !important;
-  border-radius: 999px !important;
-}
-.footer-dock a .dock-icon { width: 26px !important; height: 26px !important; }
-.footer-dock a.active,.footer-dock a[aria-current="page"] {
-  color: #55d7f0 !important;
-  background: transparent !important;
-}
-@media (max-width: 380px) {
-  .footer-dock { left: 6px !important; right: 6px !important; padding: 6px 5px !important; gap: 1px !important; }
-  .footer-dock a { font-size: 9px !important; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .footer-dock a.active .dock-icon { animation: none !important; }
-}
-
-/* Mobile polish: compact floating dock without sacrificing touch targets. */
-@media (max-width: 520px) {
-  .footer-dock {
-    min-height: 64px !important;
-    padding: 5px 8px !important;
-    bottom: calc(9px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-  .footer-dock a {
-    min-height: 52px !important;
-    padding: 4px 2px !important;
-    gap: 2px !important;
-  }
-  .footer-dock a .dock-icon {
-    height: 25px !important;
-  }
-  body:has(.sera-network) {
-    padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
-  }
-  .sera-network {
-    scroll-padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* Phase 3.4: Facebook/LinkedIn-inspired professional bottom navigation. */
-.footer-dock {
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  max-width: none !important;
-  min-height: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
-  margin: 0 !important;
-  padding: 6px max(8px, calc((100vw - 640px)/2)) calc(6px + env(safe-area-inset-bottom, 0px)) !important;
-  border: 0 !important;
-  border-top: 1px solid #e1e9ee !important;
-  border-radius: 0 !important;
-  background: rgba(255,255,255,.97) !important;
-  color: #526270 !important;
-  box-shadow: 0 -4px 20px rgba(17,45,60,.06) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-}
-.footer-dock a {
-  min-height: 53px !important;
-  padding: 5px 2px !important;
-  border-radius: 12px !important;
-  color: #657481 !important;
-  font-size: 10px !important;
-  gap: 3px !important;
-}
-.footer-dock a .dock-icon {
-  width: 28px !important;
-  height: 28px !important;
-}
-.footer-dock a .dock-icon svg { width: 23px; height: 23px; }
-.footer-dock a.active,
-.footer-dock a[aria-current="page"] {
-  color: #0796c8 !important;
-  background: transparent !important;
-}
-.footer-dock a.active::before,
-.footer-dock a[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  top: -6px;
-  width: 36px;
-  height: 3px;
-  border-radius: 0 0 4px 4px;
-  background: #0796c8;
-}
-.footer-dock a.active .dock-icon { animation: none !important; }
-.footer-dock a:not(.active):not([aria-current="page"]):hover {
-  background: #edf7fb !important;
-  color: #1a4257 !important;
-}
-html[data-sera-theme="dark"] .footer-dock {
-  background: rgba(20,30,41,.98) !important;
-  border-top-color: #334656 !important;
-}
-html[data-sera-theme="dark"] .footer-dock a { color: #a9bdca !important; }
-html[data-sera-theme="dark"] .footer-dock a.active,
-html[data-sera-theme="dark"] .footer-dock a[aria-current="page"] { color: #55d7f0 !important; }
-html[data-sera-theme="dark"] .footer-dock a.active::before,
-html[data-sera-theme="dark"] .footer-dock a[aria-current="page"]::before { background: #55d7f0; }
-@media (max-width: 380px) {
-  .footer-dock { padding-inline: 3px !important; gap: 0 !important; }
-  .footer-dock a { font-size: 9px !important; }
-}
-
-
-/* Premium SERA floating navigation: approved charcoal capsule.
-   Overrides the earlier edge-to-edge white navigation across the app. */
-body:has(.sera-network) .footer-dock{
- left:max(10px,env(safe-area-inset-left,0px))!important;
- right:max(10px,env(safe-area-inset-right,0px))!important;
- bottom:calc(9px + env(safe-area-inset-bottom,0px))!important;
- width:auto!important;max-width:640px!important;margin-inline:auto!important;
- min-height:68px!important;padding:7px 8px!important;
- display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
- border:1px solid rgba(104,241,236,.28)!important;border-radius:999px!important;
- background:linear-gradient(120deg,rgba(0,48,58,.97),rgba(0,34,46,.98))!important;
- box-shadow:0 12px 32px #003b4650,0 0 18px #00bac02c!important;
- color:#e2f6f7!important;
-}
-body:has(.sera-network) .footer-dock a{
- min-height:52px!important;color:#b8d4d8!important;border-radius:999px!important;
- background:transparent!important;font-size:10px!important;
-}
-body:has(.sera-network) .footer-dock a.active,
-body:has(.sera-network) .footer-dock a[aria-current=page]{
- color:#75f9f4!important;background:transparent!important;
-}
-body:has(.sera-network) .footer-dock a.active::before,
-body:has(.sera-network) .footer-dock a[aria-current=page]::before{display:none!important}
-body:has(.sera-network) .footer-dock a.active .dock-icon{
- filter:drop-shadow(0 0 7px #00d8e6);animation:active-footer-icon 2.8s ease-in-out infinite!important;
-}
-body:has(.sera-network) .footer-dock a:focus-visible{outline:2px solid #b4fffa!important;outline-offset:-2px}
-@media(prefers-reduced-motion:reduce){body:has(.sera-network) .footer-dock a.active .dock-icon{animation:none!important}}

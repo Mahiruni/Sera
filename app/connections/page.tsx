@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
+import { UsersRound, ArrowUpRight } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
@@ -45,18 +47,18 @@ export default async function ConnectionsPage() {
           <form action={changeProfessionalRelationship} key={action}>
             <input type="hidden" name="target" value={id} />
             <input type="hidden" name="action" value={action} />
-            <button type="submit" className="sera-connection-action">{label}</button>
+            <button type="submit" className={"sera-connection-action" + (["decline", "withdraw", "unfollow"].includes(action) ? " secondary" : "")}>{label}</button>
           </form>
         ))}
       </li>
     );
   }
   return (
-    <main className="sera-network network-app sera-connections">
-      <p className="network-kicker">YOUR PROFESSIONAL CIRCLE</p>
-      <h1 style={{ fontSize: "clamp(2rem, 6vw, 3.4rem)", letterSpacing: "-.05em" }}>Connections that move you forward.</h1>
-      <p>Build meaningful professional relationships. Only you and the other participant can view your connection requests.</p>
-      <p><Link href="/discover?tab=people">Discover professionals →</Link></p>
+    <div className="sera-network network-app sera-connections">
+      <PageIntro icon={UsersRound} eyebrow="YOUR PROFESSIONAL CIRCLE" title="Good work starts with good people."
+        description="Build your circle. Keep up with the people who move you forward.">
+        <Link href="/discover?tab=people" className="button secondary">Find your people <ArrowUpRight size={16} /></Link>
+      </PageIntro>
       <section className="sera-connection-section" aria-labelledby="requests-heading">
         <h2 id="requests-heading">Invitations received ({pendingIncoming.length})</h2>
         {pendingIncoming.length ? <ul style={{ listStyle: "none", padding: 0 }}>{pendingIncoming.map((r) => person(r.requester_id, [{ action: "accept", label: "Accept" }, { action: "decline", label: "Decline" }]))}</ul> : <p>No pending invitations.</p>}
@@ -77,6 +79,6 @@ export default async function ConnectionsPage() {
         <h2 id="followers-heading">Followers ({followerRows.length})</h2>
         {followerRows.length ? <ul style={{ listStyle: "none", padding: 0 }}>{followerRows.map((r) => person(r.follower_id, followed.has(r.follower_id) ? [] : [{ action: "follow", label: "Follow back" }]))}</ul> : <p>Your followers will appear here.</p>}
       </section>
-    </main>
+    </div>
   );
 }

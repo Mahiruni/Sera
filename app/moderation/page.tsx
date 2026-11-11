@@ -1,4 +1,6 @@
 import { requiredProfile } from "@/lib/auth/profile";
+import { PageIntro } from "@/components/page-intro";
+import { ShieldCheck } from "lucide-react";
 import { serverClient } from "@/lib/supabase/server";
 import { reviewReport, reviewAppeal } from "@/lib/moderation/actions";
 import { pageMetadata } from "@/lib/seo";
@@ -12,8 +14,9 @@ export default async function ModerationPage() {
   const reports = (data || []) as Report[];
   const { data: appealRows } = await db.rpc("moderator_pending_appeals");
   const appeals = (appealRows || []) as {id:string;decision_id:string;post_id:string;explanation:string;created_at:string}[];
-  return <main className="container page account-foundation">
-    <header className="account-security panel"><h1>SERA Trust & Safety</h1><p>Restricted review queue. Every decision requires a written explanation and is recorded for audit.</p></header>
+  return <div className="container page account-foundation">
+    <PageIntro icon={ShieldCheck} eyebrow="COMMUNITY CARE" title="Trust & Safety"
+      description="Review reports and appeals. Every decision is explained and recorded." />
     <section className="account-security panel" aria-labelledby="queue-title">
       <h2 id="queue-title">Pending reports ({reports.length})</h2>
       {!reports.length && <p>No pending reports, or your account has no moderator access.</p>}
@@ -53,5 +56,5 @@ export default async function ModerationPage() {
         </form>
       </article>)}
     </section>
-  </main>;
+  </div>;
 }
