@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -176,17 +178,28 @@ fun SeraGuestEntry(
                         onAuthenticated = onAuthenticated
                     )
                 } else {
-                    Spacer(Modifier.height(18.dp))
-                    TextButton(onClick = { entryPage = "welcome" }, contentPadding = PaddingValues(0.dp)) {
-                        Text("Explore SERA", color = entryTeal)
+                    Spacer(Modifier.height(6.dp))
+                    Surface(color = entryDark, shape = RoundedCornerShape(26.dp),
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("YOUR PROFESSIONAL WORLD", fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp,
+                                color = Color(0xFF8CE5D6))
+                            Text("Make your next move.", fontSize = 27.sp, lineHeight = 32.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Connect with people. Showcase your work. Discover what's next.",
+                                fontSize = 13.sp, color = Color(0xFFCEE5E2))
+                        }
                     }
-                    Text("Welcome to SERA.", fontSize = 33.sp, fontWeight = FontWeight.Bold, color = entryInk)
-                    Text("Sign in to your professional network, or create an account below.", color = entryMuted)
+                    Text("Welcome back", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = entryInk)
+                    Text("Sign in securely, or create your professional identity.", color = entryMuted)
+                    Text("CONTINUE WITH", fontSize = 10.sp, letterSpacing = 1.2.sp,
+                        fontWeight = FontWeight.Bold, color = entryMuted)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
                             onClick = { oauthError = beginNativeOAuth(context, "google") },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
                             border = BorderStroke(1.dp, Color(0xFFD9E2E2))
                         ) {
@@ -211,12 +224,18 @@ fun SeraGuestEntry(
                         if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error)
                     }
 
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        HorizontalDivider(Modifier.weight(1f), color = Color(0xFFD5E7E5))
+                        Text("or sign in with email", color = entryMuted, fontSize = 12.sp)
+                        HorizontalDivider(Modifier.weight(1f), color = Color(0xFFD5E7E5))
+                    }
                     OutlinedTextField(
                         value = email, onValueChange = onEmailChange,
                         label = { Text("Email address") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
                     )
                     OutlinedTextField(
                         value = password, onValueChange = onPasswordChange,
@@ -229,7 +248,8 @@ fun SeraGuestEntry(
                                 Text(if (showPassword) "Hide" else "Show")
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
                     )
                     TextButton(onClick = { entryPage = "recover" }, modifier = Modifier.align(Alignment.End)) {
                         Text("Forgot password?", color = entryTeal)
@@ -257,9 +277,9 @@ fun SeraGuestEntry(
                     OutlinedButton(onClick = { entryPage = "register" }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text("Create a SERA account", color = entryTeal, fontWeight = FontWeight.Bold)
                     }
-                    TextButton(onClick = { openSeraSite(context, "sign-in") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Google and LinkedIn native sign-in is being prepared", color = entryMuted)
-                    }
+                    Text("By continuing, you agree to SERA’s terms and privacy policy.",
+                        fontSize = 11.sp, color = entryMuted, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(5.dp))
                 Text("SERA.et  •  Your profile. Your work. Your future.",
