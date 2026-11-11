@@ -190,3 +190,32 @@ fun loadSeraUserId(token: String): Pair<String?, String> {
     return try { JSONObject(body).optString("id").takeIf { it.isNotBlank() } to "" }
     catch (e: Exception) { null to "Unable to identify signed-in user." }
 }
+
+/** Resolve the authenticated member's existing avatar without public storage access. */
+fun loadSeraCurrentAvatar(token: String, userId: String): String? {
+    if (userId.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank()) return null
+    return try {
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') +
+            "/rest/v1/rpc/member_cards").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 11000
+            readTimeout = 13000
+            doOutput = true
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "application/json")
+        }
+        try {
+            connection.outputStream.use {
+                it.write(JSONObject().put("ids", JSONArray().put(userId))
+                    .toString().toByteArray(Charsets.UTF_8))
+            }
+            if (connection.responseCode !in 200..299) return null
+            val rows = JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+            if (rows.length() == 0) return null
+            val path = rows.getJSONObject(0).optString("avatar_path")
+            if (path.isBlank() || path == "null") null else
+                signedPostImage(token, path, "sera-account-private")
+        } finally { connection.disconnect() }
+    } catch (_: Exception) { null }
+}
