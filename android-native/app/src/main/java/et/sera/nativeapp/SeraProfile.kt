@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 @Composable
 fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -> Unit, onSignOut: () -> Unit, token: String = "", userId: String = "") {
     var editing by remember { mutableStateOf(false) }
+    var changingPassword by remember { mutableStateOf(false) }
+    if (changingPassword && token.isNotBlank()) SeraNativeChangePassword(token, onDismiss = { changingPassword = false })
     if (editing && token.isNotBlank() && userId.isNotBlank()) SeraNativeProfileEditor(token, userId, onDismiss = { editing = false }, onSaved = { editing = false; onRetry() })
     val name = identity.lineSequence().firstOrNull().orEmpty().ifBlank { "SERA member" }
     val email = identity.lineSequence().drop(1).firstOrNull().orEmpty()
@@ -94,6 +96,11 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
                     color = Color(0xFF607478), fontSize = 13.sp)
             }
         }
+        if (token.isNotBlank()) OutlinedButton(
+            onClick = { changingPassword = true },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) { Text("Change password") }
         OutlinedButton(
             onClick = onSignOut,
             modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
