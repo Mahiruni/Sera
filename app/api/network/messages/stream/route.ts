@@ -21,11 +21,15 @@ export async function GET(request: Request) {
         if (!ended && payload.new?.conversation_id && ids.has(payload.new.conversation_id))
           controller.enqueue(encoder.encode("data: refresh\n\n"));
       };
+      const heartbeat = setInterval(() => {
+        if (!ended) controller.enqueue(encoder.encode(": keepalive\n\n"));
+      }, 15000);
       const timer = setTimeout(() => stop(), 50000);
       stop = (cancelled = false) => {
         if (ended) return;
         ended = true;
         clearTimeout(timer);
+        clearInterval(heartbeat);
         request.signal.removeEventListener("abort", abort);
         void db.removeChannel(channel);
         if (!cancelled) controller.close();
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
       for (const event of ["INSERT", "UPDATE"] as const)
         channel.on("postgres_changes", { event, schema: "public", table: "professional_messages" }, notify);
       channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") controller.enqueue(encoder.encode("data: refresh\n\n"));
+        if (!ended && status === "SUBSCRIBED") controller.enqueue(encoder.encode("data: refresh\n\n"));
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") stop();
       });
     },
