@@ -1,0 +1,20 @@
+import "server-only";
+import { createClient } from "@supabase/supabase-js";
+import { sendProfessionalPush } from "@/lib/network/firebase-push";
+
+type Notification = { title: string; body: string; url: string; kind: string };
+/** Server-only delivery; the service role is never exposed to browsers or authenticated users. */
+export async function notifyProfessionalDevices(recipientId: string, notification: Notification) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SERA_SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key || !process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return;
+  const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await admin.from("professional_push_devices")
+    .select("token").eq("user_id", recipientId).eq("enabled", true).limit(100);
+  if (error || !data?.length) return;
+  const result = await sendProfessionalPush(data.map(row => row.token as string), notification);
+  if (result.invalidTokens.length) {
+    await admin.from("professional_push_devices").update({ enabled: false, updated_at: new Date().toISOString() })
+      .eq("user_id", recipientId).in("token", result.invalidTokens);
+  }
+}
