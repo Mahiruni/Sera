@@ -11,6 +11,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -44,6 +45,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var publishMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     var selectedImage by remember { mutableStateOf<Uri?>(null) }
+    var imageExpanded by remember { mutableStateOf(false) }
     var mediaError by remember { mutableStateOf("") }
     var selectedVideo by remember { mutableStateOf<Uri?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -65,6 +67,9 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     }
     BackHandler { close() }
     LaunchedEffect(userId, body) { drafts.save(userId, body) }
+    if (imageExpanded && selectedImage != null) {
+        SeraMediaLightbox(url = selectedImage.toString(), description = "Selected image preview", onDismiss = { imageExpanded = false })
+    }
     ModalBottomSheet(onDismissRequest = { close() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(
             Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState())
@@ -95,8 +100,9 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
             selectedImage?.let { uri ->
                 AsyncImage(model = uri, contentDescription = "Selected image preview",
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp))
-                TextButton(onClick = { selectedImage = null }) { Text("Remove image") }
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).clickable { imageExpanded = true })
+                Text("Tap image to inspect at full size", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { selectedImage = null; imageExpanded = false }) { Text("Remove image") }
             }
             selectedVideo?.let { uri ->
                 SeraVideoPlayer(url = uri.toString(), localPreview = true)
