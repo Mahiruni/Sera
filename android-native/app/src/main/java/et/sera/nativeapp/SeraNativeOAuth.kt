@@ -2,6 +2,7 @@ package et.sera.nativeapp
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.util.Base64
 import androidx.browser.customtabs.CustomTabsIntent
@@ -37,7 +38,19 @@ internal fun beginNativeOAuth(context: Context, provider: String): String {
         .appendQueryParameter("code_challenge_method", "s256")
         .build()
     return try {
-        CustomTabsIntent.Builder().build().launchUrl(context, url)
+        // A partial-height Custom Tab keeps SERA visible behind the provider consent UI.
+        // OAuth remains in a trusted browser context, never an embedded WebView.
+        val displayHeight = context.resources.displayMetrics.heightPixels
+        val tab = CustomTabsIntent.Builder()
+            .setInitialActivityHeightPx(
+                (displayHeight * 0.78f).toInt(),
+                CustomTabsIntent.ACTIVITY_HEIGHT_FIXED
+            )
+            .setToolbarColor(Color.rgb(8, 126, 131))
+            .setShowTitle(true)
+            .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
+            .build()
+        tab.launchUrl(context, url)
         ""
     } catch (_: Exception) {
         context.getSharedPreferences(OAUTH_PREFS, Context.MODE_PRIVATE).edit().clear().apply()
