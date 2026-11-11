@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,14 +49,14 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Create a professional update", style = MaterialTheme.typography.titleLarge)
-            Text("Share ideas, work and achievements with your network.", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.composer_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.composer_hint), style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp),
-                placeholder = { Text("What would you like to share?") },
+                placeholder = { Text(stringResource(R.string.composer_placeholder)) },
                 supportingText = { Text("${body.length} / 4000 characters") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
@@ -66,17 +67,17 @@ fun SeraComposer(userId: String, onDismiss: () -> Unit) {
                     drafts.save(userId, body)
                     saved = true
                     focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text("Save draft") }
+                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.save_draft)) }
                 Button(onClick = {
                     drafts.save(userId, body)
                     saved = true
                     focus.clearFocus()
-                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text("Keep for later") }
+                }, enabled = hasContent, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.keep_later)) }
             }
-            if (saved) Text("Draft saved on this device.", color = MaterialTheme.colorScheme.primary)
-            Text("Publishing is disabled until SERA's secure server-side moderation flow is connected. Drafts remain on this device.",
+            if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { close() }) { Text("Close") }
+            TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
         }
     }
 }
