@@ -1,9 +1,6 @@
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import {
-  Heart,
-  MessageCircle,
-  Bookmark,
   ArrowUpRight,
   Pencil,
   Trash2,
@@ -19,6 +16,7 @@ import {
 import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { ShareButton } from "./share";
+import { SeraReactionIcon } from "./SeraReactionIcon";
 import { ExpandableCaption, PostMedia } from "./post-media";
 export function PostCard({
   post,
@@ -111,7 +109,7 @@ export function PostCard({
             aria-pressed={post.liked}
             aria-label={`${post.liked ? "Unlike" : "Like"} post, ${post.like_count} likes`}
           >
-            <span className="social-reaction-icons" aria-hidden="true"><Heart size={15} fill="currentColor" /></span>
+            <SeraReactionIcon kind="like" active={post.liked} />
             <span className="social-action-count">{post.like_count}</span>
           </Submit>
         </ActionForm>
@@ -119,7 +117,7 @@ export function PostCard({
           href={"/posts/" + post.id + "#comments"}
           aria-label={`${post.comment_count} comments, open conversation`}
         >
-          <MessageCircle size={19} />
+          <SeraReactionIcon kind="comment" />
           <span className="social-action-count">{post.comment_count}</span>
         </Link>
         <ActionForm
@@ -127,7 +125,7 @@ export function PostCard({
           fields={{ post_id: post.id, remove: post.saved ? "yes" : "no" }}
         >
           <Submit aria-pressed={post.saved} aria-label={post.saved ? "Remove saved post" : "Save post"}>
-            <Bookmark size={17} fill={post.saved ? "currentColor" : "none"} />
+            <SeraReactionIcon kind="save" active={post.saved} />
             <span>{post.saved ? "Saved" : "Save"}</span>
           </Submit>
         </ActionForm>

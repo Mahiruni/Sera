@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Share2 } from "lucide-react";
+import { SeraReactionIcon } from "./SeraReactionIcon";
 import { sharePost } from "@/lib/social/actions";
 export function ShareButton({
   id,
@@ -17,6 +17,7 @@ export function ShareButton({
     <div className="social-share">
       <button
         type="button"
+        aria-label={`Share this post, ${count} shares`}
         disabled={pending}
         onClick={() =>
           start(async () => {
@@ -52,7 +53,7 @@ export function ShareButton({
           })
         }
       >
-        <Share2 size={17} aria-hidden="true" />
+        <SeraReactionIcon kind="share" />
         <span>Share {count > 0 ? count : ""}</span>
       </button>
       {message && <p role="status">{message}</p>}

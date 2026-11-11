@@ -14,6 +14,7 @@ import "./social.css";
 import "./network.css";
 import "./activity.css";
 import "./page-flow.css";
+import "./sera-interaction-system.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",

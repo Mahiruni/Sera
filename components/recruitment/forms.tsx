@@ -11,7 +11,7 @@ import {
 import { workTypes } from "@/lib/recruitment/validation";
 function Submit({ pending, label }: { pending: boolean; label: string }) {
   return (
-    <button className="button" disabled={pending}>
+    <button className="button sera-signature-primary" disabled={pending} aria-busy={pending}>
       {pending ? (
         <LoaderCircle size={17} className="auth-spinner" />
       ) : (
@@ -34,7 +34,8 @@ function Feedback({ state }: { state: RecruitmentState }) {
 export function JobPostForm({ company = "" }: { company?: string }) {
   const [state, action, pending] = useActionState(createJob, {});
   return (
-    <form action={action} className="panel live-form" aria-busy={pending}>
+    <form action={action} className="panel live-form sera-signature-form" aria-busy={pending}>
+      <div className="sera-form-section-heading"><strong>Opportunity details</strong><small>Help talented people find the right role.</small></div>
       <div className="live-field-grid">
         {[
           { name: "title", label: "Job title", min: 3, max: 160 },
@@ -90,6 +91,7 @@ export function JobPostForm({ company = "" }: { company?: string }) {
         Set both salary fields to zero if salary is not specified. Organization
         details are self-reported.
       </p>
+      <div className="sera-form-section-heading"><strong>About the role</strong><small>Make the opportunity clear and welcoming.</small></div>
       <label className="auth-label">
         Role description
         <textarea
@@ -158,7 +160,7 @@ export function ApplyForm({
   ] as const;
   const intro = `Hello,\n\nI’m ${snapshot.name}${snapshot.headline ? `, ${snapshot.headline}` : ""}. I’m applying for the ${jobTitle} role at ${company} because `;
   return (
-    <form action={action} className="panel live-form" aria-busy={pending}>
+    <form action={action} className="panel live-form sera-signature-form" aria-busy={pending}>
       <input name="job_id" type="hidden" value={jobId} />
       <h2>Make your introduction</h2>
       <section aria-label="Details that will be shared">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { addComment, deleteComment } from "@/lib/social/actions";
 import type { SocialComment } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
+import { SeraReactionIcon } from "./SeraReactionIcon";
 function CommentForm({
   postId,
   parentId,
@@ -16,7 +17,7 @@ function CommentForm({
       fields={{ post_id: postId, ...(parentId ? { parent_id: parentId } : {}) }}
       reset
     >
-      <label>
+      <label className="sera-comment-field">
         {parentId ? "Your reply" : "Join the conversation"}
         <textarea
           name="body"
@@ -28,7 +29,8 @@ function CommentForm({
           }
         />
       </label>
-      <Submit className="button secondary">
+      <Submit className="button sera-comment-submit">
+        <SeraReactionIcon kind="comment" />
         {parentId ? "Reply" : "Post comment"}
       </Submit>
     </ActionForm>
@@ -75,7 +77,7 @@ export function Comments({
   );
   return (
     <section className="social-comments" id="comments">
-      <h2>The conversation</h2>
+      <div className="sera-conversation-heading"><SeraReactionIcon kind="comment" /><h2>The conversation</h2></div>
       <CommentForm postId={postId} />
       {!comments.length && <p>No comments yet. Start the conversation.</p>}
       {comments
