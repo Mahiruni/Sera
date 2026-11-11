@@ -12,7 +12,17 @@ export function RepostButton({ id, author, disabled = false }: {
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState(repostPost, {});
+  const [state, action, pending] = useActionState(async (
+    previous: import("@/lib/social/actions").SocialState,
+    data: FormData
+  ) => {
+    const result = await repostPost(previous, data);
+    if (result.success) {
+      setOpen(false);
+      router.refresh();
+    }
+    return result;
+  }, {});
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -36,12 +46,6 @@ export function RepostButton({ id, author, disabled = false }: {
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; previouslyFocused?.focus(); };
   }, [open, pending]);
-  useEffect(() => {
-    if (state.success) {
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state.success, router]);
   return <>
     <button ref={trigger} type="button" onClick={() => setOpen(true)} disabled={disabled}
       aria-label={disabled ? "You cannot repost your own post" : "Repost this professional update"}
