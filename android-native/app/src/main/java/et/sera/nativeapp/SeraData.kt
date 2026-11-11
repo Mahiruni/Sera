@@ -108,7 +108,7 @@ private fun signedPostImage(token: String, path: String): String? {
         val body = if (connection.responseCode in 200..299) connection.inputStream.bufferedReader().use { it.readText() } else ""
         connection.disconnect()
         val signed = JSONObject(body).optString("signedURL").ifBlank { JSONObject(body).optString("signedUrl") }
-        if (signed.isBlank()) null else BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1" + signed.let { if (it.startsWith("/")) it else "/$it" }
+        if (signed.isBlank()) null else if (signed.startsWith("https://")) signed else BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1" + signed.let { if (it.startsWith("/")) it else "/$it" }
     } catch (e: Exception) { null }
 }
 
