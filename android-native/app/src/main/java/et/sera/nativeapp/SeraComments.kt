@@ -7,6 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,15 +69,20 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         if (result.first != null) comments = result.first!! else error = result.second
         loading = false
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    SeraSignatureSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge, color = Color(0xFF18383D), fontWeight = FontWeight.Bold)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) } }
             if (!loading && comments.isEmpty() && error.isBlank()) Text(stringResource(R.string.no_comments))
             LazyColumn(modifier = Modifier.heightIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(comments, key = { it.id }) { comment ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFF7FBFA)),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                    ) {
                         Column(Modifier.padding(14.dp)) {
                             Text(if (comment.parentId == null) stringResource(R.string.community_comment) else stringResource(R.string.reply), style = MaterialTheme.typography.labelMedium)
                             Text(comment.body)
@@ -85,7 +93,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
             OutlinedTextField(
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
                 label = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.fillMaxWidth(),
-                maxLines = 5, enabled = !sending,
+                maxLines = 5, enabled = !sending, shape = RoundedCornerShape(18.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
             )
@@ -103,7 +111,12 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                     } else publishingError = result.second
                     sending = false
                 }
-            }, enabled = !sending && draft.isNotBlank()) { Text(if (sending) "Publishing…" else "Publish comment") }
+            }, enabled = !sending && draft.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83))) {
+                Text(if (sending) "Publishing…" else "Publish comment")
+            }
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     }

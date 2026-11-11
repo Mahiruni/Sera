@@ -110,7 +110,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
-    ModalBottomSheet(onDismissRequest = { requestClose() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
         Column(
             Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -125,19 +125,10 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Column(Modifier.weight(1f)) {
                     Text("Create a post", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, color = ink)
-                    Text("Share something worth discovering.", style = MaterialTheme.typography.bodySmall,
+                    Text("Create a professional update", style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF687C80))
                 }
                 TextButton(onClick = { requestClose() }) { Text("Close", color = accent) }
-            }
-            Surface(color = Color(0xFF173D40), shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("YOUR VOICE MATTERS", fontSize = 10.sp, letterSpacing = 1.2.sp,
-                        fontWeight = FontWeight.Bold, color = Color(0xFF91E5D6))
-                    Text("Ideas become opportunities when you share them.",
-                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                }
             }
             OutlinedTextField(
                 value = body, onValueChange = {

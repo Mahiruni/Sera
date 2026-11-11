@@ -5,7 +5,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.material.icons.outlined.Repeat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,10 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -155,18 +150,15 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 val likeTint = if (post.liked) feedTeal else feedMuted
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = { onLike(post) }, modifier = Modifier.size(44.dp)) {
-                                        Icon(if (post.liked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                                            contentDescription = if (post.liked) "Unlike post" else "Like post",
-                                            tint = likeTint, modifier = Modifier.size(22.dp))
+                                    IconButton(onClick = { onLike(post) }, modifier = Modifier.size(48.dp)) {
+                                        SeraReactionGlyph(SeraReactionKind.LIKE, active = post.liked)
                                     }
                                     if (post.likes > 0) Text(post.likes.toString(), fontSize = 11.sp, color = likeTint)
                                 }
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = { commentsPostId = post.id }, modifier = Modifier.size(44.dp)) {
-                                        Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comment",
-                                            tint = feedMuted, modifier = Modifier.size(22.dp))
+                                    IconButton(onClick = { commentsPostId = post.id }, modifier = Modifier.size(48.dp)) {
+                                        SeraReactionGlyph(SeraReactionKind.COMMENT)
                                     }
                                     if (post.comments > 0) Text(post.comments.toString(), fontSize = 11.sp, color = feedMuted)
                                 }
@@ -175,9 +167,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         repostTarget = post
                                         repostNote = ""
                                         repostMessage = ""
-                                    }, modifier = Modifier.size(44.dp)) {
-                                        Icon(Icons.Outlined.Repeat, contentDescription = "Repost",
-                                            tint = feedMuted, modifier = Modifier.size(23.dp))
+                                    }, modifier = Modifier.size(48.dp)) {
+                                        SeraReactionGlyph(SeraReactionKind.REPOST)
                                     }
                                 }
                                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -187,9 +178,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                             putExtra(Intent.EXTRA_TEXT, "https://sera.hisabtech.com/posts/" + post.id)
                                         }
                                         context.startActivity(Intent.createChooser(intent, shareTitle))
-                                    }, modifier = Modifier.size(44.dp)) {
-                                        Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.share),
-                                            tint = feedMuted, modifier = Modifier.size(22.dp))
+                                    }, modifier = Modifier.size(48.dp)) {
+                                        SeraReactionGlyph(SeraReactionKind.SHARE)
                                     }
                                 }
                             }
@@ -248,7 +238,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             dismissButton = {
                 TextButton(onClick = { repostTarget = null }, enabled = !reposting) { Text("Cancel") }
             },
-            shape = RoundedCornerShape(23.dp)
+            shape = RoundedCornerShape(28.dp),
+            containerColor = Color.White,
+            titleContentColor = feedInk,
+            textContentColor = feedMuted
         )
     }
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }

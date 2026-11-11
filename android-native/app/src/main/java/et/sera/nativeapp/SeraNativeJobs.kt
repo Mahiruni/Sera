@@ -148,7 +148,7 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
         }
     }
     selected?.let { job ->
-        ModalBottomSheet(onDismissRequest = { selected = null }) {
+        SeraSignatureSheet(onDismissRequest = { selected = null }) {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 640.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 30.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)

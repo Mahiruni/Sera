@@ -92,7 +92,7 @@ internal fun SeraNativeProfileEditor(
         error = result.second
         loading = false
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    SeraSignatureSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().heightIn(max = 690.dp)
             .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
