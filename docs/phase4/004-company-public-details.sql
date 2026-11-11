@@ -16,7 +16,8 @@ create table if not exists public.sera_organization_details (
 );
 alter table public.sera_organization_details enable row level security;
 revoke all on public.sera_organization_details from anon, authenticated;
-grant select, insert, update on public.sera_organization_details to authenticated;
+grant select, insert on public.sera_organization_details to authenticated;
+grant update(street_address,region,phone_public,email_public,website_url,services,business_hours,founded_year,company_size,linkedin_url,updated_at) on public.sera_organization_details to authenticated;
 create policy "sera_org_details_read" on public.sera_organization_details
   for select to authenticated using (true);
 create policy "sera_org_details_insert_manager" on public.sera_organization_details
@@ -33,5 +34,4 @@ create policy "sera_org_details_update_manager" on public.sera_organization_deta
   with check (exists (select 1 from public.sera_organization_members m
       where m.organization_id = sera_organization_details.organization_id
         and m.user_id = (select auth.uid()) and m.role in ('owner','admin')));
--- Do not allow reassignment of profile details to a different organization.
-revoke update(organization_id) on public.sera_organization_details from authenticated;
+-- organization_id is intentionally excluded from the UPDATE column grant.
