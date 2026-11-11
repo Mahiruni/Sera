@@ -18,8 +18,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
-internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String)
+internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String, val sha256: String)
 
 /** Accept only published APK assets from the official SERA GitHub repository. */
 internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.IO) {
@@ -35,11 +36,12 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
             val name = data.optString("versionName")
             val address = data.optString("apkUrl")
             val parsed = URL(address)
-            if (code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
+            val sha256 = data.optString("sha256").lowercase()
+            if (!sha256.matches(Regex("[0-9a-f]{64}")) || code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
                 parsed.host != "github.com" || parsed.userInfo != null ||
                 parsed.path != "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk")
                 return@withContext null
-            SeraRelease(code, name, address, data.optString("notes").take(600))
+            SeraRelease(code, name, address, data.optString("notes").take(600), sha256)
         } finally { connection.disconnect() }
     } catch (_: Exception) { null }
 }
@@ -104,4 +106,26 @@ internal fun openSeraInstaller(context: Context, downloadId: Long): Boolean {
         true
     } catch (_: ActivityNotFoundException) { false }
       catch (_: SecurityException) { false }
+}
+
+/** Verify every byte of the downloaded APK before offering installation. */
+internal fun verifySeraDownload(context: Context, downloadId: Long, expectedSha256: String): Boolean {
+    if (!expectedSha256.matches(Regex("[0-9a-f]{64}"))) return false
+    return try {
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val digest = MessageDigest.getInstance("SHA-256")
+        manager.openDownloadedFile(downloadId).use { descriptor ->
+            java.io.FileInputStream(descriptor.fileDescriptor).use { stream ->
+                val buffer = ByteArray(65536)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    digest.update(buffer, 0, count)
+                }
+            }
+        }
+        val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        MessageDigest.isEqual(actual.toByteArray(Charsets.US_ASCII),
+            expectedSha256.toByteArray(Charsets.US_ASCII))
+    } catch (_: Exception) { false }
 }
