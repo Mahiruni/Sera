@@ -76,10 +76,7 @@ internal fun SeraFloatingDock(
                 ) {
                     Icon(dockIcon(section), contentDescription = section, tint = tint,
                         modifier = Modifier.size(23.dp))
-                    Spacer(Modifier.height(3.dp))
-                    Text(section, color = tint, fontSize = 10.sp,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                        maxLines = 1)
+                    
                 }
             }
         }
