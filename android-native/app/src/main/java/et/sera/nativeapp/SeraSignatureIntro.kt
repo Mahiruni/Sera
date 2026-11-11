@@ -28,12 +28,12 @@ import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sin
 
-// Traced from the owner's original SERA splash screenshot. Keep the same
+// Pixel-traced from the original SERA screenshot (white silhouette, not a font). Keep the same
 // silhouette and upper-right square in the system and Compose splash layers.
 // The full-screen transition dilates THIS shape; it is not a white crossfade.
-private const val SIGNATURE_S = "M62.7,9.5 L52.6,9.5 L48.1,10.1 L41.8,11.7 L35.5,14.5 L32.0,16.8 L27.5,20.9 L24.4,25.3 L21.8,30.7 L20.9,35.1 L21.2,40.5 L24.7,47.2 L28.5,50.7 L32.9,53.5 L47.2,58.9 L27.5,77.6 L25.6,77.0 L22.8,77.3 L21.2,78.3 L19.6,80.5 L19.6,84.3 L23.7,88.7 L32.0,93.5 L38.6,96.0 L50.7,98.2 L57.3,98.2 L65.3,97.3 L70.6,95.7 L77.6,91.9 L82.1,87.8 L85.5,82.7 L87.8,77.0 L88.1,70.3 L85.9,64.6 L81.7,59.9 L75.7,55.7 L70.0,53.2 L57.6,50.0 L57.0,49.4 L79.2,28.2 L84.0,28.2 L86.5,26.9 L88.1,23.7 L87.8,21.2 L87.1,19.9 L83.3,16.4 L76.3,12.6 L70.3,10.7 Z"
+private const val SIGNATURE_S = "M64.49,9.48 L60.68,9.48 L60.36,9.16 L51.14,9.48 L50.82,9.80 L49.23,9.80 L48.91,10.11 L47.64,10.11 L47.32,10.43 L46.05,10.43 L44.78,11.07 L42.55,11.39 L38.42,13.29 L37.78,13.29 L33.65,15.52 L28.56,19.65 L24.74,24.74 L21.88,30.47 L21.88,31.42 L20.93,33.96 L20.93,39.37 L22.20,43.51 L24.42,47.00 L27.92,50.50 L31.74,53.05 L39.37,56.54 L43.19,57.82 L45.41,58.13 L47.32,59.09 L45.73,61.00 L27.92,77.53 L27.29,77.85 L26.01,77.22 L23.47,77.22 L22.52,77.53 L20.29,79.44 L19.34,81.67 L19.34,83.58 L20.29,85.80 L24.11,89.30 L31.10,93.43 L31.74,93.43 L33.96,94.71 L35.55,95.02 L38.42,96.30 L39.37,96.30 L42.23,97.25 L43.51,97.25 L43.82,97.57 L45.10,97.57 L45.41,97.89 L55.27,98.84 L55.59,98.52 L59.72,98.52 L60.04,98.20 L64.18,97.89 L64.49,97.57 L65.77,97.57 L67.04,96.93 L68.31,96.93 L69.27,96.30 L71.17,95.98 L75.63,93.75 L78.49,91.84 L82.94,87.39 L86.12,82.62 L86.12,81.99 L86.76,81.35 L87.07,79.76 L88.03,77.85 L88.35,74.35 L88.66,74.04 L88.03,68.63 L86.44,65.13 L85.17,63.22 L81.35,59.41 L76.58,56.23 L71.17,53.68 L65.45,51.77 L64.49,51.77 L62.27,50.82 L58.13,50.18 L57.50,49.55 L57.50,48.91 L80.08,27.92 L81.03,27.92 L81.35,28.24 L84.53,28.24 L85.48,27.92 L86.76,26.97 L88.35,24.11 L88.35,21.88 L86.76,19.02 L81.35,14.88 L76.90,12.66 L73.40,11.39 L72.45,11.39 L68.31,10.11 L64.81,9.80 Z"
 private val signatureTeal = Color(0xFF087E83)
-private val signatureMint = Color(0xFFB8E7E2)
+private val signatureMint = Color(0xFF8CE9E1)
 
 private fun smoothSegment(position: Float, start: Float, end: Float): Float {
     val t = ((position - start) / (end - start)).coerceIn(0f, 1f)
@@ -132,8 +132,8 @@ internal fun SeraSignatureIntro(
                     if (expansion < 0.76f) {
                         drawRect(
                             color = signatureMint.copy(alpha = 1f - expansion / 0.76f),
-                            topLeft = Offset(85.7f, 8.3f),
-                            size = Size(6.2f, 6.2f)
+                            topLeft = Offset(86.44f, 8.84f),
+                            size = Size(5.09f, 5.09f)
                         )
                     }
                 }

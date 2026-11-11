@@ -63,6 +63,8 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
       - name: Validate seven-language Android resources
         run: python3 android-native/scripts/check_locales.py
+      - name: Verify original SERA signature logo is identical in all native assets
+        run: python3 android-native/scripts/check_signature_mark.py
       - name: Install Android SDK
         shell: bash
         run: |
