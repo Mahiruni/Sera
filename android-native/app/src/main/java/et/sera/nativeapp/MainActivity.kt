@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +42,7 @@ private val teal = Color(0xFF087E83)
 private val ink = Color(0xFF183B40)
 private val bg = Color(0xFFF5FAFB)
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -67,6 +70,7 @@ fun SeraApp(context: Context) {
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
     var showComposer by remember { mutableStateOf(false) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
     var authenticatedUserId by remember { mutableStateOf("") }
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
@@ -100,6 +104,20 @@ fun SeraApp(context: Context) {
         dataLoading = false
     }
     if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, onDismiss = { showComposer = false })
+    if (showLanguagePicker) {
+        val locales = listOf("" to "System default", "en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromoo", "ti" to "ትግርኛ", "ar" to "العربية", "aa" to "Qafar af", "so" to "Soomaali")
+        AlertDialog(onDismissRequest = { showLanguagePicker = false },
+            title = { Text(stringResource(R.string.language)) },
+            text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                locales.forEach { (code, name) ->
+                    TextButton(onClick = {
+                        showLanguagePicker = false
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                    }, modifier = Modifier.fillMaxWidth()) { Text(name) }
+                }
+            } },
+            confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text("Close") } })
+    }
     BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(colorScheme = lightColorScheme(primary = teal, background = bg, surface = bg)) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
@@ -167,6 +185,7 @@ fun SeraApp(context: Context) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                                        TextButton(onClick = { showLanguagePicker = true }) { Text("🌐") }
                                         if (tab == "Home") TextButton(onClick = { showComposer = true }, enabled = authenticatedUserId.isNotBlank()) { Text("+ Post") } else Text(tab, color = ink)
                                     }
                                 }
