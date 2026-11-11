@@ -5,6 +5,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -38,6 +40,8 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
     var buffering by remember(url) { mutableStateOf(false) }
     var playbackError by remember(url) { mutableStateOf(false) }
     var muted by remember(url) { mutableStateOf(false) }
+    var speed by remember(url) { mutableFloatStateOf(1f) }
+    var playing by remember(url) { mutableStateOf(false) }
     val player = remember(context, url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
@@ -52,6 +56,7 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
                 buffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) playbackError = false
             }
+            override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
             override fun onPlayerError(error: PlaybackException) {
                 playbackError = true
                 buffering = false
@@ -74,8 +79,17 @@ fun SeraVideoPlayer(url: String, modifier: Modifier = Modifier, localPreview: Bo
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { player.prepare(); player.play() }) { Text(if (playbackError) "Retry video" else "Play video") }
+            OutlinedButton(onClick = { player.pause() }, enabled = playing) { Text("Pause") }
             OutlinedButton(onClick = { muted = !muted; player.volume = if (muted) 0f else 1f }) {
                 Text(if (muted) "Unmute" else "Mute")
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Speed", style = MaterialTheme.typography.labelMedium)
+            listOf(0.75f, 1f, 1.5f, 2f).forEach { value ->
+                FilterChip(selected = speed == value, onClick = {
+                    speed = value; player.setPlaybackSpeed(value)
+                }, label = { Text("${value}×") })
             }
         }
         if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
