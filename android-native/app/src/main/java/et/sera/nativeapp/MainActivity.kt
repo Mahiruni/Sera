@@ -226,7 +226,7 @@ fun SeraApp(context: Context) {
                                                 password = ""
                                                 message = ""
                                                 tab = "Home"
-                                            })
+                                            }, accessToken ?: "", authenticatedUserId)
                                         } else {
                                             Text(sectionLabel(currentTab), color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
                                             Text(sectionDescription(currentTab), color = ink)
