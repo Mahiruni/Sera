@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -79,6 +81,7 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
     var search by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<NativeJob>>(emptyList()) }
     var selected by remember { mutableStateOf<NativeJob?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
     var reload by remember { mutableIntStateOf(0) }
@@ -98,8 +101,28 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
     }
     Column(modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(16.dp))
-        Text("Find your next chapter.", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
-        Text("Real opportunities from the SERA marketplace", color = Color(0xFF657A7E), fontSize = 13.sp)
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Opportunities", fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
+                Text("Discover your next chapter.",
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF657A7E))
+            }
+            Button(onClick = { showCreate = true },
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83)),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Icon(Icons.Outlined.Add, contentDescription = null,
+                    modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Post job", fontWeight = FontWeight.SemiBold)
+            }
+        }
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = search,
@@ -146,6 +169,18 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+    if (showCreate) {
+        SeraNativeJobComposer(
+            token = token,
+            onDismiss = { showCreate = false },
+            onPublished = {
+                showCreate = false
+                selected = null
+                search = ""
+                reload++
+            }
+        )
     }
     selected?.let { job ->
         SeraSignatureSheet(onDismissRequest = { selected = null }) {
