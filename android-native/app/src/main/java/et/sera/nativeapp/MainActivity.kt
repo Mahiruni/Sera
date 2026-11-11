@@ -103,7 +103,7 @@ fun SeraApp(context: Context) {
         }
         dataLoading = false
     }
-    if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, onDismiss = { showComposer = false })
+    if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, token = accessToken!!, onPublished = { showComposer = false; refresh++ }, onDismiss = { showComposer = false })
     if (showLanguagePicker) {
         val locales = listOf("" to stringResource(R.string.system_language), "en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromoo", "ti" to "ትግርኛ", "ar" to "العربية", "aa" to "Qafar af", "so" to "Soomaali")
         AlertDialog(onDismissRequest = { showLanguagePicker = false },
