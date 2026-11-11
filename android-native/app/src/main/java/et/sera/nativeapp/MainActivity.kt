@@ -170,7 +170,7 @@ fun SeraApp(context: Context) {
                                 NavigationRailItem(
                                     selected = tab == item, onClick = { navigateTo(item) },
                                     icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
-                                    label = { Text(item) }
+                                    label = { Text(sectionLabel(item)) }
                                 )
                             }
                         }
@@ -186,7 +186,7 @@ fun SeraApp(context: Context) {
                                     ) {
                                         Text("SERA.et", color = teal, fontWeight = FontWeight.Bold, fontSize = 25.sp)
                                         TextButton(onClick = { showLanguagePicker = true }) { Text("🌐") }
-                                        if (tab == "Home") TextButton(onClick = { showComposer = true }, enabled = authenticatedUserId.isNotBlank()) { Text("+ Post") } else Text(tab, color = ink)
+                                        if (tab == "Home") TextButton(onClick = { showComposer = true }, enabled = authenticatedUserId.isNotBlank()) { Text(stringResource(R.string.create_post)) } else Text(sectionLabel(tab), color = ink)
                                     }
                                 }
                             },
@@ -196,7 +196,7 @@ fun SeraApp(context: Context) {
                                         NavigationBarItem(
                                             selected = tab == item, onClick = { navigateTo(item) },
                                             icon = { Text(sectionSymbol(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White, fontSize = 20.sp) },
-                                            label = { Text(item, color = if (tab == item) Color(0xFF7CE1D6) else Color.White) },
+                                            label = { Text(sectionLabel(item), color = if (tab == item) Color(0xFF7CE1D6) else Color.White) },
                                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                                         )
                                     }
@@ -228,7 +228,7 @@ fun SeraApp(context: Context) {
                                                 tab = "Home"
                                             })
                                         } else {
-                                            Text(currentTab, color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                                            Text(sectionLabel(currentTab), color = ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
                                             Text(sectionDescription(currentTab), color = ink)
                                         }
                                     }
@@ -294,4 +294,14 @@ private fun sectionDescription(section: String): String = when (section) {
     "Jobs" -> "Find relevant opportunities. Native job discovery is coming."
     "Inbox" -> "Your conversations will appear here after messaging integration."
     else -> "Your professional identity. Profile data integration is coming."
+}
+
+@Composable
+private fun sectionLabel(section: String): String = when (section) {
+    "Home" -> stringResource(R.string.home)
+    "Network" -> stringResource(R.string.network)
+    "Jobs" -> stringResource(R.string.jobs)
+    "Inbox" -> stringResource(R.string.inbox)
+    "Profile" -> stringResource(R.string.profile)
+    else -> section
 }
