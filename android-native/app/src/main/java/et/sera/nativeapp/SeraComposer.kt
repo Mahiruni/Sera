@@ -44,19 +44,25 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var publishing by remember { mutableStateOf(false) }
     var publishMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    var selectedImage by remember { mutableStateOf<Uri?>(null) }
-    var imageExpanded by remember { mutableStateOf(false) }
+    val selectedImages = remember { mutableStateListOf<Uri>() }
+    var expandedImage by remember { mutableStateOf<Uri?>(null) }
     var mediaError by remember { mutableStateOf("") }
     var selectedVideo by remember { mutableStateOf<Uri?>(null) }
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            if (mediaSizeAllowed(context, uri, 20L * 1024 * 1024)) { selectedImage = uri; selectedVideo = null; mediaError = "" }
-            else mediaError = "Image exceeds the 20 MB attachment limit or cannot be read."
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(4)) { uris ->
+        if (uris.isNotEmpty()) {
+            val valid = uris.size <= 4 && uris.distinct().size == uris.size &&
+                uris.all { mediaSizeAllowed(context, it, 20L * 1024 * 1024) }
+            if (valid) {
+                selectedImages.clear()
+                selectedImages.addAll(uris)
+                selectedVideo = null
+                mediaError = ""
+            } else mediaError = "Choose up to four readable images, each under 20 MB."
         }
     }
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            if (mediaSizeAllowed(context, uri, 100L * 1024 * 1024)) { selectedVideo = uri; selectedImage = null; mediaError = "" }
+            if (mediaSizeAllowed(context, uri, 100L * 1024 * 1024)) { selectedVideo = uri; selectedImages.clear(); mediaError = "" }
             else mediaError = "Video exceeds the 100 MB attachment limit or cannot be read."
         }
     }
@@ -67,8 +73,8 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     }
     BackHandler { close() }
     LaunchedEffect(userId, body) { drafts.save(userId, body) }
-    if (imageExpanded && selectedImage != null) {
-        SeraMediaLightbox(url = selectedImage.toString(), description = "Selected image preview", onDismiss = { imageExpanded = false })
+    expandedImage?.let { uri ->
+        SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
     ModalBottomSheet(onDismissRequest = { close() }, dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(
@@ -92,17 +98,26 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = {
                     imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, modifier = Modifier.weight(1f)) { Text("Add image") }
+                }, modifier = Modifier.weight(1f)) { Text("Add photos") }
                 OutlinedButton(onClick = {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                 }, modifier = Modifier.weight(1f)) { Text("Add video") }
             }
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
-            selectedImage?.let { uri ->
-                AsyncImage(model = uri, contentDescription = "Selected image preview",
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).clickable { imageExpanded = true })
-                Text("Tap image to inspect at full size", style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { selectedImage = null; imageExpanded = false }) { Text("Remove image") }
+            if (selectedImages.isNotEmpty()) {
+                Text("${selectedImages.size} of 4 images selected", style = MaterialTheme.typography.labelLarge)
+                selectedImages.toList().forEachIndexed { index, uri ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(model = uri, contentDescription = "Image ${index + 1}",
+                            modifier = Modifier.size(112.dp).clickable { expandedImage = uri })
+                        Column {
+                            Text("Photo ${index + 1}", style = MaterialTheme.typography.titleSmall)
+                            TextButton(onClick = { selectedImages.remove(uri); if (expandedImage == uri) expandedImage = null }) {
+                                Text("Remove")
+                            }
+                        }
+                    }
+                }
             }
             selectedVideo?.let { uri ->
                 SeraVideoPlayer(url = uri.toString(), localPreview = true)
@@ -130,12 +145,12 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     if (result.first) { drafts.clear(userId); body = ""; onPublished() }
                     else publishMessage = result.second
                 }
-            }, enabled = !publishing && body.trim().length >= 3 && selectedImage == null && selectedVideo == null,
+            }, enabled = !publishing && body.trim().length >= 3 && selectedImages.isEmpty() && selectedVideo == null,
                 modifier = Modifier.fillMaxWidth()) { Text(if (publishing) "Publishing…" else "Publish text post") }
             if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
-            if (selectedImage != null || selectedVideo != null) Text("Attachments are temporary and are not saved with text drafts.", style = MaterialTheme.typography.bodySmall)
+            if (selectedImages.isNotEmpty() || selectedVideo != null) Text("Attachments are temporary and are not saved with text drafts.", style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.composer_notice),
                 style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { close() }) { Text(stringResource(R.string.close)) }
