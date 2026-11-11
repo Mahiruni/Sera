@@ -1,6 +1,13 @@
 package et.sera.nativeapp
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.ui.platform.LocalContext
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +34,25 @@ import java.net.URL
 
 private val inboxTeal = Color(0xFF087E83)
 private val inboxInk = Color(0xFF183B40)
+private val inboxSoft = Color(0xFFF1F7F6)
+/** Drafts are scoped to the signed-in user and individual conversation. */
+private class SeraInboxDrafts(context: Context) {
+    private val preferences = EncryptedSharedPreferences.create(
+        context, "sera_inbox_drafts",
+        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+    fun read(userId: String, conversationId: String): String =
+        preferences.getString("$userId:$conversationId", "").orEmpty()
+    fun write(userId: String, conversationId: String, text: String) {
+        preferences.edit().putString("$userId:$conversationId", text).apply()
+    }
+    fun clear(userId: String, conversationId: String) {
+        preferences.edit().remove("$userId:$conversationId").apply()
+    }
+}
+
 private data class NativeConversation(val id: String, val peerId: String, val peerName: String)
 private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String)
 
@@ -128,6 +154,10 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 
 @Composable
 fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    // Fail safely if encrypted storage is temporarily unavailable; never
+    // downgrade private message drafts to unencrypted preferences.
+    val savedDrafts = remember(context) { runCatching { SeraInboxDrafts(context) }.getOrNull() }
     var conversations by remember { mutableStateOf<List<NativeConversation>>(emptyList()) }
     var selected by remember { mutableStateOf<NativeConversation?>(null) }
     var messages by remember { mutableStateOf<List<NativeMessage>>(emptyList()) }
@@ -137,7 +167,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var loading by remember { mutableStateOf(true) }
     var refresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
-    BackHandler(selected != null) { selected = null; messages = emptyList(); draft = ""; error = "" }
+    BackHandler(selected != null) { selected = null; messages = emptyList(); error = "" }
     LaunchedEffect(token, userId, refresh) {
         if (userId.isBlank()) return@LaunchedEffect
         loading = true
@@ -174,7 +204,10 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(conversations, key = { it.id }) { conversation ->
-                    ElevatedCard(onClick = { selected = conversation; messages = emptyList(); error = "" },
+                    ElevatedCard(onClick = {
+                        draft = savedDrafts?.read(userId, conversation.id).orEmpty()
+                        selected = conversation; messages = emptyList(); error = ""
+                    },
                         shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.elevatedCardColors(containerColor = Color.White)) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically,
@@ -193,9 +226,21 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             }
         } else {
             val conversation = selected!!
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { selected = null; messages = emptyList(); error = "" }) { Text("←") }
-                Text(conversation.peerName, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = inboxInk)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                IconButton(onClick = { selected = null; messages = emptyList(); error = "" },
+                    modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to conversations",
+                        tint = inboxInk)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(conversation.peerName, fontWeight = FontWeight.Bold,
+                        fontSize = 19.sp, color = inboxInk)
+                    Text("Private conversation", fontSize = 11.sp, color = Color(0xFF6B8185))
+                }
             }
             HorizontalDivider()
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
@@ -205,7 +250,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     val own = message.senderId == userId
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
                         Surface(shape = RoundedCornerShape(18.dp),
-                            color = if (own) inboxTeal else Color.White,
+                            color = if (own) inboxTeal else inboxSoft,
                             modifier = Modifier.widthIn(max = 300.dp)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                 Text(message.body, color = if (own) Color.White else inboxInk)
@@ -216,10 +261,19 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
+                    .padding(top = 11.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(
-                    value = draft, onValueChange = { if (it.length <= 4000) draft = it },
+                    value = draft, onValueChange = {
+                        if (it.length <= 4000) {
+                            draft = it
+                            runCatching { savedDrafts?.write(userId, conversation.id, it) }
+                        }
+                    },
                     modifier = Modifier.weight(1f), placeholder = { Text("Write a message…") },
                     shape = RoundedCornerShape(22.dp), maxLines = 5
                 )
@@ -235,13 +289,25 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                         }
                         if (result.first != null) {
                             draft = ""
+                            runCatching { savedDrafts?.clear(userId, conversation.id) }
                             val refreshed = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
                             refreshed.first?.let { messages = it }
                         } else error = result.second
                         sending = false
                     }
-                }, enabled = draft.isNotBlank() && !sending, contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.heightIn(min = 54.dp)) { Text(if (sending) "…" else "Send") }
+                }, enabled = draft.isNotBlank() && !sending,
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    modifier = Modifier.heightIn(min = 54.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = inboxTeal)) {
+                    if (sending) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp,
+                            color = Color.White)
+                    } else {
+                        Icon(Icons.Outlined.Send, contentDescription = "Send message",
+                            modifier = Modifier.size(22.dp))
+                    }
+                }
             }
         }
     }
