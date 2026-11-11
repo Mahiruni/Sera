@@ -2079,15 +2079,21 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   }
 }
 
-/* Approved mobile first-fold layout: remove the double header clearance.
-   Shell owns the fixed navigation; the feed must not reserve a second tall row.
-   Limit this correction to the community feed, leaving other network pages intact. */
+/* Shared mobile content clearance for every network app route.
+   The global Shell header is fixed; reserve exactly one safe-area-aware
+   clearance rather than stacking a second hero/header offset. */
 @media (max-width: 600px) {
-  .sera-network.network-app:has(.network-welcome) {
-    padding-top: 0;
-    margin-top: -48px;
+  .sera-network.network-app {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 68px);
+    margin-top: 0;
   }
-  .sera-network.network-app:has(.network-welcome) .network-welcome {
+  .sera-network.network-app > .network-toolbar {
+    display: none;
+  }
+  .sera-network.network-app .network-app-grid {
+    margin-top: 0;
+  }
+  .sera-network.network-app .network-welcome {
     margin-top: 0;
   }
 }
