@@ -46,18 +46,9 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
         }
         if (posts.isEmpty()) return emptyList<SeraPost>() to ""
         val authors = posts.map { it.authorId }.filter { it.isNotBlank() }.distinct()
-        val names = mutableMapOf<String, Pair<String, String>>()
-        if (authors.isNotEmpty()) {
-            val filter = authors.joinToString(",")
-            val people = request(token, "post_authors?select=id,full_name,headline&id=in.($filter)")
-            people.first?.let { json ->
-                val rows = JSONArray(json)
-                for (i in 0 until rows.length()) {
-                    val row = rows.getJSONObject(i)
-                    names[row.optString("id")] = row.optString("full_name", "SERA member") to row.optString("headline")
-                }
-            }
-        }
+        // Resolve visible profile names and avatars through the live member_cards RPC.
+        // The old post_authors relation does not exist in the hosted schema.
+        val names = mutableMapOf<String, String>()
         val avatars = mutableMapOf<String, String>()
         if (authors.isNotEmpty()) {
             try {
@@ -74,14 +65,16 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
                     for (i in 0 until rows.length()) {
                         val row = rows.getJSONObject(i)
                         val id = row.optString("id")
+                        val name = row.optString("full_name")
+                        if (id.isNotBlank() && name.isNotBlank() && name != "null") names[id] = name
                         val avatarPath = row.optString("avatar_path")
-                        if (avatarPath.isNotBlank() && avatarPath != "null") {
+                        if (id.isNotBlank() && avatarPath.isNotBlank() && avatarPath != "null") {
                             signedPostImage(token, avatarPath, "sera-account-private")?.let { avatars[id] = it }
                         }
                     }
                 }
                 connection.disconnect()
-            } catch (_: Exception) { /* Avatar fallback remains available. */ }
+            } catch (_: Exception) { /* Fallback for temporarily unavailable profiles. */ }
         }
         val likedIds = mutableSetOf<String>()
         val idsForLikes = posts.map { it.id }.filter { it.isNotBlank() }.joinToString(",")
@@ -109,9 +102,8 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
             }
         }
         posts.map { post ->
-            val author = names[post.authorId]
-            post.copy(author = author?.first?.takeIf { it.isNotBlank() } ?: "SERA member",
-                headline = author?.second ?: "", imageUrl = images[post.id], liked = likedIds.contains(post.id), avatarUrl = avatars[post.authorId])
+            post.copy(author = names[post.authorId] ?: "SERA member",
+                headline = "", imageUrl = images[post.id], liked = likedIds.contains(post.id), avatarUrl = avatars[post.authorId])
         } to ""
     } catch (e: Exception) { null to "Unable to read the feed response." }
 }
