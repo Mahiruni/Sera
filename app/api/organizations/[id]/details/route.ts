@@ -48,8 +48,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (typeof update.email_public === "string" && update.email_public &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(update.email_public)) return fail("Invalid public email.");
   const db = await serverClient();
-  const { error } = await db.from("sera_organization_details")
-    .upsert({ organization_id: id, ...update, updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
-  if (error) return fail("Company details could not be saved.", 500);
+  const existing = await db.from("sera_organization_details")
+    .select("organization_id").eq("organization_id", id).maybeSingle();
+  if (existing.error) return fail("Company details could not be loaded.", 500);
+  const payload = { ...update, updated_at: new Date().toISOString() };
+  const result = existing.data
+    ? await db.from("sera_organization_details").update(payload).eq("organization_id", id)
+    : await db.from("sera_organization_details").insert({ organization_id: id, ...payload });
+  if (result.error) return fail("Company details could not be saved.", 500);
   return NextResponse.json({ success: true });
 }
