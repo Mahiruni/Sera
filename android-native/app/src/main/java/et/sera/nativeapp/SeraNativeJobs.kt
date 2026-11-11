@@ -3,6 +3,8 @@ package et.sera.nativeapp
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -146,7 +148,7 @@ fun SeraNativeJobs(token: String, modifier: Modifier = Modifier) {
     selected?.let { job ->
         ModalBottomSheet(onDismissRequest = { selected = null }) {
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 30.dp),
+                Modifier.fillMaxWidth().heightIn(max = 640.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 30.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(job.title, fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
