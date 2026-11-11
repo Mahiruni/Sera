@@ -89,6 +89,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
     var availableUpdate by remember { mutableStateOf<SeraRelease?>(null) }
     var updateNotice by remember { mutableStateOf("") }
     var activeDownloadId by remember { mutableStateOf<Long?>(null) }
+    var activeRelease by remember { mutableStateOf<SeraRelease?>(null) }
     var updateProgress by remember { mutableIntStateOf(0) }
     var updateDownloaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -100,7 +101,13 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
             val status = withContext(Dispatchers.IO) { seraDownloadStatus(context, id) }
             updateProgress = status.progress
             if (status.complete) {
-                updateDownloaded = true
+                val expected = activeRelease?.sha256.orEmpty()
+                val verified = withContext(Dispatchers.IO) { verifySeraDownload(context, id, expected) }
+                if (verified) updateDownloaded = true
+                else {
+                    updateNotice = "Update verification failed. Installation was blocked for your security."
+                    activeDownloadId = null
+                }
                 break
             }
             if (status.failed) {
@@ -115,6 +122,7 @@ fun SeraApp(context: Context, oauthCallback: Uri? = null, onCallbackConsumed: ()
         SeraUpdatePrompt(release, onDismiss = { availableUpdate = null }, onDownload = {
             val id = downloadSeraUpdate(context, release)
             if (id != null) {
+                activeRelease = release
                 activeDownloadId = id
                 updateProgress = 0
                 updateDownloaded = false
