@@ -298,7 +298,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             Spacer(Modifier.width(8.dp))
                             Text("Reposting…")
                         } else {
-                            SeraReactionGlyph(SeraReactionKind.REPOST, active = true)
+                            SeraReactionGlyph(SeraReactionKind.REPOST, tint = Color.White)
                             Spacer(Modifier.width(8.dp))
                             Text("Repost")
                         }

@@ -52,10 +52,11 @@ internal enum class SeraReactionKind { LIKE, COMMENT, REPOST, SHARE }
 internal fun SeraReactionGlyph(
     kind: SeraReactionKind,
     active: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color? = null
 ) {
     val ink by animateColorAsState(
-        targetValue = if (active) Color(0xFF087E83) else Color(0xFF687F83),
+        targetValue = tint ?: if (active) Color(0xFF087E83) else Color(0xFF687F83),
         animationSpec = spring(), label = "SERA reaction color"
     )
     val paths = remember(kind) {
