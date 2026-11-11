@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,10 +34,10 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
     PullToRefreshBox(isRefreshing = loading, onRefresh = onRefresh, modifier = modifier.fillMaxSize()) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            Text("Your professional world", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkInk)
-            Text("Ideas, talent and opportunities", color = Color(0xFF63787C))
+            Text(stringResource(R.string.feed_title), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkInk)
+            Text(stringResource(R.string.feed_subtitle), color = Color(0xFF63787C))
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = onRefresh, enabled = !loading) { Text("Refresh feed") }
+            OutlinedButton(onClick = onRefresh, enabled = !loading) { Text(stringResource(R.string.refresh_feed)) }
             if (loading) { Spacer(Modifier.height(8.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (error.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
@@ -44,7 +45,7 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
             }
             if (!loading && error.isBlank() && posts.isEmpty()) {
                 Spacer(Modifier.height(28.dp))
-                Text("Your feed is quiet right now. Published updates will appear here.", color = darkInk)
+                Text(stringResource(R.string.feed_empty), color = darkInk)
             }
         }
         items(posts, key = { it.id }) { post ->
@@ -52,18 +53,18 @@ fun SeraFeed(posts: List<SeraPost>, loading: Boolean, error: String, onRefresh: 
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFE1F5F2)), contentAlignment = Alignment.Center) {
-                            if (post.avatarUrl != null) AsyncImage(model = post.avatarUrl, contentDescription = "Profile photo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) else Text(post.author.take(1).uppercase(), color = deepTeal, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            if (post.avatarUrl != null) AsyncImage(model = post.avatarUrl, contentDescription = stringResource(R.string.profile_photo), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) else Text(post.author.take(1).uppercase(), color = deepTeal, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(post.author, color = darkInk, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(post.headline.ifBlank { "SERA professional" }, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(post.headline.ifBlank { stringResource(R.string.professional) }, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Text(post.kind.uppercase(), color = deepTeal, fontSize = 10.sp)
                     }
                     if (post.title.isNotBlank()) Text(post.title, color = darkInk, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                     if (post.body.isNotBlank()) Text(post.body, color = darkInk, maxLines = 12, overflow = TextOverflow.Ellipsis)
                     post.imageUrl?.let { url ->
-                        AsyncImage(model = url, contentDescription = "Post image", contentScale = ContentScale.Crop,
+                        AsyncImage(model = url, contentDescription = stringResource(R.string.post_image), contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 360.dp).clip(RoundedCornerShape(14.dp)))
                     }
                     HorizontalDivider(color = Color(0xFFE6EEEE))
