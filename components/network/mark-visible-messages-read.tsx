@@ -11,17 +11,22 @@ import { markProfessionalMessagesRead } from "@/lib/network/messaging";
 export function MarkVisibleMessagesRead({
   conversation,
   unreadCount,
+  unreadKey,
 }: {
   conversation: string;
   unreadCount: number;
+  unreadKey: string;
 }) {
   const router = useRouter();
   const attempted = useRef("");
   useEffect(() => {
-    if (unreadCount <= 0) return;
+    if (unreadCount <= 0) {
+      attempted.current = "";
+      return;
+    }
     let timer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
-    const key = `${conversation}:${unreadCount}`;
+    const key = `${conversation}:${unreadKey}`;
     const mark = () => {
       if (disposed || document.visibilityState !== "visible" || !document.hasFocus()) return;
       if (attempted.current === key) return;
@@ -54,6 +59,6 @@ export function MarkVisibleMessagesRead({
       window.removeEventListener("focus", onVisibility);
       window.removeEventListener("blur", onVisibility);
     };
-  }, [conversation, unreadCount, router]);
+  }, [conversation, unreadCount, unreadKey, router]);
   return null;
 }
