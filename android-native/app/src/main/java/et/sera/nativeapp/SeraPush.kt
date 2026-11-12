@@ -47,6 +47,7 @@ internal object SeraPush {
     fun channel(context:Context){
         val manager=context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL,"SERA notifications",NotificationManager.IMPORTANCE_HIGH).apply{description="Messages and professional activity";enableVibration(true);setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())})
+        SeraNotificationSounds.createChannels(context)
     }
     private fun prefs(context:Context)=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
     fun clearLocal(context:Context){registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
@@ -91,7 +92,7 @@ internal object SeraPush {
         val intent=Intent(context,MainActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind",kind)}
         val id=(System.currentTimeMillis()%Int.MAX_VALUE).toInt()
         val pi=PendingIntent.getActivity(context,id,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val n=NotificationCompat.Builder(context,CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pi).build()
+        val n=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind)).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pi).build()
         context.getSystemService(NotificationManager::class.java).notify(id,n)
     }
     fun dispatch(access:String,kind:String,id:String){
