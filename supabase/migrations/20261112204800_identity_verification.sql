@@ -95,7 +95,7 @@ create function public.sera_identity_badges(p_ids uuid[]) returns table(id uuid)
  where private.account_verified() and r.user_id=any(p_ids[1:200]) and r.status='approved' and r.expires_at>now() and r.verified_name=p.full_name and private.can_view_member(r.user_id)
 $$;
 revoke all on function public.sera_identity_status(),public.sera_identity_start(text,boolean),public.sera_identity_submit(uuid),public.sera_identity_withdraw(uuid),public.sera_identity_queue(),public.sera_identity_review(uuid,text,text,boolean),public.sera_identity_badges(uuid[]) from public,anon;
-grant execute on function public.sera_identity_status(),public.sera_identity_start(text),public.sera_identity_submit(uuid),public.sera_identity_withdraw(uuid),public.sera_identity_queue(),public.sera_identity_review(uuid,text,text),public.sera_identity_badges(uuid[]) to authenticated;
+grant execute on function public.sera_identity_status(),public.sera_identity_start(text,boolean),public.sera_identity_submit(uuid),public.sera_identity_withdraw(uuid),public.sera_identity_queue(),public.sera_identity_review(uuid,text,text,boolean),public.sera_identity_badges(uuid[]) to authenticated;
 
 -- Revocation is permanent even if the member later restores their old display name.
 create function private.sera_identity_name_changed() returns trigger language plpgsql security definer set search_path='' as $$
