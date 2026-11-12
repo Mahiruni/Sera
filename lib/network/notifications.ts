@@ -32,3 +32,5 @@ export async function professionalUnreadCount(): Promise<number> {
  if (error) throw new Error("Notifications are temporarily unavailable.");
  return count ?? 0;
 }
+
+export async function professionalInboxUnreadCount():Promise<number>{const user=await currentUser();if(!user?.email_confirmed_at)return 0;const db=await serverClient();const {data,error}=await db.rpc("sera_unread_activity");if(error)throw new Error("Inbox unavailable");return Number(data?.inbox||0);}

@@ -1,19 +1,19 @@
 "use client";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
-import { professionalUnreadCount } from "@/lib/network/notifications";
+import { professionalUnreadCount, professionalInboxUnreadCount } from "@/lib/network/notifications";
 
 /** The header is an entry point to the canonical professional notification inbox.
  * The full inbox owns all read-state mutations and displays every notification kind.
  */
-export function ActivityBell() {
+function ActivityIndicator({inbox=false}:{inbox?:boolean}) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;
     async function refresh() {
       try {
-        const next = await professionalUnreadCount();
+        const next = await (inbox?professionalInboxUnreadCount():professionalUnreadCount());
         if (active) setCount(next);
       } catch {
         // Retain the last known count during transient network failures.
@@ -34,16 +34,19 @@ export function ActivityBell() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, []);
+  }, [inbox]);
   return (
     <Link
-      href="/notifications"
+      href={inbox?"/network/messages":"/notifications"}
       className="header-control activity-trigger"
-      aria-label={count ? `Notifications, ${count} unread` : "Notifications"}
-      title="Notifications"
+      aria-label={(inbox?"Inbox":"Notifications")+(count?`, ${count} unread`:"")}
+      title={inbox?"Inbox":"Notifications"}
     >
-      <Bell size={20} aria-hidden="true" />
+      {inbox?<Mail size={22} aria-hidden="true"/>:<Bell size={22} aria-hidden="true"/>}
       {count > 0 && <b aria-hidden="true">{count > 99 ? "99+" : count}</b>}
     </Link>
   );
 }
+
+export function ActivityBell(){return <ActivityIndicator/>}
+export function InboxBadge(){return <ActivityIndicator inbox/>}

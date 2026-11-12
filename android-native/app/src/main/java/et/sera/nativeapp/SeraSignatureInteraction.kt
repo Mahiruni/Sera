@@ -27,7 +27,7 @@ internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=false)
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     ModalBottomSheet(
         sheetState=sheetState,
         onDismissRequest = onDismissRequest,
@@ -43,7 +43,7 @@ internal fun SeraSignatureSheet(
                     .background(Color(0xFFC5D8D5), RoundedCornerShape(20.dp))
             )
         },
-        content = content
+        content = { Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding(), content=content) }
     )
 }
 
@@ -58,7 +58,7 @@ internal fun SeraReactionGlyph(
     tint: Color? = null
 ) {
     val ink by animateColorAsState(
-        targetValue = tint ?: if (active) Color(0xFF087E83) else Color(0xFF687F83),
+        targetValue = tint ?: if (active) (if(kind==SeraReactionKind.REPOST)SeraPurple else Color(0xFF087E83)) else Color(0xFF687F83),
         animationSpec = spring(), label = "SERA reaction color"
     )
     val paths = remember(kind) {

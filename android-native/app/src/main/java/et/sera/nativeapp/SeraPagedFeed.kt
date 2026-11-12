@@ -117,12 +117,12 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         Text(post.author.take(1).uppercase(), color = feedTeal, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                                     }
                                 }
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                                     Text(buildAnnotatedString {
                                         withStyle(SpanStyle(color=feedInk,fontWeight=FontWeight.Bold,fontSize=14.sp)){append(post.author)}
-                                        if(post.repostOf!=null) withStyle(SpanStyle(color=feedTeal,fontWeight=FontWeight.Medium,fontSize=11.sp)){append(" | Reposted from "+(post.repostAuthor?:"original author"))}
-                                    },maxLines=2,overflow=TextOverflow.Ellipsis)
-                                    if(post.headline.isNotBlank()) Text(post.headline,color=feedTeal,fontSize=11.sp)
+                                        if(post.repostOf!=null) withStyle(SpanStyle(color=SeraPurple,fontWeight=FontWeight.Medium,fontSize=11.sp)){append(" | Reposted from "+(post.repostAuthor?:"original author"))}
+                                    },maxLines=2,overflow=TextOverflow.Ellipsis,lineHeight=17.sp)
+                                    if(post.headline.isNotBlank()) Text(post.headline,color=feedTeal,fontSize=11.sp,lineHeight=13.sp)
                                     val details = (if(post.repostOf!=null)"Reposted " else "")+postTimeLabel(post.publishedAt)
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                                         if(post.authorId in activeAuthors) { SeraOnlineDot(); Text("Active now",color=feedTeal,fontSize=10.sp) }
@@ -137,10 +137,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
                             if(post.repostOf!=null){
                                 if(post.repostNote.isNotBlank()) Text(post.repostNote,color=feedInk)
-                                Row(Modifier.fillMaxWidth().background(Color(0xFFF1F8F7),RoundedCornerShape(14.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
+                                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFFF1F8F7)).clickable(enabled=post.originalBody!=null){nativePostId=post.repostOf}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
                                     if(post.originalAvatar!=null)SeraMediaImage(post.originalAvatar,"Original author",96,96,modifier=Modifier.size(30.dp).clip(CircleShape))
                                     Column(Modifier.weight(1f)){Text(post.repostAuthor?:"Original post unavailable",color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=12.sp);Text("Original · "+postTimeLabel(post.originalTime.orEmpty()),color=feedMuted,fontSize=11.sp)}
-                                    if(post.originalBody!=null)TextButton(onClick={nativePostId=post.repostOf}){Text("Open",fontSize=11.sp)}
+                                    if(post.originalBody!=null)TextButton(onClick={nativePostId=post.repostOf}){Text("›",fontSize=22.sp,color=SeraPurple)}
                                 }
                             }
                             if (title.isNotBlank() && !body.replace(Regex("\\s+")," ").startsWith(title.replace(Regex("\\s+")," "),ignoreCase=true)) {
@@ -213,7 +213,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     }, modifier = Modifier.size(48.dp)) {
                                         SeraReactionGlyph(SeraReactionKind.REPOST,active=repostState.first)
                                     }
-                                    if(repostState.second>0)Text(repostState.second.toString(),fontSize=11.sp,color=if(repostState.first)feedTeal else feedMuted)
+                                    if(repostState.second>0)Text(repostState.second.toString(),fontSize=11.sp,color=if(repostState.first)SeraPurple else feedMuted)
                                 }
                                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                                     IconButton(onClick = {
@@ -258,7 +258,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         val sourceAvailable=selected.repostOf==null||selected.originalBody!=null
         SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {
             Column(
-                Modifier.fillMaxWidth().imePadding().navigationBarsPadding(),
+                Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 Row(

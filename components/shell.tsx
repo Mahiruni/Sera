@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ActivityBell } from "./activity/bell";
+import { ActivityBell, InboxBadge } from "./activity/bell";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -154,7 +154,7 @@ export function Shell({
         <div className="header-account-controls">
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
-          <Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>
+          {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
         </div>
       </header>
       <dialog

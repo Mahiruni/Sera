@@ -124,10 +124,11 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
     SeraSignatureSheet(onDismissRequest = { requestClose() }) {
+        val keyboardOpen=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
         Column(
-            Modifier.fillMaxWidth().heightIn(max = 680.dp).imePadding().navigationBarsPadding()
+            Modifier.fillMaxWidth().heightIn(max = 680.dp)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(if(keyboardOpen)6.dp else 12.dp)
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -153,13 +154,14 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
                 },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = if(keyboardOpen)80.dp else 240.dp),
                 shape = RoundedCornerShape(18.dp),
                 placeholder = { Text(stringResource(R.string.composer_placeholder)) },
                 supportingText = { Text("${body.length} / 4000 characters") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default, capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
-                minLines = 8,
+                minLines = if(keyboardOpen)2 else 8,
+                maxLines=if(keyboardOpen)5 else 20,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent, unfocusedBorderColor = Color(0xFFD8E7E5), focusedContainerColor = Color(0xFFF7FBFA), unfocusedContainerColor = Color(0xFFF7FBFA), cursorColor = accent)
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -202,7 +204,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
             }
-                Text("Keep posts professional. Text drafts stay on this device.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
+                if(!keyboardOpen)Text("Keep posts professional. Text drafts stay on this device.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = Color(0xFFE4EFED))

@@ -353,6 +353,7 @@ fun SeraApp(
         member.first?.let { identity = it }
         profileAvatarUrl = withContext(Dispatchers.IO) { loadSeraCurrentAvatar(token, id) }
     }
+    val unreadActivity = rememberSeraUnreadActivity(accessToken.orEmpty(),authenticatedUserId,tab)
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
@@ -599,6 +600,8 @@ fun SeraApp(
                                     }
                                 }
                                 SeraChromeOverlays(
+                                    notificationCount=unreadActivity.first,
+                                    inboxCount=unreadActivity.second,
                                     visible = chromeVisible.value && !keyboardOpen,
                                     expanded = expanded,
                                     selected = tab,
@@ -628,6 +631,8 @@ fun SeraApp(
 /** Isolated BoxScope keeps the top/bottom chrome outside the RowScope overload. */
 @Composable
 private fun BoxScope.SeraChromeOverlays(
+    notificationCount:Int,
+    inboxCount:Int,
     visible: Boolean,
     expanded: Boolean,
     selected: String,
@@ -646,6 +651,8 @@ private fun BoxScope.SeraChromeOverlays(
         modifier = Modifier.align(Alignment.TopCenter)
     ) {
         SeraNativeHeader(
+            notificationCount=notificationCount,
+            inboxCount=inboxCount,
             section = selected,
             canCompose = canCompose,
             onCompose = onCompose,

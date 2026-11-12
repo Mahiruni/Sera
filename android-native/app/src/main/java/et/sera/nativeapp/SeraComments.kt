@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -155,9 +156,8 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
     removing?.let{c->AlertDialog(onDismissRequest={removing=null},title={Text("Remove comment?")},text={Text("This also removes replies to your comment.")},confirmButton={TextButton(onClick={removing=null;sending=true;scope.launch{val r=withContext(Dispatchers.IO){mutateNativeComment(token,postId,c.id,"delete","")};sending=false;if(r.first){retry++;onChanged()}else publishingError=r.second}}){Text("Remove")}},dismissButton={TextButton(onClick={removing=null}){Text("Keep")}})}
     SeraSignatureSheet(onDismissRequest = { requestClose() }) {
         Column(
-            Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding()
-                .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.fillMaxWidth().fillMaxHeight(0.94f).padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("Comments · "+comments.size,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);TextButton(onClick={requestClose()}){Text("Close")}}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -215,7 +215,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
             OutlinedTextField(
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
                 placeholder = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.weight(1f),
-                maxLines = 5, enabled = !sending, shape = RoundedCornerShape(18.dp),
+                maxLines = 3, enabled = !sending, shape = RoundedCornerShape(18.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
             )
@@ -297,11 +297,11 @@ private fun SeraThreadCommentCard(
                 Column(Modifier.weight(1f)) {
                     Text(
                         comment.author,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(lineHeight=16.sp),
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF193A3F)
                     )
-                    if(comment.headline.isNotBlank())Text(comment.headline,color=Color(0xFF087E83),style=MaterialTheme.typography.labelSmall)
+                    if(comment.headline.isNotBlank())Text(comment.headline,color=Color(0xFF087E83),style=MaterialTheme.typography.labelSmall.copy(lineHeight=13.sp))
                     val date = remember(comment.createdAt) {
                         runCatching {
                             DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault())

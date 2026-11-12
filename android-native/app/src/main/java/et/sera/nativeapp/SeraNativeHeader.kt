@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 /** Compact, consistent branded app bar with native accessible icon controls. */
 @Composable
 internal fun SeraNativeHeader(
+    notificationCount:Int=0,
+    inboxCount:Int=0,
     section: String,
     canCompose: Boolean,
     onCompose: () -> Unit,
@@ -47,8 +49,10 @@ internal fun SeraNativeHeader(
             Spacer(Modifier.width(3.dp))
             Text(buildAnnotatedString{withStyle(SpanStyle(color=Color(0xFF087E83),fontWeight=FontWeight.Black)){append("SERA")};withStyle(SpanStyle(color=Color(0xFF183B40),fontWeight=FontWeight.Bold)){append(".et")}},modifier=Modifier.weight(1f),fontSize=24.sp,maxLines=1,overflow=TextOverflow.Ellipsis,letterSpacing=(-1).sp)
             IconButton(onClick = onSearch, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.Search, "Search", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
-            IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.NotificationsNone, "Notifications", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
-            IconButton(onClick = onMessaging, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.ChatBubbleOutline, "Inbox", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
+            IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) { BadgedBox(badge={SeraUnreadBadge(notificationCount)}){Icon(Icons.Outlined.NotificationsNone, if(notificationCount>0)"Notifications, $notificationCount unread" else "Notifications", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp))} }
+            IconButton(onClick = onMessaging, modifier = Modifier.size(44.dp)) { BadgedBox(badge={SeraUnreadBadge(inboxCount)}){Icon(Icons.Outlined.ChatBubbleOutline, if(inboxCount>0)"Inbox, $inboxCount unread messages" else "Inbox", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp))} }
         }
     }
 }
+
+@Composable private fun SeraUnreadBadge(count:Int){if(count>0)Badge(containerColor=SeraPurple,contentColor=Color.White){Text(if(count>99)"99+" else count.toString(),fontSize=10.sp,fontWeight=FontWeight.SemiBold)}}

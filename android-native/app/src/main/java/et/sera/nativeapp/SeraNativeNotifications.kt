@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +74,7 @@ private fun loadNotifications(token:String):NotificationBatch{
   scope.launch{
    val r=withContext(Dispatchers.IO){notificationCall(token,"professional_notifications?read_at=is.null"+(id?.let{"&id=eq."+it}?:""),true)}
    marking=false;error=r.second
-   if(r.first!=null)refresh++
+   if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}
   }
  }
  LaunchedEffect(token,refresh,lifecycle){
@@ -101,14 +102,14 @@ private fun loadNotifications(token:String):NotificationBatch{
     val isUnread=n.isNull("read_at");val actor=people[n.optString("actor_id")]
     val post=n.optString("post_id").takeUnless{it.isBlank()||it=="null"}
     val action=when(n.optString("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";else->"interacted with you"}
-    Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)Color(0xFFE5F5F2) else Color.White,modifier=Modifier.fillMaxWidth().clickable{if(isUnread)mark(n.getString("id"));if(post!=null)selectedPost=post}){
-     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-      if(actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(44.dp).clip(CircleShape)) else Box(Modifier.size(44.dp).background(Color(0xFFD0EBE7),CircleShape),contentAlignment=Alignment.Center){Text((actor?.name?:"S").take(1),color=teal,fontWeight=FontWeight.Bold)}
-      Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
-       Text((actor?.name?:"SERA member")+" "+action,color=Color(0xFF183B40),style=MaterialTheme.typography.bodyMedium)
-       Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.optString("created_at")))}.getOrDefault(""),style=MaterialTheme.typography.labelSmall,color=Color(0xFF657D80))
+    Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)Color(0xFFF3E8FF) else Color.White,modifier=Modifier.fillMaxWidth().clickable{if(isUnread)mark(n.getString("id"));if(post!=null)selectedPost=post}){
+     Row(Modifier.padding(11.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+      if(actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(38.dp).clip(CircleShape)) else Box(Modifier.size(38.dp).background(Color(0xFFD0EBE7),CircleShape),contentAlignment=Alignment.Center){Text((actor?.name?:"S").take(1),color=teal,fontWeight=FontWeight.Bold)}
+      Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+       Text(androidx.compose.ui.text.buildAnnotatedString{pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight=FontWeight.SemiBold));append(actor?.name?:"SERA member");pop();append(" "+action)},color=Color(0xFF183B40),fontSize=13.sp,lineHeight=17.sp)
+       Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.optString("created_at")))}.getOrDefault(""),fontSize=11.sp,lineHeight=14.sp,color=Color(0xFF657D80))
       }
-      if(isUnread)Box(Modifier.size(8.dp).background(teal,CircleShape))
+      if(isUnread)Box(Modifier.size(8.dp).background(SeraPurple,CircleShape))
      }
     }
    }
