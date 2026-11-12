@@ -61,15 +61,17 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
  val mime=context.contentResolver.getType(uri)?:return "Unsupported document."
  if(mime !in listOf("image/jpeg","image/png","application/pdf"))return "Choose a JPG, PNG or PDF."
  val bytes=try{context.contentResolver.openInputStream(uri)?.use{input->val output=java.io.ByteArrayOutputStream();val buffer=ByteArray(16384);while(true){val n=input.read(buffer);if(n<0)break;if(output.size()+n>3*1024*1024)return "Document must be 3 MB or smaller.";output.write(buffer,0,n)};output.toByteArray()}}catch(_:Exception){null}?:return "Unable to read document."
- val valid=when(mime){"application/pdf"->bytes.size>=5&&String(bytes,0,5,Charsets.US_ASCII)=="%PDF-";"image/jpeg"->bytes.size>=3&&bytes[0].toInt() and 255==255&&bytes[1].toInt() and 255==216&&bytes[2].toInt() and 255==255;else->bytes.size>=4&&bytes[0].toInt() and 255==137&&bytes[1].toInt()==80&&bytes[2].toInt()==78&&bytes[3].toInt()==71}
+ val valid=when(mime){"application/pdf"->bytes.size>=5&&String(bytes,0,5,Charsets.US_ASCII)=="%PDF-";"image/jpeg"->bytes.size>=3&&(bytes[0].toInt() and 255)==255&&(bytes[1].toInt() and 255)==216&&(bytes[2].toInt() and 255)==255;else->bytes.size>=4&&(bytes[0].toInt() and 255)==137&&bytes[1].toInt()==80&&bytes[2].toInt()==78&&bytes[3].toInt()==71}
  if(!valid)return "Invalid document format."
- val draft=identityJson(token,"sera_identity_start",JSONObject().put("p_document_type",type))?:return "Unable to open request. Check your current request."
+ val draft=identityJson(token,"sera_identity_start",JSONObject().put("p_document_type",type).put("p_consent",true))?:return "Unable to open request. Check your current request."
  if(!evidenceCall(token,draft.optString("path"),mime,bytes))return "Upload failed or evidence already exists. Submit the saved draft or withdraw it."
  if(spaceCall(token,"sera_identity_submit",JSONObject().put("p_id",draft.optString("id"))).first==null)return "Evidence uploaded. Submit the saved draft."
  return ""
 }
 @Composable internal fun SeraIdentityVerification(token:String,modifier:Modifier=Modifier,onBack:()->Unit){
  var state by remember(token){mutableStateOf<JSONObject?>(null)}
+ var history by remember(token){mutableStateOf<List<JSONObject>>(emptyList())}
+ var historicalEvidence by remember(token){mutableStateOf<String?>(null)}
  var type by remember(token){mutableStateOf("national_id")}
  var selected by remember(token){mutableStateOf<Uri?>(null)}
  var consent by remember(token){mutableStateOf(false)}
@@ -81,13 +83,13 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
  val scope=rememberCoroutineScope();val context=LocalContext.current
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){selected=it}
  BackHandler{if(!busy)onBack()}
- LaunchedEffect(token,refresh){loading=true;val r=withContext(Dispatchers.IO){identityJson(token,"sera_identity_status")};state=r;if(r==null)error="Verification is temporarily unavailable.";if(r?.optString("status")=="draft")type=r.optString("document_type","national_id");loading=false}
+ LaunchedEffect(token,refresh){loading=true;val r=withContext(Dispatchers.IO){identityJson(token,"sera_identity_status")};state=r;history=withContext(Dispatchers.IO){spaceRows(spaceCall(token,"sera_identity_history").first)};if(r==null)error="Verification is temporarily unavailable.";if(r?.optString("status")=="draft")type=r.optString("document_type","national_id");loading=false}
  val status=state?.optString("status","none")?:"none"
- fun run(intent:String){if(busy)return;val id=state?.optString("id").orEmpty();val path=state?.optString("path").orEmpty();busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){
+ fun run(intent:String){if(busy)return;val id=state?.optString("id").orEmpty();val path=historicalEvidence?:state?.optString("path").orEmpty();busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){
   when(intent){"submit"->if(spaceCall(token,"sera_identity_submit",JSONObject().put("p_id",id)).first!=null)"" else "Upload evidence before submitting."
    "withdraw"->if(spaceCall(token,"sera_identity_withdraw",JSONObject().put("p_id",id)).first==null)"Unable to withdraw." else if(!evidenceCall(token,path))"Withdrawn. You can retry removing the document." else ""
    else->if(evidenceCall(token,path))"" else "Unable to remove document."}
- };busy=false;error=result;selected=null;refresh++}}
+ };busy=false;error=result;selected=null;historicalEvidence=null;refresh++}}
  Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   TextButton(onClick=onBack,enabled=!busy){Text("Back to settings")}
   Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){SeraIdentityBadge(Modifier.size(24.dp));Text("Verify your identity",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
@@ -104,10 +106,11 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
     if(status=="approved")Text("Identity verified until "+state?.optString("expires_at").orEmpty().take(10)+". This badge does not confirm qualifications or employer legitimacy.",style=MaterialTheme.typography.bodySmall)
    }}
    Text("Your document stays private",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-   Text("Only you and authorized reviewers can access evidence during review. The badge never shares document details. Remove evidence after a decision or withdraw an active request.",style=MaterialTheme.typography.bodyMedium)
+   Text("Only you and authorized reviewers can access evidence during review. Documents are scheduled for removal 30 days after a decision; incomplete requests expire after 30 days. Remove evidence earlier after a decision or withdraw an active request.",style=MaterialTheme.typography.bodyMedium)
    if(status in listOf("draft","pending"))OutlinedButton(onClick={confirm="withdraw"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Withdraw request")}
+   if(status=="approved")OutlinedButton(onClick={confirm="withdraw"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Remove verification")}
    if(status=="draft")OutlinedButton(onClick={run("submit")},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Submit uploaded draft")}
-   if(status in listOf("approved","expired","rejected","withdrawn","revoked"))OutlinedButton(onClick={confirm="delete"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Remove document")}
+   if(state?.optBoolean("evidence_present")==true&&status in listOf("approved","expired","rejected","withdrawn","revoked"))OutlinedButton(onClick={confirm="delete"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Remove document")}
    if(status in listOf("none","draft","rejected","withdrawn","revoked","expired")){
     Text("Document type",style=MaterialTheme.typography.titleMedium)
     listOf("national_id" to "National ID","passport" to "Passport","driver_license" to "Driving licence").forEach{(key,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=type==key,onClick={type=key},enabled=!busy&&status!="draft");Text(label)}}
@@ -116,8 +119,9 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
     Row(verticalAlignment=Alignment.CenterVertically){Checkbox(checked=consent,onCheckedChange={consent=it},enabled=!busy);Text("I consent to authorized SERA reviewers checking this document for identity verification.",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall)}
     Button(onClick={val uri=selected?:return@Button;busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){submitNativeIdentity(context,token,type,uri)};busy=false;error=result;if(result.isBlank()){selected=null;consent=false};refresh++}},enabled=!busy&&!loading&&selected!=null&&consent,modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting securely…" else "Submit for verification")}
    }
+   if(history.any{it.optString("id")!=state?.optString("id")}){Text("Previous requests",style=MaterialTheme.typography.titleMedium);history.filter{it.optString("id")!=state?.optString("id")}.forEach{r->Text(r.optString("document_type").replace("_"," ")+" · "+r.optString("status"));if(r.optBoolean("evidence_present"))TextButton(onClick={historicalEvidence=r.optString("path");confirm="delete"},enabled=!busy){Text("Remove previous document")}}}
    TextButton(onClick={refresh++},enabled=!busy){Text("Refresh status")}
   }
  }
- if(confirm.isNotBlank())SeraConfirmAction(if(confirm=="withdraw")"Withdraw request?" else "Remove identity document?",if(confirm=="withdraw")"This ends the current review and removes the submitted document." else "Your evidence will be removed. An approved badge remains valid until expiry or revocation.","Confirm","Cancel",destructive=true,onCancel={confirm=""},onConfirm={val action=confirm;confirm="";run(action)})
+ if(confirm.isNotBlank())SeraConfirmAction(if(confirm=="withdraw")"Remove verification or withdraw request?" else "Remove identity document?",if(confirm=="withdraw")"This ends the current request or removes your verified badge, and removes the submitted document." else "Your evidence will be removed. An approved badge remains valid until expiry or revocation.","Confirm","Cancel",destructive=true,onCancel={confirm="";historicalEvidence=null},onConfirm={val action=confirm;confirm="";run(action)})
 }

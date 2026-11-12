@@ -1,0 +1,8 @@
+# SERA identity verification (13.5.1)
+- Applicant opts in, chooses one government-issued document (JPG, PNG, PDF, max 3 MiB), submits a private request. Consent is recorded. Email confirmation alone is not identity verification.
+- Authorized admin/moderator checks the document, name, authenticity indicators and ownership evidence; if uncertain, request additional confirmation or reject. The system is manual review, not government database validation, liveness/biometric KYC or proof of qualifications/employment. Never approve a reviewer’s own request.
+- Badge expires after one year and is permanently revoked on professional-name change; applicant can remove it. Reviewer can revoke it.
+- Private storage is scoped to the owner and current authorized reviewers during review. Review download is short-lived and audited. No public documents. Reviewers must avoid keeping local copies and delete any downloaded evidence after reviewing. Evidence is untrusted; use a safe viewer.
+- Applicant can remove evidence after a decision or withdraw, and can manage previous evidence. Existing authenticated daily post-bin cron also removes identity files via Storage API after 30 days from decision and expires incomplete requests after 30 days. A bounded batch is retried on subsequent runs; monitor identityCleanupFailed.
+- Review queue: /admin/verification. Applicant: /settings/verification (Android: Settings → Identity verification).
+- Before launch: assign and train actual reviewers, verify the review procedure and privacy notice/retention policy, test a real upload/download with synthetic evidence and a physical device. No live identity evidence is used in automated tests.
