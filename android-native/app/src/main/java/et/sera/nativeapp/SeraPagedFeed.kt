@@ -70,6 +70,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     var repostNote by remember { mutableStateOf("") }
     var repostMessage by remember { mutableStateOf("") }
     var reposting by remember { mutableStateOf(false) }
+    var discardRepost by remember { mutableStateOf(false) }
+    fun closeRepost(){if(!reposting){if(repostNote.isNotBlank())discardRepost=true else repostTarget=null}}
     var withThoughts by remember{mutableStateOf(false)}
     val repostOverrides=remember(token){mutableStateMapOf<String,Pair<Boolean,Int>>()}
     var currentUserId by remember(token){mutableStateOf("")}
@@ -259,7 +261,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         val repostState=repostOverrides[originalId]?: (selected.reposted to selected.repostCount)
         val ownOriginal=currentUserId.isNotBlank()&&(selected.originalAuthorId?:selected.authorId)==currentUserId
         val sourceAvailable=selected.repostOf==null||selected.originalBody!=null
-        SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {
+        SeraSignatureSheet(onDismissRequest = { closeRepost() }, allowPartial=true) {
             Column(
                 Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -275,7 +277,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             fontWeight = FontWeight.Bold)
                         
                     }
-                    TextButton(onClick = { repostTarget = null }, enabled = !reposting) {
+                    TextButton(onClick = { closeRepost() }, enabled = !reposting) {
                         Text("Close", color = feedTeal)
                     }
                 }
@@ -300,7 +302,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 color = feedMuted, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
-                    if(!repostState.first&&!ownOriginal) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!withThoughts,onClick={withThoughts=false;repostNote=""},label={Text("Repost")});FilterChip(selected=withThoughts,onClick={withThoughts=true},label={Text("Add thoughts")})}
+                    if(!repostState.first&&!ownOriginal) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!withThoughts,onClick={withThoughts=false},label={Text("Repost")});FilterChip(selected=withThoughts,onClick={withThoughts=true},label={Text("Add thoughts")})}
                     if(withThoughts&&!repostState.first) OutlinedTextField(
                         value = repostNote,
                         onValueChange = { if (it.length <= 400) repostNote = it },
@@ -357,6 +359,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             }
         }
     }
+    if(discardRepost)SeraConfirmAction("Discard repost draft?","Your thoughts have not been published.","Discard","Keep writing",onCancel={discardRepost=false},onConfirm={discardRepost=false;repostTarget=null;repostNote=""})
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), accessToken=token, onDismiss = { expandedImage = null }) }
     nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;posts.refresh()}) }
     commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }

@@ -25,22 +25,23 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
+    allowPartial: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=!allowPartial)
     ModalBottomSheet(
         sheetState=sheetState,
         onDismissRequest = onDismissRequest,
-        containerColor = Color.White,
-        contentColor = Color(0xFF18383D),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
         scrimColor = Color(0x990C262D),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
         dragHandle = {
             Box(
-                Modifier.padding(top = 12.dp, bottom = 13.dp)
-                    .size(width = 44.dp, height = 4.dp)
-                    .background(Color(0xFFC5D8D5), RoundedCornerShape(20.dp))
+                Modifier.padding(top = 10.dp, bottom = 9.dp)
+                    .size(width = 42.dp, height = 4.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             )
         },
         content = { Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding(), content=content) }
