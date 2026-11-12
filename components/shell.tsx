@@ -8,7 +8,6 @@ import {
   Compass,
   Bookmark,
   LayoutDashboard,
-  CircleUserRound,
   UserRound,
   X,
   ArrowUpRight,
@@ -31,7 +30,7 @@ import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
 import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
-import { dockSection, navigationGroups, navIsActive } from "@/lib/navigation";
+import { navigationGroups, navIsActive } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({
   children,
@@ -130,21 +129,6 @@ export function Shell({
     help: CircleHelp,
     privacy: ShieldCheck,
   };
-  const dock = [
-    { href: authenticated ? "/feed" : "/", key: "home" as Key, Icon: Home },
-    { href: "/discover", key: "discover" as Key, Icon: Compass },
-    { href: "/saved", key: "saved" as Key, Icon: Bookmark },
-    {
-      href: authenticated ? "/dashboard" : "/workspace",
-      key: "workspace" as Key,
-      Icon: LayoutDashboard,
-    },
-    {
-      href: authenticated ? "/settings" : "/sign-in",
-      key: "profile" as Key,
-      Icon: CircleUserRound,
-    },
-  ];
   return (
     <>
       <a href="#main-content" className="skip-link">
@@ -318,29 +302,6 @@ export function Shell({
         {children}
       </main>
       {!privateWorkspace && <SiteFooter />}
-      <nav lang={lang} className="footer-dock" aria-label={t("quickNav")}>
-        {dock.map(({ href, key, Icon }) => {
-          const active = dockSection(pathname) === key;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={active ? "active" : ""}
-              aria-current={active ? "page" : undefined}
-              aria-label={t(key)}
-              title={t(key)}
-            >
-              <span className="dock-icon" aria-hidden="true">
-                {active && key === "home" ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2 10.5 12 2l10 8.5V21a1 1 0 0 1-1 1h-6v-8H9v8H3a1 1 0 0 1-1-1z" />
-                  </svg>
-                ) : <Icon size={24} strokeWidth={1.8} />}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
       <div className="toast" role="status" aria-live="polite">
         {notice && (
           <>

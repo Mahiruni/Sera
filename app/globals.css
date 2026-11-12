@@ -7401,3 +7401,6 @@ body:has(.auth-layout) .information-footer {
 .sera-public-portfolio-section p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
 .sera-public-portfolio-footnote { margin:20px 4px; font-size:12px; color:#53737a; }
 @media(max-width:600px) { .sera-public-portfolio-hero { padding:26px 16px; } .sera-public-portfolio-section { padding:18px; } }
+
+/* Website has no fixed bottom navigation. */
+body { padding-bottom: 0 !important; }

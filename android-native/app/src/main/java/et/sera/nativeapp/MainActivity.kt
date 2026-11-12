@@ -480,12 +480,18 @@ fun SeraApp(
                     }
                 )
             } else {
-                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     val expanded = maxWidth >= 700.dp
                     val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
                     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                     val chromeVisible = remember(tab) { mutableStateOf(true) }
+                    SideEffect {
+                        (context as? android.app.Activity)?.let { activity ->
+                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightNavigationBars = expanded || !chromeVisible.value || keyboardOpen
+                        }
+                    }
                     // Listen to the actual nested scroll consumption of the active page.
                     // No scroll distance is consumed here; gestures stay natural.
                     val scrollObserver = remember(tab) {
@@ -573,7 +579,7 @@ fun SeraApp(
                                     .nestedScroll(scrollObserver)
                             ) {
                                 val pageModifier = Modifier.fillMaxSize()
-                                    .padding(top = 60.dp, bottom = if (expanded) 0.dp else 78.dp)
+                                    .padding(top = 60.dp, bottom = bottomInset + if (expanded) 0.dp else 60.dp)
                                 Crossfade(
                                     targetState = tab,
                                     animationSpec = spring(
@@ -594,7 +600,7 @@ fun SeraApp(
                                                     if (result.first) refresh++ else dataError = result.second
                                                 }
                                             },
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize().padding(bottom = bottomInset)
                                         )
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
@@ -606,7 +612,7 @@ fun SeraApp(
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                                                 .padding(start = 20.dp, end = 20.dp,
-                                                    top = 68.dp, bottom = if (expanded) 18.dp else 92.dp),
+                                                    top = 68.dp, bottom = bottomInset + if (expanded) 18.dp else 72.dp),
                                             verticalArrangement = Arrangement.spacedBy(16.dp)
                                         ) {
                                             SeraProfile(

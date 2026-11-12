@@ -291,9 +291,9 @@ fun SeraGuestEntry(
         ).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val widthLimit = if (maxWidth > 600.dp) 500.dp else maxWidth
+            val widthLimit = minOf(maxWidth, 500.dp)
             Column(
-                modifier = Modifier.align(Alignment.TopCenter).widthIn(max = widthLimit).fillMaxWidth()
+                modifier = Modifier.align(if (entryPage == "signin" || entryPage == "register") Alignment.Center else Alignment.TopCenter).widthIn(max = widthLimit).fillMaxWidth()
                     .verticalScroll(guestScroll).padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {

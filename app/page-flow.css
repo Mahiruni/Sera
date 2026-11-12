@@ -452,3 +452,9 @@ html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
 @media (prefers-reduced-motion: reduce) {
   .footer-dock, .site-header.sera-app-header { transition: none !important; }
 }
+
+/* Web navigation lives in the header; no bottom dock clearance. */
+:root { --sera-dock-clearance: max(24px, env(safe-area-inset-bottom, 0px)); }
+.sera-main:has(> .ax) { box-sizing: border-box; min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: 16px; }
+.sera-main > .ax { flex: 1; align-items: center; padding-block: 16px; }
+.sera-main > .ax > .ax-card { flex: 0 1 auto; margin-block: auto; }

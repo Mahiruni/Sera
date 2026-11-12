@@ -63,8 +63,8 @@ internal fun SeraFloatingDock(
     ) {
         Row(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xEE315257), dockBackground, Color(0xEE122D32))))
-                .height(60.dp).padding(horizontal = 8.dp),
+                .background(Brush.verticalGradient(listOf(Color(0xEE315257), dockBackground, Color(0xFF122D32))))
+                .navigationBarsPadding().height(60.dp).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
