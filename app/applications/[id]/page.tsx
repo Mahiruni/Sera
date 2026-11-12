@@ -1,3 +1,4 @@
+import {InterviewPanel} from "@/components/recruitment/interviews";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
@@ -171,6 +172,7 @@ export default async function Page({
         </section>
         <section className="panel live-copy">
           {employer&&<section className="panel live-copy"><h2>Private recruitment notes</h2><p>Only the job owner can read these notes.</p><form action={saveReviewNote} className="live-form"><input type="hidden" name="application_id" value={id}/><textarea name="note" maxLength={4000} defaultValue={review?.data?.notes||""} rows={5} aria-label="Private recruitment notes"/><button className="button">Save notes</button></form></section>}
+          <InterviewPanel id={id} employer={employer} withdrawn={a.stage==="withdrawn"}/>
           <h2>Conversation</h2>
           <p className="auth-help">
             Visible only to the applicant and job poster. Messages are saved in
