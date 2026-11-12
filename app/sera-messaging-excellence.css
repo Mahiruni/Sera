@@ -90,3 +90,9 @@ html[data-sera-theme=dark] .sera-chat-page{--chat-bg:#12262b;--chat-surface:#183
 @media(max-width:700px){
  .sera-chat-message-actions .sera-chat-menu{position:fixed;top:auto;bottom:max(12px,calc(100vh - var(--sera-chat-vv-height,100dvh) - var(--sera-chat-vv-top,0px) + 12px));left:12px!important;right:12px!important;min-width:0;width:auto;max-width:none;max-height:50vh;overflow:auto;z-index:45}
 }
+
+/* Keep message actions outside the scrolling history's clipping region. */
+@media(min-width:701px){
+ .sera-chat-message-actions .sera-chat-menu{position:fixed;left:50%;right:auto;top:50%;bottom:auto;transform:translate(-50%,-50%);width:240px;max-height:calc(100dvh - 48px);overflow:auto;z-index:100001}
+ .sera-chat-message-actions .sera-chat-reaction-picker{position:fixed;left:50%!important;right:auto!important;top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:100001}
+}
