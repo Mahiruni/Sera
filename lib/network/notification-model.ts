@@ -29,3 +29,26 @@ export function notificationTimeGroup(created:string,now=Date.now()):"Today"|"Ye
 
 // Request-scoped clock for server-rendered notification date sections.
 export function notificationRequestTime(){return Date.now();}
+
+export type NotificationEvent={id:string;actor_id:string;kind:string;post_id:string|null;created_at:string;read_at:string|null};
+export type NotificationGroup<T extends NotificationEvent>={key:string;latest:T;events:T[];actors:string[];unreadIds:string[]};
+const groupable=new Set(["like","share","repost","comment"]);
+// Consecutive related events only, same calendar day, at most a 6-hour span.
+export function groupNotifications<T extends NotificationEvent>(events:readonly T[]):NotificationGroup<T>[]{
+ const groups:NotificationGroup<T>[]=[];
+ const seen=new Set<string>();
+ const dateKey=(s:string)=>{const t=Date.parse(s);return Number.isFinite(t)?new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Addis_Ababa",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(t)):"";};
+ for(const event of events){
+  if(seen.has(event.id))continue;seen.add(event.id);
+  const prev=groups.at(-1);const latest=prev?.latest;
+  const span=latest?Date.parse(latest.created_at)-Date.parse(event.created_at):NaN;
+  const same=!!(prev&&latest&&event.post_id&&event.post_id===latest.post_id&&event.kind===latest.kind&&groupable.has(event.kind)&&span>=0&&span<=21600000&&dateKey(event.created_at)===dateKey(latest.created_at));
+  if(same&&prev){prev.events.push(event);if(!prev.actors.includes(event.actor_id))prev.actors.push(event.actor_id);if(!event.read_at)prev.unreadIds.push(event.id);}
+  else groups.push({key:event.id,latest:event,events:[event],actors:[event.actor_id],unreadIds:event.read_at?[]:[event.id]});
+ }
+ return groups;
+}
+export function notificationActorSummary(names:readonly string[]){
+ if(names.length<=2)return names.join(" and ");
+ return names.slice(0,2).join(", ")+" and "+(names.length-2)+" other"+(names.length===3?"":"s");
+}

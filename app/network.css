@@ -2260,3 +2260,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-notification-date{font-size:.8rem;color:var(--net-muted);margin:14px 4px 8px;font-weight:700}
 .sera-notification-pagination{display:flex;align-items:center;justify-content:center;gap:18px;padding:18px;font-size:.85rem;color:var(--net-muted)}
 .sera-notification-pagination a{color:var(--net-blue);font-weight:600}
+
+.sera-notification-avatar-stack{width:48px;height:48px;display:flex;align-items:flex-start;position:relative}
+.sera-notification-avatar-stack>*{position:absolute!important;top:0;left:0;border:2px solid var(--net-surface);border-radius:50%}
+.sera-notification-avatar-stack>*:nth-child(2){top:13px;left:13px}
