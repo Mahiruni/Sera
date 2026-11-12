@@ -264,7 +264,7 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
 
   const { data: existing } = await session.db.from("posts").select("id")
     .eq("author_id", session.user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
-  if (existing) return { error: "You have already reposted this update." };
+  if (existing) return { success: "Already reposted.",postId:existing.id };
 
 
   const prepared = new FormData();
@@ -386,3 +386,5 @@ export async function reportPost(_: SocialState, form: FormData): Promise<Social
   }
   return { success: "Report received. Our moderation team can review it." };
 }
+
+export async function undoRepost(_:SocialState,form:FormData):Promise<SocialState>{const session=await member();const id=form.get("post_id");if(!session||!uuid(id))return {error:"Sign in again to continue."};const {error}=await session.db.rpc("sera_undo_repost",{p_original:id});if(error)return {error:"Could not undo repost."};refresh(id);return {success:"Repost removed."};}

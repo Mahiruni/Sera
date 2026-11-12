@@ -3,20 +3,22 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { repostPost } from "@/lib/social/actions";
+import { repostPost, undoRepost } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 
 /** One-click entry, deliberate sheet confirmation, moderated publication. */
-export function RepostButton({ id, author, disabled = false }: {
-  id: string; author: string; disabled?: boolean;
+export function RepostButton({ id, author, disabled = false, reposted=false,count=0 }: {
+  id: string; author: string; disabled?: boolean; reposted?:boolean;count?:number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [thoughts,setThoughts]=useState(false);
+  const [note,setNote]=useState("");
   const [state, action, pending] = useActionState(async (
     previous: import("@/lib/social/actions").SocialState,
     data: FormData
   ) => {
-    const result = await repostPost(previous, data);
+    const result = await (reposted?undoRepost:repostPost)(previous, data);
     if (result.success) {
       setOpen(false);
       router.refresh();
@@ -47,10 +49,10 @@ export function RepostButton({ id, author, disabled = false }: {
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; previouslyFocused?.focus(); };
   }, [open, pending]);
   return <>
-    <button ref={trigger} type="button" onClick={() => setOpen(true)} disabled={disabled}
+    <button ref={trigger} type="button" onClick={() => {setThoughts(false);setNote("");setOpen(true)}} disabled={disabled} aria-pressed={reposted}
       aria-label={disabled ? "You cannot repost your own post" : "Repost this professional update"}
       title={disabled ? "Your own post" : "Repost to your network"}>
-      <SeraReactionIcon kind="repost" /><span>Repost</span>
+      <SeraReactionIcon kind="repost" active={reposted}/><span className="social-action-count">{count||""}</span>
     </button>
     {open && typeof document !== "undefined" && createPortal(
       <div className="sera-repost-backdrop" onMouseDown={e => {
@@ -65,16 +67,15 @@ export function RepostButton({ id, author, disabled = false }: {
           </div>
           <form action={action} className="sera-repost-body" aria-busy={pending}>
             <input type="hidden" name="post_id" value={id}/>
-            <p>Share <strong>{author}</strong>&apos;s update with clear attribution.</p>
-            <label htmlFor={"repost-note-" + id}>Add your perspective <small>(optional)</small></label>
-            <textarea id={"repost-note-" + id} name="note" maxLength={400}
-              placeholder="Why does this matter to your network?" rows={3} disabled={pending} />
+            <p><strong>{author}</strong>&apos;s original update</p>
+            {!reposted&&<div className="sera-repost-options"><button type="button" aria-pressed={!thoughts} onClick={()=>{setThoughts(false);setNote("")}}>Repost</button><button type="button" aria-pressed={thoughts} onClick={()=>setThoughts(true)}>Repost with thoughts</button></div>}
+            {thoughts&&!reposted?<textarea aria-label="Your thoughts" name="note" maxLength={400} placeholder="Share your perspective…" rows={5} value={note} onChange={e=>setNote(e.target.value)} disabled={pending}/>:<input type="hidden" name="note" value=""/>}
             {state.error && <p role="alert" className="social-error">{state.error}</p>}
             <div className="sera-repost-actions">
               <button type="button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
-              <button type="submit" disabled={pending}>
+              <button type="submit" disabled={pending||(!reposted&&thoughts&&!note.trim())}>
                 <SeraReactionIcon kind="repost" />
-                {pending ? "Reposting…" : "Repost"}
+                {pending ? "Saving…" : reposted?"Undo repost":"Repost"}
               </button>
             </div>
           </form>

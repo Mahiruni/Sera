@@ -49,9 +49,10 @@ export async function POST(request: NextRequest) {
   if (source.repost_of)
     return fail("Repost the original post instead.", 422);
 
-  const { data: previous } = await client.from("posts").select("id")
+  const { data: previous } = await client.from("posts").select("id,status")
     .eq("author_id", user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
-  if (previous) return NextResponse.json({success:true,post_id:previous.id},{status:201,headers:noStore});
+  if (previous?.status==="published") return NextResponse.json({success:true,post_id:previous.id},{status:201,headers:noStore});
+  if(previous) {const cleanup=await client.from("posts").delete().eq("id",previous.id).eq("author_id",user.id).eq("status","draft");if(cleanup.error)return fail("Could not recover previous repost. Please retry.",409);}
 
   const title = "Repost";
   const body = note.trim() || "Shared original post";

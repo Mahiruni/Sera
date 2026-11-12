@@ -36,6 +36,8 @@ export type SocialPost = {
   saved: boolean;
   repost_of?: string|null;
   repost_note?: string;
+  reposted?: boolean;
+  repost_count?: number;
   original?: {id:string;author_id:string;title:string;body:string;published_at:string;name:string;photo?:string|null;images:{url:string;alt:string}[]}|null;
 };
 export async function loadSocialFeed(
@@ -111,6 +113,8 @@ export async function loadSocialFeed(
     : null;
   if (signed?.error)
     throw new Error("Unable to load post images. Please refresh.");
+  const {data:repostStates}=await db.rpc("sera_repost_states",{p_ids:[...new Set(posts.map(p=>p.repost_of||p.id))]});
+  const states=new Map<string,{reposted:boolean;repost_count:number}>((repostStates||[]).map((r:{id:string;reposted:boolean;repost_count:number})=>[r.id,r]));
   const authorMap = new Map((profiles.data || []).map((p) => [p.id, p]));
   const liked = new Set((likes.data || []).map((p) => p.post_id));
   const saved = new Set((saves.data || []).map((p) => p.post_id));
@@ -137,6 +141,8 @@ export async function loadSocialFeed(
           : [],
       ),
       original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i,index)=>i.post_id===o.id&&signed?.data?.[index]?.signedUrl?[{url:signed.data[index].signedUrl,alt:i.alt||"Community photo"}]:[])}:null})():null,
+      reposted:states.get(p.repost_of||p.id)?.reposted||false,
+      repost_count:Number(states.get(p.repost_of||p.id)?.repost_count||0),
       liked: liked.has(p.id),
       saved: saved.has(p.id),
     })) as SocialPost[],
