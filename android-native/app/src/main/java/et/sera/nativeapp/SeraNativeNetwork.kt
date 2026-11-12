@@ -86,6 +86,8 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 
 @Composable
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
+    var showCommunities by remember { mutableStateOf(false) }
+    if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}
     var people by remember { mutableStateOf<List<SeraProfessional>>(emptyList()) }
     var query by remember { mutableStateOf("") }
     var reload by remember { mutableIntStateOf(0) }
@@ -125,6 +127,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         Spacer(Modifier.height(16.dp))
         Text("Your professional network", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
         Text("Discover people, skills and ideas.", fontSize = 13.sp, color = Color(0xFF657A7E))
+        FilledTonalButton(onClick={showCommunities=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Explore communities")}
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = query, onValueChange = { if (it.length <= 100) query = it },
