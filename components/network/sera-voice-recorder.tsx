@@ -35,6 +35,6 @@ export function VoiceRecorder({disabled,onFile,onError}:{disabled:boolean;onFile
       timer.current=setInterval(()=>{const ms=Date.now()-started.current;setSeconds(Math.floor(ms/1000));if(ms>=VOICE_LIMIT_MS)stop();},250);
     }catch{cleanup();onError("Microphone access was denied or is unavailable.");}finally{if(mounted.current)setRequesting(false);}
   };
-  if(recording)return <div className="sera-chat-recording" role="status"><span className="sera-chat-record-dot"/><span>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,"0")} / 2:00</span><button type="button" className="sera-chat-icon" onClick={()=>stop(true)} aria-label="Discard recording"><X size={18}/></button><button type="button" className="sera-chat-icon" onClick={()=>stop()} aria-label="Stop recording"><Square size={18}/></button></div>;
+  if(recording)return <div className="sera-chat-recording" role="status"><span className="sera-chat-record-dot"/><span className="sera-chat-record-label">Recording voice message<small>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,"0")} / 2:00</small></span><button type="button" className="sera-chat-icon" onClick={()=>stop(true)} aria-label="Discard recording"><X size={18}/></button><button type="button" className="sera-chat-icon sera-chat-record-stop" onClick={()=>stop()} aria-label="Stop recording"><Square size={18}/></button></div>;
   return <button type="button" className="sera-chat-icon" disabled={disabled||requesting} onClick={()=>void start()} aria-label="Record voice message" title="Record voice message"><Mic size={21}/></button>;
 }

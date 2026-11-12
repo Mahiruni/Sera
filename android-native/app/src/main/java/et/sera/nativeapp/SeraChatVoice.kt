@@ -15,6 +15,13 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -22,7 +29,7 @@ import java.io.File
 import kotlinx.coroutines.delay
 
 @Composable
-internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,onError:(String)->Unit){
+internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,onError:(String)->Unit,onRecordingChange:(Boolean)->Unit={}){
     val context=LocalContext.current
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var file by remember { mutableStateOf<File?>(null) }
@@ -55,8 +62,8 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
         }catch(_:Exception){runCatching{recorder?.release()};recorder=null;file?.delete();file=null;onError("Microphone is unavailable.")}
     }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)start() else onError("Microphone permission is required for voice messages.")}
-    LaunchedEffect(recorder){while(recorder!=null){seconds=((SystemClock.elapsedRealtime()-started)/1000).toInt().coerceIn(0,120);delay(250)}}
+    LaunchedEffect(recorder){onRecordingChange(recorder!=null);while(recorder!=null){seconds=((SystemClock.elapsedRealtime()-started)/1000).toInt().coerceIn(0,120);delay(250)}}
     DisposableEffect(Unit){onDispose{if(recorder!=null)finish(false)}}
-    if(recorder!=null){Row{Text("%d:%02d".format(seconds/60,seconds%60));IconButton(onClick={finish(true)}){Icon(Icons.Outlined.Stop,"Finish recording")};IconButton(onClick={finish(false)}){Icon(Icons.Outlined.Close,"Cancel recording")}}}
+    if(recorder!=null){Surface(shape=RoundedCornerShape(24.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){Box(Modifier.size(10.dp).background(Color(0xFFD04452),CircleShape));Column(Modifier.weight(1f)){Text("Recording voice message",fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text("%d:%02d / 2:00".format(seconds/60,seconds%60),fontSize=12.sp)};IconButton(onClick={finish(false)}){Icon(Icons.Outlined.Close,"Cancel recording")};FilledIconButton(onClick={finish(true)},colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color(0xFF08747A),contentColor=Color.White)){Icon(Icons.Outlined.Stop,"Finish recording")}}}}
     else IconButton(enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Mic,"Record voice message")}
 }

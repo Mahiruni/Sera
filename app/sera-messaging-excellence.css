@@ -43,3 +43,26 @@ html[data-sera-theme=dark] .sera-chat-page{--chat-bg:#12262b;--chat-surface:#183
 }
 @media(max-width:360px){.sera-chat-bubble{max-width:calc(100% - 86px)}.sera-chat-compose-row{gap:2px}.sera-chat-compose-row>.sera-chat-icon{width:40px;min-width:40px}.sera-chat-header{gap:1px}}
 @media(prefers-reduced-motion:reduce){.sera-chat-icon:active,.sera-chat-send:active{transform:none}}
+
+/* A.1 interaction polish: dedicated recording strip and uncluttered bubbles. */
+.sera-chat-compose-row:has(.sera-chat-recording)>:not(.sera-chat-recording){display:none!important}
+.sera-chat-compose-row>.sera-chat-recording{width:100%;min-height:48px;gap:10px;padding:0 4px;color:var(--chat-ink)}
+.sera-chat-recording .sera-chat-record-dot{flex:none;background:#d04452;width:10px;height:10px}
+.sera-chat-recording .sera-chat-record-label{flex:1;display:grid;gap:2px;font-size:13px;font-weight:650}
+.sera-chat-recording .sera-chat-record-label small{font-size:11px;font-weight:400;color:var(--chat-muted);font-variant-numeric:tabular-nums}
+.sera-chat-recording .sera-chat-icon{width:44px;height:44px;min-width:44px}
+.sera-chat-recording .sera-chat-record-stop{background:var(--chat-own)!important;color:white}
+.sera-chat-message-row:not(.is-own) .sera-chat-menu{right:auto;left:0}
+.sera-chat-message-row>.member-photo{flex:none}
+.sera-chat-message-actions .sera-chat-icon{opacity:.8}
+.sera-chat-message-actions .sera-chat-icon:hover,.sera-chat-message-actions .sera-chat-icon:focus-visible{opacity:1}
+.sera-chat-audio{min-width:0}.sera-chat-audio audio{display:block;width:240px;max-width:100%;height:44px;border-radius:14px}
+.sera-chat-bubble.is-own .sera-chat-audio audio{color-scheme:light}
+@media(max-width:700px){
+ .sera-chat-message-actions>.sera-chat-react-quick{display:none}
+ .sera-chat-bubble{max-width:calc(100% - 88px)}
+ .sera-chat-message-row.is-own .sera-chat-bubble{max-width:calc(100% - 52px)}
+ .sera-chat-message-row:not(.is-own) .sera-chat-menu{left:auto;right:0}
+ .sera-chat-reaction-picker{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%!important;right:auto!important;transform:translateX(-50%);z-index:42}
+ .sera-chat-compose-row>.sera-chat-recording .sera-chat-icon{width:44px;min-width:44px}
+}

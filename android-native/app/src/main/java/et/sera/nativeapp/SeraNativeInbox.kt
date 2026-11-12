@@ -77,7 +77,7 @@ private class SeraInboxDrafts(context: Context) {
     }
 }
 
-private data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0)
+private data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="")
 private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
@@ -122,6 +122,8 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
         val peers = (0 until rows.length()).map { rows.getJSONObject(it) }
         val ids = peers.map { if (it.optString("member_a") == userId) it.optString("member_b") else it.optString("member_a") }
         val names = mutableMapOf<String, String>()
+        val paths = mutableMapOf<String, String>()
+        val photos = mutableMapOf<String, String>()
         if (ids.isNotEmpty()) {
             val (cards, _) = inboxRequest(token, "rpc/member_cards", "POST", JSONObject().put("ids", JSONArray(ids)))
             if (cards != null) {
@@ -129,12 +131,18 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
                 for (i in 0 until entries.length()) {
                     val entry = entries.getJSONObject(i)
                     names[entry.optString("id")] = entry.optString("full_name")
+                    entry.optString("avatar_path").takeIf{it.isNotBlank()&&it!="null"&&it.matches(Regex("[a-zA-Z0-9/_.-]+"))&&!it.contains("..")}?.let{paths[entry.optString("id")]=it}
                 }
             }
         }
+        if(paths.isNotEmpty()) runCatching {
+            val base=BuildConfig.SUPABASE_URL.trimEnd('/')
+            val connection=(URL(base+"/storage/v1/object/sign/sera-account-private").openConnection() as HttpURLConnection).apply{requestMethod="POST";doOutput=true;connectTimeout=10000;readTimeout=10000;setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY);setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}
+            try{connection.outputStream.use{it.write(JSONObject().put("paths",JSONArray(paths.values.toList())).put("expiresIn",300).toString().toByteArray())};if(connection.responseCode in 200..299){val signed=JSONArray(connection.inputStream.bufferedReader().use{it.readText()});for(i in 0 until signed.length()){val item=signed.getJSONObject(i);val path=item.optString("path");val url=item.optString("signedURL").ifBlank{item.optString("signedUrl")};if(url.startsWith("/object/sign/")){paths.entries.filter{it.value==path}.forEach{photos[it.key]=base+"/storage/v1"+url}}}}}finally{connection.disconnect()}
+        }
         peers.map { row ->
             val id = if (row.optString("member_a") == userId) row.optString("member_b") else row.optString("member_a")
-            NativeConversation(row.optString("id"), id, names[id]?.takeIf { it.isNotBlank() && it != "null" } ?: "SERA professional",row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"))
+            NativeConversation(row.optString("id"), id, names[id]?.takeIf { it.isNotBlank() && it != "null" } ?: "SERA professional",row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"),photos[id],row.optString("last_created_at").takeUnless{it=="null"}.orEmpty())
         } to ""
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
@@ -216,6 +224,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     val scope = rememberCoroutineScope()
     var attachment by remember(selected?.id) { mutableStateOf<NativeChatSelection?>(null) }
     var checkingFile by remember { mutableStateOf(false) }
+    var recordingVoice by remember(selected?.id){mutableStateOf(false)}
     var reply by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var menu by remember(selected?.id){mutableStateOf<String?>(null)}
     var reaction by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
@@ -352,12 +361,13 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                             Box(Modifier.size(52.dp).clip(CircleShape).background(inboxSoft),
                                 contentAlignment = Alignment.Center) {
                                 Text(conversation.peerName.take(1).uppercase(), color = inboxTeal, fontWeight = FontWeight.Bold)
+                                conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize())}
                             }
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                                 Text(conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
-                            if(conversation.unread>0) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else conversation.unread.toString(),fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}
+                            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else conversation.unread.toString(),fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
                         }
                     }
                 }
@@ -374,7 +384,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to conversations",
                         tint = inboxInk)
                 }
-                Box(Modifier.size(42.dp).clip(CircleShape).background(inboxSoft),contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp)}
+                Box(Modifier.size(42.dp).clip(CircleShape).background(inboxSoft),contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp);(conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}}
                 Column(Modifier.weight(1f)) {
                     Text(conversation.peerName, fontWeight = FontWeight.SemiBold,fontSize = 17.sp, color = inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
                     Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 12.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
@@ -393,7 +403,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
                         Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
                             color = if (own) inboxTeal else inboxSoft,
-                            modifier = Modifier.widthIn(max = 340.dp).fillMaxWidth(.78f)) {
+                            modifier = Modifier.widthIn(max = 280.dp)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else inboxTeal)
                                 if(message.replyId.isNotBlank()&&!message.unsent)Text("Reply · "+(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message"),fontSize=11.sp,color=if(own)Color.White else inboxTeal)
@@ -442,9 +452,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=inboxTeal) }
-                SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it})
-                OutlinedTextField(
+                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=inboxTeal) }
+                SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it})
+                if(!recordingVoice) OutlinedTextField(
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {
                             draft = it
@@ -455,7 +465,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     modifier = Modifier.weight(1f), placeholder = { Text("Write a message…") },
                     shape = RoundedCornerShape(24.dp), maxLines = 5, colors=OutlinedTextFieldDefaults.colors(focusedContainerColor=inboxSoft,unfocusedContainerColor=inboxSoft,focusedBorderColor=inboxTeal,unfocusedBorderColor=Color.Transparent)
                 )
-                Button(onClick = {
+                if(!recordingVoice) Button(onClick = {
                     val body = draft.trim()
                     val file=attachment
                     if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@Button
