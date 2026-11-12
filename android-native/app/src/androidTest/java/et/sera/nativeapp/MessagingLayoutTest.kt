@@ -20,6 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 
+@OptIn(ExperimentalTestApi::class)
 class MessagingLayoutTest {
     @get:Rule val compose = createComposeRule()
 
@@ -55,7 +56,7 @@ class MessagingLayoutTest {
         compose.onNodeWithContentDescription("Sent").assertExists()
         compose.onNodeWithContentDescription("Read").assertExists()
         val context=InstrumentationRegistry.getInstrumentation().targetContext
-        val dir=File(context.getExternalFilesDir(null),"messaging-qa").apply{mkdirs()}
+        val dir=File(context.filesDir,"messaging-qa").apply{mkdirs()}
         File(dir,"compact-bubbles.png").outputStream().use{compose.onNodeWithTag("thread").captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
     }
 }
