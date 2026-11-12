@@ -27,3 +27,20 @@ export function recommendProfessionals<T extends ProfessionalCandidate>(candidat
   seen.add(p.member_id);return true;
  }).sort((a,b)=>matchTerms(b.matched_skills).length-matchTerms(a.matched_skills).length||a.member_id.localeCompare(b.member_id)).slice(0,5);
 }
+
+export type ProjectCandidate={id:string;author_id:string;title:string;body:string;category:string;skills:string[];published_at:string;audience?:string;repost_of?:string|null};
+export function recommendProjects<T extends ProjectCandidate>(profile:MatchProfile,projects:T[],userId:string){
+ const skills=matchTerms(profile.skills),roles=matchTerms(profile.preferred_roles);
+ const seen=new Set<string>();
+ return projects.flatMap(project=>{
+  if(!project.id||project.author_id===userId||project.audience!=="public"||project.repost_of||seen.has(project.id))return [];
+  seen.add(project.id);
+  const tags=new Set((project.skills||[]).map(s=>s.trim().toLocaleLowerCase()));
+  const title=project.title||"",text=[title,project.category,project.body].filter(Boolean).join(" ");
+  const matchedTags=skills.filter(s=>tags.has(s));
+  const matchedSkills=skills.filter(s=>tags.has(s)||containsTerm(text,s));
+  const matchedRoles=roles.filter(s=>containsTerm(title+" "+(project.category||""),s));
+  const score=matchedTags.length*5+(matchedSkills.length-matchedTags.length)*2+matchedRoles.length*3;
+  return score?[{project,score,matchedSkills,matchedRoles}]:[];
+ }).sort((a,b)=>b.score-a.score||b.project.published_at.localeCompare(a.project.published_at)||a.project.id.localeCompare(b.project.id)).slice(0,5);
+}
