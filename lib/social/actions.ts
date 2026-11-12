@@ -262,9 +262,10 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
   if (source.author_id === session.user.id) return { error: "You cannot repost your own story." };
   if (source.repost_of) return { error: "Please repost the original story instead." };
 
-  const { data: existing } = await session.db.from("posts").select("id")
+  const { data: existing } = await session.db.from("posts").select("id,status")
     .eq("author_id", session.user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
-  if (existing) return { success: "Already reposted.",postId:existing.id };
+  if (existing?.status==="published") return { success: "Already reposted.",postId:existing.id };
+  if(existing&&!moderationEnabled()){const cleanup=await session.db.from("posts").delete().eq("id",existing.id).eq("author_id",session.user.id).eq("status","draft");if(cleanup.error)return {error:"Unable to recover repost."};}else if(existing)return {error:"Repost pending; please retry."};
 
 
   const prepared = new FormData();
@@ -273,12 +274,13 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
   prepared.set("body", note.trim() || "Shared original post");
   const input = readPost(prepared);
   if (!input) return { error: "Could not prepare this repost." };
-  const verdict = await screenSubmission(input, []);
+  const verdict = moderationEnabled()?await screenSubmission(input, []):{verdict:"approved"};
   if (verdict.verdict !== "approved")
     return { error: verdict.verdict === "rejected" ?
       "The repost did not pass our community guidelines." :
       "Safety screening is unavailable. Nothing was reposted." };
 
+  if(!moderationEnabled()){const created=await session.db.from("posts").insert({...input,status:"published",repost_of:sourceId,repost_note:note.trim()}).select("id").single();if(created.error){if(created.error.code==="23505"){const same=await session.db.from("posts").select("id").eq("author_id",session.user.id).eq("repost_of",sourceId).eq("status","published").maybeSingle();if(same.data)return {success:"Already reposted.",postId:same.data.id};}return {error:"Unable to repost. Please retry."};}refresh(sourceId);return {success:"Reposted.",postId:created.data.id};}
   const draft = await session.db.from("posts").insert({
     ...input, status: "draft", repost_of: sourceId, repost_note: note.trim(),
   }).select("id").single();
@@ -388,3 +390,6 @@ export async function reportPost(_: SocialState, form: FormData): Promise<Social
 }
 
 export async function undoRepost(_:SocialState,form:FormData):Promise<SocialState>{const session=await member();const id=form.get("post_id");if(!session||!uuid(id))return {error:"Sign in again to continue."};const {error}=await session.db.rpc("sera_undo_repost",{p_original:id});if(error)return {error:"Could not undo repost."};refresh(id);return {success:"Repost removed."};}
+
+export async function editComment(_:SocialState,form:FormData):Promise<SocialState>{const session=await member(),input=readComment(form),id=form.get("comment_id");if(!session||!input||!uuid(id))return {error:"Check your comment."};const owned=await session.db.from("post_comments").select("id").eq("id",id).eq("post_id",input.post_id).eq("author_id",session.user.id).maybeSingle();if(owned.error||!owned.data)return {error:"Comment unavailable."};if(moderationEnabled()){const verdict=await screenSubmission({kind:"idea",title:"",body:input.body,quote_source:"",category:"",skills:[]},[]);if(verdict.verdict!=="approved")return {error:"Unable to approve this edit."};}const writer=moderationEnabled()?moderationWriter():session.db;if(!writer)return {error:"Publishing unavailable."};const r=await writer.from("post_comments").update({body:input.body}).eq("id",id).eq("post_id",input.post_id).eq("author_id",session.user.id).select("id").single();if(r.error)return {error:"Unable to save comment."};refresh(input.post_id);return {success:"Saved."};}
+export async function likeComment(_:SocialState,form:FormData):Promise<SocialState>{const session=await member(),id=form.get("comment_id"),post=form.get("post_id");if(!session||!uuid(id)||!uuid(post))return {error:"Invalid comment."};const r=await session.db.rpc("sera_set_comment_like",{p_comment:id,p_liked:form.get("liked")==="yes"});if(r.error)return {error:"Unable to update comment reaction."};refresh(post);return {success:"Updated."};}

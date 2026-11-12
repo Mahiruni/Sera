@@ -30,12 +30,15 @@ export async function POST(request: NextRequest) {
   const input = payload as Record<string, unknown>;
   const postId = input.post_id;
   const parentId = input.parent_id ?? null;
+  const action=input.action??"create";
   const body = typeof input.body === "string" ? input.body.trim() : "";
-  if (!uuid(postId) || (parentId !== null && !uuid(parentId)) || !body || body.length > 2000)
+  if (!uuid(postId) || (parentId !== null && !uuid(parentId)) || !["create","edit","delete"].includes(String(action)) || (action!=="create"&&!uuid(input.comment_id)) || (action!=="delete"&&(!body||body.length>2000)))
     return NextResponse.json({ error: "Check the comment (1–2,000 characters)." }, { status: 400 });
   const { data: post, error: postError } = await client.from("posts").select("id").eq("id", postId).eq("status", "published").maybeSingle();
   if (postError || !post)
     return NextResponse.json({ error: "This post is unavailable." }, { status: 404 });
+  if(action==="delete"){const result=await client.from("post_comments").delete().eq("id",input.comment_id).eq("post_id",postId).eq("author_id",user.id).select("id").maybeSingle();return result.error||!result.data?NextResponse.json({error:"Comment unavailable."},{status:403}):NextResponse.json({success:true});}
+  if(action==="edit"){const owned=await client.from("post_comments").select("id").eq("id",input.comment_id).eq("post_id",postId).eq("author_id",user.id).maybeSingle();if(!owned.data||owned.error)return NextResponse.json({error:"Comment unavailable."},{status:403});}
   if (parentId) {
     const { data: parent, error: parentError } = await client.from("post_comments").select("id").eq("id", parentId).eq("post_id", postId).maybeSingle();
     if (parentError || !parent)
@@ -46,6 +49,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: verdict.verdict === "rejected" ? "Comment may violate community guidelines." : "Safety screening is unavailable. Nothing was published." }, { status: verdict.verdict === "rejected" ? 422 : 503 });
   const writer = moderationEnabled() ? moderationWriter() : client;
   if (!writer) return NextResponse.json({ error: "Secure commenting unavailable." }, { status: 503 });
+  if(action==="edit"){const r=await writer.from("post_comments").update({body}).eq("id",input.comment_id).eq("post_id",postId).eq("author_id",user.id).select("id").maybeSingle();return r.error||!r.data?NextResponse.json({error:"Could not save comment."},{status:409}):NextResponse.json({success:true});}
   const { error } = await writer.from("post_comments").insert({ post_id: postId, parent_id: parentId, body, ...(moderationEnabled()?{author_id:user.id}:{}) });
   if (error) return NextResponse.json({ error: "Unable to publish comment. Please retry." }, { status: 409 });
   return NextResponse.json({ success: true }, { status: 201, headers: { "Cache-Control": "no-store" } });

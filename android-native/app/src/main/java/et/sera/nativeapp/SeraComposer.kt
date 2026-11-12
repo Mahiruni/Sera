@@ -87,6 +87,10 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             else mediaError = "Video exceeds the 100 MB attachment limit or cannot be read."
         }
     }
+    var identity by remember(userId){mutableStateOf("")}
+    var avatar by remember(userId){mutableStateOf<String?>(null)}
+    var headline by remember(userId){mutableStateOf("")}
+    LaunchedEffect(userId,token){kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraIdentity(token).first}?.let{identity=it.lineSequence().firstOrNull().orEmpty()};avatar=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraCurrentAvatar(token,userId)};headline=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){spaceRows(spaceCall(token,"sera_feed_headlines",org.json.JSONObject().put("p_ids",org.json.JSONArray(listOf(userId)))).first).firstOrNull()?.optString("headline").orEmpty()}}
     val hasContent = body.isNotBlank()
     val accent = Color(0xFF087E83)
     val ink = Color(0xFF173A3F)
@@ -139,6 +143,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
                 IconButton(onClick = { requestClose() }) { Icon(Icons.Outlined.Close, "Close composer", tint = accent) }
             }
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){if(avatar!=null)SeraMediaImage(avatar!!,"Your profile",96,96,modifier=Modifier.size(38.dp).clip(CircleShape));Column{Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink);if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall)}}
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(vertical = 2.dp),

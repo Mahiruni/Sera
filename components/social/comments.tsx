@@ -1,6 +1,6 @@
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
-import { addComment, deleteComment } from "@/lib/social/actions";
+import { addComment, deleteComment,editComment,likeComment } from "@/lib/social/actions";
 import type { SocialComment } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { SeraReactionIcon } from "./SeraReactionIcon";
@@ -56,7 +56,10 @@ export function Comments({
       <Link className="social-author" href={"/members/" + c.author_id}>
         <MemberAvatar name={c.author} photo={c.photo} size={28} /> {c.author}
       </Link>
+      {c.headline&&<small className="sera-author-occupation">{c.headline}</small>}
       <p>{c.body}</p>
+      <ActionForm action={likeComment} fields={{post_id:postId,comment_id:c.id,liked:c.liked?"no":"yes"}}><Submit aria-pressed={!!c.liked}><SeraReactionIcon kind="like" active={!!c.liked}/>{c.like_count||0}</Submit></ActionForm>
+      {c.author_id===userId&&<details><summary>Edit comment</summary><ActionForm action={editComment} fields={{post_id:postId,comment_id:c.id}}><textarea name="body" maxLength={2000} required defaultValue={c.body}/><Submit>Save changes</Submit></ActionForm></details>}
       <small>
         <time dateTime={c.created_at}>
           {new Date(c.created_at).toLocaleDateString("en-GB", {

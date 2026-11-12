@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import android.content.Intent
+import org.json.JSONObject
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -77,7 +78,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     PullToRefreshBox(
         isRefreshing = posts.loadState.refresh is LoadState.Loading,
-        onRefresh = { reactionOverrides.clear(); posts.refresh() },
+        onRefresh = { reactionOverrides.clear(); repostOverrides.clear(); posts.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
@@ -352,7 +353,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         }
     }
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }
-    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null; posts.refresh() }) }
+    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }
 }
 
 private fun postTimeLabel(value: String): String = runCatching {

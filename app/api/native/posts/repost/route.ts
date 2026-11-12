@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
 
   const writer = securePublishingConfigured() ? moderationWriter() : client;
   if (!writer) return fail("Secure publishing unavailable.", 503);
+  if(!moderationEnabled()){const created=await client.from("posts").insert({...input,status:"published",repost_of:sourceId,repost_note:note.trim()}).select("id").single();if(created.error){if(created.error.code==="23505"){const same=await client.from("posts").select("id").eq("author_id",user.id).eq("repost_of",sourceId).eq("status","published").maybeSingle();if(same.data)return NextResponse.json({success:true,post_id:same.data.id},{status:201,headers:noStore});}return fail("Could not create repost. Please retry.",409);}return NextResponse.json({success:true,post_id:created.data.id},{status:201,headers:noStore});}
   const draft = await client.from("posts").insert({
     ...input, status: "draft", repost_of: sourceId, repost_note: note.trim(),
   }).select("id").single();

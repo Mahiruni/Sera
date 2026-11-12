@@ -27,7 +27,7 @@ internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=false)
     ModalBottomSheet(
         sheetState=sheetState,
         onDismissRequest = onDismissRequest,

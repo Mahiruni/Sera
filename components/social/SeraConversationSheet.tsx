@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { MemberAvatar } from "@/components/activity/avatar";
-import { addComment } from "@/lib/social/actions";
+import { addComment,editComment,deleteComment,likeComment } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 
 type ConversationComment = {
@@ -16,7 +16,7 @@ type ConversationComment = {
   author: string;
   photo?: string | null;
   body: string;
-  created_at: string;
+  created_at: string;headline?:string;liked?:boolean;like_count?:number;
 };
 type ConversationPage = { comments: ConversationComment[]; hasMore: boolean };
 const isComment = (value: unknown): value is ConversationComment => {
@@ -35,8 +35,8 @@ const dateText = (value: string) => {
 
 /** Authenticated, paginated conversation without navigating away from the feed. */
 export function SeraConversationSheet({
-  postId, count, author
-}: { postId: string; count: number; author: string }) {
+  postId, count, author,currentUserId=""
+}: { postId: string; count: number; author: string;currentUserId?:string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -46,6 +46,8 @@ export function SeraConversationSheet({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [draft, setDraft] = useState("");
+  const [editing,setEditing]=useState<ConversationComment|null>(null);
+  const [removing,setRemoving]=useState<string|null>(null);
   const [replyTo, setReplyTo] = useState<ConversationComment | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -160,15 +162,17 @@ export function SeraConversationSheet({
     data.set("body", body);
     if (replyTo) data.set("parent_id", replyTo.parent_id || replyTo.id);
     setSubmitError("");
-    startTransition(async () => {
-      const result = await addComment({}, data);
+    if(editing)data.set("comment_id",editing.id);
+    start(async () => {
+      const result = await (editing?editComment:addComment)({}, data);
       if (result.error) { setSubmitError(result.error); return; }
-      setDraft(""); setReplyTo(null); setPage(1); setLoading(true);
+      setDraft(""); setReplyTo(null);setEditing(null); setPage(1); setLoading(true);
       setRevision(v => v + 1);
       startTransition(() => router.refresh());
     });
   }
 
+  function mutate(c:ConversationComment,kind:"like"|"delete"){if(pending)return;const f=new FormData();f.set("post_id",postId);f.set("comment_id",c.id);f.set("liked",c.liked?"no":"yes");start(async()=>{try{const r=await (kind==="like"?likeComment:deleteComment)({},f);if(r.error){setSubmitError(r.error);return;}setRemoving(null);if(kind==="like")setComments(cs=>cs.map(x=>x.id===c.id?{...x,liked:!c.liked,like_count:Math.max(0,(c.like_count||0)+(c.liked?-1:1))}:x));else{setRevision(v=>v+1);router.refresh();}}catch{setSubmitError("Connection unavailable. Please retry.");}});}
   function renderComment(comment: ConversationComment, root: ConversationComment) {
     return <article className="sera-conversation-comment" key={comment.id}>
       <Link href={"/members/" + comment.author_id} aria-label={"View " + comment.author + "'s profile"}>
@@ -179,10 +183,14 @@ export function SeraConversationSheet({
           <Link href={"/members/" + comment.author_id}>{comment.author}</Link>
           <time dateTime={comment.created_at}>{dateText(comment.created_at)}</time>
         </div>
+        {comment.headline&&<small className="sera-author-occupation">{comment.headline}</small>}
         <p>{comment.body}</p>
+        <div className="sera-comment-actions"><button type="button" disabled={pending} aria-label="Like comment" aria-pressed={!!comment.liked} onClick={()=>mutate(comment,"like")}><SeraReactionIcon kind="like" active={!!comment.liked}/>{comment.like_count||""}</button>
+        {comment.author_id===currentUserId&&<><button type="button" disabled={pending} onClick={()=>{setEditing(comment);setReplyTo(null);setDraft(comment.body);input.current?.focus()}}>Edit</button><button type="button" disabled={pending} onClick={()=>setRemoving(comment.id)}>Delete</button></>}
+        {removing===comment.id&&<><button type="button" onClick={()=>mutate(comment,"delete")} disabled={pending}>Confirm remove</button><button type="button" onClick={()=>setRemoving(null)}>Cancel</button></>}
         <button type="button" onClick={() => {
-          setReplyTo(root); setSubmitError(""); input.current?.focus();
-        }}>Reply</button>
+          setEditing(null);setReplyTo(root); setSubmitError(""); input.current?.focus();
+        }}>Reply</button></div>
       </div>
     </article>;
   }
@@ -202,7 +210,7 @@ export function SeraConversationSheet({
           <div className="sera-conversation-handle" aria-hidden="true"/>
           <header className="sera-conversation-header">
             <h2 id={"sera-conversation-title-" + postId}>
-              <SeraReactionIcon kind="comment" /> Conversation
+              <SeraReactionIcon kind="comment" /> Comments · {count}
             </h2>
             <button ref={closeButton} type="button" aria-label="Close conversation"
               onClick={requestClose} disabled={pending}><X size={21} /></button>
@@ -236,7 +244,8 @@ export function SeraConversationSheet({
               Replying to {replyTo.author}
               <button type="button" onClick={() => setReplyTo(null)}>Cancel reply</button>
             </div>}
-            <label htmlFor={"sera-comment-input-" + postId}>Your perspective</label>
+            {editing&&<div className="sera-conversation-reply-target">Editing comment <button type="button" onClick={()=>{setEditing(null);setDraft("")}}>Cancel</button></div>}
+            <label className="sr-only" htmlFor={"sera-comment-input-" + postId}>Your perspective</label>
             <textarea ref={input} id={"sera-comment-input-" + postId}
               placeholder="Add something meaningful to the conversation…"
               maxLength={2000} rows={2} value={draft} disabled={pending}
@@ -244,7 +253,7 @@ export function SeraConversationSheet({
             <div className="sera-conversation-composer-actions">
               <Link href={"/posts/" + postId + "#comments"}>Open full discussion</Link>
               <button type="submit" disabled={pending || !draft.trim()}>
-                <SeraReactionIcon kind="comment" /> {pending ? "Posting…" : replyTo ? "Reply" : "Post comment"}
+                <SeraReactionIcon kind="comment" /> {pending ? "Posting…" : editing?"Save changes":replyTo ? "Reply" : "Post comment"}
               </button>
             </div>
             {submitError && <p role="alert" className="social-error">{submitError}</p>}

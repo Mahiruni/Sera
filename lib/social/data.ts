@@ -11,6 +11,7 @@ export type SocialComment = {
   created_at: string;
   author: string;
   photo?: string | null;
+  headline?:string; liked?:boolean; like_count?:number;
 };
 export type SocialPost = {
   id: string;
@@ -194,12 +195,15 @@ export async function loadComments(postId: string, page = 1, target?: string) {
   }
   const all = [...top, ...replies];
   const people = await memberCards(all.map((c) => c.author_id));
+  const heads=new Map<string,string>();const reactions=new Map<string,{liked:boolean;like_count:number}>();
+  const authors=[...new Set(all.map(c=>c.author_id))];for(let i=0;i<authors.length;i+=100){const {data}=await db.rpc("sera_feed_headlines",{p_ids:authors.slice(i,i+100)});for(const h of data||[])heads.set(h.id,h.headline||"");}
+  for(let i=0;i<all.length;i+=200){const {data}=await db.rpc("sera_comment_reaction_states",{p_ids:all.slice(i,i+200).map(c=>c.id)});for(const r of data||[])reactions.set(r.id,{liked:r.liked,like_count:Number(r.like_count)});}
   return {
     hasMore: (roots.data?.length || 0) > 10,
     comments: all.map((c) => ({
       ...c,
       photo: people.get(c.author_id)?.photo,
-      author: people.get(c.author_id)?.name || "Sera member",
+      author: people.get(c.author_id)?.name || "Sera member", headline:heads.get(c.author_id)||"",liked:reactions.get(c.id)?.liked||false,like_count:reactions.get(c.id)?.like_count||0,
     })) as SocialComment[],
   };
 }

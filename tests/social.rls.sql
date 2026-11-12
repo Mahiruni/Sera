@@ -41,6 +41,14 @@ do $$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uu
  insert into public.post_comments(post_id,body) values(pid,'Nice') returning id into parent;
  insert into public.post_comments(post_id,parent_id,body) values(pid,parent,'A reply');
  begin insert into public.post_comments(post_id,parent_id,body) select pid,id,'Nested' from public.post_comments where parent_id is not null limit 1;raise exception 'Nested reply allowed';exception when raise_exception then if sqlerrm like 'Nested reply%' then raise; end if;end;
+ insert into public.posts(kind,status,title,body,repost_of,repost_note) values('idea','published','Repost','Shared original post',pid,'QA note');
+ if (select repost_count from public.sera_repost_states(array[pid]))<>1 or not (select reposted from public.sera_repost_states(array[pid])) then raise exception 'Repost state incorrect';end if;
+ begin insert into public.posts(kind,status,title,body,repost_of) values('idea','published','Repost','Shared original post',pid);raise exception 'Duplicate repost allowed';exception when unique_violation then null;end;
+ perform public.sera_set_comment_like(parent,true);perform public.sera_set_comment_like(parent,true);
+ if (select like_count from public.sera_comment_reaction_states(array[parent]))<>1 then raise exception 'Comment reaction not idempotent';end if;
+ update public.post_comments set body='Edited QA comment' where id=parent;
+ perform public.sera_undo_repost(pid);
+ if (select repost_count from public.sera_repost_states(array[pid]))<>0 then raise exception 'Undo repost failed';end if;
  if (select (like_count,comment_count,share_count)::text from public.posts where id=pid)<>'(1,2,1)' then raise exception 'Counters wrong: %',(select (like_count,comment_count,share_count)::text from public.posts where id=pid);end if;
 end$$;
 reset role;

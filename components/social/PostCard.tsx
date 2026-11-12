@@ -114,7 +114,7 @@ export function PostCard({
             <span className="social-action-count">{post.like_count}</span>
           </Submit>
         </ActionForm>
-        <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} />
+        <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} currentUserId={currentUserId} />
         <RepostButton id={post.repost_of||post.id} author={post.original?.name||post.author.full_name} reposted={post.reposted||false} count={post.repost_count||0} disabled={post.repost_of?(!post.original||post.original.author_id===currentUserId):owner} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>

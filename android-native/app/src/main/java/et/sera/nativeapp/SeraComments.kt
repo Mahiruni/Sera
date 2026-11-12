@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.imePadding
 import kotlinx.coroutines.launch
 import java.net.HttpURLConnection
+import okhttp3.MediaType.Companion.toMediaType
 import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
@@ -40,7 +41,8 @@ data class NativeComment(
     val parentId: String?,
     val createdAt: String,
     val author: String = "SERA member",
-    val avatarUrl: String? = null
+    val avatarUrl: String? = null,
+    val headline:String="", val liked:Boolean=false, val likes:Int=0
 )
 
 fun fetchNativeComments(token: String, postId: String): Pair<List<NativeComment>?, String> {
@@ -101,16 +103,18 @@ fun fetchNativeComments(token: String, postId: String): Pair<List<NativeComment>
                 // A temporarily unavailable member profile never blocks comments.
             }
         }
+        val headlineRows=spaceRows(spaceCall(token,"sera_feed_headlines",JSONObject().put("p_ids",JSONArray(authors))).first).associateBy{it.optString("id")}
+        val reactions=spaceRows(spaceCall(token,"sera_comment_reaction_states",JSONObject().put("p_ids",JSONArray(comments.map{it.id}))).first).associateBy{it.optString("id")}
         comments.map { it.copy(
             author = names[it.authorId] ?: "SERA member",
-            avatarUrl = photos[it.authorId]
+            avatarUrl = photos[it.authorId], headline=headlineRows[it.authorId]?.optString("headline").orEmpty(),liked=reactions[it.id]?.optBoolean("liked")?:false,likes=reactions[it.id]?.optInt("like_count")?:0
         ) } to ""
     } catch (e: Exception) { null to "Unable to load comments. Please retry." }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
+fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onChanged:()->Unit={}) {
     var comments by remember(postId) { mutableStateOf<List<NativeComment>>(emptyList()) }
     var error by remember(postId) { mutableStateOf("") }
     var loading by remember(postId) { mutableStateOf(true) }
@@ -120,8 +124,14 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
     var publishingError by remember(postId) { mutableStateOf("") }
     var replyTarget by remember(postId) { mutableStateOf<NativeComment?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
+    var editing by remember(postId){mutableStateOf<NativeComment?>(null)}
+    var removing by remember(postId){mutableStateOf<NativeComment?>(null)}
+    var currentUser by remember(token){mutableStateOf("")}
+    var avatar by remember(token){mutableStateOf<String?>(null)}
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
+    LaunchedEffect(token){currentUser=withContext(Dispatchers.IO){loadSeraUserId(token).first.orEmpty()};if(currentUser.isNotBlank())avatar=withContext(Dispatchers.IO){loadSeraCurrentAvatar(token,currentUser)}}
+    fun like(c:NativeComment){if(sending)return;sending=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_set_comment_like",JSONObject().put("p_comment",c.id).put("p_liked",!c.liked))};sending=false;if(r.first!=null)comments=comments.map{if(it.id==c.id)it.copy(liked=!c.liked,likes=(c.likes+if(c.liked)-1 else 1).coerceAtLeast(0))else it}else publishingError=r.second}}
     LaunchedEffect(token, postId, retry) {
         loading = true
         error = ""
@@ -141,6 +151,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
         dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Continue writing") } },
         shape = RoundedCornerShape(24.dp)
     )
+    removing?.let{c->AlertDialog(onDismissRequest={removing=null},title={Text("Remove comment?")},text={Text("This also removes replies to your comment.")},confirmButton={TextButton(onClick={removing=null;sending=true;scope.launch{val r=withContext(Dispatchers.IO){mutateNativeComment(token,postId,c.id,"delete","")};sending=false;if(r.first){retry++;onChanged()}else publishingError=r.second}}){Text("Remove")}},dismissButton={TextButton(onClick={removing=null}){Text("Keep")}})}
     SeraSignatureSheet(onDismissRequest = { requestClose() }) {
         Column(
             Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding()
@@ -166,7 +177,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SeraThreadCommentCard(
                             comment = root,
-                            onReply = { replyTarget = root }
+                            onReply = { replyTarget = root;editing=null },onLike={like(root)},onEdit=if(root.authorId==currentUser){{editing=root;replyTarget=null;draft=root.body}}else null,onDelete=if(root.authorId==currentUser){{removing=root}}else null
                         )
                         repliesByParent[root.id].orEmpty().forEach { reply ->
                             Row(
@@ -181,7 +192,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                                     SeraThreadCommentCard(
                                         comment = reply,
                                         isReply = true,
-                                        onReply = { replyTarget = root }
+                                        onReply = { replyTarget = root;editing=null },onLike={like(reply)},onEdit=if(reply.authorId==currentUser){{editing=reply;replyTarget=null;draft=reply.body}}else null,onDelete=if(reply.authorId==currentUser){{removing=reply}}else null
                                     )
                                 }
                             }
@@ -197,13 +208,17 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                     TextButton(onClick = { replyTarget = null }) { Text("Cancel") }
                 }
             }
+            editing?.let{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Editing comment",color=Color(0xFF087E83));TextButton(onClick={editing=null;draft=""}){Text("Cancel")}}}
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            if(avatar!=null)SeraMediaImage(avatar!!,"Your profile",96,96,modifier=Modifier.size(32.dp).clip(CircleShape))
             OutlinedTextField(
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
-                label = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.weight(1f),
                 maxLines = 5, enabled = !sending, shape = RoundedCornerShape(18.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
             )
+            }
             if (publishingError.isNotBlank()) Text(publishingError, color = MaterialTheme.colorScheme.error)
             if (sending) LinearProgressIndicator(Modifier.fillMaxWidth())
             Button(onClick = {
@@ -212,12 +227,14 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 focus.clearFocus()
                 scope.launch {
                     val result = withContext(Dispatchers.IO) {
-                        publishNativeComment(token, postId, draft.trim(), replyTarget?.let { it.parentId ?: it.id })
+                        if(editing!=null)mutateNativeComment(token,postId,editing!!.id,"edit",draft.trim()) else publishNativeComment(token, postId, draft.trim(), replyTarget?.let { it.parentId ?: it.id })
                     }
                     if (result.first) {
                         draft = ""
                         replyTarget = null
+                        editing=null
                         retry++
+                        onChanged()
                     } else publishingError = result.second
                     sending = false
                 }
@@ -225,7 +242,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83))) {
-                Text(if (sending) "Publishing…" else if (replyTarget != null) "Publish reply" else "Publish comment")
+                Text(if (sending) "Saving…" else if(editing!=null)"Save changes" else if (replyTarget != null) "Reply" else "Send comment")
             }
 
         }
@@ -237,7 +254,8 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
 private fun SeraThreadCommentCard(
     comment: NativeComment,
     isReply: Boolean = false,
-    onReply: () -> Unit
+    onReply: () -> Unit,
+    onLike:()->Unit={},onEdit:(()->Unit)?=null,onDelete:(()->Unit)?=null
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -281,6 +299,7 @@ private fun SeraThreadCommentCard(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF193A3F)
                     )
+                    if(comment.headline.isNotBlank())Text(comment.headline,color=Color(0xFF087E83),style=MaterialTheme.typography.labelSmall)
                     val date = remember(comment.createdAt) {
                         runCatching {
                             DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault())
@@ -299,13 +318,12 @@ private fun SeraThreadCommentCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF193A3F)
             )
-            TextButton(
-                onClick = onReply,
-                contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.heightIn(min = 40.dp)
-            ) {
-                Text("Reply", color = Color(0xFF087E83),
-                    style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick=onLike,modifier=Modifier.size(40.dp)){SeraReactionGlyph(SeraReactionKind.LIKE,active=comment.liked,modifier=Modifier.size(18.dp))}
+                if(comment.likes>0)Text(comment.likes.toString(),style=MaterialTheme.typography.labelSmall)
+                TextButton(onClick=onReply){Text("Reply")}
+                if(onEdit!=null)TextButton(onClick=onEdit){Text("Edit")}
+                if(onDelete!=null)TextButton(onClick=onDelete){Text("Delete")}
             }
         }
     }
@@ -324,4 +342,10 @@ private fun publishNativeComment(token: String, postId: String, body: String, pa
         connection.disconnect()
         if (status in 200..299) true to "" else false to (try { JSONObject(response).optString("error").ifBlank { "Unable to publish (HTTP $status)." } } catch (_: Exception) { "Unable to publish (HTTP $status)." })
     } catch (_: Exception) { false to "Network unavailable. Your comment is still here." }
+}
+
+private fun mutateNativeComment(token:String,postId:String,id:String,action:String,body:String):Pair<Boolean,String>{
+    return try{val request=okhttp3.Request.Builder().url("https://sera.hisabtech.com/api/native/comments").header("Authorization","Bearer "+token).post(okhttp3.RequestBody.create("application/json".toMediaType(),JSONObject().put("post_id",postId).put("comment_id",id).put("action",action).put("body",body).toString())).build()
+    okhttp3.OkHttpClient().newCall(request).execute().use{r->val message=r.body?.string().orEmpty();r.isSuccessful to if(r.isSuccessful)"" else runCatching{JSONObject(message).optString("error")}.getOrDefault("Unable to update comment.")}}
+    catch(_:Exception){false to "Connection unavailable. Please retry."}
 }

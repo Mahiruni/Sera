@@ -16,6 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -41,14 +45,10 @@ internal fun SeraNativeHeader(
                     tint = Color(0xFF123D42), modifier = Modifier.size(25.dp))
             }
             Spacer(Modifier.width(3.dp))
-            Text("SERA", color = Color(0xFF087E83), fontSize = 25.sp, letterSpacing = (-1.1).sp,
-                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black)
-            Text(".et", color = Color(0xFF183B40), fontSize = 25.sp, letterSpacing = (-1.2).sp,
-                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Search, "Search", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
-            IconButton(onClick = onNotifications, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.NotificationsNone, "Notifications", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
-            IconButton(onClick = onMessaging, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.ChatBubbleOutline, "Inbox", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
+            Text(buildAnnotatedString{withStyle(SpanStyle(color=Color(0xFF087E83),fontWeight=FontWeight.Black)){append("SERA")};withStyle(SpanStyle(color=Color(0xFF183B40),fontWeight=FontWeight.Bold)){append(".et")}},modifier=Modifier.weight(1f),fontSize=24.sp,maxLines=1,overflow=TextOverflow.Ellipsis,letterSpacing=(-1).sp)
+            IconButton(onClick = onSearch, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.Search, "Search", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
+            IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.NotificationsNone, "Notifications", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
+            IconButton(onClick = onMessaging, modifier = Modifier.size(44.dp)) { Icon(Icons.Outlined.ChatBubbleOutline, "Inbox", tint = Color(0xFF183B40), modifier = Modifier.size(24.dp)) }
         }
     }
 }
