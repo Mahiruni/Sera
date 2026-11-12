@@ -12,6 +12,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -54,7 +59,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 private data class NativeConversation(val id: String, val peerId: String, val peerName: String)
-private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String)
+private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String)
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -117,14 +122,14 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
 
 private fun loadNativeMessages(token: String, conversationId: String): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at&conversation_id=eq.$conversationId&order=created_at.asc&limit=100")
+        "professional_messages?select=id,sender_id,body,read_at,created_at&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=100")
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
         (0 until rows.length()).map { i ->
             val item = rows.getJSONObject(i)
-            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"))
-        } to ""
+            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"))
+        }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
 }
 
@@ -166,6 +171,19 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var sending by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var refresh by remember { mutableIntStateOf(0) }
+    var search by remember { mutableStateOf("") }
+    val messageListState = rememberLazyListState()
+    var lastVisibleConversation by remember { mutableStateOf<String?>(null) }
+    var lastMessageId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(selected?.id, messages.lastOrNull()?.id) {
+        val id = selected?.id ?: return@LaunchedEffect
+        val last = messages.lastOrNull()?.id ?: return@LaunchedEffect
+        val changedConversation = lastVisibleConversation != id
+        val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
+        if (changedConversation || (last != lastMessageId && nearBottom)) messageListState.scrollToItem(messages.lastIndex)
+        lastVisibleConversation = id
+        lastMessageId = last
+    }
     val scope = rememberCoroutineScope()
     BackHandler(selected != null) { selected = null; messages = emptyList(); error = "" }
     LaunchedEffect(token, userId, refresh) {
@@ -195,6 +213,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         if (selected == null) {
             Text("Conversations", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = inboxInk)
             Text("Private messages with your professional network", fontSize = 13.sp, color = Color.Gray)
+            OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), singleLine = true, placeholder = { Text("Search conversations") }, leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = inboxTeal) }, shape = RoundedCornerShape(18.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = inboxTeal, unfocusedBorderColor = Color(0xFFD6E6E3)))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }
             }
@@ -202,8 +221,10 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
             if (!loading && conversations.isEmpty() && error.isBlank())
                 Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
+            val filtered = conversations.filter { it.peerName.contains(search.trim(), ignoreCase = true) }
+            if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(conversations, key = { it.id }) { conversation ->
+                items(filtered, key = { it.id }) { conversation ->
                     ElevatedCard(onClick = {
                         draft = savedDrafts?.read(userId, conversation.id).orEmpty()
                         selected = conversation; messages = emptyList(); error = ""
@@ -244,7 +265,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             }
             HorizontalDivider()
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
+            LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 14.dp)) {
                 items(messages, key = { it.id }) { message ->
                     val own = message.senderId == userId
@@ -254,8 +275,15 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                             modifier = Modifier.widthIn(max = 300.dp)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                 Text(message.body, color = if (own) Color.White else inboxInk)
-                                if (own) Text(if (message.readAt.isNotBlank() && message.readAt != "null") "Read" else "Sent",
-                                    color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
+                                    Text(time, color = if (own) Color.White.copy(alpha = 0.8f) else Color(0xFF607478), fontSize = 10.sp)
+                                    if (own) {
+                                        val read = message.readAt.isNotBlank() && message.readAt != "null"
+                                        Icon(if (read) Icons.Outlined.DoneAll else Icons.Outlined.Check, contentDescription = if (read) "Read" else "Sent", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(15.dp))
+                                        Text(if (read) "Read" else "Sent", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+                                    }
+                                }
                             }
                         }
                     }
@@ -291,7 +319,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                             draft = ""
                             runCatching { savedDrafts?.clear(userId, conversation.id) }
                             val refreshed = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
-                            refreshed.first?.let { messages = it }
+                            if (selected?.id == conversation.id) refreshed.first?.let { messages = it }
                         } else error = result.second
                         sending = false
                     }
