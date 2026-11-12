@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { serverClient } from "@/lib/supabase/server";
 import { PublicLanding, LanguageStatus } from "@/components/public-site";
 import { locales, isLocale } from "@/lib/locales";
 import { pageMetadata, amharicReviewed } from "@/lib/seo";
@@ -7,14 +8,15 @@ export function generateStaticParams() {
     .filter((l) => l.code !== "en")
     .map((l) => ({ locale: l.code }));
 }
-export const dynamicParams = false;
+export const dynamicParams = true;
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!isLocale(locale) || locale === "en") notFound();
+  if (!isLocale(locale)) return {title:"Professional profile | SERA.et",robots:{index:false,follow:false}};
+  if(locale==="en") notFound();
   return locale === "am"
     ? pageMetadata(
         "/am",

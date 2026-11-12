@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {UsernameEditor} from "@/components/account/username-editor";
 import "../profile-identity.css";
 import { ProfessionalProfile } from "@/components/account/profile";
 import { accountAssets } from "@/lib/account/assets";
@@ -37,6 +38,7 @@ export default async function Page() {
       ) : (
         <p role="alert">Profile unavailable. Please try again later.</p>
       )}
+      <UsernameEditor />
       <section className="account-security panel" aria-labelledby="profile-privacy-title">
         <h2 id="profile-privacy-title">Professional profile visibility</h2>
         <p>Choose who can open your professional member profile. Connections-only access is checked on the member page; public internet access requires separately publishing your portfolio below. Other community surfaces are still being reviewed.</p>
