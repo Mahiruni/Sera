@@ -391,7 +391,8 @@ fun SeraApp(
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(accessToken, authenticatedUserId) {
+    var refresh by remember { mutableIntStateOf(0) }
+    LaunchedEffect(accessToken, authenticatedUserId, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         val id = authenticatedUserId.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val member = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
@@ -400,7 +401,6 @@ fun SeraApp(
     }
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    var refresh by remember { mutableIntStateOf(0) }
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         if (authenticatedUserId.isBlank()) {
@@ -626,7 +626,7 @@ fun SeraApp(
                                                     tab = "Home"
                                                     tabHistory.clear()
                                                 },
-                                                accessToken ?: "", authenticatedUserId
+                                                accessToken ?: "", authenticatedUserId, profileAvatarUrl
                                             )
                                         }
                                     }

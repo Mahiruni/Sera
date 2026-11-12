@@ -5,6 +5,13 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -116,17 +123,18 @@ internal fun SeraNativeAccountFiles(token: String, userId: String, onUploaded: (
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Profile photo & CV", style = MaterialTheme.typography.titleMedium)
-        Text("Upload files securely to your SERA account.",
-            style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(
-            onClick = { selectedKind = "avatar"; picker.launch("image/*") },
-            enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)
-        ) { Text("Choose profile photo") }
-        OutlinedButton(
-            onClick = { selectedKind = "cv"; picker.launch("application/pdf") },
-            enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)
-        ) { Text("Upload CV (PDF, up to 3 MB)") }
+        Text("Profile photo & CV", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("Manage your professional assets.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
+        FilledTonalButton(onClick = { selectedKind = "avatar"; picker.launch("image/*") }, enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(14.dp)) {
+            Icon(Icons.Outlined.Image, null, Modifier.size(22.dp)); Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) { Text("Profile photo", fontWeight = FontWeight.SemiBold); Text("JPG, PNG or WebP · 2 MB max", style = MaterialTheme.typography.labelSmall) }
+        }
+        FilledTonalButton(onClick = { selectedKind = "cv"; picker.launch("application/pdf") }, enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(14.dp)) {
+            Icon(Icons.Outlined.Description, null, Modifier.size(22.dp)); Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) { Text("Upload CV", fontWeight = FontWeight.SemiBold); Text("PDF · 3 MB max", style = MaterialTheme.typography.labelSmall) }
+        }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (feedback.isNotBlank()) Text(feedback, style = MaterialTheme.typography.bodySmall)
     }

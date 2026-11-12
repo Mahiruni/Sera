@@ -51,7 +51,7 @@ private fun profileApi(token: String, path: String, method: String = "GET", payl
     finally { connection?.disconnect() }
 }
 
-private fun loadNativeProfile(token: String, userId: String): Pair<NativeProfileFields?, String> {
+internal fun loadNativeProfile(token: String, userId: String): Pair<NativeProfileFields?, String> {
     val (raw, error) = profileApi(token,
         "profiles?select=full_name,headline,location,summary,skills&id=eq.$userId&limit=1")
     if (raw == null) return null to error
