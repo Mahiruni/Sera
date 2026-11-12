@@ -165,14 +165,19 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
     var skill by remember(userId){mutableStateOf("")}
     var days by remember(userId){mutableStateOf("")}
     var filters by remember{mutableStateOf(false)}
-    var history by remember(userId){mutableStateOf<List<String>>(emptyList())}
+    val context=LocalContext.current
+    val preferences=remember(context){context.getSharedPreferences("sera_search_history",android.content.Context.MODE_PRIVATE)}
+    val historyKey="recent_"+userId
+    var history by remember(userId){mutableStateOf(runCatching{val a=JSONArray(preferences.getString(historyKey,"[]")?:"[]");(0 until a.length()).map{a.optString(it)}.filter{it.isNotBlank()}.take(8)}.getOrDefault(emptyList()))}
+    fun saveHistory(next:List<String>){history=next;if(userId.isNotBlank())preferences.edit().putString(historyKey,JSONArray(next).toString()).apply()}
     var results by remember(userId){mutableStateOf<List<SearchHit>>(emptyList())}
     var loading by remember{mutableStateOf(false)}
     var error by remember{mutableStateOf(false)}
     var selected by remember(userId){mutableStateOf<SearchHit?>(null)}
     var retry by remember{mutableIntStateOf(0)}
     val focus=LocalFocusManager.current
-    fun submit(term:String){val q=cleanSearch(term);query=q;if(q.isNotBlank())history=(listOf(q)+history.filterNot{it.equals(q,true)}).take(8);focus.clearFocus();retry++}
+    fun switchTab(next:String){tab=next;if(next=="Topics")location="";if(next !in listOf("All","Jobs","Companies"))work="";if(next !in listOf("All","Posts","Projects","Topics"))skill="";if(next=="People")days=""}
+    fun submit(term:String){val q=cleanSearch(term);query=q;if(q.isNotBlank())saveHistory((listOf(q)+history.filterNot{it.equals(q,true)}).take(8));focus.clearFocus();retry++}
     LaunchedEffect(token,userId,query,tab,location,work,skill,days,retry){
         results=emptyList();error=false
         if(cleanSearch(query).length<2&&listOf(location,work,skill,days).all{it.isBlank()}){loading=false;return@LaunchedEffect}
@@ -181,28 +186,28 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
         results=response.first;error=response.second;loading=false
     }
     selected?.takeIf{it.kind!="Posts"&&it.kind!="Projects"}?.let{hit->SearchResultDetail(token,userId,hit,modifier){selected=null;retry++};return}
-    Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+    Column(modifier.fillMaxSize().imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("Search SERA",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
         OutlinedTextField(value=query,onValueChange={query=it.take(80)},modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(18.dp),label={Text("People, jobs, posts, skills…")},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}),trailingIcon={TextButton(onClick={submit(query)}){Text("Go")}})
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){searchTabs.forEach{k->FilterChip(selected=tab==k,onClick={tab=k},label={Text(k)})}}
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){searchTabs.forEach{k->FilterChip(selected=tab==k,onClick={switchTab(k)},label={Text(k)})}}
         TextButton(onClick={filters=!filters}){Text(if(filters)"Hide filters" else "Filters")}
-        if(filters)Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
-            OutlinedTextField(location,{location=it.take(80)},label={Text("Location")},singleLine=true,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(skill,{skill=it.take(80)},label={Text("Exact skill tag")},singleLine=true,modifier=Modifier.fillMaxWidth())
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("","Full-time","Part-time","Contract","Internship").forEach{v->FilterChip(selected=work==v,onClick={work=v},label={Text(v.ifBlank{"Any work type"})})}}
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("","7","30","90").forEach{v->FilterChip(selected=days==v,onClick={days=v},label={Text(if(v.isBlank())"Any time" else "$v days")})}}
-            TextButton(onClick={location="";skill="";work="";days=""}){Text("Clear filters")}
+        if(filters)Column(Modifier.heightIn(max=260.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)){
+            if(tab!="Topics")OutlinedTextField(location,{location=it.take(80)},label={Text("Location")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            if(tab in listOf("All","Posts","Projects","Topics"))OutlinedTextField(skill,{skill=it.take(80)},label={Text("Exact skill tag")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            if(tab in listOf("All","Jobs","Companies"))Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("","Full-time","Part-time","Contract","Internship").forEach{v->FilterChip(selected=work==v,onClick={work=v},label={Text(v.ifBlank{"Any work type"})})}}
+            if(tab!="People")Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("","7","30","90").forEach{v->FilterChip(selected=days==v,onClick={days=v},label={Text(if(v.isBlank())"Any time" else "$v days")})}}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton(onClick={location="";skill="";work="";days=""}){Text("Clear filters")};Button(onClick={filters=false;focus.clearFocus();retry++}){Text("Done")}}
         }
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Row{Text("Some results could not load.",Modifier.weight(1f));TextButton(onClick={retry++}){Text("Retry")}}
         LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
             if(query.isBlank()&&history.isNotEmpty()) {
-                item{Row{Text("Recent searches",Modifier.weight(1f),fontWeight=FontWeight.Bold);TextButton(onClick={history=emptyList()}){Text("Clear all")}}}
-                items(history,key={"recent"+it}){term->Row{TextButton(onClick={submit(term)},modifier=Modifier.weight(1f)){Text(term)};TextButton(onClick={history=history.filterNot{it==term}}){Text("Remove")}}}
+                item{Row{Text("Recent searches",Modifier.weight(1f),fontWeight=FontWeight.Bold);TextButton(onClick={saveHistory(emptyList())}){Text("Clear all")}}}
+                items(history,key={"recent"+it}){term->Row{TextButton(onClick={submit(term)},modifier=Modifier.weight(1f)){Text(term)};TextButton(onClick={saveHistory(history.filterNot{it==term})}){Text("Remove")}}}
             }
-            if(!loading&&results.isEmpty()&&query.length>=2)item{Text(if(error)"Try again." else "No matching results.",modifier=Modifier.padding(12.dp))}
+            if(!loading&&results.isEmpty()&&(query.length>=2||listOf(location,work,skill,days).any{it.isNotBlank()}))item{Text(if(error)"Try again." else "No matching results.",modifier=Modifier.padding(12.dp))}
             items(results,key={it.kind+it.id}){hit->
-                ElevatedCard(onClick={if(hit.kind=="Topics"){submit(hit.title);tab="Posts"}else selected=hit},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){
+                ElevatedCard(onClick={if(hit.kind=="Topics"){submit(hit.title);switchTab("Posts")}else selected=hit},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){
                     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
                         Text(hit.kind,color=MaterialTheme.colorScheme.primary,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
                         Text(hit.title,fontWeight=FontWeight.Bold,fontSize=17.sp)
