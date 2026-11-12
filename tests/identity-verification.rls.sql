@@ -6,7 +6,7 @@ insert into auth.users(id,email_confirmed_at,raw_user_meta_data,raw_app_meta_dat
 update public.profiles set full_name='Identity QA A' where id=(select a from identity_fixture);
 select set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true) from identity_fixture;
 set local role authenticated;
-do $begin begin perform public.sera_identity_start('passport',false);raise exception 'consent bypass';exception when raise_exception then if sqlerrm='consent bypass' then raise;end if;end;end$;
+do $$begin begin perform public.sera_identity_start('passport',false);raise exception 'consent bypass';exception when raise_exception then if sqlerrm='consent bypass' then raise;end if;end;end$$;
 update identity_fixture set r=(public.sera_identity_start('passport',true)->>'id')::uuid;
 do $$begin begin perform public.sera_identity_submit((select r from identity_fixture));raise exception 'missing evidence accepted';exception when raise_exception then if sqlerrm='missing evidence accepted' then raise;end if;end;end$$;
 reset role;
@@ -22,7 +22,7 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',m,'role','authenticated')::text,true) from identity_fixture;
 set local role authenticated;
 select public.sera_identity_evidence_path((select r from identity_fixture));
-do $begin begin perform public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',false);raise exception 'unchecked approval accepted';exception when raise_exception then if sqlerrm='unchecked approval accepted' then raise;end if;end;end$;
+do $$begin begin perform public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',false);raise exception 'unchecked approval accepted';exception when raise_exception then if sqlerrm='unchecked approval accepted' then raise;end if;end;end$$;
 select public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',true);
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true) from identity_fixture;
@@ -35,8 +35,8 @@ do $$begin if exists(select 1 from public.sera_identity_badges(array[(select a f
 reset role;
 update public.profiles set full_name='Identity QA A' where id=(select a from identity_fixture);
 set local role authenticated;
-do $begin if exists(select 1 from public.sera_identity_badges(array[(select a from identity_fixture)])) then raise exception 'restored name resurrected badge';end if;if (public.sera_identity_status()->>'status')<>'revoked' then raise exception 'revocation missing';end if;if not exists(select 1 from public.sera_identity_history() where evidence_present) then raise exception 'history missing';end if;end$;
+do $$begin if exists(select 1 from public.sera_identity_badges(array[(select a from identity_fixture)])) then raise exception 'restored name resurrected badge';end if;if (public.sera_identity_status()->>'status')<>'revoked' then raise exception 'revocation missing';end if;if not exists(select 1 from public.sera_identity_history() where evidence_present) then raise exception 'history missing';end if;end$$;
 reset role;
-do $begin if has_function_privilege('authenticated','public.sera_identity_cleanup_candidates()','execute') then raise exception 'cleanup exposed';end if;end$;
+do $$begin if has_function_privilege('authenticated','public.sera_identity_cleanup_candidates()','execute') then raise exception 'cleanup exposed';end if;end$$;
 rollback;
 select 'PASS: identity evidence isolation, review authority, permanent name-change revocation, consent and cleanup permissions' as result;
