@@ -24,7 +24,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
-internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String, val sha256: String)
+internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String, val sha256: String, val highlights: List<String> = emptyList())
 
 /** Accept only published APK assets from the official SERA GitHub repository. */
 internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.IO) {
@@ -55,7 +55,8 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
             val directDownload = if (firstParty)
                 "https://github.com/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
                 else address
-            SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256)
+            val highlights = data.optJSONArray("highlights")?.let { arr -> (0 until minOf(arr.length(),8)).map { arr.optString(it).take(48) }.filter { it.isNotBlank() } }.orEmpty()
+            SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256, highlights)
         } finally { connection.disconnect() }
     } catch (_: Exception) { null }
 }
@@ -124,6 +125,7 @@ internal fun saveSeraPendingUpdate(context: Context, id: Long, release: SeraRele
         .putInt("code", release.versionCode)
         .putString("name", release.versionName)
         .putString("sha256", release.sha256)
+        .putString("highlights",org.json.JSONArray(release.highlights).toString())
         .apply()
 }
 internal fun clearSeraPendingUpdate(context: Context) {
@@ -142,7 +144,8 @@ internal fun readSeraPendingUpdate(context: Context): SeraPendingUpdate? {
         clearSeraPendingUpdate(context)
         return null
     }
-    return SeraPendingUpdate(id, SeraRelease(code, name, "", "", sha))
+    val highlights=runCatching { val arr=org.json.JSONArray(prefs.getString("highlights","[]")); (0 until minOf(arr.length(),8)).map { arr.optString(it) } }.getOrDefault(emptyList())
+    return SeraPendingUpdate(id, SeraRelease(code, name, "", "", sha, highlights))
 }
 internal fun discardSeraDownload(context: Context, downloadId: Long) {
     clearSeraPendingUpdate(context)

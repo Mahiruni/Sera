@@ -35,9 +35,12 @@ export async function GET() {
         parsed.protocol !== "https:" || parsed.hostname !== "github.com" ||
         parsed.pathname !== `/${REPO}/releases/download/${tag}/SERA-${versionName}.apk`)
       return NextResponse.json({ available: false }, { headers: jsonHeaders });
+    const known: Record<string,string[]> = {"1.0.21":["Instant post reactions","Private APK downloads","Publishing corrections"],"1.0.22":["Professional activity status","Presence privacy controls"],"1.0.23":["Unique professional usernames","Shareable profile links","Username availability"],"1.0.24":["Animated update highlights","Improved updater placement","Username editor fix"]};
+    const highlights = notes.split("\n").filter((line:string)=>line.startsWith("Highlight: ")).map((line:string)=>line.slice(11).trim()).filter((line:string)=>line.length<=48&&line.split(/\s+/).length<=4&&/^[a-zA-Z0-9 &-]+$/.test(line)).slice(0,8);
+    const summary = highlights.length ? highlights : known[versionName] ?? ["Signed SERA update"];
     return NextResponse.json({
       available: true, versionCode, versionName, apkUrl: `https://sera.hisabtech.com/downloads/sera-android.apk?version=${versionName}`, sha256,
-      notes: "A new signed SERA Android release is available.",
+      notes: summary.join(" · "), highlights: summary,
     }, { headers: jsonHeaders });
   } catch {
     return NextResponse.json({ available: false }, { headers: jsonHeaders });

@@ -604,7 +604,7 @@ fun SeraApp(
             }
             if (activeDownloadId != null) {
                 val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                SeraUpdateProgressPanel(version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 86.dp else 12.dp))
+                SeraUpdateProgressPanel(highlights=activeRelease?.highlights.orEmpty(),version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) (60.dp + (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.35f)) else 12.dp))
             }
             }
         }

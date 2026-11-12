@@ -115,9 +115,11 @@ jobs:
           fi
           cp "$APK" "SERA-${VERSION_NAME}.apk"
           sha256sum "SERA-${VERSION_NAME}.apk" > "SERA-${VERSION_NAME}.apk.sha256"
+          HIGHLIGHTS="$(sed -n 's/^highlight=/Highlight: /p' android-native/release-version.properties)"
+          NOTES="$(printf 'SERA Android production-signed release. Android versionCode: %s.\n%s\n' "$VERSION_CODE" "$HIGHLIGHTS")"
           gh release create "$TAG" "SERA-${VERSION_NAME}.apk" "SERA-${VERSION_NAME}.apk.sha256" \
             --title "SERA Android v${VERSION_NAME}" \
-            --notes "SERA Android production-signed release. Android versionCode: ${VERSION_CODE}." \
+            --notes "$NOTES" \
             --latest
       - uses: actions/upload-artifact@v4
         with:
