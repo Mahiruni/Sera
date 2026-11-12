@@ -93,5 +93,68 @@ do $$declare affected integer;begin
  if exists(select 1 from public.post_images where post_id=(select photo from sera_qa_ids)) then raise exception 'Purge did not cascade';end if;
 end$$;
 reset role;
+
+-- Post management: audience transitions and owner-only recovery RPCs.
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'privacy','only_me');
+do $begin
+ if not exists(select 1 from public.posts where id=(select post from sera_qa_ids)) then raise exception 'Owner cannot read own private post';end if;
+end$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $declare pid uuid:=(select post from sera_qa_ids); action_name text; denied boolean;begin
+ if exists(select 1 from public.posts where id=pid) then raise exception 'Only-me post leaked';end if;
+ foreach action_name in array array['privacy','trash','restore','purge'] loop
+  denied:=false;
+  begin perform public.sera_manage_post(pid,action_name,'public');
+  exception when raise_exception then denied:=true;end;
+  if not denied then raise exception 'Non-owner management allowed: %',action_name;end if;
+ end loop;
+end$;
+reset role;
+-- Without a connection or follow, neither restricted audience is visible.
+do $declare audience_name text;begin
+ foreach audience_name in array array['connections','followers'] loop
+  perform set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+  perform public.sera_manage_post((select post from sera_qa_ids),'privacy',audience_name);
+  perform set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+  if private.post_published((select post from sera_qa_ids)) then raise exception 'Restricted audience leaked: %',audience_name;end if;
+ end loop;
+end$;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $declare pid uuid:=(select post from sera_qa_ids);begin
+ perform public.sera_manage_post(pid,'privacy','only_me');
+ perform public.sera_manage_post(pid,'trash');
+ if not exists(select 1 from public.sera_list_post_bin() where id=pid and audience='only_me' and expires_at=deleted_at+interval '30 days') then raise exception 'Bin did not preserve audience or retention';end if;
+end$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $begin
+ if exists(select 1 from public.sera_list_post_bin() where id=(select post from sera_qa_ids)) then raise exception 'Another owner bin leaked';end if;
+end$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $declare pid uuid:=(select post from sera_qa_ids);begin
+ perform public.sera_manage_post(pid,'restore');
+ if not exists(select 1 from public.posts where id=pid and audience='only_me') then raise exception 'Restore changed post privacy';end if;
+ perform public.sera_manage_post(pid,'trash');
+end$;
+reset role;
+-- Simulate expiry without waiting 30 days; the fixture transaction is rolled back.
+update public.posts set deleted_at=now()-interval '31 days' where id=(select post from sera_qa_ids);
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $declare pid uuid:=(select post from sera_qa_ids); denied boolean:=false;begin
+ if exists(select 1 from public.sera_list_post_bin() where id=pid) then raise exception 'Expired post remained recoverable';end if;
+ begin perform public.sera_manage_post(pid,'restore');exception when raise_exception then denied:=true;end;
+ if not denied then raise exception 'Expired post restored';end if;
+end$;
+reset role;
+
 select 'PASS: social feed ownership, visibility, privacy, counters, cascades and anonymous isolation' as result;
 rollback;
