@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
   visual:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       SERA_E2E_BASE_URL: http://127.0.0.1:3000

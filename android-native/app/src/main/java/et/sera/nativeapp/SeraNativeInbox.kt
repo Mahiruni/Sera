@@ -240,8 +240,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var messageSearch by remember(selected?.id){mutableStateOf("")}
     var showSearch by remember(selected?.id){mutableStateOf(false)}
     var sound by remember{mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",false))}
-    var playback by remember{mutableStateOf<MediaPlayer?>(null)}
-    var playingPath by remember{mutableStateOf("")}
+    val playback=remember(context,selected?.id){SeraChatPlayback(context.applicationContext)}
     var sendFailed by remember(selected?.id){mutableStateOf(false)}
     val outbox=remember(context){runCatching{NativeChatOutbox(context)}.getOrNull()}
     var queued by remember(selected?.id){mutableStateOf<NativePending?>(null)}
@@ -250,7 +249,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;reply=null}}
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
-    DisposableEffect(selected?.id){onDispose{runCatching{playback?.release()};playback=null;playingPath=""}}
+    LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
+    DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.pause()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
+    LaunchedEffect(attachment){if(playback.activeId?.startsWith("preview:")==true&&playback.activeId!="preview:"+System.identityHashCode(attachment))playback.stop()}
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
     LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
         val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
@@ -429,7 +430,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                                 if(!message.unsent&&message.reactions.isNotEmpty()) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=6.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}
 
                                 message.files.filter{!message.unsent}.forEach { file ->
-                                    if(file.mime.startsWith("audio/")){TextButton(onClick={if(playingPath==file.path){runCatching{playback?.release()};playback=null;playingPath=""}else{scope.launch{val r=withContext(Dispatchers.IO){runCatching{downloadChatFile(context,token,file)}};r.onSuccess{uri->runCatching{playback?.release();val player=MediaPlayer();playback=player;playingPath=file.path;player.setDataSource(context,uri);player.setOnPreparedListener{it.start()};player.setOnCompletionListener{it.release();playback=null;playingPath=""};player.prepareAsync()}.onFailure{error="Audio unavailable."}}.onFailure{error="Audio unavailable."}}}},colors=ButtonDefaults.textButtonColors(contentColor=if(own)Color.White else inboxTeal)){Icon(if(playingPath==file.path)Icons.Outlined.Pause else Icons.Outlined.PlayArrow,"Play voice");Text("Voice message"+(file.durationMs?.let{" · "+(it/1000)+"s"}?:""))}}else{
+                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else inboxTeal,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else{
                                     TextButton(onClick = { scope.launch {
                                         val result = withContext(Dispatchers.IO) { runCatching { downloadChatFile(context,token,file) } }
                                         result.onSuccess { uri -> runCatching { openChatFile(context,uri,file.mime) }.onFailure { error="No app can open this file." } }.onFailure { error=it.message ?: "Could not open attachment." }
@@ -460,8 +461,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             attachment?.let { file ->
                 Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Description,null,tint=inboxTeal); Spacer(Modifier.width(8.dp))
-                        Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }
+                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,inboxTeal,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{Icon(Icons.Outlined.Description,null,tint=inboxTeal); Spacer(Modifier.width(8.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }}
                         IconButton(onClick={attachment=null},enabled=!sending) { Icon(Icons.Outlined.Close,"Remove attachment") }
                     }
                 }
@@ -472,7 +472,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=inboxTeal) }
-                SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it})
+                SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()})
                 if(!recordingVoice) OutlinedTextField(
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {

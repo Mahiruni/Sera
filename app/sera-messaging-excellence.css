@@ -75,3 +75,18 @@ html[data-sera-theme=dark] .sera-chat-page{--chat-bg:#12262b;--chat-surface:#183
 }
 .sera-chat-bubble[data-reply-highlight=true]{outline:2px solid var(--chat-accent);outline-offset:3px}
 .sera-chat-message-row:has(.sera-chat-menu),.sera-chat-message-row:has(.sera-chat-reaction-picker){z-index:20}
+
+.sera-voice-player{display:flex;align-items:center;gap:9px;min-width:0;width:min(100%,250px);padding:5px 0}
+.sera-chat-audio .sera-voice-player audio,.sera-chat-attachment-preview .sera-voice-player audio{display:none}
+.sera-voice-play{flex:0 0 42px;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--chat-own);color:white;padding:0;cursor:pointer}
+.sera-chat-bubble.is-own .sera-voice-play{background:#fff;color:var(--chat-own)}
+.sera-voice-track{flex:1;min-width:0;display:grid;gap:3px}
+.sera-voice-title{font-size:12px;font-weight:650;line-height:1.2}
+.sera-voice-track input{width:100%;min-width:0;accent-color:var(--chat-accent);margin:0;height:20px;cursor:pointer}
+.sera-chat-bubble.is-own .sera-voice-track input{accent-color:#fff}
+.sera-voice-time{font-size:10px;opacity:.84;font-variant-numeric:tabular-nums}
+.sera-voice-spin{animation:sera-voice-spin .8s linear infinite}@keyframes sera-voice-spin{to{transform:rotate(360deg)}}
+.sera-chat-attachment-preview:has(.sera-voice-player){flex-wrap:wrap}.sera-chat-attachment-preview>.sera-voice-player{flex:1 1 100%;width:100%;max-width:none}
+@media(max-width:700px){
+ .sera-chat-message-actions .sera-chat-menu{position:fixed;top:auto;bottom:max(12px,calc(100vh - var(--sera-chat-vv-height,100dvh) - var(--sera-chat-vv-top,0px) + 12px));left:12px!important;right:12px!important;min-width:0;width:auto;max-width:none;max-height:50vh;overflow:auto;z-index:45}
+}
