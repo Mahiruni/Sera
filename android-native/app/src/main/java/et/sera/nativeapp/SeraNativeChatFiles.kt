@@ -123,3 +123,14 @@ internal fun openChatFile(context: Context,uri: Uri,mime: String) {
     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).setDataAndType(uri,mime)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),"Open attachment"))
 }
+
+/** Re-encode camera output before sending: bounded dimensions/bytes, no EXIF metadata. */
+internal fun prepareCapturedChatPhoto(file:File):NativeChatSelection{
+    val bounds=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true}
+    android.graphics.BitmapFactory.decodeFile(file.absolutePath,bounds)
+    require(bounds.outWidth>0&&bounds.outHeight>0){"Camera did not return a readable photo."}
+    var sample=1
+    while(maxOf(bounds.outWidth,bounds.outHeight)/sample>2000)sample*=2
+    val bitmap=android.graphics.BitmapFactory.decodeFile(file.absolutePath,android.graphics.BitmapFactory.Options().apply{inSampleSize=sample})?:error("Could not decode photo.")
+    try{val stream=java.io.ByteArrayOutputStream();check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,88,stream));val bytes=stream.toByteArray();require(bytes.size in 1..CHAT_LIMIT){"Photo exceeds 5 MB."};return NativeChatSelection("Photo-${System.currentTimeMillis()}.jpg","image/jpeg",bytes)}finally{bitmap.recycle()}
+}
