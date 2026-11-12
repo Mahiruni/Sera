@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   discoveryInput,
+  universalDiscoveryInput,
   profileEssentials,
   skillTopics,
 } from "../lib/network/model";
@@ -60,4 +61,35 @@ test("interest shortcuts are bounded, deduplicated and derived from saved skill 
   assert.deepEqual(skillTopics(undefined), []);
   assert.equal(skillTopics("aa,bb,cc,dd,ee,ff,gg").length, 6);
   assert.equal(skillTopics("x".repeat(41)).length, 0);
+});
+
+test("universal search defaults to All for a global query and preserves category deep links", () => {
+  assert.deepEqual(universalDiscoveryInput({ q: "አዲስ አበባ" }), { query: "አዲስ አበባ", kind: "all", page: 1 });
+  assert.equal(universalDiscoveryInput({}).kind, "people");
+  assert.equal(universalDiscoveryInput({ tab: "all" }).kind, "all");
+  assert.equal(universalDiscoveryInput({ q: "design", tab: "jobs", page: "2" }).kind, "jobs");
+  assert.equal(universalDiscoveryInput({ q: "design", tab: ["all"] }).kind, "people");
+  assert.equal(universalDiscoveryInput({ q: "%_\\", tab: "all" }).query, "");
+});
+
+test("recent searches are sanitized, deduplicated and bounded", async () => {
+  const { recentSearches, rememberSearch } = await import("../lib/network/search-model");
+  assert.deepEqual(rememberSearch(["React", "Design"], "react"), ["react", "Design"]);
+  assert.deepEqual(recentSearches(["አዲስ አበባ", null, "%_", "Design"]), ["አዲስ አበባ", "Design"]);
+  assert.equal(recentSearches(Array.from({length:20},(_,i)=>"search "+i)).length,8);
+});
+test("suggestions prioritize exact and prefix labels", async () => {
+  const { rankSuggestions } = await import("../lib/network/search-model");
+  const items = [{id:"1",label:"Senior React",kind:"Jobs" as const},{id:"2",label:"React developer",kind:"People" as const},{id:"3",label:"React",kind:"Posts" as const}];
+  assert.deepEqual(rankSuggestions(items,"React").map(r=>r.id),["3","2","1"]);
+});
+
+test("advanced filters are bounded and category links preserve applicable fields",async()=>{
+ const {searchFilters,categoryFilters,searchHref,searchSince,rankSearchRows}=await import("../lib/network/search-filters");
+ const filters=searchFilters({location:"Addis Ababa",work:"Full-time",skill:"React",days:"30"});
+ assert.deepEqual(categoryFilters("people",filters),{location:"Addis Ababa",work:"",skill:"",days:""});
+ assert.equal(searchHref("jobs","React",filters),"/discover?tab=jobs&q=React&location=Addis+Ababa&work=Full-time&days=30");
+ assert.equal(searchFilters({days:"999",work:"invalid",skill:["bad"]}).days,"");
+ assert.equal(searchSince("7",Date.parse("2026-11-12T00:00:00Z")),"2026-11-05T00:00:00.000Z");
+ assert.deepEqual(rankSearchRows(["Senior React","React developer","React"],"React",s=>s),["React","React developer","Senior React"]);
 });

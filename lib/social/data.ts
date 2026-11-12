@@ -1,6 +1,7 @@
 import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { sanitizeDiscoveryQuery } from "@/lib/network/model";
+import { searchSince, type SearchFilters } from "@/lib/network/search-filters";
 import { serverClient } from "@/lib/supabase/server";
 import { type PostKind } from "./validation";
 export type SocialComment = {
@@ -49,6 +50,8 @@ export async function loadSocialFeed(
     savedOnly?: boolean;
     postId?: string;
     kind?: PostKind;
+    excludeKind?: PostKind;
+    filters?: SearchFilters;
     page?: number;
     personalized?: boolean;
   } = {},
@@ -70,8 +73,14 @@ export async function loadSocialFeed(
   if (options.authorId) query = query.eq("author_id", options.authorId);
   if (options.postId) query = query.eq("id", options.postId);
   if (options.kind) query = query.eq("kind", options.kind);
+  if (options.excludeKind) query = query.neq("kind", options.excludeKind);
+  const filters = options.filters;
+  if (filters?.location) query = query.ilike("location", "%"+filters.location+"%");
+  if (filters?.skill) query = query.contains("skills", [filters.skill]);
+  const since = searchSince(filters?.days || "");
+  if (since) query = query.gte("published_at", since);
   const start = ((options.page || 1) - 1) * 20;
-  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
+  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind && !options.excludeKind && !options.filters ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
     .order("published_at", { ascending: false })
     .order("id", { ascending: false })
     .range(start, start + 20);

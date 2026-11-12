@@ -27,6 +27,20 @@ export function discoveryInput(
       : 1;
   return { query, kind, page };
 }
+export type UniversalDiscoveryKind = DiscoveryKind | "all";
+
+/** Global queries open the combined view; explicit category deep links keep their filters. */
+export function universalDiscoveryInput(
+  params: Record<string, string | string[] | undefined>,
+) {
+  const input = discoveryInput(params);
+  const kind: UniversalDiscoveryKind =
+    params.tab === "all" || (params.tab === undefined && input.query)
+      ? "all"
+      : input.kind;
+  return { ...input, kind };
+}
+
 export function profileEssentials(
   profile: {
     full_name?: string;
