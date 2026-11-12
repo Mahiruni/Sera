@@ -13,6 +13,7 @@ export default async function PublicPortfolio({ params }: { params: Promise<{ id
     .select("full_name,headline,summary,location,skills,experience,education")
     .eq("user_id", id).eq("published", true).maybeSingle();
   if (error || !profile) notFound();
+  const {data:items}=await db.from("sera_portfolio_items").select("id,kind,title,description,issuer,external_url").eq("user_id",id).eq("shared",true).order("created_at",{ascending:false}).limit(50);
   return <main className="container page sera-public-portfolio">
     <div className="sera-public-portfolio-hero">
       <div className="sera-public-portfolio-monogram" aria-hidden="true">{profile.full_name.trim().slice(0,1).toUpperCase()}</div>
@@ -23,6 +24,7 @@ export default async function PublicPortfolio({ params }: { params: Promise<{ id
     {([["About",profile.summary],["Skills",profile.skills],["Experience",profile.experience],["Education",profile.education]] as const).filter(([,value])=>Boolean(value?.trim())).map(([label,value])=>
       <section className="sera-public-portfolio-section" key={label}><h2>{label}</h2><p>{value}</p></section>
     )}
+    {!!items?.length&&<section className="sera-public-portfolio-section"><h2>Projects & achievements</h2>{items.map(item=><article key={item.id} style={{padding:"16px 0",borderBottom:"1px solid #dce9e8"}}><small>{item.kind} · Self-reported</small><h3>{item.title}</h3>{item.issuer&&<p>{item.issuer}</p>}<p style={{whiteSpace:"pre-wrap"}}>{item.description}</p>{item.external_url.startsWith("https://")&&<a href={item.external_url} target="_blank" rel="noopener noreferrer">View project or credential</a>}</article>)}</section>}
     <p className="sera-public-portfolio-footnote">Shared by this professional on SERA.et. Contact details, CV files, and private activity are not included.</p>
   </main>;
 }
