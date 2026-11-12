@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,sign} from "node:crypto";
-// @ts-expect-error local JavaScript harness
 import {createSessions,verifyJwt,authorize,challenge,config,assertion} from "../scripts/fayda-sandbox/oidc.mjs";
 const {privateKey,publicKey}=generateKeyPairSync("rsa",{modulusLength:2048});
 const jwk={...publicKey.export({format:"jwk"}),kid:"test"};
