@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
-import { Bell, Heart, MessageCircle, Share2, UserPlus, CheckCheck } from "lucide-react";
+import { Bell, Heart, MessageCircle, Share2, UserPlus, CheckCheck, BriefcaseBusiness } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
-import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount } from "@/lib/network/notifications";
+import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount, refreshJobAlerts } from "@/lib/network/notifications";
 import { notificationTabs, notificationTab, kindsForTab, notificationPage, notificationHref, notificationTimeGroup, notificationRequestTime } from "@/lib/network/notification-model";
 import { NotificationRefresh } from "@/components/network/notification-refresh";
 export const metadata={title:"Notifications | SERA.et",robots:{index:false,follow:false}};
@@ -19,13 +19,16 @@ export default async function NotificationsPage({searchParams}:{searchParams:Pro
  const {user}=await requiredProfile("/notifications");
  const db=await serverClient();
  const params=await searchParams;const tab=notificationTab(params.tab);const page=notificationPage(params.page);const kinds=kindsForTab(tab);
- let query=db.from("professional_notifications").select("id,actor_id,kind,post_id,created_at,read_at").eq("recipient_id",user.id);
+ let query=db.from("professional_notifications").select("id,actor_id,kind,post_id,job_id,match_reasons,created_at,read_at").eq("recipient_id",user.id);
  if(tab==="unread")query=query.is("read_at",null);
  if(kinds)query=query.in("kind",[...kinds]);
  const start=(page-1)*30;
  const {data:rows,error}=await query.order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,start+30);
  const notifications=(rows??[]).slice(0,30);const hasMore=(rows?.length??0)>30;const now=notificationRequestTime();
- const people=await memberCards(notifications.map(n=>n.actor_id));
+ const jobIds=notifications.filter(n=>n.kind==="job_match"&&n.job_id).map(n=>n.job_id);
+ const jobResult=jobIds.length?await db.from("jobs").select("id,title,company").in("id",jobIds).eq("status","open"):{data:[]};
+ const jobs=new Map((jobResult.data??[]).map(j=>[j.id,j]));
+ const people=await memberCards(notifications.filter(n=>n.kind!=="job_match").map(n=>n.actor_id));
  const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
  return <div className="sera-network network-app sera-notifications"><NotificationRefresh />
   <PageIntro icon={Bell} title="Notifications" description="Keep up with the people and ideas that matter to you.">
@@ -33,18 +36,20 @@ export default async function NotificationsPage({searchParams}:{searchParams:Pro
   </PageIntro>
   {error&&<p role="alert">Notifications are temporarily unavailable. Please try again.</p>}
   <nav className="sera-notification-tabs" aria-label="Notification categories">{notificationTabs.map(t=><Link key={t} href={notificationHref(t)} aria-current={tab===t?"page":undefined}>{labels[t]}{t==="unread"&&unread>0?" · "+unread:""}</Link>)}</nav>
+  {tab==="opportunities"&&<form action={refreshJobAlerts} className="sera-notifications-tools"><p>Check recent opportunities that match your profile skills and preferred roles.</p><button type="submit" className="network-button">Refresh job matches</button></form>}
   <div className="sera-notifications-list">
   {notifications.map((n,index)=>{
    const group=notificationTimeGroup(n.created_at,now);const previous=index?notificationTimeGroup(notifications[index-1].created_at,now):null;
    const person=people.get(n.actor_id);
-   const href=n.post_id?"/posts/"+n.post_id:n.kind.startsWith("connection")?"/connections":"/members/"+n.actor_id;
-   const Icon=n.kind==="like"?Heart:n.kind==="comment"?MessageCircle:n.kind==="share"?Share2:UserPlus;
+   const isJob=n.kind==="job_match";const job=isJob?jobs.get(n.job_id):undefined;
+   const href=isJob?(job?"/jobs/"+job.id:"/jobs"):n.post_id?"/posts/"+n.post_id:n.kind.startsWith("connection")?"/connections":"/members/"+n.actor_id;
+   const Icon=isJob?BriefcaseBusiness:n.kind==="like"?Heart:n.kind==="comment"?MessageCircle:n.kind==="share"?Share2:UserPlus;
    return <div key={n.id} className="sera-notification-entry">{group!==previous&&<h2 className="sera-notification-date">{group}</h2>}<article className={"sera-notification"+(!n.read_at?" is-unread":"")}>
     <Link href={href} className="sera-notification-link">
-     <span className="sera-notification-avatar"><MemberAvatar name={person?.name??"SERA member"} photo={person?.photo} size={48}/><span className="sera-notification-icon"><Icon size={13}/></span></span>
-     <span className="sera-notification-copy"><strong>{person?.name??"SERA member"}</strong> {descriptions[n.kind]??"interacted with you"}<small>{new Date(n.created_at).toLocaleString()}</small></span>
+     <span className="sera-notification-avatar">{isJob?<span className="network-universal-icon"><BriefcaseBusiness size={22}/></span>:<MemberAvatar name={person?.name??"SERA member"} photo={person?.photo} size={48}/>}<span className="sera-notification-icon"><Icon size={13}/></span></span>
+     <span className="sera-notification-copy">{isJob?<><strong>{job?job.title:"Opportunity no longer available"}</strong>{job&&<><span> · {job.company}</span><small>Matches: {(n.match_reasons??[]).join(", ")}</small></>}</>:<><strong>{person?.name??"SERA member"}</strong> {descriptions[n.kind]??"interacted with you"}</>}<small>{new Date(n.created_at).toLocaleString()}</small></span>
     </Link>
-    {!n.read_at&&<form action={markNotificationRead}><input type="hidden" name="id" value={n.id}/><button type="submit" className="sera-notification-read" aria-label={"Mark notification from "+(person?.name??"member")+" as read"} title="Mark as read"><CheckCheck size={17}/></button></form>}
+    {!n.read_at&&<form action={markNotificationRead}><input type="hidden" name="id" value={n.id}/><button type="submit" className="sera-notification-read" aria-label={isJob?"Mark opportunity alert as read":"Mark notification from "+(person?.name??"member")+" as read"} title="Mark as read"><CheckCheck size={17}/></button></form>}
    </article></div>;
   })}
   {!error&&!notifications.length&&<div className="sera-notifications-empty"><Bell size={32}/><h2>{tab==="all"?"You’re all caught up":tab==="unread"?"No unread notifications":"No "+labels[tab].toLowerCase()+" activity yet"}</h2><p>{tab==="all"?"New professional activity will appear here.":"New activity in this category will appear here."}</p><Link href="/discover?tab=people">Discover professionals</Link></div>}
