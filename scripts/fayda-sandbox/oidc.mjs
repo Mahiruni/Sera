@@ -16,6 +16,7 @@ export function assertion(c,now=Math.floor(Date.now()/1000)){
 export function authorize(c,s){
  const u=new URL(c.authorize);u.search=new URLSearchParams({client_id:c.client,redirect_uri:c.redirect,response_type:"code",scope:"openid profile",state:s.state,nonce:s.nonce,code_challenge:challenge(s.verifier),code_challenge_method:"S256",acr_values:"mosip:idp:acr:generated-code"}).toString();return u.toString();
 }
+/** @param {string} token @param {any[]} keys @param {any} c @param {{nonce?:string,subject?:string,now?:number}} options */
 export function verifyJwt(token,keys,c,{nonce,subject,now=Math.floor(Date.now()/1000)}={}){
  if(typeof token!=="string"||token.length>2000000)throw Error("Invalid token");
  const parts=token.split(".");if(parts.length!==3)throw Error("Invalid token");
