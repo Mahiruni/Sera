@@ -10,7 +10,7 @@ insert into auth.users(id,raw_user_meta_data) select u,'{"full_name":"Sera QA Un
 -- Author A: publish a post, a draft, and a photo post that needs an image before publishing.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$$declare pid uuid;begin
+do $$declare pid uuid;begin
  insert into public.posts(kind,status,title,body,skills) values('idea','published','QA idea','Body',array['design']) returning id into pid;
  update sera_qa_ids set post=pid;
  insert into public.posts(kind,status,title) values('idea','draft','QA draft');
@@ -29,7 +29,7 @@ reset role;
 -- Member B: sees published only, cannot edit or delete, interacts privately.
 select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uuid;begin
+do $$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uuid;begin
  if (select count(*) from public.posts where title='QA draft')<>0 then raise exception 'Draft visible to another member';end if;
  if (select count(*) from public.posts where id=pid)<>1 then raise exception 'Published post not visible to members';end if;
  update public.posts set title='Hacked' where id=pid;get diagnostics affected=row_count;if affected<>0 then raise exception 'Cross-user edit';end if;
@@ -60,7 +60,7 @@ reset role;
 -- Privacy: A cannot see B's likes or saves; A (post owner) may remove a comment, replies cascade, counts follow.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$$begin
+do $$begin
  if (select count(*) from public.post_likes)<>0 or (select count(*) from public.post_saves)<>0 or (select count(*) from public.post_shares)<>0 then raise exception 'Private interaction rows leaked';end if;
  delete from public.post_comments where parent_id is null;
  if (select comment_count from public.posts where id=(select post from sera_qa_ids))<>0 then raise exception 'Comment count not reconciled after cascade';end if;
@@ -71,19 +71,19 @@ reset role;
 -- Unverified and anonymous accounts.
 select set_config('request.jwt.claims',json_build_object('sub',(select u from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$$begin
+do $$begin
  begin insert into public.posts(kind,status,title) values('idea','published','Unverified post');raise exception 'Unverified post allowed';exception when insufficient_privilege then null;end;
  begin insert into public.post_likes(post_id) select post from sera_qa_ids;raise exception 'Unverified like allowed';exception when insufficient_privilege then null;end;
 end$$;
 reset role;
 set local role anon;
-do $$$begin begin perform * from public.posts;raise exception 'Anonymous feed read allowed';exception when insufficient_privilege then null;end;end$$;
+do $$begin begin perform * from public.posts;raise exception 'Anonymous feed read allowed';exception when insufficient_privilege then null;end;end$$;
 reset role;
 
 -- Deleting a published photo post cascades its images despite the last-image guard.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$$declare affected integer;begin
+do $$declare affected integer;begin
  perform public.sera_manage_post((select photo from sera_qa_ids),'trash');
  if exists(select 1 from public.posts where id=(select photo from sera_qa_ids)) then raise exception 'Binned post visible';end if;
  perform public.sera_manage_post((select photo from sera_qa_ids),'restore');
