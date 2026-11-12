@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Phone,PhoneOff,Mic,MicOff,History,X} from "lucide-react";
+import {Phone,PhoneOff,Mic,MicOff,X} from "lucide-react";
 import {MemberAvatar} from "@/components/activity/avatar";
 import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,type CallSession,type CallConfig} from "@/lib/network/voice-calls";
 
@@ -56,12 +56,13 @@ export function SeraVoiceCall({conversation,userId,name,photo}:{conversation:str
     try{const peer=await createPeer();await peer.setRemoteDescription({type:"offer",sdp:s.offer});await peer.setLocalDescription(await peer.createAnswer());await gather(peer);if(!mounted.current||pc.current!==peer)throw new Error("Call cancelled.");const next=await changeCall(conversation,s.id,"accept",peer.localDescription!.sdp);if(!live(next))throw new Error("Call ended.");update(next);if(!started.current)setPhase("Connecting…");}
     catch(e){await terminate("fail",e instanceof Error?e.message:"Could not accept call.");}finally{busy.current=false;}
   }
+  useEffect(()=>{if(session)setHistory(null);},[session]);
   if(!config.enabled)return null;
   const incoming=session?.state==="ringing"&&session.callee===userId&&!phase;
   const duration=String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");
-  return <><button type="button" className="sera-chat-icon" aria-label="Voice call" title="Voice call" disabled={Boolean(session||phase)} onClick={()=>void dial()}><Phone size={21}/></button><button type="button" className="sera-chat-icon" aria-label="Call history" title="Call history" onClick={()=>void getCallHistory(conversation).then(setHistory).catch(()=>setError("Call history unavailable."))}><History size={19}/></button>
+  return <><button type="button" className="sera-chat-icon" aria-label="Voice call" title="Voice call" disabled={Boolean(session||phase)} onClick={()=>{setHistory([]);void getCallHistory(conversation).then(setHistory).catch(()=>setError("Call history unavailable."));}}><Phone size={21}/></button>
   <audio ref={audio} autoPlay playsInline/>
   {(session||phase)&&<div className="sera-call-overlay" role="dialog" aria-modal="true" aria-label={incoming?"Incoming voice call":"Voice call"}><div className="sera-call-panel"><span className="sera-call-brand">SERA · Voice call</span><MemberAvatar name={name} photo={photo} size={88}/><h2>{name}</h2><p role="status">{incoming?"Incoming voice call":phase||"Ringing…"}{phase==="Connected"?" · "+duration:""}</p>{audioBlocked&&<button type="button" onClick={()=>void audio.current?.play().then(()=>setAudioBlocked(false)).catch(()=>{})}>Enable call audio</button>}<div className="sera-call-controls">{incoming?<><button type="button" className="sera-call-accept" onClick={()=>void accept()}><Phone/> Accept</button><button type="button" className="sera-call-end" onClick={()=>void terminate("decline")}><PhoneOff/> Decline</button></>:<><button type="button" onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>{t.enabled=!next;});setMuted(next);}} disabled={!session||session.state!=="accepted"}>{muted?<MicOff/>:<Mic/>}{muted?"Unmute":"Mute"}</button><button type="button" className="sera-call-end" disabled={!session} onClick={()=>void terminate("end")}><PhoneOff/> End call</button></>}</div></div></div>}
-  {history&&<div className="sera-call-overlay" role="dialog" aria-modal="true" aria-label="Call history"><div className="sera-call-panel"><button type="button" className="sera-chat-icon" onClick={()=>setHistory(null)} aria-label="Close call history"><X/></button><h2>Call history</h2>{history.length?history.map(s=><p key={s.id}>{s.caller===userId?"Outgoing":"Incoming"} · {s.state} · {new Date(s.created_at).toLocaleString()}</p>):<p>No calls yet</p>}</div></div>}
+  {history&&<div className="sera-call-overlay" role="dialog" aria-modal="true" aria-label="Call history"><div className="sera-call-panel"><button type="button" className="sera-chat-icon" onClick={()=>setHistory(null)} aria-label="Close call history"><X/></button><h2>Voice call</h2><p>Call {name}</p><div className="sera-call-controls"><button type="button" className="sera-call-accept" disabled={Boolean(session||phase)} onClick={()=>{setHistory(null);void dial();}}><Phone/> Call</button></div><h3>Recent calls</h3>{history.length?history.map(s=><p key={s.id}>{s.caller===userId?"Outgoing":"Incoming"} · {s.state} · {new Date(s.created_at).toLocaleString()}</p>):<p>No calls yet</p>}</div></div>}
   {error&&<div className="sera-call-toast" role="status">{error}<button type="button" onClick={()=>setError("")} aria-label="Dismiss call status"><X size={16}/></button></div>}</>;
 }
