@@ -231,8 +231,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 result.first?.let { latest ->
                     messages = latest
                     val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
-                    if (unread.isNotEmpty()) withContext(Dispatchers.IO) {
-                        inboxRequest(token, "rpc/sera_message_receipt", "POST", JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(unread.map { it.id })).put("p_read",true))
+                    if (unread.isNotEmpty()) {
+                        val receipt=withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_message_receipt", "POST", JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(unread.map { it.id })).put("p_read",true)) }
+                        if(receipt.first!=null)SeraUnreadRefresh.changed()
                     }
                 }
                 error = result.second

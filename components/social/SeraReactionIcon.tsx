@@ -3,7 +3,7 @@ export type SeraReactionKind = "like" | "comment" | "repost" | "share" | "save";
 /** One consistent 24px optical grid for every social reaction. */
 export function SeraReactionIcon({ kind, active = false, ...props }: SVGProps<SVGSVGElement> & { kind: SeraReactionKind; active?: boolean }) {
   return (
-    <svg {...props} viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false"
+    <svg {...props} data-kind={kind} viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false"
       className={["sera-signature-glyph", props.className].filter(Boolean).join(" ")}
       fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       {kind === "like" && <path fill={active ? "currentColor" : "none"} d="M12 20.4 4.7 13.4C.3 9.3 3.2 3.2 7.6 3.9c1.8.2 3.1 1.2 4.4 2.6 1.3-1.4 2.7-2.4 4.4-2.6 4.4-.7 7.3 5.4 2.9 9.5L12 20.4Z" />}

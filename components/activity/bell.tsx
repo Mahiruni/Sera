@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { professionalUnreadCount, professionalInboxUnreadCount } from "@/lib/network/notifications";
@@ -8,6 +9,7 @@ import { professionalUnreadCount, professionalInboxUnreadCount } from "@/lib/net
  * The full inbox owns all read-state mutations and displays every notification kind.
  */
 function ActivityIndicator({inbox=false}:{inbox?:boolean}) {
+  const pathname=usePathname();
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;
@@ -34,7 +36,7 @@ function ActivityIndicator({inbox=false}:{inbox?:boolean}) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [inbox]);
+  }, [inbox,pathname]);
   return (
     <Link
       href={inbox?"/network/messages":"/notifications"}

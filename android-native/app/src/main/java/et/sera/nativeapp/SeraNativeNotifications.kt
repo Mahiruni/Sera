@@ -88,7 +88,7 @@ private fun loadNotifications(token:String):NotificationBatch{
    }
   }
  }
- val unread=rows.count{it.isNull("read_at")}
+ val unread=rememberSeraUnreadActivity(token,userId,"Notifications").first
  Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
   Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){
    Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"${unread} unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=teal)}
