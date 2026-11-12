@@ -34,6 +34,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,13 +112,12 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     }
                                 }
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text(post.author, color = feedInk, fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.SansSerif, fontSize = 14.sp, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis)
-                                    if(post.repostOf!=null) Text("| Reposted from "+(post.repostAuthor?:"original author"),color=feedTeal,fontSize=11.sp)
+                                    Text(buildAnnotatedString {
+                                        withStyle(SpanStyle(color=feedInk,fontWeight=FontWeight.Bold,fontSize=14.sp)){append(post.author)}
+                                        if(post.repostOf!=null) withStyle(SpanStyle(color=feedTeal,fontWeight=FontWeight.Medium,fontSize=11.sp)){append(" | Reposted from "+(post.repostAuthor?:"original author"))}
+                                    },maxLines=2,overflow=TextOverflow.Ellipsis)
                                     if(post.headline.isNotBlank()) Text(post.headline,color=feedTeal,fontSize=11.sp)
-                                    val details = listOfNotNull(
-                                        postTimeLabel(post.publishedAt).takeIf { it.isNotBlank() }).joinToString(" · ")
+                                    val details = (if(post.repostOf!=null)"Reposted " else "")+postTimeLabel(post.publishedAt)
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                                         if(post.authorId in activeAuthors) { SeraOnlineDot(); Text("Active now",color=feedTeal,fontSize=10.sp) }
                                         Text(details, color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -7,8 +7,8 @@
 .sera-premium-types button[aria-pressed=true]{background:linear-gradient(135deg,#079eaa,#006e72);border-color:#007b82;color:#fff}
 .sera-premium-headline{display:block;font-size:13px;font-weight:650;color:#23404f}
 .sera-premium-headline input{display:block;width:100%;padding:12px 14px;border:1px solid #d7e5eb;border-radius:15px;margin-top:7px;font:inherit;font-size:16px}
-.sera-premium-editor{position:relative;min-height:210px;border:1px solid #d7e5eb;border-radius:23px;background:linear-gradient(180deg,#fff 0%,#fff 76%,#eaf8fb 100%);overflow:hidden}
-.sera-premium-editor textarea{display:block;width:100%;min-height:200px;padding:24px 20px 48px;border:0;outline:0;resize:none;font:inherit;font-size:17px;line-height:1.65;color:#173344;background:transparent}
+.sera-premium-editor{position:relative;min-height:270px;border:1px solid #d7e5eb;border-radius:23px;background:linear-gradient(180deg,#fff 0%,#fff 76%,#eaf8fb 100%);overflow:hidden}
+.sera-premium-editor textarea{display:block;width:100%;min-height:260px;padding:24px 20px 48px;border:0;outline:0;resize:none;font:inherit;font-size:17px;line-height:1.65;color:#173344;background:transparent}
 .sera-premium-editor textarea::placeholder{color:#82919e;opacity:1}
 .sera-premium-editor:focus-within{border-color:#0899a5;box-shadow:0 0 0 3px #0899a51b}
 .sera-premium-counter{position:absolute;bottom:13px;right:17px;font-size:12px;color:#71838e}

@@ -34,6 +34,9 @@ export type SocialPost = {
   images: { url: string; alt: string }[];
   liked: boolean;
   saved: boolean;
+  repost_of?: string|null;
+  repost_note?: string;
+  original?: {id:string;author_id:string;title:string;body:string;published_at:string;name:string;photo?:string|null;images:{url:string;alt:string}[]}|null;
 };
 export async function loadSocialFeed(
   options: {
@@ -70,7 +73,10 @@ export async function loadSocialFeed(
   if (error)
     throw new Error("Unable to load the community feed. Please try again.");
   const posts = (rows || []).slice(0, 20) as unknown as SocialPost[];
-  const ids = posts.map((p) => p.id);
+  const sourceIds=[...new Set(posts.flatMap(p=>p.repost_of?[p.repost_of]:[]))];
+  const {data:sourceRows}=sourceIds.length?await db.from("posts").select("id,author_id,title,body,published_at").in("id",sourceIds).eq("status","published"):{data:[]};
+  const sources=sourceRows||[];
+  const ids = [...new Set([...posts.map((p) => p.id),...sources.map(p=>p.id)])];
   if (!ids.length) return { posts: [], userId: auth.user.id, hasMore: false };
   const [profiles, images, likes, saves, people] = await Promise.all([
     db
@@ -92,7 +98,7 @@ export async function loadSocialFeed(
       .select("post_id")
       .in("post_id", ids)
       .eq("user_id", auth.user.id),
-    memberCards(posts.map((p) => p.author_id)),
+    memberCards([...posts.map((p) => p.author_id),...sources.map(p=>p.author_id)]),
   ]);
   if ([profiles, images, likes, saves].some((r) => r.error))
     throw new Error("Unable to load post details. Please refresh.");
@@ -130,6 +136,7 @@ export async function loadSocialFeed(
             ]
           : [],
       ),
+      original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i,index)=>i.post_id===o.id&&signed?.data?.[index]?.signedUrl?[{url:signed.data[index].signedUrl,alt:i.alt||"Community photo"}]:[])}:null})():null,
       liked: liked.has(p.id),
       saved: saved.has(p.id),
     })) as SocialPost[],

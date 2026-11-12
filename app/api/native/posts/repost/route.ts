@@ -53,10 +53,8 @@ export async function POST(request: NextRequest) {
     .eq("author_id", user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
   if (previous) return NextResponse.json({success:true,post_id:previous.id},{status:201,headers:noStore});
 
-  const title = `Reposted: ${String(source.title || "Professional update")}`.slice(0, 140);
-  const sourceText = String(source.body || source.title || "Professional update").slice(0, 2000);
-  const originalLink = `https://sera.hisabtech.com/posts/${source.id}`;
-  const body = [note.trim(), sourceText, `Original: ${originalLink}`].filter(Boolean).join("\n\n");
+  const title = "Repost";
+  const body = note.trim() || "Shared original post";
   const form = new FormData();
   form.set("kind", "idea");
   form.set("title", title);

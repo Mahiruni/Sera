@@ -266,11 +266,11 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
     .eq("author_id", session.user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
   if (existing) return { error: "You have already reposted this update." };
 
-  const original = String(source.body || source.title || "Professional update").slice(0, 2000);
+
   const prepared = new FormData();
   prepared.set("kind", "idea");
-  prepared.set("title", ("Reposted: " + String(source.title || "Professional update")).slice(0, 140));
-  prepared.set("body", [note.trim(), original, "Original: https://sera.hisabtech.com/posts/" + String(sourceId)].filter(Boolean).join("\n\n"));
+  prepared.set("title", "Repost");
+  prepared.set("body", note.trim() || "Shared original post");
   const input = readPost(prepared);
   if (!input) return { error: "Could not prepare this repost." };
   const verdict = await screenSubmission(input, []);
@@ -331,11 +331,11 @@ export async function addComment(
       if (parent.error || !parent.data) return { error: "The parent comment is unavailable." };
     }
   }
-  const commenter = securePublishingConfigured() ? moderationWriter() : session.db;
+  const commenter = moderationEnabled() ? moderationWriter() : session.db;
   if (!commenter) return { error: "Secure commenting is unavailable." };
   // The member role can insert only post_id, parent_id and body. PostgreSQL
   // assigns auth.uid(); the privileged moderation writer needs an explicit author.
-  const result = securePublishingConfigured() ? await commenter.from("post_comments").insert({ ...input, author_id: session.user.id }) : await commenter.from("post_comments").insert(input);
+  const result = moderationEnabled() ? await commenter.from("post_comments").insert({ ...input, author_id: session.user.id }) : await commenter.from("post_comments").insert(input);
   if (result.error)
     return {
       error:

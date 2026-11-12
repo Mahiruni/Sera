@@ -31,8 +31,8 @@ export function PostCard({
 }) {
   const owner = currentUserId === post.author_id;
   const normalize = (value: string) => value.replace(/\s+/g, " ").trim().toLocaleLowerCase();
-  const title = post.title?.trim() || "";
-  const body = post.body?.trim() || "";
+  const title = (post.repost_of?post.original?.title:post.title)?.trim() || "";
+  const body = (post.repost_of?post.original?.body:post.body)?.trim() || "";
   // Legacy posts sometimes repeat the title verbatim at the beginning of the body.
   // Keep the full original body; suppress only a redundant title presentation.
   const showTitle = Boolean(title) && !(normalize(body) === normalize(title) || normalize(body).startsWith(normalize(title) + " "));
@@ -53,24 +53,23 @@ export function PostCard({
         <div>
           <Link href={"/members/" + post.author_id} className="social-author">
             {post.author.full_name}
-          </Link>
-          <p>{post.author.headline || "Sera community member"}</p>
+          </Link>{post.repost_of&&<span className="sera-repost-byline"> | Reposted from {post.original?<Link href={"/members/"+post.original.author_id}>{post.original.name}</Link>:"original author"}</span>}
+          {post.author.headline&&<p className="sera-author-occupation">{post.author.headline}</p>}
           <small>
             <time dateTime={post.created_at}>
-              {new Date(post.created_at).toLocaleDateString("en-GB", {
+              {post.repost_of?"Reposted ":""}{new Date(post.published_at||post.created_at).toLocaleString("en-GB", {
                 timeZone: "Africa/Addis_Ababa",
                 day: "numeric",
                 month: "short",
-                year: "numeric",
+                hour: "2-digit", minute: "2-digit",
               })}
             </time>
             {post.edited_at ? " · Edited" : ""}
           </small>
         </div>
-        <span className="social-kind">
-          {post.kind === "question" ? "Discussion" : post.kind}
-        </span>
+
       </header>
+      {post.repost_of&&<>{post.repost_note&&<ExpandableCaption text={post.repost_note}/>}<div className="sera-original-byline">{post.original?<><MemberAvatar name={post.original.name} photo={post.original.photo} size={30}/><div><Link href={"/posts/"+post.original.id}>{post.original.name}</Link><small>Original · {new Date(post.original.published_at).toLocaleString("en-GB",{timeZone:"Africa/Addis_Ababa",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div></>:<span>Original post unavailable</span>}</div></>}
       {showTitle && (
         <h2>
           <Link href={"/posts/" + post.id}>{title}</Link>
@@ -82,9 +81,9 @@ export function PostCard({
           {post.quote_source && <cite>— {post.quote_source}</cite>}
         </blockquote>
       ) : (
-        <ExpandableCaption text={post.body} />
+        <ExpandableCaption text={body} />
       )}
-      <PostMedia images={post.images} />
+      <PostMedia images={post.repost_of?post.original?.images||[]:post.images} />
       {post.project_url && (
         <a
           className="social-project"
@@ -116,7 +115,7 @@ export function PostCard({
           </Submit>
         </ActionForm>
         <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} />
-        <RepostButton id={post.id} author={post.author.full_name} disabled={owner} />
+        <RepostButton id={post.repost_of||post.id} author={post.original?.name||post.author.full_name} disabled={post.repost_of?post.original?.author_id===currentUserId:owner} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>
       <details className="social-owner">

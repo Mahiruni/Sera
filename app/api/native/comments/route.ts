@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
   const verdict = await screenSubmission({ kind: "idea", title: "", body, quote_source: "", category: "", skills: [] }, []);
   if (verdict.verdict !== "approved")
     return NextResponse.json({ error: verdict.verdict === "rejected" ? "Comment may violate community guidelines." : "Safety screening is unavailable. Nothing was published." }, { status: verdict.verdict === "rejected" ? 422 : 503 });
-  const writer = securePublishingConfigured() ? moderationWriter() : client;
+  const writer = moderationEnabled() ? moderationWriter() : client;
   if (!writer) return NextResponse.json({ error: "Secure commenting unavailable." }, { status: 503 });
-  const { error } = await writer.from("post_comments").insert({ post_id: postId, parent_id: parentId, body, ...(securePublishingConfigured()?{author_id:user.id}:{}) });
+  const { error } = await writer.from("post_comments").insert({ post_id: postId, parent_id: parentId, body, ...(moderationEnabled()?{author_id:user.id}:{}) });
   if (error) return NextResponse.json({ error: "Unable to publish comment. Please retry." }, { status: 409 });
   return NextResponse.json({ success: true }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
