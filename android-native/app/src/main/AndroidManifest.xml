@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Required only for user-approved sideloaded SERA APK update installation. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application android:supportsRtl="true" android:localeConfig="@xml/locales_config" android:allowBackup="false" android:fullBackupContent="false" android:label="SERA.et" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.Sera.Launch" android:usesCleartextTraffic="false">
@@ -8,6 +9,8 @@
             <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="sera" android:host="auth" android:path="/callback"/></intent-filter>
         </activity>
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.chatfiles" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/sera_chat_file_paths"/></provider>
+        <service android:name=".SeraFirebaseService" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter></service>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="sera_messages"/>
         <receiver android:name=".SeraInstallStatusReceiver" android:exported="false"/>
         <service android:name="androidx.appcompat.app.AppLocalesMetadataHolderService" android:enabled="false" android:exported="false"><meta-data android:name="autoStoreLocales" android:value="true"/></service>
     </application>

@@ -82,6 +82,7 @@ jobs:
           SERA_RELEASE_KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
           SERA_RELEASE_KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
           SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+          SERA_FIREBASE_CLIENT_JSON: ${{ secrets.SERA_FIREBASE_CLIENT_JSON }}
         run: |
           set -euo pipefail
           umask 077

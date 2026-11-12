@@ -65,11 +65,15 @@ private val bg = Color(0xFFF5FAFB)
 
 class MainActivity : AppCompatActivity() {
     private val callback = mutableStateOf<Uri?>(null)
+    private val pushKind = mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         // Android 12+ and earlier versions show the same static S mark first.
         installSplashScreen()
         super.onCreate(savedInstanceState)
         callback.value = intent?.data?.takeIf { it.scheme == "sera" }
+        pushKind.value = intent?.getStringExtra("sera_kind") ?: intent?.getStringExtra("kind")
+        SeraPush.channel(this)
+        SeraPush.initialize(this)
         // A warm start, configuration change, process restoration or OAuth
         // deep link must never replay the cinematic introduction.
         val playIntro = savedInstanceState == null &&
@@ -87,7 +91,8 @@ class MainActivity : AppCompatActivity() {
                     context = this@MainActivity,
                     oauthCallback = callback.value,
                     onCallbackConsumed = { callback.value = null },
-                    onInitialDestinationReady = { destinationReady = true }
+                    onInitialDestinationReady = { destinationReady = true },
+                    pushKind = pushKind.value, onPushConsumed = { pushKind.value = null }
                 )
                 if (introVisible) SeraSignatureIntro(
                     destinationReady = destinationReady,
@@ -106,6 +111,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         callback.value = intent.data?.takeIf { it.scheme == "sera" }
+        pushKind.value = intent.getStringExtra("sera_kind") ?: intent.getStringExtra("kind")
     }
 }
 
@@ -114,7 +120,8 @@ fun SeraApp(
     context: Context,
     oauthCallback: Uri? = null,
     onCallbackConsumed: () -> Unit = {},
-    onInitialDestinationReady: () -> Unit = {}
+    onInitialDestinationReady: () -> Unit = {},
+    pushKind:String?=null, onPushConsumed:()->Unit={}
 ) {
     val session = remember { SessionStore(context) }
     val haptics = LocalHapticFeedback.current
@@ -317,6 +324,17 @@ fun SeraApp(
         tab = destination
     }
     val scope = rememberCoroutineScope()
+    val pushPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()){ granted -> if(granted) accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}} }
+    LaunchedEffect(accessToken,authenticatedUserId){
+        val token=accessToken?:return@LaunchedEffect
+        if(authenticatedUserId.isBlank()||!SeraPush.initialize(context))return@LaunchedEffect
+        if(android.os.Build.VERSION.SDK_INT>=33 && androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            val prefs=context.getSharedPreferences("sera_push_permission",Context.MODE_PRIVATE)
+            if(!prefs.getBoolean("asked",false)){prefs.edit().putBoolean("asked",true).apply();pushPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)}
+        }else SeraPush.register(context,token,authenticatedUserId)
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
+    LaunchedEffect(pushKind,accessToken){if(pushKind!=null&&accessToken!=null){navigateTo(if(pushKind=="message"||pushKind=="company_message")"Inbox" else "Home");onPushConsumed()}}
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
@@ -480,6 +498,8 @@ fun SeraApp(
                                 },
                                 onSignOut = {
                                     scope.launch { drawerState.close() }
+                                    accessToken?.let { token -> val uid=authenticatedUserId; scope.launch { SeraPush.unregister(context,token,uid) } }
+                                    SeraPush.clearLocal(context)
                                     session.clear()
                                     accessToken = null
                                     authenticatedUserId = ""
@@ -547,6 +567,8 @@ fun SeraApp(
                                         ) {
                                             SeraProfile(
                                                 identity, dataLoading, dataError, { refresh++ }, {
+                                                    accessToken?.let { token -> val uid=authenticatedUserId; scope.launch { SeraPush.unregister(context,token,uid) } }
+                                                    SeraPush.clearLocal(context)
                                                     session.clear()
                                                     accessToken = null
                                                     authenticatedUserId = ""

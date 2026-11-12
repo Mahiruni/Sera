@@ -130,7 +130,7 @@ internal fun SeraCompanyInbox(token:String,userId:String,initialThread:String?=n
                     val body=draft.trim();sending=true
                     scope.launch{
                         val (raw,e)=withContext(Dispatchers.IO){companyRequest(token,"rpc/sera_send_job_message",JSONObject().put("p_thread",thread.id).put("p_body",body))}
-                        if(raw!=null)draft="" else error=e
+                        if(raw!=null){draft=""; withContext(Dispatchers.IO){SeraPush.dispatch(token,"company_message",raw.trim().trim('"'))}} else error=e
                         sending=false
                     }
                 },enabled=draft.isNotBlank()&&!sending,contentPadding=PaddingValues(14.dp)){if(sending)CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Color.White)else Icon(Icons.Outlined.Send,"Send")}

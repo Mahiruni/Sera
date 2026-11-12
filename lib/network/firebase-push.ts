@@ -67,9 +67,8 @@ export async function sendProfessionalPush(tokens: string[], payload: PushPayloa
           headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
           body: JSON.stringify({ message: {
             token: deviceToken,
-            notification: { title: payload.title.slice(0, 100), body: payload.body.slice(0, 200) },
-            data: { url: safeUrl, kind: payload.kind.slice(0, 50) },
-            android: { priority: "high", notification: { click_action: "OPEN_SERA" } },
+            data: { url: safeUrl, kind: payload.kind.slice(0, 50), title: payload.title.slice(0, 100), body: payload.body.slice(0, 200) },
+            android: { priority: "high" },
           } }),
           signal: AbortSignal.timeout(10000), cache: "no-store",
         },

@@ -83,7 +83,7 @@ private fun inboxRequest(token: String, path: String, method: String = "GET", bo
             if (body != null) {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
-                setRequestProperty("Prefer", "return=minimal")
+                setRequestProperty("Prefer", if (path == "professional_messages" && method == "POST") "return=representation" else "return=minimal")
             }
         }
         if (body != null) conn.outputStream.use { it.write(body.toString().toByteArray()) }
@@ -382,7 +382,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     scope.launch {
                         val result = withContext(Dispatchers.IO) {
                             if(file != null) { val failure=sendChatAttachment(token,userId,conversation.id,body,file); if(failure.isBlank()) "ok" to "" else null to failure }
-                            else inboxRequest(token, "professional_messages", "POST", JSONObject().put("conversation_id",conversation.id).put("sender_id",userId).put("body",body))
+                            else { val result=inboxRequest(token, "professional_messages", "POST", JSONObject().put("conversation_id",conversation.id).put("sender_id",userId).put("body",body)); result.first?.let { raw -> runCatching { SeraPush.dispatch(token,"message",JSONArray(raw).getJSONObject(0).getString("id")) } }; result }
                         }
                         if (result.first != null) {
                             if (selected?.id == conversation.id) { draft = ""; attachment=null }
