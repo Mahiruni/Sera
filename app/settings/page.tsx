@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {canReviewIdentity} from "@/lib/identity/access";
 import {PortfolioEditor} from "@/components/account/portfolio-editor";
 import {UsernameEditor} from "@/components/account/username-editor";
 import "../profile-identity.css";
@@ -39,7 +40,7 @@ export default async function Page() {
       ) : (
         <p role="alert">Profile unavailable. Please try again later.</p>
       )}
-      <section className="account-security panel"><h2>Identity verification</h2><p>Request a verified professional identity badge.</p><Link className="button secondary" href="/settings/verification">Verify your identity</Link></section><section className="account-security panel"><h2>Content management</h2><p>Manage deleted posts and restore them within 30 days.</p><Link className="button secondary" href="/settings/bin">Open bin</Link></section>
+      <section className="account-security panel"><h2>Identity verification</h2><p>Request a verified professional identity badge.</p><Link className="button secondary" href="/settings/verification">Verify your identity</Link>{canReviewIdentity(user)&&<Link className="button secondary" href="/admin/verification">Review identity requests</Link>}</section><section className="account-security panel"><h2>Content management</h2><p>Manage deleted posts and restore them within 30 days.</p><Link className="button secondary" href="/settings/bin">Open bin</Link></section>
       <UsernameEditor />
       <PortfolioEditor userId={user.id}/>
       <section className="account-security panel" aria-labelledby="profile-privacy-title">

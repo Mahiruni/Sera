@@ -23,6 +23,7 @@ test("all migrations replay, canonical baseline is repeatable, and SQL authoriza
       "activity",
       "professional-network",
       "identity-verification",
+      "identity-intake",
     ]) {
       const results = await db.exec(
         await readFile(`tests/${suite}.rls.sql`, "utf8"),
