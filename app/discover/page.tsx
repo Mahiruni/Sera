@@ -26,6 +26,8 @@ import {
 } from "@/components/network/shared";
 import { PostList, SocialPagination } from "@/components/social/feed";
 import { UniversalSearchBox } from "@/components/network/universal-search-box";
+import { SearchFilterPanel } from "@/components/network/search-filter-panel";
+import { searchFilters, categoryFilters, searchHref, type SearchFilters } from "@/lib/network/search-filters";
 import { UniversalSearchResults } from "@/components/network/universal-search-results";
 export const metadata = {
   title: "Discover people, projects and possibilities",
@@ -47,7 +49,9 @@ export default async function Discover({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { user } = await requiredProfile("/discover");
-  const { kind, query, page } = universalDiscoveryInput(await searchParams);
+  const params = await searchParams;
+  const { kind, query, page } = universalDiscoveryInput(params);
+  const filters = categoryFilters(kind,searchFilters(params));
   if (kind === "all") {
     return (
       <div className="sera-network network-app">
@@ -58,8 +62,9 @@ export default async function Discover({
         </section>
         <UniversalSearchBox key={user.id+query} query={query} userId={user.id} prominent />
 
-        <DiscoverTabs kind={kind} query={query} />
-        <UniversalSearchResults query={query} />
+        <DiscoverTabs kind={kind} query={query} filters={filters} />
+        <SearchFilterPanel kind={kind} query={query} filters={filters} />
+        <UniversalSearchResults query={query} filters={filters} />
       </div>
     );
   }
@@ -69,9 +74,10 @@ export default async function Discover({
           query,
           kind: kind === "projects" ? "project" : undefined,
           page,
+          filters,
         })
       : null;
-  const directory = feed ? null : await discoverDirectory(kind, query, page);
+  const directory = feed ? null : await discoverDirectory(kind, query, page, filters);
   const anyResults = feed
     ? feed.posts.length
     : directory!.people.length +
@@ -109,11 +115,13 @@ export default async function Discover({
           placeholder={"Search " + tabs[kind].label.toLowerCase() + "…"}
         />
         <input type="hidden" name="tab" value={kind} />
+        {Object.entries(filters).filter(([,value])=>value).map(([name,value])=><input key={name} type="hidden" name={name} value={value}/>)}
         <button aria-label="Search selected category">
           <ArrowRight size={18} />
         </button>
       </form>
-      <DiscoverTabs kind={kind} query={query} />
+      <DiscoverTabs kind={kind} query={query} filters={filters} />
+        <SearchFilterPanel kind={kind} query={query} filters={filters} />
       <div className="network-results-heading">
         <h2>
           {query
@@ -174,9 +182,7 @@ export default async function Discover({
             page={page}
             hasMore={feed?.hasMore || directory?.hasMore || false}
             href={
-              "/discover?tab=" +
-              kind +
-              (query ? "&q=" + encodeURIComponent(query) : "")
+              searchHref(kind,query,filters)
             }
           />
         </>
@@ -213,7 +219,7 @@ export default async function Discover({
   );
 }
 
-function DiscoverTabs({ kind, query }: { kind: UniversalDiscoveryKind; query: string }) {
+function DiscoverTabs({ kind, query, filters }: { kind: UniversalDiscoveryKind; query: string; filters: SearchFilters }) {
   return (
       <nav className="network-discover-tabs" aria-label="Discover categories">
         {(["all", ...discoveryKinds] as const).map((tab) => {
@@ -222,9 +228,7 @@ function DiscoverTabs({ kind, query }: { kind: UniversalDiscoveryKind; query: st
             <Link
               key={tab}
               href={
-                "/discover?tab=" +
-                tab +
-                (query ? "&q=" + encodeURIComponent(query) : "")
+                searchHref(tab,query,filters)
               }
               aria-current={kind === tab ? "page" : undefined}
             >

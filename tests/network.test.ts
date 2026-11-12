@@ -83,3 +83,13 @@ test("suggestions prioritize exact and prefix labels", async () => {
   const items = [{id:"1",label:"Senior React",kind:"Jobs" as const},{id:"2",label:"React developer",kind:"People" as const},{id:"3",label:"React",kind:"Posts" as const}];
   assert.deepEqual(rankSuggestions(items,"React").map(r=>r.id),["3","2","1"]);
 });
+
+test("advanced filters are bounded and category links preserve applicable fields",async()=>{
+ const {searchFilters,categoryFilters,searchHref,searchSince,rankSearchRows}=await import("../lib/network/search-filters");
+ const filters=searchFilters({location:"Addis Ababa",work:"Full-time",skill:"React",days:"30"});
+ assert.deepEqual(categoryFilters("people",filters),{location:"Addis Ababa",work:"",skill:"",days:""});
+ assert.equal(searchHref("jobs","React",filters),"/discover?tab=jobs&q=React&location=Addis+Ababa&work=Full-time&days=30");
+ assert.equal(searchFilters({days:"999",work:"invalid",skill:["bad"]}).days,"");
+ assert.equal(searchSince("7",Date.parse("2026-11-12T00:00:00Z")),"2026-11-05T00:00:00.000Z");
+ assert.deepEqual(rankSearchRows(["Senior React","React developer","React"],"React",s=>s),["React","React developer","Senior React"]);
+});

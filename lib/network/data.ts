@@ -4,6 +4,7 @@ import { ASSET_BUCKET, ownedPath } from "@/lib/account/assets";
 import { serverClient } from "@/lib/supabase/server";
 import type { MemberCard, OpportunityCard } from "@/components/network/shared";
 import { sanitizeDiscoveryQuery, type DiscoveryKind } from "./model";
+import { emptySearchFilters, categoryFilters, searchSince, type SearchFilters } from "./search-filters";
 async function withPhotos(people: MemberCard[]) {
   const cards = await memberCards(people.map((p) => p.id));
   return people.map((p) => ({ ...p, photo: cards.get(p.id)?.photo }));
@@ -45,9 +46,12 @@ export async function discoverDirectory(
   kind: DiscoveryKind,
   query: string,
   page: number,
+  filters: SearchFilters = emptySearchFilters,
 ) {
   const db = await serverClient();
   query = sanitizeDiscoveryQuery(query);
+  filters = categoryFilters(kind, filters);
+  const since = searchSince(filters.days);
   const start = (page - 1) * 18;
   if (kind === "people") {
     let q = db
@@ -60,6 +64,7 @@ export async function discoverDirectory(
       q = q.or(
         `full_name.ilike.%${query}%,headline.ilike.%${query}%,location.ilike.%${query}%`,
       );
+    if (filters.location) q = q.ilike("location", "%"+filters.location+"%");
     const result = await q;
     if (result.error)
       throw new Error("Professional discovery is temporarily unavailable.");
@@ -72,12 +77,15 @@ export async function discoverDirectory(
   }
   if (kind === "topics") {
     // Topics are derived from published contributions, never private profile fields.
-    const result = await db
+    let topicQuery = db
       .from("posts")
       .select("skills,category")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(500);
+    if (since) topicQuery = topicQuery.gte("published_at", since);
+    if (filters.skill) topicQuery = topicQuery.contains("skills",[filters.skill]);
+    const result = await topicQuery;
     if (result.error) throw new Error("Topics could not be loaded.");
     const topics = [
       ...new Set(
@@ -112,6 +120,9 @@ export async function discoverDirectory(
     q = q.or(
       `title.ilike.%${query}%,company.ilike.%${query}%,location.ilike.%${query}%`,
     );
+  if (filters.location) q = q.ilike("location", "%"+filters.location+"%");
+  if (filters.work) q = q.eq("work_type", filters.work);
+  if (since) q = q.gte("created_at", since);
   const result = await q;
   if (result.error) throw new Error("Opportunities could not be loaded.");
   return {

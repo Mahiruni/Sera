@@ -3,21 +3,22 @@ import { ArrowRight, FileText, FolderKanban, Search, Building2 } from "lucide-re
 import type { ReactNode } from "react";
 import { MemberPreview, OpportunityPreview } from "@/components/network/shared";
 import { loadUniversalSearch } from "@/lib/network/universal-search";
+import { searchHref, type SearchFilters } from "@/lib/network/search-filters";
 import type { DiscoveryKind } from "@/lib/network/model";
 import type { SocialPost } from "@/lib/social/data";
 
-function categoryHref(kind: DiscoveryKind, query: string) {
-  return "/discover?tab=" + kind + "&q=" + encodeURIComponent(query);
+function categoryHref(kind: DiscoveryKind, query: string, filters?: SearchFilters) {
+  return searchHref(kind,query,filters);
 }
 
-function SearchSection({ title, kind, query, children }: {
-  title: string; kind: DiscoveryKind; query: string; children: ReactNode;
+function SearchSection({ title, kind, query, filters, children }: {
+  title: string; kind: DiscoveryKind; query: string; filters: SearchFilters; children: ReactNode;
 }) {
   return (
     <section className="network-universal-section" aria-label={title}>
       <header className="network-universal-section-head">
         <h2>{title}</h2>
-        <Link href={categoryHref(kind, query)} className="network-text-link">
+        <Link href={categoryHref(kind, query, filters)} className="network-text-link">
           See all <ArrowRight size={15} aria-hidden="true" />
         </Link>
       </header>
@@ -43,23 +44,23 @@ function PostPreview({ post }: { post: SocialPost }) {
   );
 }
 
-export async function UniversalSearchResults({ query }: { query: string }) {
-  const result = await loadUniversalSearch(query);
+export async function UniversalSearchResults({ query, filters }: { query: string; filters: SearchFilters }) {
+  const result = await loadUniversalSearch(query,filters);
   if (!result) {
     return <div className="network-discover-empty"><Search size={28} aria-hidden="true" /><h2>What are you looking for?</h2><p>Search a name, skill, company, job title or topic.</p></div>;
   }
   const hasResults = result.people.length + result.jobs.length + result.posts.length + result.projects.length + result.companies.length + result.topics.length > 0;
   return (
     <div className="network-universal-results">
-      <div className="network-results-heading"><h2>Results for “{query}”</h2></div>
+      <div className="network-results-heading"><h2>{query ? "Results for “"+query+"”" : "Filtered results"}</h2></div>
       {result.unavailable && <p role="status" className="network-search-caption">Some categories could not load. Refresh to try again.</p>}
       {!hasResults && <div className="network-discover-empty"><Search size={27} aria-hidden="true" /><h2>{result.unavailable ? "Search is temporarily unavailable" : "No matching results"}</h2><p>{result.unavailable ? "Please try again." : "Try a different keyword or a broader search."}</p></div>}
-      {!!result.people.length && <SearchSection title="People" kind="people" query={query}>{result.people.map(member => <MemberPreview key={member.id} member={member} />)}</SearchSection>}
-      {!!result.jobs.length && <SearchSection title="Jobs" kind="jobs" query={query}>{result.jobs.map(job => <OpportunityPreview key={job.id} job={job} />)}</SearchSection>}
-      {!!result.posts.length && <SearchSection title="Posts" kind="stories" query={query}>{result.posts.map(post => <PostPreview key={post.id} post={post} />)}</SearchSection>}
-      {!!result.projects.length && <SearchSection title="Projects" kind="projects" query={query}>{result.projects.map(post => <PostPreview key={post.id} post={post} />)}</SearchSection>}
-      {!!result.companies.length && <SearchSection title="Companies hiring" kind="companies" query={query}>{result.companies.map(job => <Link className="network-universal-preview" href={"/jobs/" + job.id} key={job.company}><span className="network-universal-icon"><Building2 size={20} aria-hidden="true" /></span><span className="network-universal-copy"><strong>{job.company}</strong><small>{job.location} · Open opportunity</small></span><ArrowRight size={17} aria-hidden="true" /></Link>)}</SearchSection>}
-      {!!result.topics.length && <SearchSection title="Topics" kind="topics" query={query}>{result.topics.map(topic => <Link className="network-topic" key={topic} href={categoryHref("stories", topic)}><strong>#{topic}</strong></Link>)}</SearchSection>}
+      {!!result.people.length && <SearchSection title="People" kind="people" query={query} filters={filters}>{result.people.map(member => <MemberPreview key={member.id} member={member} />)}</SearchSection>}
+      {!!result.jobs.length && <SearchSection title="Jobs" kind="jobs" query={query} filters={filters}>{result.jobs.map(job => <OpportunityPreview key={job.id} job={job} />)}</SearchSection>}
+      {!!result.posts.length && <SearchSection title="Posts" kind="stories" query={query} filters={filters}>{result.posts.map(post => <PostPreview key={post.id} post={post} />)}</SearchSection>}
+      {!!result.projects.length && <SearchSection title="Projects" kind="projects" query={query} filters={filters}>{result.projects.map(post => <PostPreview key={post.id} post={post} />)}</SearchSection>}
+      {!!result.companies.length && <SearchSection title="Companies hiring" kind="companies" query={query} filters={filters}>{result.companies.map(job => <Link className="network-universal-preview" href={"/jobs/" + job.id} key={job.company}><span className="network-universal-icon"><Building2 size={20} aria-hidden="true" /></span><span className="network-universal-copy"><strong>{job.company}</strong><small>{job.location} · Open opportunity</small></span><ArrowRight size={17} aria-hidden="true" /></Link>)}</SearchSection>}
+      {!!result.topics.length && <SearchSection title="Topics" kind="topics" query={query} filters={filters}>{result.topics.map(topic => <Link className="network-topic" key={topic} href={categoryHref("stories", topic)}><strong>#{topic}</strong></Link>)}</SearchSection>}
     </div>
   );
 }
