@@ -167,6 +167,8 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 
 @Composable
 fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier) {
+    var companyInbox by remember { mutableStateOf(false) }
+    if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
     // Fail safely if encrypted storage is temporarily unavailable; never
     // downgrade private message drafts to unencrypted preferences.
@@ -257,6 +259,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         if (selected == null) {
             Text("Conversations", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = inboxInk)
             Text("Private messages with your professional network", fontSize = 13.sp, color = Color.Gray)
+            FilledTonalButton(onClick={companyInbox=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp),shape=RoundedCornerShape(16.dp)){Text("Company inbox · Job conversations")}
             OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), singleLine = true, placeholder = { Text("Search conversations") }, leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = inboxTeal) }, shape = RoundedCornerShape(18.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = inboxTeal, unfocusedBorderColor = Color(0xFFD6E6E3)))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }

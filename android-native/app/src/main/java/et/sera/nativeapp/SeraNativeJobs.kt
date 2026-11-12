@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
@@ -85,6 +86,11 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
     var reload by remember { mutableIntStateOf(0) }
+    var companyChat by remember { mutableStateOf<String?>(null) }
+    var contacting by remember { mutableStateOf(false) }
+    var contactError by remember { mutableStateOf("") }
+    val scope=rememberCoroutineScope()
+    if(companyChat!=null){ Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,companyChat,onBack={companyChat=null})}; return }
     LaunchedEffect(token, reload) {
         loading = true
         val result = withContext(Dispatchers.IO) { fetchOpenJobs(token) }
@@ -200,6 +206,8 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
                     Text(job.requirements, maxLines = 8)
                 }
                 Text("Listings are submitted by employers. Never pay to apply.", fontSize = 12.sp, color = Color.Gray)
+                if(contactError.isNotBlank()) Text(contactError,color=MaterialTheme.colorScheme.error)
+                FilledTonalButton(onClick={contacting=true;contactError="";scope.launch{val (id,e)=withContext(Dispatchers.IO){startCompanyJobChat(token,job.id)};contacting=false;if(id!=null){selected=null;companyChat=id}else contactError=e}},enabled=!contacting && userId.isNotBlank(),modifier=Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)){Text(if(contacting)"Opening conversation…" else "Message company") }
                 Button(
                     onClick = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sera.hisabtech.com/jobs/" + Uri.encode(job.id))))

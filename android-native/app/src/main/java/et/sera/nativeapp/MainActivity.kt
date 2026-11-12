@@ -281,77 +281,6 @@ fun SeraApp(
         )
     }
 
-    if (activeDownloadId != null) AlertDialog(
-        onDismissRequest = { if (updateDownloaded) activeDownloadId = null },
-        title = {
-            Text(when {
-                checkingApkIntegrity -> "Verifying SERA update"
-                preparingInstaller -> "Preparing Android installer"
-                installerPermissionRequired -> "Allow SERA updates"
-                updateDownloaded -> "SERA update is ready"
-                else -> "Updating SERA"
-            })
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                when {
-                    checkingApkIntegrity -> {
-                        Text("Download complete. Checking APK integrity before installation…")
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                    preparingInstaller -> {
-                        Text("Passing your verified APK to Android's installation service…")
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                    installerPermissionRequired -> Text(
-                        "Android requires one-time permission to install updates from SERA. " +
-                        "Choose Allow from this source in Android settings, then return to SERA. " +
-                        "Your verified update is saved."
-                    )
-                    updateDownloaded -> Text(
-                        if (installerRequested)
-                            "Waiting for Android to show the installation approval. " +
-                            "If you cancelled the prompt, tap Install update again."
-                        else "The downloaded APK passed verification. Tap Install update to continue with Android's approval."
-                    )
-                    else -> {
-                        Text(
-                            if (updateTotalBytes > 0L)
-                                "Downloading inside SERA… ${updateProgress}%"
-                            else "Downloading securely inside SERA…"
-                        )
-                        if (updateTotalBytes > 0L) LinearProgressIndicator(
-                            progress = { updateProgress / 100f },
-                            modifier = Modifier.fillMaxWidth()
-                        ) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        if (updateBytes > 0L) Text(
-                            if (updateTotalBytes > 0L)
-                                "${"%.1f".format(updateBytes / 1048576.0)} MB / " +
-                                "${"%.1f".format(updateTotalBytes / 1048576.0)} MB"
-                            else "${"%.1f".format(updateBytes / 1048576.0)} MB downloaded",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            when {
-                installerPermissionRequired -> Button(onClick = {
-                    if (!requestSeraInstallPermission(context))
-                        updateNotice = "Open Android Settings → Apps → Special app access → Install unknown apps → SERA."
-                }) { Text("Allow installation") }
-                updateDownloaded && !preparingInstaller -> Button(onClick = { launchVerifiedInstaller() }) {
-                    Text("Install update")
-                }
-            }
-        },
-        dismissButton = {
-            if (updateDownloaded && !preparingInstaller) TextButton(onClick = { activeDownloadId = null }) {
-                Text("Later")
-            }
-        }
-    )
     if (updateNotice.isNotBlank()) AlertDialog(
         onDismissRequest = { updateNotice = "" },
         title = { Text("SERA update") },
@@ -448,6 +377,7 @@ fun SeraApp(
         shapes = SeraShapes
     ) {
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
+            Box(Modifier.fillMaxSize()) {
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -647,6 +577,11 @@ fun SeraApp(
                         }
                     }
                 }
+            }
+            if (activeDownloadId != null) {
+                val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                SeraUpdateProgressPanel(version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 72.dp else 12.dp))
+            }
             }
         }
     }
