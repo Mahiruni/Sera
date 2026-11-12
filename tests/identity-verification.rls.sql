@@ -2,7 +2,7 @@ begin;
 create temporary table identity_fixture(a uuid,b uuid,m uuid,r uuid);
 insert into identity_fixture(a,b,m) values(gen_random_uuid(),gen_random_uuid(),gen_random_uuid());
 grant select,update on identity_fixture to authenticated;
-insert into auth.users(id,email_confirmed_at,raw_user_meta_data,raw_app_meta_data) select a,now(),'{"full_name":"Identity QA A"}','{}' from identity_fixture union all select b,now(),'{"full_name":"Identity QA B"}','{}' from identity_fixture union all select m,now(),'{"full_name":"Identity QA Moderator"}','{"role":"moderator"}' from identity_fixture;
+insert into auth.users(id,email_confirmed_at,raw_user_meta_data,raw_app_meta_data) select a,now(),'{"full_name":"Identity QA A"}'::jsonb,'{}'::jsonb from identity_fixture union all select b,now(),'{"full_name":"Identity QA B"}'::jsonb,'{}'::jsonb from identity_fixture union all select m,now(),'{"full_name":"Identity QA Moderator"}'::jsonb,'{"role":"moderator"}'::jsonb from identity_fixture;
 update public.profiles set full_name='Identity QA A' where id=(select a from identity_fixture);
 select set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true) from identity_fixture;
 set local role authenticated;
