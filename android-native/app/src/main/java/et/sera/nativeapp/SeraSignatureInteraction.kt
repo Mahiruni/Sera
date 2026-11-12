@@ -48,7 +48,7 @@ internal fun SeraSignatureSheet(
     )
 }
 
-internal enum class SeraReactionKind { LIKE, COMMENT, REPOST, SHARE }
+internal enum class SeraReactionKind { LIKE, COMMENT, REPOST, SHARE, SAVE }
 
 /** Native vector paths matched to the 24 x 24 SERA web reaction family. */
 @Composable
@@ -67,6 +67,7 @@ internal fun SeraReactionGlyph(
             SeraReactionKind.LIKE -> listOf("M12 20.4 L4.7 13.4 C0.3 9.3 3.2 3.2 7.6 3.9 C9.4 4.1 10.7 5.1 12 6.5 C13.3 5.1 14.7 4.1 16.4 3.9 C20.8 3.2 23.7 9.3 19.3 13.4 Z")
             SeraReactionKind.COMMENT -> listOf("M20.3 11.7 C20.3 16.6 16.6 19.8 11.9 19.8 C10.7 19.8 9.5 19.6 8.4 19.2 L4 20 L4.8 15.9 C4.1 14.6 3.7 13.2 3.7 11.7 C3.7 6.8 7.4 3.4 12 3.4 C16.8 3.4 20.3 6.9 20.3 11.7 Z", "M8.5 11.8 L15.5 11.8")
             SeraReactionKind.REPOST -> listOf("M4 8.1 V6.6 C4 5.5 4.9 4.6 6 4.6 H16.3 L13.8 2.2 M16.3 4.6 L13.8 7", "M20 15.9 V17.4 C20 18.5 19.1 19.4 18 19.4 H7.7 L10.2 21.8 M7.7 19.4 L10.2 17", "M4 12.2 V16.2 M20 11.8 V7.8")
+            SeraReactionKind.SAVE -> listOf("M6.4 3.6 H17.6 V20.4 L12 16.8 L6.4 20.4 Z")
             SeraReactionKind.SHARE -> listOf("M12 15.6 V3.3 M12 3.3 L7.7 7.6 M12 3.3 L16.3 7.6", "M5.7 12.1 H4.2 V18.6 C4.2 19.7 5.1 20.6 6.2 20.6 H17.8 C18.9 20.6 19.8 19.7 19.8 18.6 V12.1 H18.3")
         }
         segments.map { PathParser().parsePathString(it).toPath() }
@@ -76,7 +77,7 @@ internal fun SeraReactionGlyph(
         withTransform({ scale(factor, factor, pivot = Offset.Zero) }) {
             val stroke = Stroke(width = 1.65f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             paths.forEachIndexed { index, path ->
-                if (kind == SeraReactionKind.LIKE && active && index == 0) drawPath(path, ink)
+                if ((kind == SeraReactionKind.LIKE || kind == SeraReactionKind.SAVE) && active && index == 0) drawPath(path, ink)
                 else drawPath(path, ink, style = stroke)
             }
         }
