@@ -5,9 +5,15 @@ on:
     paths:
       - 'android-native/**'
       - '.github/workflows/sera-native-android.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/sera-native-android.yml'
   workflow_dispatch:
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
