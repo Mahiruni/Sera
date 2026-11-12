@@ -5,7 +5,7 @@ import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
-import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount, refreshJobAlerts } from "@/lib/network/notifications";
+import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount, refreshJobAlerts, setAutomaticJobAlerts } from "@/lib/network/notifications";
 import { notificationTabs, notificationTab, kindsForTab, notificationPage, notificationHref, notificationTimeGroup, notificationRequestTime } from "@/lib/network/notification-model";
 import { NotificationRefresh } from "@/components/network/notification-refresh";
 export const metadata={title:"Notifications | SERA.et",robots:{index:false,follow:false}};
@@ -29,6 +29,8 @@ export default async function NotificationsPage({searchParams}:{searchParams:Pro
  const jobResult=jobIds.length?await db.from("jobs").select("id,title,company").in("id",jobIds).eq("status","open"):{data:[]};
  const jobs=new Map((jobResult.data??[]).map(j=>[j.id,j]));
  const people=await memberCards(notifications.filter(n=>n.kind!=="job_match").map(n=>n.actor_id));
+ const preference=tab==="opportunities"?await db.from("sera_job_alert_preferences").select("enabled").eq("user_id",user.id).maybeSingle():null;
+ const automatic=preference?.data?.enabled===true;
  const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
  return <div className="sera-network network-app sera-notifications"><NotificationRefresh />
   <PageIntro icon={Bell} title="Notifications" description="Keep up with the people and ideas that matter to you.">
@@ -36,7 +38,7 @@ export default async function NotificationsPage({searchParams}:{searchParams:Pro
   </PageIntro>
   {error&&<p role="alert">Notifications are temporarily unavailable. Please try again.</p>}
   <nav className="sera-notification-tabs" aria-label="Notification categories">{notificationTabs.map(t=><Link key={t} href={notificationHref(t)} aria-current={tab===t?"page":undefined}>{labels[t]}{t==="unread"&&unread>0?" · "+unread:""}</Link>)}</nav>
-  {tab==="opportunities"&&<form action={refreshJobAlerts} className="sera-notifications-tools"><p>Check recent opportunities that match your profile skills and preferred roles.</p><button type="submit" className="network-button">Refresh job matches</button></form>}
+  {tab==="opportunities"&&<section className="network-universal-section"><h2>Career alerts</h2><p>Get relevant new jobs in your SERA inbox. Up to three matches per day.</p>{preference?.error?<p role="status">Alert preferences temporarily unavailable.</p>:<form action={setAutomaticJobAlerts}><input type="hidden" name="enabled" value={automatic?"false":"true"}/><button className="network-button" type="submit">{automatic?"Turn off automatic alerts":"Turn on automatic alerts"}</button><p className="network-search-caption">{automatic?"Automatic alerts enabled":"Automatic alerts are off"}</p></form>}<form action={refreshJobAlerts}><button type="submit" className="network-button">Refresh job matches</button></form></section>}
   <div className="sera-notifications-list">
   {notifications.map((n,index)=>{
    const group=notificationTimeGroup(n.created_at,now);const previous=index?notificationTimeGroup(notifications[index-1].created_at,now):null;
