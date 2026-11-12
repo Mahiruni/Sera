@@ -10,7 +10,7 @@ insert into auth.users(id,raw_user_meta_data) select u,'{"full_name":"Sera QA Un
 -- Author A: publish a post, a draft, and a photo post that needs an image before publishing.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$declare pid uuid;begin
+do $$$declare pid uuid;begin
  insert into public.posts(kind,status,title,body,skills) values('idea','published','QA idea','Body',array['design']) returning id into pid;
  update sera_qa_ids set post=pid;
  insert into public.posts(kind,status,title) values('idea','draft','QA draft');
@@ -29,7 +29,7 @@ reset role;
 -- Member B: sees published only, cannot edit or delete, interacts privately.
 select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uuid;begin
+do $$$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uuid;begin
  if (select count(*) from public.posts where title='QA draft')<>0 then raise exception 'Draft visible to another member';end if;
  if (select count(*) from public.posts where id=pid)<>1 then raise exception 'Published post not visible to members';end if;
  update public.posts set title='Hacked' where id=pid;get diagnostics affected=row_count;if affected<>0 then raise exception 'Cross-user edit';end if;
@@ -60,7 +60,7 @@ reset role;
 -- Privacy: A cannot see B's likes or saves; A (post owner) may remove a comment, replies cascade, counts follow.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$begin
+do $$$begin
  if (select count(*) from public.post_likes)<>0 or (select count(*) from public.post_saves)<>0 or (select count(*) from public.post_shares)<>0 then raise exception 'Private interaction rows leaked';end if;
  delete from public.post_comments where parent_id is null;
  if (select comment_count from public.posts where id=(select post from sera_qa_ids))<>0 then raise exception 'Comment count not reconciled after cascade';end if;
@@ -71,19 +71,19 @@ reset role;
 -- Unverified and anonymous accounts.
 select set_config('request.jwt.claims',json_build_object('sub',(select u from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$begin
+do $$$begin
  begin insert into public.posts(kind,status,title) values('idea','published','Unverified post');raise exception 'Unverified post allowed';exception when insufficient_privilege then null;end;
  begin insert into public.post_likes(post_id) select post from sera_qa_ids;raise exception 'Unverified like allowed';exception when insufficient_privilege then null;end;
 end$$;
 reset role;
 set local role anon;
-do $$begin begin perform * from public.posts;raise exception 'Anonymous feed read allowed';exception when insufficient_privilege then null;end;end$$;
+do $$$begin begin perform * from public.posts;raise exception 'Anonymous feed read allowed';exception when insufficient_privilege then null;end;end$$;
 reset role;
 
 -- Deleting a published photo post cascades its images despite the last-image guard.
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $$declare affected integer;begin
+do $$$declare affected integer;begin
  perform public.sera_manage_post((select photo from sera_qa_ids),'trash');
  if exists(select 1 from public.posts where id=(select photo from sera_qa_ids)) then raise exception 'Binned post visible';end if;
  perform public.sera_manage_post((select photo from sera_qa_ids),'restore');
@@ -98,13 +98,13 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
 select public.sera_manage_post((select post from sera_qa_ids),'privacy','only_me');
-do $begin
+do $$begin
  if not exists(select 1 from public.posts where id=(select post from sera_qa_ids)) then raise exception 'Owner cannot read own private post';end if;
-end$;
+end$$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $declare pid uuid:=(select post from sera_qa_ids); action_name text; denied boolean;begin
+do $$declare pid uuid:=(select post from sera_qa_ids); action_name text; denied boolean;begin
  if exists(select 1 from public.posts where id=pid) then raise exception 'Only-me post leaked';end if;
  foreach action_name in array array['privacy','trash','restore','purge'] loop
   denied:=false;
@@ -112,48 +112,81 @@ do $declare pid uuid:=(select post from sera_qa_ids); action_name text; denied b
   exception when raise_exception then denied:=true;end;
   if not denied then raise exception 'Non-owner management allowed: %',action_name;end if;
  end loop;
-end$;
+end$$;
 reset role;
 -- Without a connection or follow, neither restricted audience is visible.
-do $declare audience_name text;begin
+do $$declare audience_name text;begin
  foreach audience_name in array array['connections','followers'] loop
   perform set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
   perform public.sera_manage_post((select post from sera_qa_ids),'privacy',audience_name);
   perform set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
   if private.post_published((select post from sera_qa_ids)) then raise exception 'Restricted audience leaked: %',audience_name;end if;
  end loop;
-end$;
+end$$;
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $declare pid uuid:=(select post from sera_qa_ids);begin
+do $$declare pid uuid:=(select post from sera_qa_ids);begin
  perform public.sera_manage_post(pid,'privacy','only_me');
  perform public.sera_manage_post(pid,'trash');
  if not exists(select 1 from public.sera_list_post_bin() where id=pid and audience='only_me' and expires_at=deleted_at+interval '30 days') then raise exception 'Bin did not preserve audience or retention';end if;
-end$;
+end$$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $begin
+do $$begin
  if exists(select 1 from public.sera_list_post_bin() where id=(select post from sera_qa_ids)) then raise exception 'Another owner bin leaked';end if;
-end$;
+end$$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $declare pid uuid:=(select post from sera_qa_ids);begin
+do $$declare pid uuid:=(select post from sera_qa_ids);begin
  perform public.sera_manage_post(pid,'restore');
  if not exists(select 1 from public.posts where id=pid and audience='only_me') then raise exception 'Restore changed post privacy';end if;
  perform public.sera_manage_post(pid,'trash');
-end$;
+end$$;
 reset role;
+-- Positive audience access: fixtures remain inside the rollback transaction.
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+insert into public.professional_follows(follower_id,followed_id) select b,a from sera_qa_ids;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'restore');
+select public.sera_manage_post((select post from sera_qa_ids),'privacy','followers');
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if not exists(select 1 from public.posts where id=(select post from sera_qa_ids)) then raise exception 'Follower cannot read followers post';end if;
+end$$;
+insert into public.professional_connection_requests(requester_id,recipient_id) select b,a from sera_qa_ids;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+update public.professional_connection_requests set status='accepted' where requester_id=(select b from sera_qa_ids) and recipient_id=(select a from sera_qa_ids);
+select public.sera_manage_post((select post from sera_qa_ids),'privacy','connections');
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if not exists(select 1 from public.posts where id=(select post from sera_qa_ids)) then raise exception 'Accepted connection cannot read connections post';end if;
+end$$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'trash');
+reset role;
+
 -- Simulate expiry without waiting 30 days; the fixture transaction is rolled back.
 update public.posts set deleted_at=now()-interval '31 days' where id=(select post from sera_qa_ids);
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
-do $declare pid uuid:=(select post from sera_qa_ids); denied boolean:=false;begin
+do $$declare pid uuid:=(select post from sera_qa_ids); denied boolean:=false;begin
  if exists(select 1 from public.sera_list_post_bin() where id=pid) then raise exception 'Expired post remained recoverable';end if;
  begin perform public.sera_manage_post(pid,'restore');exception when raise_exception then denied:=true;end;
  if not denied then raise exception 'Expired post restored';end if;
-end$;
+end$$;
 reset role;
 
 select 'PASS: social feed ownership, visibility, privacy, counters, cascades and anonymous isolation' as result;
