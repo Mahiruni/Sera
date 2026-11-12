@@ -118,35 +118,7 @@ export function socialClient(db, user) {
     failures,
     files,
     from,
-    async rpc(name, values={}) { const entries=Object.entries(values); const r=await query('select public.'+quote(name)+'('+entries.map(([k],i)=>quote(k)+' =>     auth: { getUser: async () => ({ data: { user } }) },
-    storage: {
-      from: (bucket) => ({
-        async upload(path, bytes) {
-          if (failures.upload)
-            return { error: { message: "Injected upload failure" } };
-          const result = await query(
-            "insert into storage.objects(bucket_id,name) values ($1,$2) returning id",
-            [bucket, path],
-          );
-          if (!result.error) files.set(path, bytes);
-          return result;
-        },
-        async remove(paths) {
-          for (const path of paths) {
-            const result = await query(
-              "delete from storage.objects where bucket_id=$1 and name=$2 returning id",
-              [bucket, path],
-            );
-            if (result.error) return result;
-            files.delete(path);
-          }
-          return { error: null };
-        },
-      }),
-    },
-  };
-}
-+(i+1)).join(',')+') as value',entries.map(([,v])=>v)); return r.error?r:{data:r.data[0]?.value??null,error:null}; },
+    async rpc(name, values={}) { const entries=Object.entries(values); const r=await query('select public.'+quote(name)+'('+entries.map(([k],i)=>quote(k)+' => $'+(i+1)).join(',')+') as value',entries.map(([,v])=>v)); return r.error?r:{data:r.data[0]?.value??null,error:null}; },
     auth: { getUser: async () => ({ data: { user } }) },
     storage: {
       from: (bucket) => ({
