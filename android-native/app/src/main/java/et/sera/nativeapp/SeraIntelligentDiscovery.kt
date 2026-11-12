@@ -28,7 +28,7 @@ private fun rpcRows(token:String,name:String,body:JSONObject=JSONObject()):List<
  return rows(org.json.JSONArray(result.first))
 }
 private suspend fun loadDiscovery(token:String,userId:String):DiscoverySnapshot=coroutineScope {
- val p=runCatching{searchRows(token,"profiles",mapOf("select" to "skills,preferred_roles,location","id" to "eq."+userId,"limit" to "1")).optJSONObject(0)}
+ val p=withContext(Dispatchers.IO){runCatching{searchRows(token,"profiles",mapOf("select" to "skills,preferred_roles,location","id" to "eq."+userId,"limit" to "1")).optJSONObject(0)}}
  val profile=p.getOrNull()
  if(profile==null)return@coroutineScope DiscoverySnapshot(emptyList(),true,false)
  val skills=terms(profile.field("skills"));val roles=terms(profile.field("preferred_roles"));val all=(skills+roles).distinct()
