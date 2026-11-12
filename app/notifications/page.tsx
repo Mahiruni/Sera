@@ -6,7 +6,7 @@ import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { markNotificationRead, markAllNotificationsRead, professionalUnreadCount } from "@/lib/network/notifications";
-import { notificationTabs, notificationTab, kindsForTab, notificationPage, notificationHref, notificationTimeGroup } from "@/lib/network/notification-model";
+import { notificationTabs, notificationTab, kindsForTab, notificationPage, notificationHref, notificationTimeGroup, notificationRequestTime } from "@/lib/network/notification-model";
 import { NotificationRefresh } from "@/components/network/notification-refresh";
 export const metadata={title:"Notifications | SERA.et",robots:{index:false,follow:false}};
 const descriptions:Record<string,string>={
@@ -24,7 +24,7 @@ export default async function NotificationsPage({searchParams}:{searchParams:Pro
  if(kinds)query=query.in("kind",[...kinds]);
  const start=(page-1)*30;
  const {data:rows,error}=await query.order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,start+30);
- const notifications=(rows??[]).slice(0,30);const hasMore=(rows?.length??0)>30;const now=Date.now();
+ const notifications=(rows??[]).slice(0,30);const hasMore=(rows?.length??0)>30;const now=notificationRequestTime();
  const people=await memberCards(notifications.map(n=>n.actor_id));
  const unread=await professionalUnreadCount().catch(()=>notifications.filter(n=>!n.read_at).length);
  return <div className="sera-network network-app sera-notifications"><NotificationRefresh />

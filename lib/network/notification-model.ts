@@ -26,3 +26,6 @@ export function notificationTimeGroup(created:string,now=Date.now()):"Today"|"Ye
  const day=(t:number)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Addis_Ababa",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(t));
  return day(d.getTime())===day(now)?"Today":day(d.getTime())===day(now-86400000)?"Yesterday":"Earlier";
 }
+
+// Request-scoped clock for server-rendered notification date sections.
+export function notificationRequestTime(){return Date.now();}
