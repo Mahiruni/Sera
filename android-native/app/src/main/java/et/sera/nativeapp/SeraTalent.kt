@@ -77,6 +77,7 @@ private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="
       Text(entry.portfolioText("title"),style=MaterialTheme.typography.titleLarge)
       if(entry.portfolioText("issuer").isNotBlank())Text(entry.portfolioText("issuer"),style=MaterialTheme.typography.bodySmall)
       Text(entry.portfolioText("description"))
+      if(entry.portfolioText("kind")=="project")SeraProjectGallery(token,entry.portfolioText("id"))
       val url=entry.portfolioText("external_url")
       if(url.startsWith("https://"))TextButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}}){Text("View project or credential")}
      }}
