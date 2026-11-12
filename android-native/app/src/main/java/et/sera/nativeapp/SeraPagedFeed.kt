@@ -60,6 +60,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(token,authorIds,presenceLifecycle) { presenceLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while(true) { activeAuthors=withContext(Dispatchers.IO){feedPresence(token,authorIds)} ?: emptySet(); kotlinx.coroutines.delay(30000) } } }
 
+    var nativePostId by remember { mutableStateOf<String?>(null) }
     var commentsPostId by remember { mutableStateOf<String?>(null) }
     var expandedImage by remember { mutableStateOf<String?>(null) }
     var repostTarget by remember { mutableStateOf<SeraPost?>(null) }
@@ -139,7 +140,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 Row(Modifier.fillMaxWidth().background(Color(0xFFF1F8F7),RoundedCornerShape(14.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
                                     if(post.originalAvatar!=null)SeraMediaImage(post.originalAvatar,"Original author",96,96,modifier=Modifier.size(30.dp).clip(CircleShape))
                                     Column(Modifier.weight(1f)){Text(post.repostAuthor?:"Original post unavailable",color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=12.sp);Text("Original · "+postTimeLabel(post.originalTime.orEmpty()),color=feedMuted,fontSize=11.sp)}
-                                    if(post.originalBody!=null)TextButton(onClick={context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://sera.hisabtech.com/posts/"+post.repostOf)))}){Text("Open",fontSize=11.sp)}
+                                    if(post.originalBody!=null)TextButton(onClick={nativePostId=post.repostOf}){Text("Open",fontSize=11.sp)}
                                 }
                             }
                             if (title.isNotBlank() && !body.replace(Regex("\\s+")," ").startsWith(title.replace(Regex("\\s+")," "),ignoreCase=true)) {
@@ -354,6 +355,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         }
     }
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }
+    nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;posts.refresh()}) }
     commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }
 }
 
