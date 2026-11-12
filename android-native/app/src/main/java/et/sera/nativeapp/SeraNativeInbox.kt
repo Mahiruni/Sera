@@ -15,6 +15,17 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import kotlin.math.roundToInt
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.*
@@ -191,10 +202,19 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 
 @Composable
 fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}) {
+    val dark=androidx.compose.foundation.isSystemInDarkTheme()
+    val scheme=if(dark) darkColorScheme(primary=Color(0xFF6DE0D8),onPrimary=Color(0xFF10383B),surface=Color(0xFF14282D),onSurface=Color(0xFFE6F2F1),surfaceVariant=Color(0xFF233E43),onSurfaceVariant=Color(0xFFA8C3C5),background=Color(0xFF14282D),onBackground=Color(0xFFE6F2F1)) else MaterialTheme.colorScheme
+    MaterialTheme(colorScheme=scheme,typography=MaterialTheme.typography,shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility)}
+}
+@Composable
+private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit){
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
+    val clipboard=LocalClipboardManager.current
+    val haptics=LocalHapticFeedback.current
+    val swipeThreshold=with(LocalDensity.current){64.dp.toPx()}
     // Fail safely if encrypted storage is temporarily unavailable; never
     // downgrade private message drafts to unencrypted preferences.
     val savedDrafts = remember(context) { runCatching { SeraInboxDrafts(context) }.getOrNull() }
@@ -236,6 +256,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var remove by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var forwarding by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var forwardClient by remember{mutableStateOf("")}
+    var forwardQuery by remember(selected?.id){mutableStateOf("")}
+    var forwardTarget by remember(selected?.id){mutableStateOf<String?>(null)}
+    var forwardBusy by remember(selected?.id){mutableStateOf(false)}
     var historyLimit by remember(selected?.id){mutableIntStateOf(100)}
     var messageSearch by remember(selected?.id){mutableStateOf("")}
     var showSearch by remember(selected?.id){mutableStateOf(false)}
@@ -250,7 +273,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
     LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
-    DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.pause()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
+    DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.stop()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
     LaunchedEffect(attachment){if(playback.activeId?.startsWith("preview:")==true&&playback.activeId!="preview:"+System.identityHashCode(attachment))playback.stop()}
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
     LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
@@ -265,8 +288,13 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
     if(remove!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Unsend message?")},text={Text("This message will be removed for everyone.")},confirmButton={TextButton(onClick={val id=remove!!.id;remove=null;scope.launch{val r=withContext(Dispatchers.IO){unsendNativeMessage(token,id)};if(r.first==null)error=r.second else reload()}}){Text("Unsend")}},dismissButton={TextButton(onClick={remove=null}){Text("Cancel")}})
-    if(reaction!=null)AlertDialog(onDismissRequest={reaction=null},title={Text("React to message")},text={Row{listOf("👍","❤️","😂","😮","😢","👏").forEach{emoji->TextButton(onClick={reaction?.let{react(it,emoji)}},contentPadding=PaddingValues(2.dp)){Text(emoji,fontSize=20.sp)}}}},confirmButton={TextButton(onClick={reaction=null}){Text("Close")}})
-    if(forwarding!=null)AlertDialog(onDismissRequest={forwarding=null},title={Text("Forward message")},text={Column{conversations.forEach{target->TextButton(onClick={val source=forwarding?:return@TextButton;scope.launch{val r=withContext(Dispatchers.IO){runCatching{val f=source.files.firstOrNull()?.let{NativeChatSelection(it.name,it.mime,readChatFile(token,it),it.durationMs)};sendNativeMessageV2(token,userId,target.id,forwardClient,source.body,f,forward=source.id)}.getOrElse{null to "Forward failed. Retry."}};if(r.first!=null){forwarding=null;refresh++;reload()}else error=r.second}}){Text(target.peerName)}}}},confirmButton={TextButton(onClick={forwarding=null}){Text("Cancel")}})
+    if(reaction!=null)AlertDialog(onDismissRequest={reaction=null},title={Text("React to message")},text={Column(verticalArrangement=Arrangement.spacedBy(4.dp)){listOf("👍","❤️","😂","😮","😢","👏").chunked(3).forEach{group->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){group.forEach{emoji->IconButton(onClick={reaction?.let{react(it,emoji)}},modifier=Modifier.size(48.dp)){Text(emoji,fontSize=23.sp)}}}}}},confirmButton={TextButton(onClick={reaction=null}){Text("Close")}})
+    if(forwarding!=null)AlertDialog(onDismissRequest={if(!forwardBusy)forwarding=null},title={Text("Forward message")},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+        Text(forwarding?.body?.take(120).orEmpty(),maxLines=3,overflow=TextOverflow.Ellipsis,fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(forwardQuery,{forwardQuery=it},singleLine=true,placeholder={Text("Search conversations")},modifier=Modifier.fillMaxWidth())
+        LazyColumn(Modifier.heightIn(max=220.dp)){items(conversations.filter{it.peerName.contains(forwardQuery.trim(),true)},key={it.id}){target->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){RadioButton(selected=forwardTarget==target.id,onClick={forwardTarget=target.id},enabled=!forwardBusy);TextButton(onClick={forwardTarget=target.id},enabled=!forwardBusy,modifier=Modifier.weight(1f)){Text(target.peerName,maxLines=1,overflow=TextOverflow.Ellipsis)}}}}
+    }},confirmButton={Button(enabled=forwardTarget!=null&&!forwardBusy,onClick={val source=forwarding?:return@Button;val target=forwardTarget?:return@Button;forwardBusy=true;scope.launch{try{val r=withContext(Dispatchers.IO){runCatching{val f=source.files.firstOrNull()?.let{NativeChatSelection(it.name,it.mime,readChatFile(token,it),it.durationMs)};sendNativeMessageV2(token,userId,target,forwardClient,source.body,f,forward=source.id)}.getOrElse{null to "Forward failed. Retry."}};if(r.first!=null){forwarding=null;refresh++;reload()}else error=r.second}finally{forwardBusy=false}}}){Text(if(forwardBusy)"Forwarding…" else "Forward")}},dismissButton={TextButton(onClick={forwarding=null},enabled=!forwardBusy){Text("Cancel")}})
+
 
     val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -339,6 +367,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
     val chatSurface = if(dark) Color(0xFF14282D) else Color(0xFFFAFCFC)
     val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
+    val accent=if(dark) Color(0xFF6DE0D8) else inboxTeal
     Column(modifier.fillMaxSize().background(chatSurface).then(if(selected!=null) Modifier.imePadding().navigationBarsPadding() else Modifier).padding(horizontal = 12.dp)) {
         Spacer(Modifier.height(12.dp))
         if (selected == null) {
@@ -405,15 +434,22 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 14.dp)) {
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick={historyLimit=(historyLimit+100).coerceAtMost(1000)}){Text("Load earlier messages")}}
-                items(messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}, key = { it.id }) { message ->
+                val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
+                itemsIndexed(filteredMessages,key={_,message->message.id}) { index,message ->
+                    val date=runCatching{java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
+                    val previousDate=filteredMessages.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
+                    if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
                     val own = message.senderId == userId
+                    var swipe by remember(message.id){mutableFloatStateOf(0f)}
+                    val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(110),label="Reply gesture")
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent) Box {
                             IconButton(onClick={menu=message.id},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.MoreVert,"Message actions",tint=muted)}
                             DropdownMenu(expanded=menu==message.id,onDismissRequest={menu=null}) {
                                 DropdownMenuItem(text={Text("Reply")},onClick={reply=message;menu=null})
                                 DropdownMenuItem(text={Text("React")},onClick={reaction=message;menu=null})
-                                DropdownMenuItem(text={Text("Forward")},onClick={forwarding=message;forwardClient=UUID.randomUUID().toString();menu=null})
+                                DropdownMenuItem(text={Text("Forward")},onClick={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery="";menu=null})
+                                if(message.body.isNotBlank())DropdownMenuItem(text={Text("Copy text")},onClick={clipboard.setText(AnnotatedString(message.body));menu=null})
                                 if(own)DropdownMenuItem(text={Text("Unsend")},onClick={remove=message;menu=null})
                             }
                         }
@@ -422,15 +458,15 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                         if(own) actions()
                         Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
                             color = if (own) inboxTeal else inboxSoft,
-                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}else Modifier)) {
+                            modifier = Modifier.widthIn(max = maxBubbleWidth).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){reply=message;haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else inboxTeal)
-                                if(message.replyId.isNotBlank()&&!message.unsent)Surface(color=if(own)Color.White.copy(alpha=.13f)else chatSurface,shape=RoundedCornerShape(10.dp),modifier=Modifier.padding(bottom=6.dp)){Column(Modifier.padding(horizontal=10.dp,vertical=7.dp)){Text("Reply",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color.White else inboxTeal);Text(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}
+                                if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else accent)
+                                if(message.replyId.isNotBlank()&&!message.unsent)Surface(color=if(own)Color.White.copy(alpha=.13f)else chatSurface,shape=RoundedCornerShape(10.dp),modifier=Modifier.padding(bottom=6.dp)){Column(Modifier.padding(horizontal=10.dp,vertical=7.dp)){Text("Reply",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color.White else accent);Text(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}
                                 if (message.body != "Attachment" || message.files.isEmpty()) Text(if(message.unsent) "Message unsent" else message.body, color = if (own) Color.White else inboxInk,fontSize=15.sp,lineHeight=21.sp)
-                                if(!message.unsent&&message.reactions.isNotEmpty()) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=6.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}
+                                if(!message.unsent&&message.reactions.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.entries.chunked(3).forEach{group->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){group.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=5.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}}}
 
                                 message.files.filter{!message.unsent}.forEach { file ->
-                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else inboxTeal,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else{
+                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else accent,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else{
                                     TextButton(onClick = { scope.launch {
                                         val result = withContext(Dispatchers.IO) { runCatching { downloadChatFile(context,token,file) } }
                                         result.onSuccess { uri -> runCatching { openChatFile(context,uri,file.mime) }.onFailure { error="No app can open this file." } }.onFailure { error=it.message ?: "Could not open attachment." }
@@ -461,7 +497,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             attachment?.let { file ->
                 Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,inboxTeal,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{Icon(Icons.Outlined.Description,null,tint=inboxTeal); Spacer(Modifier.width(8.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }}
+                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{Icon(Icons.Outlined.Description,null,tint=accent); Spacer(Modifier.width(8.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }}
                         IconButton(onClick={attachment=null},enabled=!sending) { Icon(Icons.Outlined.Close,"Remove attachment") }
                     }
                 }
@@ -471,7 +507,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=inboxTeal) }
+                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=accent) }
                 SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()})
                 if(!recordingVoice) OutlinedTextField(
                     value = draft, onValueChange = {
