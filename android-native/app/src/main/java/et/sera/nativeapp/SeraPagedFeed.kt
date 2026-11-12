@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -57,9 +58,13 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     var reposting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val expandedPosts = remember { mutableStateMapOf<String, Boolean>() }
+    val reactionOverrides = remember(token, refreshKey) { mutableStateMapOf<String, Pair<Boolean, Int>>() }
+    val reactionPending = remember(token) { mutableStateMapOf<String, Boolean>() }
+    var reactionError by remember { mutableStateOf("") }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     PullToRefreshBox(
         isRefreshing = posts.loadState.refresh is LoadState.Loading,
-        onRefresh = { posts.refresh() },
+        onRefresh = { reactionOverrides.clear(); posts.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
@@ -149,13 +154,26 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val likeTint = if (post.liked) feedTeal else feedMuted
+                                val reaction = reactionOverrides[post.id] ?: (post.liked to post.likes)
+                                val likeTint = if (reaction.first) feedTeal else feedMuted
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = { onLike(post) }, modifier = Modifier.size(48.dp)) {
-                                        SeraReactionGlyph(SeraReactionKind.LIKE, active = post.liked)
+                                    IconButton(onClick = {
+                                        if(reactionPending[post.id]==true) return@IconButton
+                                        val previous=reactionOverrides[post.id] ?: (post.liked to post.likes)
+                                        reactionOverrides[post.id]=(!previous.first to (previous.second + if(previous.first) -1 else 1).coerceAtLeast(0))
+                                        reactionPending[post.id]=true
+                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        scope.launch {
+                                            val result=withContext(Dispatchers.IO){setSeraLike(token,post.id,previous.first)}
+                                            if(!result.first){reactionOverrides[post.id]=previous;reactionError=result.second}
+                                            reactionPending.remove(post.id)
+                                        }
+                                    }, modifier = Modifier.size(48.dp)) {
+                                        val scale by animateFloatAsState(if(reaction.first) 1.08f else 1f,label="Like scale")
+                                        SeraReactionGlyph(SeraReactionKind.LIKE, active = reaction.first, modifier=Modifier.graphicsLayer { scaleX=scale; scaleY=scale })
                                     }
-                                    if (post.likes > 0) Text(post.likes.toString(), fontSize = 11.sp, color = likeTint)
+                                    if (reaction.second > 0) Text(reaction.second.toString(), fontSize = 11.sp, color = likeTint)
                                 }
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center) {
@@ -205,6 +223,9 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 Text(stringResource(R.string.feed_empty))
             }
         }
+    }
+    if(reactionError.isNotBlank()) {
+        LaunchedEffect(reactionError){ android.widget.Toast.makeText(context,reactionError,android.widget.Toast.LENGTH_SHORT).show(); reactionError="" }
     }
     repostTarget?.let { selected ->
         SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {

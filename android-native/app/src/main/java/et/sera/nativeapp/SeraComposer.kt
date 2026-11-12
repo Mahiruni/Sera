@@ -197,8 +197,8 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
             }
-                Text("Posts are reviewed for safety. Text drafts stay on this device.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
-                if (selectedImages.isNotEmpty()) Text("Photos are checked for safety before your post appears.", style = MaterialTheme.typography.bodySmall, color = accent)
+                Text("Keep posts professional. Text drafts stay on this device.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
+                if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = Color(0xFFE4EFED))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

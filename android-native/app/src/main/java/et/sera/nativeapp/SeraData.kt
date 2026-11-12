@@ -172,15 +172,17 @@ fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, St
             if (!liked) {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
-                setRequestProperty("Prefer", "resolution=ignore-duplicates")
+                setRequestProperty("Prefer", "return=minimal")
             }
         }
         if (!liked) connection.outputStream.use {
             it.write(JSONObject().put("post_id", postId).toString().toByteArray())
         }
         val status = connection.responseCode
+        val response = if(status !in 200..299) connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty() else ""
         connection.disconnect()
-        (status in 200..299) to if (status in 200..299) "" else "Unable to update reaction (HTTP $status)."
+        val duplicate = !liked && status == 409 && runCatching { JSONObject(response).optString("code") == "23505" }.getOrDefault(false)
+        (status in 200..299 || duplicate) to if (status in 200..299 || duplicate) "" else "Unable to update reaction (HTTP $status)."
     } catch (e: Exception) { false to "Connection failed. Please retry." }
 }
 

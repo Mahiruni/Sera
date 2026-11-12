@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
+import { screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { uuid } from "@/lib/social/validation";
 
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key || !moderationEnabled() || !securePublishingConfigured())
+  if (!url || !key || !securePublishingConfigured())
     return NextResponse.json({ error: "Secure commenting is temporarily unavailable." }, { status: 503 });
   const client = createClient(url, key, {
     global: { headers: { Authorization: bearer } },

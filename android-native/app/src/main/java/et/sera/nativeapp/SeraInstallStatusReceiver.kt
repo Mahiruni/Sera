@@ -41,7 +41,8 @@ class SeraInstallStatusReceiver : BroadcastReceiver() {
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                clearSeraPendingUpdate(context)
+                val id=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE).getLong("id",-1L)
+                if(id>0) discardSeraDownload(context,id) else clearSeraPendingUpdate(context)
             }
             else -> {
                 val explanation = when (status) {

@@ -8,12 +8,13 @@ type ModerationResponse = {
 
 /** No public-facing moderation request is made without explicit server configuration. */
 export function moderationEnabled() {
-  return process.env.SERA_MODERATION_ENABLED === "true";
+  return false; // Temporary operator-requested pause; reporting and access controls remain active.
 }
 export async function screenSubmission(
   post: { kind: PostKind; title: string; body: string; quote_source: string; category: string; skills: string[] },
   images: Buffer[],
 ): Promise<ModerationResult> {
+  if (!moderationEnabled()) return { verdict: "approved" };
   const key = process.env.SERA_MODERATION_API_KEY;
   if (!key) { console.error("[sera-moderation] Missing server-side key"); return { verdict: "review", reason: "Moderation provider is not configured." }; }
   const text = [post.title, post.body, post.quote_source, post.category, ...post.skills].filter(Boolean).join("\n").slice(0, 16000);

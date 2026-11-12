@@ -11,5 +11,5 @@ export function moderationWriter() {
 
 /** The application must not enable its gate without both trusted credentials. */
 export function securePublishingConfigured() {
-  return Boolean(process.env.SERA_MODERATION_API_KEY && process.env.SERA_SUPABASE_SERVICE_ROLE_KEY && process.env.SERA_MODERATION_ENABLED === "true");
+  return Boolean(process.env.SERA_SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL);
 }

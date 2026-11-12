@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
+import { screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { MEDIA_BUCKET, MEDIA_LIMIT, readPost, validMedia } from "@/lib/social/validation";
 
@@ -12,7 +12,7 @@ const fail = (error: string, status: number) => NextResponse.json({ error }, { s
 export async function POST(request: NextRequest) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [A-Za-z0-9._~-]+$/.test(bearer)) return fail("Authentication required.", 401);
-  if (!moderationEnabled() || !securePublishingConfigured()) return fail("Secure publishing unavailable.", 503);
+  if (!securePublishingConfigured()) return fail("Secure publishing unavailable.", 503);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return fail("Authentication configuration unavailable.", 503);

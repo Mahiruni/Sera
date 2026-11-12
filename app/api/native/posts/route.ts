@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
+import { screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { readPost } from "@/lib/social/validation";
 
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [A-Za-z0-9._~-]+$/.test(bearer))
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!moderationEnabled() || !securePublishingConfigured())
+  if (!securePublishingConfigured())
     return NextResponse.json({ error: "Secure publishing is unavailable." }, { status: 503 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

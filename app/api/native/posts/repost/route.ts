@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
+import { screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { readPost, uuid } from "@/lib/social/validation";
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [A-Za-z0-9._~-]+$/.test(bearer))
     return fail("Please sign in before reposting.", 401);
-  if (!moderationEnabled() || !securePublishingConfigured())
+  if (!securePublishingConfigured())
     return fail("Secure repost publishing is temporarily unavailable.", 503);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

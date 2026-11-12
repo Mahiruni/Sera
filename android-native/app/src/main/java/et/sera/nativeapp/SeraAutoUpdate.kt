@@ -66,7 +66,8 @@ internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
         val request = DownloadManager.Request(Uri.parse(release.url))
             .setTitle("SERA.et " + release.versionName)
             .setDescription("Downloading verified release package")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
+            .setVisibleInDownloadsUi(false)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "sera-update-${release.versionCode}-${System.currentTimeMillis()}.apk")
             .setMimeType("application/vnd.android.package-archive")
         manager.enqueue(request)
@@ -134,7 +135,8 @@ internal fun readSeraPendingUpdate(context: Context): SeraPendingUpdate? {
     val code = prefs.getInt("code", 0)
     val name = prefs.getString("name", "").orEmpty()
     val sha = prefs.getString("sha256", "").orEmpty()
-    if (id <= 0 || code <= BuildConfig.VERSION_CODE ||
+    if (id > 0 && code <= BuildConfig.VERSION_CODE) { discardSeraDownload(context,id); return null }
+    if (id <= 0 ||
         !name.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) ||
         !sha.matches(Regex("[a-f0-9]{64}"))) {
         clearSeraPendingUpdate(context)

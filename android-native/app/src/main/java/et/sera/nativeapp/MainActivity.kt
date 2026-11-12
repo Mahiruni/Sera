@@ -548,7 +548,7 @@ fun SeraApp(
                                                     val result = withContext(Dispatchers.IO) {
                                                         setSeraLike(token, post.id, post.liked)
                                                     }
-                                                    if (result.first) refresh++ else dataError = result.second
+                                                    if (!result.first) dataError = result.second
                                                 }
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset)
@@ -603,7 +603,7 @@ fun SeraApp(
             }
             if (activeDownloadId != null) {
                 val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                SeraUpdateProgressPanel(version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 72.dp else 12.dp))
+                SeraUpdateProgressPanel(version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 86.dp else 12.dp))
             }
             }
         }
