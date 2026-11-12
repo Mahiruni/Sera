@@ -3,7 +3,9 @@ package et.sera.nativeapp
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,10 +29,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 private data class SeraProfessional(
-    val id: String, val name: String, val headline: String, val location: String
+    val id: String, val name: String, val headline: String, val location: String, val avatar:String?=null
 )
 
-private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, String> {
+private fun loadProfessionals(token: String, relatedIds:List<String> = emptyList()): Pair<List<SeraProfessional>?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
         return null to "Professional directory is not configured."
     var conn: HttpURLConnection? = null
@@ -50,7 +52,7 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
         val authors = JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
         val ids = (0 until authors.length()).mapNotNull { i ->
             authors.getJSONObject(i).optString("author_id").takeIf { it.isNotBlank() }
-        }.distinct().take(80)
+        }.plus(relatedIds).distinct().take(200)
         conn.disconnect()
         conn = null
         if (ids.isEmpty()) return emptyList<SeraProfessional>() to ""
@@ -74,7 +76,7 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
             val p = data.getJSONObject(i)
             SeraProfessional(p.optString("id"),
                 p.optString("full_name").takeUnless { it == "null" }.orEmpty(),
-                "", "")
+                p.optString("headline").takeUnless{it=="null"}.orEmpty(), "", p.optString("avatar_path").takeUnless{it.isBlank()||it=="null"}?.let{signedPostImage(token,it,"sera-account-private")})
         }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
         people to ""
     } catch (_: Exception) {
@@ -100,6 +102,9 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}
     var people by remember { mutableStateOf<List<SeraProfessional>>(emptyList()) }
     var query by remember { mutableStateOf("") }
+    var view by remember { mutableStateOf("Discover") }
+    var selected by remember { mutableStateOf<SearchHit?>(null) }
+    var more by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var relations by remember { mutableStateOf(SeraNetworkRelations(emptySet(), emptyList())) }
     var actionPeer by remember { mutableStateOf<String?>(null) }
@@ -119,132 +124,50 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(token, reload) {
         loading = true
-        val result = withContext(Dispatchers.IO) { loadProfessionals(token) }
-        result.first?.let { people = it }
-        error = result.second
         if (userId.isNotBlank()) {
             val relationships = withContext(Dispatchers.IO) { loadSeraRelations(token, userId) }
             relationships.first?.let { relations = it }
             if (relationships.second.isNotBlank()) actionError = relationships.second
         }
+        val related=relations.follows.toList()+relations.followers.toList()+relations.requests.map{if(it.requester==userId)it.recipient else it.requester}
+        val result=withContext(Dispatchers.IO){loadProfessionals(token,related)};result.first?.let{people=it};error=result.second
         loading = false
     }
-    val matches = remember(people, query, userId) {
-        people.filter { it.id != userId && (query.isBlank() ||
-            listOf(it.name, it.headline, it.location).any { value -> value.contains(query.trim(), ignoreCase = true) }) }
-    }
-    Column(modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(16.dp))
-        Text("Your professional network", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
-        Text("Discover people, skills and ideas.", fontSize = 13.sp, color = Color(0xFF657A7E))
-        FilledTonalButton(onClick={showHiring=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Hiring workspace")}
-        FilledTonalButton(onClick={showOpportunities=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Collaboration opportunities")}
-        FilledTonalButton(onClick={showEvents=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Professional events")}
-        FilledTonalButton(onClick={showCollaboration=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Collaboration spaces")}
-        FilledTonalButton(onClick={showTalent=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Discover portfolio talent")}
-        FilledTonalButton(onClick={showCommunities=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Explore communities")}
-        Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
-            value = query, onValueChange = { if (it.length <= 100) query = it },
-            label = { Text("Search professionals") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("${matches.size} professionals", color = Color(0xFF087E83), fontWeight = FontWeight.SemiBold)
-            TextButton(onClick = { reload++ }, enabled = !loading) { Text("Refresh") }
-        }
-        if (loading && people.isEmpty()) SeraLoadingCards(count = 3, modifier = Modifier.padding(vertical = 12.dp))
-        else if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (actionError.isNotBlank()) Text(actionError, color = MaterialTheme.colorScheme.error)
-        val pendingReceived = relations.requests.filter { it.recipient == userId && it.status == "pending" }
-        AnimatedVisibility(pendingReceived.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Connection invitations · ${pendingReceived.size}", color = Color(0xFF087E83),
-                    fontWeight = FontWeight.Bold)
-                pendingReceived.forEach { request ->
-                    val senderName = people.firstOrNull { it.id == request.requester }?.name ?: "Professional"
-                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(senderName, fontWeight = FontWeight.SemiBold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { perform(request.id) {
-                                    resolveSeraConnection(token, request, userId, "accepted")
-                                } }, enabled = actionPeer == null) { Text("Accept") }
-                                OutlinedButton(onClick = { perform(request.id) {
-                                    resolveSeraConnection(token, request, userId, "declined")
-                                } }, enabled = actionPeer == null) { Text("Decline") }
-                            }
-                        }
+    val connected=relations.requests.filter{it.status=="accepted"}.map{if(it.requester==userId)it.recipient else it.requester}.toSet()
+    val invitations=relations.requests.filter{it.status=="pending"}
+    val incoming=invitations.filter{it.recipient==userId}
+    val outgoing=invitations.filter{it.requester==userId}
+    selected?.let{hit->SearchResultDetail(token,userId,hit,modifier){selected=null;reload++};return}
+    val matches=people.filter{it.id!=userId&&(query.isBlank()||listOf(it.name,it.headline,it.location).any{v->v.contains(query.trim(),ignoreCase=true)})}.filter{when(view){"Connections"->it.id in connected;"Invitations"->invitations.any{r->r.requester==it.id||r.recipient==it.id};"Following"->it.id in relations.follows;"Followers"->it.id in relations.followers;else->it.id !in connected&&it.id !in relations.follows&&invitations.none{r->r.requester==it.id||r.recipient==it.id}}}
+    val teal=MaterialTheme.colorScheme.primary
+    Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Network",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Text("Your professional circle.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};Box{TextButton(onClick={more=true}){Text("Explore")};DropdownMenu(expanded=more,onDismissRequest={more=false}){listOf("Hiring workspace" to {showHiring=true},"Collaboration opportunities" to {showOpportunities=true},"Professional events" to {showEvents=true},"Collaboration spaces" to {showCollaboration=true},"Discover portfolio talent" to {showTalent=true},"Explore communities" to {showCommunities=true}).forEach{(label,action)->DropdownMenuItem(text={Text(label)},onClick={more=false;action()})}}}}
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){listOf("Connections" to connected.size,"Following" to relations.follows.size,"Followers" to relations.followers.size).forEach{(label,count)->Column(Modifier.weight(1f).clickable{view=label;query=""}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(count.toString(),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("Discover","Connections","Invitations","Following","Followers").forEach{v->FilterChip(selected=view==v,onClick={view=v;query=""},label={Text(if(v=="Invitations"&&incoming.isNotEmpty())"$v · ${incoming.size}" else v)})}}
+        OutlinedTextField(value=query,onValueChange={query=it.take(100)},label={Text("Search "+view.lowercase())},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp))
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(view,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f));TextButton(onClick={reload++},enabled=!loading){Text("Refresh")}}
+        if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(error.isNotBlank()||actionError.isNotBlank())Text(error.ifBlank{actionError},color=MaterialTheme.colorScheme.error)
+        LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp)){
+            items(matches,key={it.id}){person->
+                val followed=person.id in relations.follows
+                val request=invitations.firstOrNull{it.requester==person.id||it.recipient==person.id}
+                Column(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                        if(person.avatar!=null)SeraMediaImage(person.avatar,"Professional photo",128,128,Modifier.size(48.dp).clip(CircleShape)) else Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(person.name.take(1),color=teal,fontWeight=FontWeight.Bold)}
+                        Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis);if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis)}
+                        if(person.id in connected)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}
+                    }
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        if(request!=null&&request.recipient==userId){Button(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"accepted")}},enabled=actionPeer==null){Text("Accept")};TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"declined")}},enabled=actionPeer==null){Text("Decline")}}
+                        else if(request!=null&&request.requester==userId)TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"withdrawn")}},enabled=actionPeer==null){Text("Withdraw invitation")}
+                        else TextButton(onClick={perform(person.id){changeSeraFollow(token,userId,person.id,!followed)}},enabled=actionPeer==null){Text(if(followed)"Unfollow" else "Follow")}
                     }
                 }
+                HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant,thickness=.7.dp)
             }
-        }
-        if (error.isNotBlank()) {
-            Text(error, color = MaterialTheme.colorScheme.error)
-            OutlinedButton(onClick = { reload++ }) { Text("Retry") }
-        }
-        if (!loading && error.isBlank() && matches.isEmpty()) {
-            Text("No matching professionals. Try another search.", modifier = Modifier.padding(top = 24.dp))
-        }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 22.dp)) {
-            items(matches, key = { it.id }) { person ->
-                ElevatedCard(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().animateContentSize()
-                ) {
-                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFDFF4F1)),
-                            contentAlignment = Alignment.Center) {
-                            Text(person.name.take(1).uppercase(), color = Color(0xFF087E83),
-                                fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(person.name, color = Color(0xFF183B40), fontWeight = FontWeight.Bold,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (person.headline.isNotBlank()) Text(person.headline,
-                                color = Color(0xFF516D70), fontSize = 13.sp, maxLines = 2,
-                                overflow = TextOverflow.Ellipsis)
-                            if (person.location.isNotBlank()) Text(person.location,
-                                color = Color(0xFF087E83), fontSize = 12.sp)
-                        }
-                    }
-                    val followed = person.id in relations.follows
-                    val request = relations.requests.firstOrNull {
-                        it.status == "pending" && (
-                            (it.requester == userId && it.recipient == person.id) ||
-                            (it.recipient == userId && it.requester == person.id))
-                    }
-                    val connected = relations.requests.any {
-                        it.status == "accepted" && (
-                            (it.requester == userId && it.recipient == person.id) ||
-                            (it.recipient == userId && it.requester == person.id))
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp).animateContentSize(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(onClick = { perform(person.id) {
-                            changeSeraFollow(token, userId, person.id, !followed)
-                        } }, enabled = actionPeer == null) { Text(if (followed) "Following" else "Follow") }
-                        when {
-                            connected -> Text("Connected", modifier = Modifier.padding(12.dp), color = Color(0xFF087E83))
-                            request != null && request.requester == userId ->
-                                TextButton(onClick = { perform(person.id) {
-                                    resolveSeraConnection(token, request, userId, "withdrawn")
-                                } }, enabled = actionPeer == null) { Text("Withdraw") }
-                            request != null ->
-                                Button(onClick = { perform(person.id) {
-                                    resolveSeraConnection(token, request, userId, "accepted")
-                                } }, enabled = actionPeer == null) { Text("Accept") }
-                            else -> Button(onClick = { perform(person.id) {
-                                requestSeraConnection(token, userId, person.id)
-                            } }, enabled = actionPeer == null) { Text("Connect") }
-                        }
-                    }
-                }
-            }
+            if(matches.isEmpty()&&!loading&&error.isBlank())item{Column(Modifier.fillMaxWidth().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(if(view=="Invitations")"You're all caught up" else "No professionals here yet",style=MaterialTheme.typography.titleMedium);TextButton(onClick={view="Discover";query=""}){Text("Discover people")}}}
         }
     }
 }

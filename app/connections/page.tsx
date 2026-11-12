@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { PageIntro } from "@/components/page-intro";
-import { UsersRound, ArrowUpRight } from "lucide-react";
+import { RecommendedProfessionals } from "@/components/network/recommended-professionals";
+import { UsersRound, ArrowUpRight, Search, UserPlus } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
 import { memberCards } from "@/lib/activity/members";
@@ -9,7 +9,8 @@ import { changeProfessionalRelationship } from "@/lib/network/relationships";
 
 export const metadata = { title: "Professional connections | SERA.et", robots: { index: false, follow: false } };
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({searchParams}:{searchParams:Promise<{tab?:string;q?:string}>}) {
+  const params=await searchParams;const tabs=["connections","invitations","following","followers","discover"] as const;const tab=tabs.find(t=>t===params.tab)??"connections";const q=(typeof params.q==="string"?params.q:"").trim().slice(0,100);
   const { user } = await requiredProfile("/connections");
   const db = await serverClient();
   const [incoming, outgoing, follows, followers] = await Promise.all([
@@ -38,11 +39,11 @@ export default async function ConnectionsPage() {
   const pendingOutgoing = outgoingRows.filter((r) => r.status === "pending");
   function person(id: string, actions: { action: string; label: string }[] = []) {
     const card = members.get(id);
-    if (!card) return null;
+    if (!card || (q&&!card.name.toLocaleLowerCase().includes(q.toLocaleLowerCase()))) return null;
     return (
       <li key={id} className="sera-connection-person">
         <MemberAvatar name={card.name} photo={card.photo} size={46} />
-        <Link href={"/members/" + id} style={{ flex: 1, minWidth: 120, fontWeight: 700 }}>{card.name}</Link>
+        <Link href={"/members/" + id} className="sera-network-person-name">{card.name}</Link>
         {actions.map(({ action, label }) => (
           <form action={changeProfessionalRelationship} key={action}>
             <input type="hidden" name="target" value={id} />
@@ -53,32 +54,19 @@ export default async function ConnectionsPage() {
       </li>
     );
   }
-  return (
-    <div className="sera-network network-app sera-connections">
-      <PageIntro icon={UsersRound} title="Good work starts with good people."
-        description="Build your circle. Keep up with the people who move you forward.">
-        <Link href="/discover?tab=people" className="button secondary">Find your people <ArrowUpRight size={16} /></Link>
-      </PageIntro>
-      <section className="sera-connection-section" aria-labelledby="requests-heading">
-        <h2 id="requests-heading">Invitations received ({pendingIncoming.length})</h2>
-        {pendingIncoming.length ? <ul style={{ listStyle: "none", padding: 0 }}>{pendingIncoming.map((r) => person(r.requester_id, [{ action: "accept", label: "Accept" }, { action: "decline", label: "Decline" }]))}</ul> : <p>No pending invitations.</p>}
-      </section>
-      <section aria-labelledby="sent-heading">
-        <h2 id="sent-heading">Invitations sent ({pendingOutgoing.length})</h2>
-        {pendingOutgoing.length ? <ul style={{ listStyle: "none", padding: 0 }}>{pendingOutgoing.map((r) => person(r.recipient_id, [{ action: "withdraw", label: "Withdraw" }]))}</ul> : <p>No outstanding invitations.</p>}
-      </section>
-      <section aria-labelledby="connections-heading">
-        <h2 id="connections-heading">Your connections ({accepted.size})</h2>
-        {accepted.size ? <ul style={{ listStyle: "none", padding: 0 }}>{[...accepted].map((id) => person(id))}</ul> : <p>Accepted professional connections will appear here.</p>}
-      </section>
-      <section aria-labelledby="following-heading">
-        <h2 id="following-heading">Following ({followRows.length})</h2>
-        {followRows.length ? <ul style={{ listStyle: "none", padding: 0 }}>{followRows.map((r) => person(r.followed_id, [{ action: "unfollow", label: "Unfollow" }]))}</ul> : <p>Explore professionals to follow.</p>}
-      </section>
-      <section aria-labelledby="followers-heading">
-        <h2 id="followers-heading">Followers ({followerRows.length})</h2>
-        {followerRows.length ? <ul style={{ listStyle: "none", padding: 0 }}>{followerRows.map((r) => person(r.follower_id, followed.has(r.follower_id) ? [] : [{ action: "follow", label: "Follow back" }]))}</ul> : <p>Your followers will appear here.</p>}
-      </section>
-    </div>
-  );
+  const sections={connections:[...accepted].map(id=>person(id)),invitations:pendingIncoming.map(r=>person(r.requester_id,[{action:"accept",label:"Accept"},{action:"decline",label:"Decline"}])),following:followRows.map(r=>person(r.followed_id,[{action:"unfollow",label:"Unfollow"}])),followers:followerRows.map(r=>person(r.follower_id,followed.has(r.follower_id)?[]:[{action:"follow",label:"Follow back"}])),discover:[]};
+  const counts={connections:accepted.size,invitations:pendingIncoming.length,following:followRows.length,followers:followerRows.length,discover:0};
+  const titles={connections:"Connections",invitations:"Invitations",following:"Following",followers:"Followers",discover:"Discover"};
+  const visible=sections[tab].filter(Boolean);
+  return <div className="sera-network network-app sera-connections sera-relationship-hub">
+    <header className="sera-hub-heading"><div><h1>Network</h1><p>Your professional circle.</p></div><Link href="/discover?tab=people" className="sera-hub-primary"><UserPlus size={18}/> Find people</Link></header>
+    <nav className="sera-hub-metrics" aria-label="Network overview">{(["connections","following","followers"] as const).map(t=><Link key={t} href={"/connections?tab="+t}><strong>{counts[t]}</strong><span>{titles[t]}</span></Link>)}</nav>
+    <nav className="sera-hub-tabs" aria-label="Relationship views">{tabs.map(t=><Link key={t} href={"/connections?tab="+t} aria-current={t===tab?"page":undefined}>{titles[t]}{t==="invitations"&&counts[t]>0?<span className="sera-hub-count">{counts[t]}</span>:null}</Link>)}</nav>
+    {(incoming.error||outgoing.error||follows.error||followers.error)&&<p role="alert">Some relationships could not be loaded. Please refresh.</p>}
+    {tab==="discover"?<><RecommendedProfessionals userId={user.id}/><Link className="sera-hub-discover" href="/discover?tab=people">Explore the professional directory <ArrowUpRight size={18}/></Link></>:<>
+      <form className="sera-hub-search" action="/connections"><input type="hidden" name="tab" value={tab}/><Search size={18}/><input name="q" aria-label="Search your network" placeholder="Search "+titles[tab].toLowerCase() defaultValue={q}/><button type="submit">Search</button></form>
+      <section className="sera-hub-list" aria-label={titles[tab]}><h2>{titles[tab]} <small>{visible.length}</small></h2>{visible.length?<ul>{visible}</ul>:<div className="sera-hub-empty"><UsersRound size={32}/><h3>{q?"No matching people":tab==="invitations"?"You’re all caught up":"Grow your professional circle"}</h3><p>{q?"Try a different name.":tab==="invitations"?"New invitations will appear here.":"Discover professionals who share your interests."}</p><Link href="/discover?tab=people">Discover people <ArrowUpRight size={14}/></Link></div>}</section>
+      {tab==="invitations"&&pendingOutgoing.length>0&&<section className="sera-hub-list"><h2>Sent invitations <small>{pendingOutgoing.length}</small></h2><ul>{pendingOutgoing.map(r=>person(r.recipient_id,[{action:"withdraw",label:"Withdraw"}]))}</ul></section>}
+    </>}
+  </div>;
 }
