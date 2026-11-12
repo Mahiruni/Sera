@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Copy, Smartphone, X } from "lucide-react";
 import { sharePost } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
+import { SignatureSheetHandle } from "./SignatureSheetHandle";
 
 /** User-directed sharing; never count a cancelled OS share. */
 export function ShareButton({ id, title, count }: { id: string; title: string; count: number }) {
@@ -73,7 +74,7 @@ export function ShareButton({ id, title, count }: { id: string; title: string; c
       }}>
         <div ref={sheet} className="sera-repost-sheet sera-share-sheet" role="dialog" aria-modal="true"
           aria-labelledby={"share-" + id}>
-          <header className="sera-repost-head">
+          <SignatureSheetHandle onClose={()=>setOpen(false)} disabled={pending}/><header className="sera-repost-head">
             <h2 id={"share-" + id}><SeraReactionIcon kind="share" /> Share this story</h2>
             <button ref={close} type="button" disabled={pending} onClick={() => setOpen(false)} aria-label="Close share menu"><X size={21} /></button>
           </header>

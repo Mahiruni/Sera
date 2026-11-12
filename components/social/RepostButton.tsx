@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { repostPost, undoRepost } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
+import { SignatureSheetHandle } from "./SignatureSheetHandle";
 
 /** One-click entry, deliberate sheet confirmation, moderated publication. */
 export function RepostButton({ id, author, disabled = false, reposted=false,count=0 }: {
@@ -25,6 +26,7 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     }
     return result;
   }, {});
+  function requestClose(){if(pending)return;if(note.trim()&&!window.confirm("Discard your repost draft?"))return;setOpen(false);}
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -35,7 +37,7 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     document.body.style.overflow = "hidden";
     close.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) { event.preventDefault(); setOpen(false); }
+      if (event.key === "Escape" && !pending) { event.preventDefault(); requestClose(); }
       if (event.key !== "Tab") return;
       const focusables = Array.from(dialog.current?.querySelectorAll<HTMLElement>(
         'button:not([disabled]), textarea:not([disabled]), input:not([disabled])'
@@ -47,7 +49,7 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     };
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; previouslyFocused?.focus(); };
-  }, [open, pending]);
+  }, [open, pending, note]);
   return <>
     <button ref={trigger} type="button" onClick={() => {setThoughts(false);setNote("");setOpen(true)}} disabled={disabled} aria-pressed={reposted}
       aria-label={disabled ? "You cannot repost your own post" : "Repost this professional update"}
@@ -56,19 +58,19 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     </button>
     {open && typeof document !== "undefined" && createPortal(
       <div className="sera-repost-backdrop" onMouseDown={e => {
-        if (e.target === e.currentTarget && !pending) setOpen(false);
+        if (e.target === e.currentTarget && !pending) requestClose();
       }}>
         <div ref={dialog} className="sera-repost-sheet" role="dialog" aria-modal="true" aria-labelledby={"repost-" + id}>
-          <div className="sera-repost-head">
+          <SignatureSheetHandle onClose={requestClose} disabled={pending}/><div className="sera-repost-head">
             <h2 id={"repost-" + id}><SeraReactionIcon kind="repost" /> Repost</h2>
-            <button ref={close} type="button" aria-label="Close" disabled={pending} onClick={() => setOpen(false)}>
+            <button ref={close} type="button" aria-label="Close" disabled={pending} onClick={requestClose}>
               <X size={21} />
             </button>
           </div>
           <form action={action} className="sera-repost-body" aria-busy={pending}>
             <input type="hidden" name="post_id" value={id}/>
             <p><strong>{author}</strong>&apos;s original update</p>
-            {!reposted&&<div className="sera-repost-options"><button type="button" aria-pressed={!thoughts} onClick={()=>{setThoughts(false);setNote("")}}>Repost</button><button type="button" aria-pressed={thoughts} onClick={()=>setThoughts(true)}>Repost with thoughts</button></div>}
+            {!reposted&&<div className="sera-repost-options"><button type="button" aria-pressed={!thoughts} onClick={()=>{setThoughts(false)}}>Repost</button><button type="button" aria-pressed={thoughts} onClick={()=>setThoughts(true)}>Repost with thoughts</button></div>}
             {thoughts&&!reposted?<textarea aria-label="Your thoughts" name="note" maxLength={400} placeholder="Share your perspective…" rows={5} value={note} onChange={e=>setNote(e.target.value)} disabled={pending}/>:<input type="hidden" name="note" value=""/>}
             {state.error && <p role="alert" className="social-error">{state.error}</p>}
             <div className="sera-repost-actions">
