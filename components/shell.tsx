@@ -28,6 +28,8 @@ import {
   ChevronDown,
   ArrowLeftRight,
   Star,
+  Menu,
+  Settings,
 } from "lucide-react";
 import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
@@ -70,6 +72,9 @@ export function Shell({
       "/admin/moderation",
     ].some((route) => pathname === route || pathname.startsWith(route + "/"));
   const [open, setOpen] = useState(false);
+  const [profileOpen,setProfileOpen]=useState(false);
+  const profileMenu=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(!profileOpen)return;const dismiss=(e:PointerEvent)=>{if(!profileMenu.current?.contains(e.target as Node))setProfileOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==="Escape")setProfileOpen(false)};document.addEventListener("pointerdown",dismiss);document.addEventListener("keydown",key);return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",key)}},[profileOpen]);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -140,14 +145,14 @@ export function Shell({
           aria-controls="navigation-drawer"
           onClick={() => setOpen(true)}
         >
-          <span />
-          <span />
+          <Menu size={24}/>
         </button>
         <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="SERA.et home">SERA<span>.et</span></Link>
         <div className="header-account-controls">
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
           {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
+          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><UserRound size={21}/></button>{profileOpen&&<div className="sera-profile-popover"><Link href="/profile" onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings</Link></div>}</div>}
         </div>
       </header>
       <dialog
@@ -155,7 +160,7 @@ export function Shell({
         dir="ltr"
         ref={dialog}
         id="navigation-drawer"
-        className="drawer"
+        className="drawer sera-refined-drawer"
         aria-labelledby="drawer-title"
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
@@ -196,7 +201,8 @@ export function Shell({
               <X size={21} />
             </button>
           </div>
-          <p className="eyebrow" id="drawer-title">
+          {authenticated&&<Link className="sera-drawer-profile" href="/profile" onClick={close}><UserRound size={24}/><span>My profile<small>View professional identity</small></span><ArrowUpRight size={16}/></Link>}
+          <p className="sr-only" id="drawer-title">
             {t("navigation")}
           </p>
           <nav className="grouped-navigation" aria-label={t("navigation")}>
@@ -243,7 +249,7 @@ export function Shell({
                         >
                           <Icon size={17} />
                           <span>{t(item.key)}</span>
-                          <ArrowUpRight size={13} />
+                          
                         </Link>
                       );
                     })}
@@ -252,7 +258,7 @@ export function Shell({
               );
             })}
           </nav>
-          <div className="drawer-actions">
+          {!authenticated&&<div className="drawer-actions">
             <Link
               className="role-switch"
               href={
@@ -272,7 +278,7 @@ export function Shell({
               </span>
               <ArrowUpRight size={13} />
             </Link>
-          </div>
+          </div>}
           {!authenticated && state.role && (
             <button
               className="text-button"

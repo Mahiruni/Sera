@@ -1,6 +1,12 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,48 +51,48 @@ internal fun SeraNavigationDrawer(
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    avatarUrl:String?=null,
+    onClose:()->Unit={}
 ) {
     ModalDrawerSheet(
         modifier = Modifier.width(304.dp),
-        drawerContainerColor = Color(0xFFF7FCFB),
-        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+        drawerContainerColor = MaterialTheme.colorScheme.surface,
+        drawerShape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
     ) {
-        Column(Modifier.fillMaxHeight().padding(18.dp)) {
-            Text("SERA.et", color = drawerTeal, fontSize = 28.sp,
-                fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-            Text("Your professional world", color = Color(0xFF637A7E), fontSize = 12.sp)
-            Spacer(Modifier.height(26.dp))
-            Surface(color = Color(0xFFE5F5F1), shape = RoundedCornerShape(20.dp)) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=12.dp)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("SERA.et",color=drawerTeal,fontSize=25.sp,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close menu")}}
+            Spacer(Modifier.height(8.dp))
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp)) {
+                Row(Modifier.fillMaxWidth().clickable{onNavigate("Profile")}.padding(vertical=12.dp,horizontal=4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(47.dp).background(Color.White, CircleShape),
                         contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.AccountCircle, contentDescription = null,
-                            tint = drawerTeal, modifier = Modifier.size(30.dp))
+                        if(!avatarUrl.isNullOrBlank())SeraMediaImage(avatarUrl,"Profile photo",96,96,Modifier.fillMaxSize().clip(CircleShape)) else Text(identity.trim().take(1).uppercase().ifBlank{"S"},color=drawerTeal,fontWeight=FontWeight.Bold,fontSize=22.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(identity.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }
                             ?: "SERA professional", maxLines = 1, fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp, color = drawerInk)
-                        Text("View your professional identity", color = Color(0xFF5B7B7D), fontSize = 11.sp)
+                            fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text("View profile",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
                     }
+                    Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Spacer(Modifier.height(17.dp))
-            listOf("Home", "Network", "Jobs", "Inbox", "Profile").forEach { section ->
+            HorizontalDivider(Modifier.padding(vertical=8.dp))
+            listOf("Home", "Network", "Jobs", "Inbox").forEach { section ->
                 NavigationDrawerItem(
                     label = { Text(section, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = section == selected,
                     icon = { Icon(drawerIcon(section), contentDescription = null) },
                     onClick = { onNavigate(section) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = NavigationDrawerItemDefaults.colors(
                         selectedContainerColor = Color(0xFFDDF5EE),
                         selectedIconColor = drawerTeal,
                         selectedTextColor = drawerInk,
                         unselectedIconColor = Color(0xFF6B8384),
-                        unselectedTextColor = drawerInk
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
@@ -95,12 +101,12 @@ internal fun SeraNavigationDrawer(
             NavigationDrawerItem(label = { Text("Create post") }, selected = false,
                 icon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
                 onClick = onCompose)
-            IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Language, contentDescription = "Change language", tint = drawerTeal) }
+            NavigationDrawerItem(label={Text("Language")},selected=false,icon={Icon(Icons.Outlined.Language,null)},onClick=onLanguage)
             NavigationDrawerItem(label={Text("Settings")},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
             NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
                 icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                 onClick = onCheckUpdates)
-            Spacer(Modifier.weight(1f))
+            HorizontalDivider(Modifier.padding(vertical=8.dp))
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
                 onClick = onSignOut)

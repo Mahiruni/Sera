@@ -144,3 +144,34 @@ html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-m
  .sera-compose-dialog,.sera-conversation-sheet,.sera-repost-sheet{margin-bottom:var(--sera-sheet-bottom,0px)}
  .sera-control-dialog:not(.sera-control-compact){margin-bottom:var(--sera-sheet-bottom,0px)!important}
 }
+
+/* Familiar social navigation and writing surface; preserve SERA identity. */
+.sera-app-header .hamburger{background:transparent!important;border:0!important;box-shadow:none!important;color:#087e83;display:grid;place-items:center}
+.sera-app-header .hamburger svg{display:block;flex:none}
+.sera-profile-menu{position:relative;flex:none}.sera-profile-trigger{border-radius:50%!important;background:var(--sera-sheet-surface,#fff)!important;border:1px solid var(--sera-sheet-line,#dce9e6)!important;color:#087e83}
+.sera-profile-popover{position:absolute;right:0;top:calc(100% + 8px);width:196px;background:var(--sera-sheet-surface,#fff);color:var(--sera-sheet-ink,#173a3f);border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:14px;padding:6px;box-shadow:0 10px 30px #152e3524;z-index:100}
+.sera-profile-popover a{display:flex;gap:10px;align-items:center;padding:11px;border-radius:8px;min-height:44px;color:inherit;font-size:14px;font-weight:600}
+.sera-profile-popover a:hover,.sera-profile-popover a:focus-visible{background:#087e8312}
+.sera-refined-drawer .drawer-inner{padding:16px!important;gap:8px;overflow-y:auto}
+.sera-refined-drawer .drawer-top{padding:0 0 8px}.sera-refined-drawer .drawer-group{border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0!important}
+.sera-refined-drawer .drawer-group summary{padding:10px 4px;font-size:13px;font-weight:650;color:var(--sera-sheet-muted,#587174)}
+.sera-refined-drawer .drawer-group-links a{min-height:46px;border:0!important;box-shadow:none!important;border-radius:8px!important;padding:10px 12px!important;display:flex;align-items:center;gap:12px}
+.sera-refined-drawer .drawer-group-links a.active{background:#087e8312!important;color:#087e83!important}
+.sera-drawer-profile{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--sera-sheet-line,#dce9e6);color:var(--sera-sheet-ink,#173a3f)}
+.sera-drawer-profile>span{flex:1;font-weight:700}.sera-drawer-profile small{display:block;font-size:12px;font-weight:400;color:var(--sera-sheet-muted,#587174);margin-top:4px}
+.sera-social-composer-dialog{max-width:660px!important}
+.sera-social-composer-dialog .sera-compose-dialog-head{padding:10px 16px!important;border-bottom:1px solid var(--sera-sheet-line);min-height:52px}
+.sera-social-composer-dialog .sera-compose-dialog-author{padding:12px 16px!important;border:0!important}
+.sera-social-composer-dialog .sera-compose-dialog-content{padding:0 16px!important}
+.sera-social-composer-dialog .sera-premium-composer form{gap:10px}
+.sera-social-composer-dialog .sera-premium-types{order:1;padding:4px 0;gap:5px}
+.sera-social-composer-dialog .sera-premium-types button{border-radius:20px;padding:6px 11px;min-height:36px;font-size:12px}
+.sera-social-composer-dialog .sera-premium-editor{border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;min-height:190px}
+.sera-social-composer-dialog .sera-premium-editor textarea{font-size:18px;line-height:1.5;min-height:180px;padding:12px 0 28px;background:transparent!important}
+.sera-social-composer-dialog .sera-premium-counter{right:0;bottom:5px}
+.sera-social-composer-dialog .sera-premium-toolbar{display:flex;justify-content:flex-start;gap:6px;border-top:1px solid var(--sera-sheet-line);padding-top:6px}
+.sera-social-composer-dialog .sera-premium-toolbar button{min-height:44px;flex-direction:row;gap:8px;padding:8px 12px!important;font-size:13px;box-shadow:none!important;border:0!important}
+.sera-social-composer-dialog .sera-premium-footer{order:9;position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;padding:10px 0!important;background:var(--sera-sheet-surface)!important}
+.sera-social-composer-dialog .sera-premium-footer button{min-height:44px;border-radius:24px!important;padding:0 20px;font-size:14px}
+.sera-social-composer-dialog .sera-premium-publish{background:#087e83!important;min-width:92px}
+@media(max-width:420px){.sera-app-header .header-account-controls{gap:0!important}.sera-app-header .header-control{width:38px!important;min-width:38px!important;height:44px!important}.sera-app-header .sera-header-wordmark{font-size:21px!important}}

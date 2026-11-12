@@ -70,8 +70,8 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
     </section>
     {open && typeof document !== "undefined" && createPortal(
       <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
-        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet">
-          <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading"><span className="sera-premium-heading-icon"><PenLine size={21}/></span> Create Post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
+        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet sera-social-composer-dialog">
+          <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
           <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small className="sera-premium-audience"><Users size={14}/> SERA members</small></div></div>
           <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} draftOwnerId={userId} onPublished={onPublished} /></div>
         </div>

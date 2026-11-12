@@ -488,6 +488,8 @@ fun SeraApp(
                             SeraNavigationDrawer(
                                 selected = tab,
                                 identity = identity,
+                                avatarUrl=profileAvatarUrl,
+                                onClose={scope.launch{drawerState.close()}},
                                 onNavigate = { destination ->
                                     navigateTo(destination)
                                     scope.launch { drawerState.close() }
@@ -665,7 +667,10 @@ private fun BoxScope.SeraChromeOverlays(
             onMessaging = { onNavigate("Inbox") },
             onSearch = { onNavigate("Search") },
             onNotifications = { onNavigate("Notifications") },
-            onMenu = onMenu
+            onMenu = onMenu,
+            avatarUrl=profileAvatarUrl,
+            onProfile={onNavigate("Profile")},
+            onSettings={onNavigate("Settings")}
         )
     }
     if (!expanded) AnimatedVisibility(

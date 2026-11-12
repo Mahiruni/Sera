@@ -12,6 +12,9 @@ import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Send
@@ -93,7 +96,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     LaunchedEffect(userId,token){kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraIdentity(token).first}?.let{identity=it.lineSequence().firstOrNull().orEmpty()};avatar=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraCurrentAvatar(token,userId)};headline=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){spaceRows(spaceCall(token,"sera_feed_headlines",org.json.JSONObject().put("p_ids",org.json.JSONArray(listOf(userId)))).first).firstOrNull()?.optString("headline").orEmpty()}}
     val hasContent = body.isNotBlank()
     val accent = Color(0xFF087E83)
-    val ink = Color(0xFF173A3F)
+    val ink = MaterialTheme.colorScheme.onSurface
     fun close() {
         focus.clearFocus()
         onDismiss()
@@ -126,21 +129,15 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&body.isBlank()&&selectedImages.isEmpty()&&selectedVideo==null) {
         val keyboardOpen=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
         Column(
-            Modifier.fillMaxWidth().heightIn(max = 680.dp)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().heightIn(max = 720.dp)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(if(keyboardOpen)6.dp else 12.dp)
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(color = Color(0xFFE4F5F2), shape = RoundedCornerShape(15.dp)) {
-                    Icon(Icons.Outlined.EditNote, contentDescription = null, tint = accent,
-                        modifier = Modifier.padding(12.dp).size(25.dp))
-                }
                 Column(Modifier.weight(1f)) {
                     Text("Create a post", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, color = ink)
-                    Text("Share your work, ideas or insights", style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF687C80))
                 }
                 IconButton(onClick = { requestClose() }) { Icon(Icons.Outlined.Close, "Close composer", tint = accent) }
             }
@@ -150,29 +147,28 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     .padding(vertical = 2.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-            OutlinedTextField(
+            BasicTextField(
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = if(keyboardOpen)80.dp else 240.dp),
-                shape = RoundedCornerShape(18.dp),
-                placeholder = { Text(stringResource(R.string.composer_placeholder)) },
-                supportingText = { Text("${body.length} / 4000 characters") },
+                textStyle=TextStyle(color=ink,fontSize=19.sp,lineHeight=27.sp),
+                cursorBrush=SolidColor(accent),
+                decorationBox={inner->Box(Modifier.fillMaxWidth().padding(vertical=12.dp)){if(body.isEmpty())Text(stringResource(R.string.composer_placeholder),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=19.sp);inner()}},
                 singleLine=false,
                 keyboardOptions = seraMultilineKeyboard,
                 minLines = if(keyboardOpen)2 else 8,
-                maxLines=if(keyboardOpen)5 else 20,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent, unfocusedBorderColor = Color(0xFFD8E7E5), focusedContainerColor = Color(0xFFF7FBFA), unfocusedContainerColor = Color(0xFFF7FBFA), cursorColor = accent)
+                maxLines=if(keyboardOpen)5 else 20
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = {
+                TextButton(onClick = {
                     imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(15.dp)) {
+                }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp)) {
                     Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Photos")
                 }
-                FilledTonalButton(onClick = {
+                TextButton(onClick = {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                 }, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(15.dp)) {
                     Icon(Icons.Outlined.Videocam, contentDescription = null, modifier = Modifier.size(19.dp))
@@ -204,7 +200,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
             }
-                if(!keyboardOpen)Text("Keep posts professional. Text drafts stay on this device.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF607478))
+                Text("${body.length} / 4000",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = Color(0xFFE4EFED))
@@ -229,9 +225,9 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
             }, enabled = !publishing && body.trim().length >= 3 && selectedVideo == null,
                 modifier = Modifier.weight(1.35f).heightIn(min = 50.dp),
-                shape = RoundedCornerShape(15.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = accent)) {
-                Icon(Icons.Outlined.Send, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (publishing) "Publishing…" else "Publish post", fontWeight = FontWeight.Bold)
+                Icon(Icons.Outlined.Send, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (publishing) "Publishing…" else "Post", fontWeight = FontWeight.Bold)
             }
             }
             if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
