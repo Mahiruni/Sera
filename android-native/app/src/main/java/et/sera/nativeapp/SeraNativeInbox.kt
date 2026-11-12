@@ -255,6 +255,8 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     val scope = rememberCoroutineScope()
     var attachment by remember(selected?.id) { mutableStateOf<NativeChatSelection?>(null) }
     var checkingFile by remember { mutableStateOf(false) }
+    var transferProgress by remember(selected?.id){mutableIntStateOf(-1)}
+    var mediaViewer by remember(selected?.id){mutableStateOf<NativeChatFile?>(null)}
     var recordingVoice by remember(selected?.id){mutableStateOf(false)}
     var reply by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var menu by remember(selected?.id){mutableStateOf<String?>(null)}
@@ -285,12 +287,12 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
         val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
         if(!connectionAvailable)return@LaunchedEffect
-        sending=true
+        sending=true;transferProgress=if(p.file!=null)0 else -1
         try{
-            val result=withContext(Dispatchers.IO){sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId)}
+            val result=withContext(Dispatchers.IO){sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}})}
             if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
             else{sendFailed=true;error=result.second}
-        }finally{sending=false}
+        }finally{sending=false;transferProgress=-1}
     }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
     if(remove!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Unsend message?")},text={Text("This message will be removed for everyone.")},confirmButton={TextButton(onClick={val id=remove!!.id;remove=null;scope.launch{val r=withContext(Dispatchers.IO){unsendNativeMessage(token,id)};if(r.first==null)error=r.second else reload()}}){Text("Unsend")}},dismissButton={TextButton(onClick={remove=null}){Text("Cancel")}})
@@ -330,6 +332,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         cameraPath=file.absolutePath;cameraConversation=selected?.id
         try{cameraPicker.launch(uri)}catch(e:Exception){file.delete();cameraPath=null;cameraConversation=null;throw e}
     }
+    mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
     if(attachmentStudio&&selected!=null) SeraAttachmentStudio(onDismiss={attachmentStudio=false},onChoose={kind->attachmentStudio=false;runCatching{when(kind){SeraAttachmentKind.PHOTO->photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly));SeraAttachmentKind.CAMERA->capturePhoto();SeraAttachmentKind.DOCUMENT->attachmentPicker.launch(arrayOf("application/pdf"));SeraAttachmentKind.AUDIO->attachmentPicker.launch(arrayOf("audio/mp4","audio/webm","audio/ogg","audio/mpeg"))}}.onFailure{error="No compatible app is available."}})
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
@@ -499,7 +502,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                                 if(!message.unsent&&message.reactions.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.entries.chunked(3).forEach{group->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){group.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=5.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}}}
 
                                 message.files.filter{!message.unsent}.forEach { file ->
-                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else accent,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else{
+                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else accent,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else if(file.mime.startsWith("image/")){SeraPrivateImageCard(token,file,onOpen={mediaViewer=file},foreground=if(own)Color.White else inboxInk)}else{
                                     TextButton(onClick = { scope.launch {
                                         val result = withContext(Dispatchers.IO) { runCatching { downloadChatFile(context,token,file) } }
                                         result.onSuccess { uri -> runCatching { openChatFile(context,uri,file.mime) }.onFailure { error="No app can open this file." } }.onFailure { error=it.message ?: "Could not open attachment." }
@@ -519,7 +522,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                 }
             }
             reply?.let{m->Surface(color=inboxSoft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp);IconButton(onClick={reply=null}){Icon(Icons.Outlined.Close,"Cancel reply")}}}}
-            queued?.let{q->Surface(color=inboxSoft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Text(q.body.ifBlank{q.file?.name?:"Attachment"},maxLines=2);Text(if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=inboxTeal);Row{TextButton(onClick={retrySignal++},enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick={scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},enabled=!sending){Text("Edit message")}}}}}
+            queued?.let{q->Surface(color=inboxSoft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Text(q.body.ifBlank{q.file?.name?:"Attachment"},maxLines=2);if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent);Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=inboxTeal);Row{TextButton(onClick={retrySignal++},enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick={scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},enabled=!sending){Text("Edit message")}}}}}
             attachment?.let { file ->
                 Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {

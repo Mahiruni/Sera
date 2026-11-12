@@ -67,19 +67,20 @@ internal fun readChatFile(token:String,file:NativeChatFile):ByteArray {
     val c=chatConnection(token,"/storage/v1/object/authenticated/professional-message-files/"+file.path,"GET")
     try { check(c.responseCode in 200..299){"File unavailable."}; return c.inputStream.use{it.readChatBounded()}.also{require(it.size==file.bytes)} } finally {c.disconnect()}
 }
-internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,clientId:String,body:String,file:NativeChatSelection?,reply:String?=null,forward:String?=null):Pair<String?,String> {
+internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,clientId:String,body:String,file:NativeChatSelection?,reply:String?=null,forward:String?=null,onProgress:(Int)->Unit={}):Pair<String?,String> {
     return try {
         val ext=when(file?.mime){"application/pdf"->"pdf";"image/png"->"png";"image/webp"->"webp";"audio/mp4"->"m4a";"audio/webm"->"webm";"audio/ogg"->"ogg";"audio/mpeg"->"mp3";else->"jpg"}
         val path=if(file==null)null else "$userId/$conversation/$clientId.$ext"
         if(file!=null && path!=null){
             require(file.mime in chatMimes && file.bytes.size in 1..CHAT_LIMIT)
             val c=chatConnection(token,"/storage/v1/object/professional-message-files/"+path,"POST")
-            try{c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size);c.outputStream.use{it.write(file.bytes)}
+            try{c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size);c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){val count=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,count);offset+=count;onProgress((offset*100L/file.bytes.size).toInt().coerceAtMost(99))}}
                 if(c.responseCode !in 200..299){
                     val previous=readChatFile(token,NativeChatFile(file.name,file.mime,path,file.bytes.size))
                     if(!previous.contentEquals(file.bytes))return null to "Attachment upload could not be verified."
                 }
             }finally{c.disconnect()}
+            onProgress(100)
         }
         val payload=JSONObject().put("p_conversation",conversation).put("p_client_id",clientId).put("p_body",body)
             .put("p_reply_to",reply?:JSONObject.NULL).put("p_forward_source",forward?:JSONObject.NULL)
