@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { screenSubmission } from "@/lib/moderation/screen";
+import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { readPost, uuid } from "@/lib/social/validation";
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [A-Za-z0-9._~-]+$/.test(bearer))
     return fail("Please sign in before reposting.", 401);
-  if (!securePublishingConfigured())
+  if (moderationEnabled() && !securePublishingConfigured())
     return fail("Secure repost publishing is temporarily unavailable.", 503);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   const { data: previous } = await client.from("posts").select("id")
     .eq("author_id", user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
-  if (previous) return fail("You've already reposted this update.", 409);
+  if (previous) return NextResponse.json({success:true,post_id:previous.id},{status:201,headers:noStore});
 
   const title = `Reposted: ${String(source.title || "Professional update")}`.slice(0, 140);
   const sourceText = String(source.body || source.title || "Professional update").slice(0, 2000);
@@ -70,10 +70,10 @@ export async function POST(request: NextRequest) {
       : "Safety screening unavailable. Nothing reposted.",
       verdict.verdict === "rejected" ? 422 : 503);
 
-  const writer = moderationWriter();
+  const writer = securePublishingConfigured() ? moderationWriter() : client;
   if (!writer) return fail("Secure publishing unavailable.", 503);
   const draft = await client.from("posts").insert({
-    ...input, author_id: user.id, status: "draft", repost_of: sourceId,
+    ...input, status: "draft", repost_of: sourceId, repost_note: note.trim(),
   }).select("id").single();
   if (draft.error || !draft.data) {
     if (draft.error?.code === "23505") return fail("You've already reposted this update.", 409);

@@ -280,13 +280,13 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
       "Safety screening is unavailable. Nothing was reposted." };
 
   const draft = await session.db.from("posts").insert({
-    ...input, author_id: session.user.id, status: "draft", repost_of: sourceId,
+    ...input, status: "draft", repost_of: sourceId, repost_note: note.trim(),
   }).select("id").single();
   if (draft.error || !draft.data)
     return { error: draft.error?.code === "23505" ?
       "You have already reposted this update." : "Could not create this repost. Try again." };
 
-  const publisher = moderationWriter();
+  const publisher = securePublishingConfigured() ? moderationWriter() : session.db;
   if (!publisher) return { error: "Secure publishing is temporarily unavailable." };
   const id = draft.data.id as string;
   const publish = await publisher.from("posts").update({ status: "published" })

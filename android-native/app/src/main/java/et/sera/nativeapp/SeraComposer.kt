@@ -148,13 +148,13 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 value = body, onValueChange = {
                     if (it.length <= 4000) { body = it; saved = false }
                 },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 124.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp),
                 shape = RoundedCornerShape(18.dp),
                 placeholder = { Text(stringResource(R.string.composer_placeholder)) },
                 supportingText = { Text("${body.length} / 4000 characters") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
-                minLines = 4,
+                minLines = 8,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent, unfocusedBorderColor = Color(0xFFD8E7E5), focusedContainerColor = Color(0xFFF7FBFA), unfocusedContainerColor = Color(0xFFF7FBFA), cursorColor = accent)
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

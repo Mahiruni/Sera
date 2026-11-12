@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { screenSubmission } from "@/lib/moderation/screen";
+import { moderationEnabled, screenSubmission } from "@/lib/moderation/screen";
 import { moderationWriter, securePublishingConfigured } from "@/lib/moderation/writer";
 import { uuid } from "@/lib/social/validation";
 
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key || !securePublishingConfigured())
+  if (!url || !key || (moderationEnabled() && !securePublishingConfigured()))
     return NextResponse.json({ error: "Secure commenting is temporarily unavailable." }, { status: 503 });
   const client = createClient(url, key, {
     global: { headers: { Authorization: bearer } },
@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
   const verdict = await screenSubmission({ kind: "idea", title: "", body, quote_source: "", category: "", skills: [] }, []);
   if (verdict.verdict !== "approved")
     return NextResponse.json({ error: verdict.verdict === "rejected" ? "Comment may violate community guidelines." : "Safety screening is unavailable. Nothing was published." }, { status: verdict.verdict === "rejected" ? 422 : 503 });
-  const writer = moderationWriter();
+  const writer = securePublishingConfigured() ? moderationWriter() : client;
   if (!writer) return NextResponse.json({ error: "Secure commenting unavailable." }, { status: 503 });
-  const { error } = await writer.from("post_comments").insert({ post_id: postId, parent_id: parentId, body, author_id: user.id });
+  const { error } = await writer.from("post_comments").insert({ post_id: postId, parent_id: parentId, body, ...(securePublishingConfigured()?{author_id:user.id}:{}) });
   if (error) return NextResponse.json({ error: "Unable to publish comment. Please retry." }, { status: 409 });
   return NextResponse.json({ success: true }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }

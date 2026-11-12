@@ -147,7 +147,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(stringResource(R.string.conversation), style = MaterialTheme.typography.titleLarge, color = Color(0xFF18383D), fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("Comments · "+comments.size,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);TextButton(onClick={requestClose()}){Text("Close")}}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) } }
             if (!loading && comments.isEmpty() && error.isBlank()) Text(stringResource(R.string.no_comments))
@@ -227,7 +227,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83))) {
                 Text(if (sending) "Publishing…" else if (replyTarget != null) "Publish reply" else "Publish comment")
             }
-            TextButton(onClick = { requestClose() }, enabled = !sending) { Text(stringResource(R.string.close)) }
+
         }
     }
 }
@@ -283,7 +283,7 @@ private fun SeraThreadCommentCard(
                     )
                     val date = remember(comment.createdAt) {
                         runCatching {
-                            DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+                            DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault())
                                 .withZone(ZoneId.systemDefault())
                                 .format(Instant.parse(comment.createdAt))
                         }.getOrDefault("")

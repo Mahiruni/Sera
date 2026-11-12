@@ -27,13 +27,15 @@ internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     ModalBottomSheet(
+        sheetState=sheetState,
         onDismissRequest = onDismissRequest,
         containerColor = Color.White,
         contentColor = Color(0xFF18383D),
         tonalElevation = 0.dp,
         scrimColor = Color(0x990C262D),
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             Box(
                 Modifier.padding(top = 12.dp, bottom = 13.dp)

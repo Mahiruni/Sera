@@ -92,10 +92,6 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                     ) {
                         Column(Modifier.padding(horizontal = 15.dp, vertical = 15.dp),
                             verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                            if (post.repostOf != null) Text(
-                                "↻ Reposted from ${post.repostAuthor ?: "a professional"}",
-                                color = feedTeal, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
-                            )
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
                                     Modifier.size(43.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
@@ -116,21 +112,23 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     Text(post.author, color = feedInk, fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.SansSerif, fontSize = 14.sp, maxLines = 1,
                                         overflow = TextOverflow.Ellipsis)
-                                    val details = listOfNotNull(post.headline.takeIf { it.isNotBlank() },
+                                    if(post.repostOf!=null) Text("| Reposted from "+(post.repostAuthor?:"original author"),color=feedTeal,fontSize=11.sp)
+                                    if(post.headline.isNotBlank()) Text(post.headline,color=feedTeal,fontSize=11.sp)
+                                    val details = listOfNotNull(
                                         postTimeLabel(post.publishedAt).takeIf { it.isNotBlank() }).joinToString(" · ")
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                                         if(post.authorId in activeAuthors) { SeraOnlineDot(); Text("Active now",color=feedTeal,fontSize=10.sp) }
                                         Text(details, color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
-                                Text(post.kind.replaceFirstChar { it.uppercase() }, color = feedTeal,
-                                    fontWeight = FontWeight.Medium, fontSize = 10.sp)
+
                             }
                             // A composer may store the same copy in title and body.
                             // Never render identical content twice in a feed card.
-                            val title = post.title.trim()
-                            val body = post.body.trim()
-                            if (title.isNotBlank() && title != body) {
+                            val title = (if(post.repostOf!=null)post.originalTitle.orEmpty() else post.title).trim()
+                            val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
+                            if(post.repostOf!=null){if(post.repostNote.isNotBlank())Text(post.repostNote,color=feedInk);Text("Original · "+(post.repostAuthor?:"Unavailable")+" · "+postTimeLabel(post.originalTime.orEmpty()),color=feedTeal,fontSize=11.sp);if(post.originalBody==null)Text("Original post unavailable",color=feedMuted)}
+                            if (title.isNotBlank() && !body.replace(Regex("\\s+")," ").startsWith(title.replace(Regex("\\s+")," "),ignoreCase=true)) {
                                 Text(title, color = feedInk, fontFamily = FontFamily.SansSerif,
                                     fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 21.sp)
                             }
@@ -337,11 +335,11 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         }
     }
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }
-    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }) }
+    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null; posts.refresh() }) }
 }
 
 private fun postTimeLabel(value: String): String = runCatching {
-    DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+    DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault())
         .withZone(ZoneId.systemDefault())
         .format(Instant.parse(value))
 }.getOrDefault("")
