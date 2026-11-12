@@ -17,9 +17,10 @@ internal suspend fun publishNativeImages(
     body: String,
     images: List<Uri>,
     audience:String="public",
+    fields:JSONObject=JSONObject(),
 ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
-    if (body.trim().length < 3 || images.isEmpty() || images.size > 4)
-        return@withContext false to "Write a caption and select one to four photos."
+    if (images.isEmpty() || images.size > 4)
+        return@withContext false to "Select one to four photos."
     val boundary = "sera-" + UUID.randomUUID().toString()
     val newline = "\r\n"
     var connection: HttpURLConnection? = null
@@ -54,10 +55,11 @@ internal suspend fun publishNativeImages(
                 write(value)
                 write(newline)
             }
-            field("kind", "photos")
+            field("kind",fields.optString("kind","photos"))
             field("audience",audience)
-            field("title", body.trim().take(110))
+            field("title",fields.optString("title").trim().ifBlank{body.trim().take(110).ifBlank{"Photo update"}.let{if(it.length<3)"Photo update" else it}})
             field("body", body.trim())
+            for(key in listOf("quote_source","category","location","skills","project_url"))field(key,fields.optString(key))
             files.forEachIndexed { index, (uri, mime, _) ->
                 write("--$boundary$newline")
                 write("Content-Disposition: form-data; name=\"media\"; filename=\"photo-$index\"$newline")
