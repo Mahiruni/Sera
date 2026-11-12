@@ -206,7 +206,7 @@ grant execute on function public.sera_send_message_v2(uuid,uuid,text,uuid,uuid,t
 
 -- Reactions arrive in the same authorized realtime thread as message changes.
 do $$ begin
- if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='professional_message_reactions') then
+ if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='professional_message_reactions') then
   alter publication supabase_realtime add table public.professional_message_reactions;
  end if;
 end; $$;
