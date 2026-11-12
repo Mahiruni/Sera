@@ -2,6 +2,8 @@ package et.sera.nativeapp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,77 +45,93 @@ private fun notificationCall(token:String,path:String,patch:Boolean=false):Pair<
  }catch(_:Exception){null to "Connection unavailable. Please retry."}finally{c?.disconnect()}
 }
 private data class NotificationPerson(val name:String,val avatar:String?)
-private data class NotificationBatch(val rows:List<JSONObject>?,val people:Map<String,NotificationPerson>,val error:String)
-private fun loadNotifications(token:String):NotificationBatch{
- // RLS restricts this query to the authenticated recipient, exactly as on web.
- val r=notificationCall(token,"professional_notifications?select=id,actor_id,kind,post_id,created_at,read_at&order=created_at.desc,id.desc&limit=80")
- if(r.first==null)return NotificationBatch(null,emptyMap(),r.second)
- val rows=runCatching{val a=JSONArray(r.first);(0 until a.length()).map{a.getJSONObject(it)}}.getOrElse{return NotificationBatch(null,emptyMap(),"Unable to read notifications.")}
- val ids=rows.map{it.optString("actor_id")}.filter{it.isNotBlank()}.distinct()
+private data class NotificationBatch(val rows:List<JSONObject>?,val people:Map<String,NotificationPerson>,val jobs:Map<String,JSONObject>,val enabled:Boolean,val error:String)
+private val notificationTabs=listOf("All","Unread","Social","Network","Opportunities","Collaboration")
+private val notificationKinds=mapOf("Social" to listOf("like","comment","share","repost","reply"),"Network" to listOf("follow","connection_request","connection_accepted"),"Opportunities" to listOf("job_match","application_update","opportunity_match"),"Collaboration" to listOf("space_invitation","community_invitation","project_invitation"))
+private fun JSONObject.field(k:String)=optString(k).takeUnless{it=="null"}.orEmpty()
+private fun loadNotifications(token:String,userId:String,tab:String,page:Int):NotificationBatch{
+ val filter=if(tab=="Unread")"&read_at=is.null" else notificationKinds[tab]?.let{"&kind=in.("+it.joinToString(",")+")"}.orEmpty()
+ val path="professional_notifications?select=id,actor_id,kind,post_id,job_id,match_reasons,created_at,read_at&recipient_id=eq."+userId+filter+"&order=created_at.desc,id.desc&limit=31&offset="+((page-1)*30)
+ val r=notificationCall(token,path)
+ if(r.first==null)return NotificationBatch(null,emptyMap(),emptyMap(),false,r.second)
+ val rows=runCatching{val a=JSONArray(r.first);(0 until a.length()).map{a.getJSONObject(it)}}.getOrElse{return NotificationBatch(null,emptyMap(),emptyMap(),false,"Unable to read notifications.")}
+ val ids=rows.filter{it.field("kind")!="job_match"}.map{it.field("actor_id")}.filter{it.isNotBlank()}.distinct()
  val people=if(ids.isEmpty())emptyMap() else spaceRows(spaceCall(token,"member_cards",JSONObject().put("ids",JSONArray(ids))).first).associate{card->
-  val path=card.optString("avatar_path").takeUnless{it.isBlank()||it=="null"}
-  card.optString("id") to NotificationPerson(card.optString("full_name").takeUnless{it.isBlank()||it=="null"}?:"SERA member",path?.let{signedPostImage(token,it,"sera-account-private")})
+  val path=card.field("avatar_path").takeIf{it.isNotBlank()}
+  card.field("id") to NotificationPerson(card.field("full_name").ifBlank{"SERA member"},path?.let{signedPostImage(token,it,"sera-account-private")})
  }
- return NotificationBatch(rows,people,"")
+ val jobIds=rows.filter{it.field("kind")=="job_match"}.map{it.field("job_id")}.filter{it.isNotBlank()}.distinct()
+ val jobs=if(jobIds.isEmpty())emptyMap() else spaceRows(notificationCall(token,"jobs?select=id,title,company,location,work_type&status=eq.open&id=in.("+jobIds.joinToString(",")+")").first).associateBy{it.field("id")}
+ val pref=if(tab=="Opportunities")notificationCall(token,"sera_job_alert_preferences?select=enabled&user_id=eq."+userId+"&limit=1") else null
+ return NotificationBatch(rows,people,jobs,spaceRows(pref?.first).firstOrNull()?.optBoolean("enabled")==true,pref?.second.orEmpty())
 }
+private data class NativeNotificationGroup(val latest:JSONObject,val events:MutableList<JSONObject>,val actors:MutableList<String>)
+private fun notificationDay(r:JSONObject)=runCatching{Instant.parse(r.field("created_at")).atZone(ZoneId.of("Africa/Addis_Ababa")).toLocalDate()}.getOrNull()
+private fun groupNativeNotifications(rows:List<JSONObject>):List<NativeNotificationGroup>{
+ val groups=mutableListOf<NativeNotificationGroup>();val seen=mutableSetOf<String>()
+ rows.forEach{r->
+  if(!seen.add(r.field("id")))return@forEach
+  val g=groups.lastOrNull();val p=g?.latest
+  val span=runCatching{java.time.Duration.between(Instant.parse(r.field("created_at")),Instant.parse(p?.field("created_at").orEmpty())).seconds}.getOrDefault(-1)
+  if(g!=null&&p!=null&&r.field("kind") in listOf("like","comment","share","repost")&&r.field("kind")==p.field("kind")&&r.field("post_id").isNotBlank()&&r.field("post_id")==p.field("post_id")&&span in 0..21600&&notificationDay(r)==notificationDay(p)){
+   g.events.add(r);if(r.field("actor_id") !in g.actors)g.actors.add(r.field("actor_id"))
+  }else groups.add(NativeNotificationGroup(r,mutableListOf(r),mutableListOf(r.field("actor_id"))))
+ }
+ return groups
+}
+private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneId.of("Africa/Addis_Ababa"));return when(notificationDay(r)){now->"Today";now.minusDays(1)->"Yesterday";else->"Earlier"}}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SeraNativeNotifications(token:String,userId:String,modifier:Modifier=Modifier){
- var rows by remember(token){mutableStateOf<List<JSONObject>>(emptyList())}
- var people by remember(token){mutableStateOf<Map<String,NotificationPerson>>(emptyMap())}
- var error by remember(token){mutableStateOf("")}
- var loading by remember(token){mutableStateOf(true)}
- var refresh by remember(token){mutableIntStateOf(0)}
- var selectedPost by remember(token){mutableStateOf<String?>(null)}
- var marking by remember(token){mutableStateOf(false)}
- val scope=rememberCoroutineScope()
- val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
- val teal=Color(0xFF087E83)
- fun mark(id:String?){
-  if(marking)return
-  marking=true
-  scope.launch{
-   val r=withContext(Dispatchers.IO){notificationCall(token,"professional_notifications?read_at=is.null"+(id?.let{"&id=eq."+it}?:""),true)}
-   marking=false;error=r.second
-   if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}
-  }
+ var tab by remember(token,userId){mutableStateOf("All")};var page by remember(token,userId){mutableIntStateOf(1)}
+ var rows by remember(token,userId){mutableStateOf<List<JSONObject>>(emptyList())};var people by remember(token,userId){mutableStateOf<Map<String,NotificationPerson>>(emptyMap())};var jobs by remember(token,userId){mutableStateOf<Map<String,JSONObject>>(emptyMap())}
+ var enabled by remember(token,userId){mutableStateOf(false)};var error by remember(token,userId){mutableStateOf("")};var loading by remember(token,userId){mutableStateOf(true)};var refresh by remember(token,userId){mutableIntStateOf(0)}
+ var selectedPost by remember(token,userId){mutableStateOf<String?>(null)};var selectedJob by remember(token,userId){mutableStateOf<SearchHit?>(null)};var marking by remember(token,userId){mutableStateOf(false)};var sounds by remember{mutableStateOf(false)}
+ val scope=rememberCoroutineScope();val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle;val teal=Color(0xFF087E83)
+ fun mark(ids:List<String>?){
+  if(marking)return;marking=true
+  scope.launch{val r=withContext(Dispatchers.IO){notificationCall(token,"professional_notifications?recipient_id=eq."+userId+"&read_at=is.null"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}.orEmpty()),true)};marking=false;error=r.second;if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}}
  }
- LaunchedEffect(token,refresh,lifecycle){
+ fun preference(value:Boolean){marking=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_set_job_alert_preference",JSONObject().put("p_enabled",value))};marking=false;error=r.second;if(r.first!=null){enabled=value;refresh++}}}
+ LaunchedEffect(token,userId,tab,page,refresh,lifecycle){
   if(token.isBlank()){loading=false;error="Sign in to view notifications.";return@LaunchedEffect}
-  lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){
-   while(true){
-    val result=withContext(Dispatchers.IO){loadNotifications(token)}
-    if(result.rows!=null){rows=result.rows;people=result.people}
-    error=result.error;loading=false
-    delay(20000)
-   }
-  }
+  lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){val result=withContext(Dispatchers.IO){loadNotifications(token,userId,tab,page)};if(result.rows!=null){rows=result.rows;people=result.people;jobs=result.jobs;enabled=result.enabled};error=result.error;loading=false;delay(20000)}}
  }
  val unread=rememberSeraUnreadActivity(token,userId,"Notifications").first
+ if(sounds){SeraSoundSettings(modifier){sounds=false};return}
+ selectedJob?.let{hit->SearchResultDetail(token,userId,hit,modifier){selectedJob=null;refresh++};return}
+ val groups=groupNativeNotifications(rows.take(30))
  Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
   Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){
-   Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"${unread} unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=teal)}
-   TextButton(onClick={loading=true;refresh++},enabled=!loading){Text("Refresh")}
-   TextButton(onClick={mark(null)},enabled=unread>0&&!marking){Text("Read all")}
+   Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"$unread unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=teal)}
+   TextButton(onClick={sounds=true}){Text("Sounds")};TextButton(onClick={mark(null)},enabled=unread>0&&!marking){Text("Read all")}
   }
+  Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){notificationTabs.forEach{t->FilterChip(selected=tab==t,onClick={if(tab!=t){tab=t;page=1;rows=emptyList();loading=true}},label={Text(t)})}}
   if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
   LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
-   items(rows,key={it.getString("id")}){n->
-    val isUnread=n.isNull("read_at");val actor=people[n.optString("actor_id")]
-    val post=n.optString("post_id").takeUnless{it.isBlank()||it=="null"}
-    val action=when(n.optString("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";else->"interacted with you"}
-    Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)Color(0xFFF3E8FF) else Color.White,modifier=Modifier.fillMaxWidth().clickable{if(isUnread)mark(n.getString("id"));if(post!=null)selectedPost=post}){
-     Row(Modifier.padding(11.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-      if(actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(38.dp).clip(CircleShape)) else Box(Modifier.size(38.dp).background(Color(0xFFD0EBE7),CircleShape),contentAlignment=Alignment.Center){Text((actor?.name?:"S").take(1),color=teal,fontWeight=FontWeight.Bold)}
-      Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
-       Text(androidx.compose.ui.text.buildAnnotatedString{pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight=FontWeight.SemiBold));append(actor?.name?:"SERA member");pop();append(" "+action)},color=Color(0xFF183B40),fontSize=13.sp,lineHeight=17.sp)
-       Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.optString("created_at")))}.getOrDefault(""),fontSize=11.sp,lineHeight=14.sp,color=Color(0xFF657D80))
+   if(tab=="Opportunities")item{ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp)){Text("Career alerts",style=MaterialTheme.typography.titleMedium);Row(verticalAlignment=Alignment.CenterVertically){Text("Automatic job matches",Modifier.weight(1f));Switch(checked=enabled,onCheckedChange={preference(it)},enabled=!marking&&!loading)};Text("Up to 3 relevant opportunities per day.",style=MaterialTheme.typography.bodySmall);TextButton(enabled=!marking,onClick={marking=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_refresh_job_alerts")};marking=false;error=r.second;if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}}}){Text("Refresh job matches")}}}}
+   groups.forEachIndexed{index,g->
+    val n=g.latest;val day=dateGroup(n);if(index==0||dateGroup(groups[index-1].latest)!=day)item(key="day-"+day){Text(day,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}
+    item(key=n.field("id")){
+     val unreadIds=g.events.filter{it.isNull("read_at")}.map{it.field("id")};val isUnread=unreadIds.isNotEmpty();val actor=people[n.field("actor_id")];val post=n.field("post_id").takeIf{it.isNotBlank()};val job=jobs[n.field("job_id")];val isJob=n.field("kind")=="job_match"
+     val names=g.actors.map{people[it]?.name?:"SERA member"};val name=if(names.size<=2)names.joinToString(" and ")else names.take(2).joinToString(", ")+" and "+(names.size-2)+" other"+if(names.size==3)"" else "s"
+     val action=when(n.field("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";else->"interacted with you"}
+     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable{if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"))}){
+      Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+       if(!isJob&&actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(40.dp).clip(CircleShape))else Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(if(isJob)"J" else name.take(1),fontWeight=FontWeight.Bold)}
+       Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+        Text(if(isJob)job?.field("title")?:"Opportunity no longer available" else "$name $action",fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+        if(isJob&&job!=null){Text(job.field("company"),style=MaterialTheme.typography.bodySmall);val arr=n.optJSONArray("match_reasons");if(arr!=null)Text("Matches: "+(0 until arr.length()).map{arr.optString(it)}.joinToString(", "),color=teal,style=MaterialTheme.typography.labelSmall)}
+        if(g.events.size>1)Text("${g.events.size} activities"+if(isUnread)" · ${unreadIds.size} unread"else "",style=MaterialTheme.typography.labelSmall)
+        Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.field("created_at")))}.getOrDefault(""),style=MaterialTheme.typography.labelSmall)
+       }
+       if(isUnread)Box(Modifier.size(8.dp).background(teal,CircleShape))
       }
-      if(isUnread)Box(Modifier.size(8.dp).background(SeraPurple,CircleShape))
      }
     }
    }
-   if(rows.isEmpty()&&!loading&&error.isBlank())item{Column(Modifier.fillMaxWidth().padding(top=40.dp),horizontalAlignment=Alignment.CenterHorizontally){Text("You're all caught up",style=MaterialTheme.typography.titleLarge);Text("New activity will appear here.",color=Color(0xFF657D80))}}
+   if(rows.isEmpty()&&!loading&&error.isBlank())item{Text("You're all caught up",Modifier.padding(24.dp),style=MaterialTheme.typography.titleMedium)}
+   if(page>1||rows.size>30)item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton(onClick={page--;rows=emptyList();loading=true},enabled=page>1){Text("Previous")};Text("Page $page");TextButton(onClick={page++;rows=emptyList();loading=true},enabled=rows.size>30&&page<100){Text("Next")}}}
   }
  }
  selectedPost?.let{SeraNativePostDetail(token,it,onClose={selectedPost=null;refresh++})}

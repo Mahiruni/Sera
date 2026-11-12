@@ -2249,3 +2249,18 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .network-search-filter-form :is(input,select) { width:100%; min-width:0; background:var(--net-bg); border:1px solid var(--net-line); color:var(--net-ink); border-radius:10px; padding:10px; }
 .network-search-filter-actions { grid-column:1/-1; display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .network-search-filter-actions a { color:var(--net-blue); font-size:.8rem; }
+
+/* Smart notification inbox */
+.sera-notification-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 14px;scrollbar-width:none}
+.sera-notification-tabs::-webkit-scrollbar{display:none}
+.sera-notification-tabs a{flex:none;border:1px solid var(--net-line);border-radius:999px;padding:9px 14px;color:var(--net-ink);background:var(--net-surface);font-size:.82rem;font-weight:600;text-decoration:none}
+.sera-notification-tabs a[aria-current=page]{background:var(--net-blue);color:white;border-color:var(--net-blue)}
+.sera-notification-tabs a:focus-visible,.sera-notification-pagination a:focus-visible{outline:2px solid var(--net-blue);outline-offset:3px}
+.sera-notification-entry{min-width:0}
+.sera-notification-date{font-size:.8rem;color:var(--net-muted);margin:14px 4px 8px;font-weight:700}
+.sera-notification-pagination{display:flex;align-items:center;justify-content:center;gap:18px;padding:18px;font-size:.85rem;color:var(--net-muted)}
+.sera-notification-pagination a{color:var(--net-blue);font-weight:600}
+
+.sera-notification-avatar-stack{width:48px;height:48px;display:flex;align-items:flex-start;position:relative}
+.sera-notification-avatar-stack>*{position:absolute!important;top:0;left:0;border:2px solid var(--net-surface);border-radius:50%}
+.sera-notification-avatar-stack>*:nth-child(2){top:13px;left:13px}

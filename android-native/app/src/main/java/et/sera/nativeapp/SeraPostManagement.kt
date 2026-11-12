@@ -185,9 +185,12 @@ private fun editPostText(token:String,post:SeraPost,title:String,body:String):Pa
 
 @Composable internal fun SeraContentSettings(token:String,modifier:Modifier=Modifier,onBack:()->Unit){
  var bin by remember{mutableStateOf(false)}
+ var sounds by remember{mutableStateOf(false)}
+ if(sounds){SeraSoundSettings(modifier){sounds=false};return}
  if(bin){SeraPostBin(token,modifier){bin=false};return}
  Column(modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick=onBack){Text("Back")};Text("Settings",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
   ElevatedCard(shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){PostOption(Icons.Outlined.DeleteOutline,"Bin",controlTeal){bin=true};Text("Manage and restore deleted posts",Modifier.padding(horizontal=18.dp,vertical=4.dp),style=MaterialTheme.typography.bodySmall)}}
+  ElevatedCard(shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){TextButton(onClick={sounds=true},modifier=Modifier.fillMaxWidth()){Text("Notification sounds")};Text("Customize SERA alerts or use Android defaults",Modifier.padding(horizontal=18.dp,vertical=4.dp),style=MaterialTheme.typography.bodySmall)}}
  }
 }
