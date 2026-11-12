@@ -51,6 +51,7 @@ export function NetworkHome({
   hasMore = false,
   kind,
   mine = false,
+  personalized=false,
 }: {
   userId: string;
   profile: HomeProfile | null;
@@ -64,12 +65,14 @@ export function NetworkHome({
   hasMore?: boolean;
   kind?: PostKind;
   mine?: boolean;
+  personalized?:boolean;
 }) {
   const essentials = profileEssentials(profile),
     topics = skillTopics(profile?.skills);
   const filters = new URLSearchParams();
   if (kind) filters.set("kind", kind);
   if (mine) filters.set("view", "mine");
+  else if(!personalized&&!kind)filters.set("view","latest");
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page">
@@ -184,9 +187,8 @@ export function NetworkHome({
             </Link>
           </nav>
           <nav className="network-feed-tabs" aria-label="Feed view">
-            <Link href="/feed" aria-current={!mine ? "page" : undefined}>
-              Community
-            </Link>
+            <Link href="/feed" aria-current={personalized ? "page" : undefined}>For you</Link>
+            <Link href="/feed?view=latest" aria-current={!mine&&!personalized&&!kind?"page":undefined}>Latest</Link>
             <Link
               href="/feed?view=mine"
               aria-current={mine ? "page" : undefined}

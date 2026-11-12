@@ -49,6 +49,7 @@ export async function loadSocialFeed(
     postId?: string;
     kind?: PostKind;
     page?: number;
+    personalized?: boolean;
   } = {},
 ) {
   const db = await serverClient();
@@ -69,7 +70,7 @@ export async function loadSocialFeed(
   if (options.postId) query = query.eq("id", options.postId);
   if (options.kind) query = query.eq("kind", options.kind);
   const start = ((options.page || 1) - 1) * 20;
-  const { data: rows, error } = await query
+  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
     .order("published_at", { ascending: false })
     .order("id", { ascending: false })
     .range(start, start + 20);
@@ -82,10 +83,7 @@ export async function loadSocialFeed(
   const ids = [...new Set([...posts.map((p) => p.id),...sources.map(p=>p.id)])];
   if (!ids.length) return { posts: [], userId: auth.user.id, hasMore: false };
   const [profiles, images, likes, saves, people] = await Promise.all([
-    db
-      .from("post_authors")
-      .select("id,full_name,headline,location")
-      .in("id", [...new Set(posts.map((p) => p.author_id))]),
+    db.rpc("sera_feed_headlines",{p_ids:[...new Set(posts.map(p=>p.author_id))]}),
     db
       .from("post_images")
       .select("post_id,path,alt")
@@ -116,7 +114,7 @@ export async function loadSocialFeed(
     throw new Error("Unable to load post images. Please refresh.");
   const {data:repostStates}=await db.rpc("sera_repost_states",{p_ids:[...new Set(posts.map(p=>p.repost_of||p.id))]});
   const states=new Map<string,{reposted:boolean;repost_count:number}>((repostStates||[]).map((r:{id:string;reposted:boolean;repost_count:number})=>[r.id,r]));
-  const authorMap = new Map((profiles.data || []).map((p) => [p.id, p]));
+  const authorMap = new Map<string,{id:string;headline:string;full_name:string;location:string}>((profiles.data || []).map((p:{id:string;headline:string}) => [p.id,{id:p.id,headline:p.headline||"",full_name:"SERA member",location:""}]));
   const liked = new Set((likes.data || []).map((p) => p.post_id));
   const saved = new Set((saves.data || []).map((p) => p.post_id));
   return {

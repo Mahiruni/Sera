@@ -53,7 +53,8 @@ private val feedMuted = Color(0xFF667A7E)
 fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val shareTitle = stringResource(R.string.share_post)
-    val stream = remember(token, refreshKey) { pagedSeraPosts(token) }
+    var personalized by remember(token){mutableStateOf(true)}
+    val stream = remember(token, refreshKey,personalized) { pagedSeraPosts(token,personalized) }
     val posts = stream.collectAsLazyPagingItems()
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
@@ -88,6 +89,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item(key="feed-mode") { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
             items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->

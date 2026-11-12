@@ -25,10 +25,10 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
     } catch (e: Exception) { null to "Network unavailable. Please retry." }
 }
 
-fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null): Pair<List<SeraPost>?, String> {
+fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false): Pair<List<SeraPost>?, String> {
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
-    val result = request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note&status=eq.published&order=published_at.desc&limit=20&offset=${page * 20}$filter")
+    val result = if(personalized&&postId==null) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*20).put("p_limit",20)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note&status=eq.published&order=published_at.desc,id.desc&limit=20&offset=${page * 20}$filter")
     val body = result.first ?: return null to result.second
     return try {
         val array = JSONArray(body)

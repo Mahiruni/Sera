@@ -19,8 +19,9 @@ export default async function Feed({
       ? (params.kind as PostKind)
       : undefined,
     mine = params.view === "mine";
+  const personalized=!mine&&!kind&&params.view!=="latest";
   const [feed, sidebars] = await Promise.all([
-    loadSocialFeed({ page, kind, authorId: mine ? user.id : undefined }),
+    loadSocialFeed({ page, kind, authorId: mine ? user.id : undefined,personalized }),
     loadNetworkSidebars(user.id),
   ]);
   return (
@@ -33,6 +34,7 @@ export default async function Feed({
       hasMore={feed.hasMore}
       kind={kind}
       mine={mine}
+      personalized={personalized}
     />
   );
 }
