@@ -1,0 +1,42 @@
+name: SERA Voice TURN Transport QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/voice-turn-transport.mjs'
+      - '.github/workflows/voice-turn-transport.yml'
+      - 'lib/network/voice-calls.ts'
+      - 'components/network/sera-voice-call.tsx'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeRtc.kt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  relay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test tooling
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Start disposable authenticated coturn
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "SERA_TEST_TURN_SECRET=$secret" >> "$GITHUB_ENV"
+          docker run -d --name sera-test-turn --network host coturn/coturn:4.6.3             -n --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=3478             --min-port=49160 --max-port=49200 --realm=sera-test.invalid --use-auth-secret             --static-auth-secret="$secret" --allow-loopback-peers --no-tls --no-dtls --no-cli
+          sleep 3
+          docker inspect -f '{{.State.Running}}' sera-test-turn | grep true
+      - name: Verify two-way audio packets through actual relay
+        run: node tests/voice-turn-transport.mjs
+      - name: Stop test relay
+        if: always()
+        run: docker rm -f sera-test-turn || true
