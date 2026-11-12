@@ -21,6 +21,10 @@ do $$begin if exists(select 1 from storage.objects where bucket_id='sera-identit
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',m,'role','authenticated')::text,true) from identity_fixture;
 set local role authenticated;
+do $$begin
+ if exists(select 1 from storage.objects where bucket_id='sera-identity-private' and name=(select a::text||'/'||r::text||'/evidence' from identity_fixture)) then raise exception 'reviewer bypassed audited download';end if;
+ begin perform public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',true);raise exception 'approval without evidence access';exception when raise_exception then if sqlerrm='approval without evidence access' then raise;end if;end;
+end$$;
 select public.sera_identity_evidence_path((select r from identity_fixture));
 do $$begin begin perform public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',false);raise exception 'unchecked approval accepted';exception when raise_exception then if sqlerrm='unchecked approval accepted' then raise;end if;end;end$$;
 select public.sera_identity_review((select r from identity_fixture),'approved','Identity evidence reviewed',true);
@@ -36,6 +40,11 @@ reset role;
 update public.profiles set full_name='Identity QA A' where id=(select a from identity_fixture);
 set local role authenticated;
 do $$begin if exists(select 1 from public.sera_identity_badges(array[(select a from identity_fixture)])) then raise exception 'restored name resurrected badge';end if;if (public.sera_identity_status()->>'status')<>'revoked' then raise exception 'revocation missing';end if;if not exists(select 1 from public.sera_identity_history() where evidence_present) then raise exception 'history missing';end if;end$$;
+reset role;
+update private.sera_identity_requests set reviewed_at=now()-interval '31 days' where id=(select r from identity_fixture);
+grant select on identity_fixture to service_role;
+set local role service_role;
+do $$begin if not exists(select 1 from public.sera_identity_cleanup_candidates() c where c.path=(select a::text||'/'||r::text||'/evidence' from identity_fixture)) then raise exception 'expired evidence omitted from cleanup';end if;end$$;
 reset role;
 do $$begin if has_function_privilege('authenticated','public.sera_identity_cleanup_candidates()','execute') then raise exception 'cleanup exposed';end if;end$$;
 rollback;

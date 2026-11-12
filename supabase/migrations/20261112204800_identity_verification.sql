@@ -19,7 +19,7 @@ revoke all on function private.sera_identity_reviewer() from public,anon,authent
 create function private.sera_identity_evidence_access(p_name text,p_action text) returns boolean language sql stable security definer set search_path='' as $$
  select private.account_verified() and exists(select 1 from private.sera_identity_requests r where p_name=r.user_id::text||'/'||r.id::text||'/evidence' and
  ((p_action='upload' and r.user_id=auth.uid() and r.status='draft') or
- (p_action='read' and ((r.user_id=auth.uid() and r.status in ('draft','pending','rejected','withdrawn','approved','revoked')) or (private.sera_identity_reviewer() and r.status='pending' and r.user_id<>auth.uid()))) or
+ (p_action='read' and r.user_id=auth.uid() and r.status in ('draft','pending','rejected','withdrawn','approved','revoked')) or
  (p_action='delete' and r.user_id=auth.uid() and r.status in ('draft','rejected','withdrawn','approved','revoked'))))
 $$;
 revoke all on function private.sera_identity_evidence_access(text,text) from public,anon;
@@ -86,7 +86,7 @@ begin
  if not private.sera_identity_reviewer() or p_decision is null or (p_decision='approved' and p_confirmed is distinct from true) or p_decision not in ('approved','rejected','revoked') or length(trim(coalesce(p_reason,''))) not between 10 and 1000 then raise exception 'Invalid review';end if;
  select * into r from private.sera_identity_requests where id=p_id for update;
  if r.id is null or r.user_id=auth.uid() or not ((r.status='pending' and p_decision in ('approved','rejected')) or (r.status='approved' and p_decision='revoked')) then raise exception 'Invalid review transition';end if;
- if p_decision='approved' and (not exists(select 1 from public.profiles where id=r.user_id and full_name=r.verified_name) or not exists(select 1 from storage.objects where bucket_id='sera-identity-private' and name=r.user_id::text||'/'||r.id::text||'/evidence')) then raise exception 'Evidence or identity changed';end if;
+ if p_decision='approved' and (not exists(select 1 from private.sera_identity_audit a where a.request_id=r.id and a.actor_id=auth.uid() and a.action='evidence_access' and a.created_at>=r.submitted_at) or not exists(select 1 from public.profiles where id=r.user_id and full_name=r.verified_name) or not exists(select 1 from storage.objects where bucket_id='sera-identity-private' and name=r.user_id::text||'/'||r.id::text||'/evidence')) then raise exception 'Evidence or identity changed';end if;
  update private.sera_identity_requests set status=p_decision,reviewed_at=now(),reviewer_id=auth.uid(),decision_reason=trim(p_reason),expires_at=case when p_decision='approved' then now()+interval '1 year' else null end where id=r.id;
  insert into private.sera_identity_audit(request_id,actor_id,action) values(r.id,auth.uid(),p_decision);
 end$$;
@@ -132,7 +132,7 @@ create function public.sera_identity_cleanup_candidates() returns table(path tex
 begin
  with stale as (
  update private.sera_identity_requests set status='withdrawn',reviewed_at=now(),decision_reason='Request expired after 30 days; submit a new request'
- where status in ('draft','pending') and coalesce(submitted_at,created_at)<now()-interval '30 days' returning id
+ where id in (select r.id from private.sera_identity_requests r where r.status in ('draft','pending') and coalesce(r.submitted_at,r.created_at)<now()-interval '30 days' order by r.created_at limit 500 for update skip locked) returning id
  ) insert into private.sera_identity_audit(request_id,actor_id,action) select id,null,'expired' from stale;
  return query select o.name from storage.objects o left join private.sera_identity_requests r on o.name=r.user_id::text||'/'||r.id::text||'/evidence'
  where o.bucket_id='sera-identity-private' and (
