@@ -29,7 +29,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 private data class SeraProfessional(
-    val id: String, val name: String, val headline: String, val location: String, val avatarPath:String?=null,val matchedSkills:String=""
+    val id: String, val name: String, val headline: String, val location: String, val avatarPath:String?=null,val matchedSkills:String="",val identityVerified:Boolean=false
 )
 
 private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList()):Pair<List<SeraProfessional>?,String>{
@@ -40,12 +40,13 @@ private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList()
   val ids=(relatedIds.distinct().take(500)+recs.keys+authors).filter{it.isNotBlank()}.distinct()
   val people=mutableListOf<SeraProfessional>()
   for(chunk in ids.chunked(100)){
+   val badges=identityBadges(token,chunk)
    val cardResult=spaceCall(token,"member_cards",org.json.JSONObject().put("ids",JSONArray(chunk)))
    if(cardResult.first==null)return null to cardResult.second
    val headlines=spaceRows(spaceCall(token,"sera_feed_headlines",org.json.JSONObject().put("p_ids",JSONArray(chunk))).first).associate{it.optString("id") to it.optString("headline").takeUnless{v->v=="null"}.orEmpty()}
    spaceRows(cardResult.first).forEach{p->
     val id=p.optString("id");val name=p.optString("full_name").takeUnless{it=="null"}.orEmpty();val rec=recs[id]
-    if(id.isNotBlank()&&name.isNotBlank())people.add(SeraProfessional(id,name,rec?.optString("headline")?.takeUnless{it.isBlank()||it=="null"}?:headlines[id].orEmpty(),"",p.optString("avatar_path").takeUnless{it.isBlank()||it=="null"},rec?.optString("matched_skills")?.takeUnless{it=="null"}.orEmpty()))
+    if(id.isNotBlank()&&name.isNotBlank())people.add(SeraProfessional(id,name,rec?.optString("headline")?.takeUnless{it.isBlank()||it=="null"}?:headlines[id].orEmpty(),"",p.optString("avatar_path").takeUnless{it.isBlank()||it=="null"},rec?.optString("matched_skills")?.takeUnless{it=="null"}.orEmpty(),id in badges))
    }
   }
   people to ""
@@ -123,7 +124,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                         val avatar by produceState<String?>(null,token,person.avatarPath){value=person.avatarPath?.let{path->withContext(Dispatchers.IO){signedPostImage(token,path,"sera-account-private")}}}
                         if(avatar!=null)SeraMediaImage(avatar!!,"Professional photo",128,128,Modifier.size(48.dp).clip(CircleShape)) else Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(person.name.take(1),color=teal,fontWeight=FontWeight.Bold)}
-                        Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis);if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis);if(view=="Discover"&&person.matchedSkills.isNotBlank())Text("Shared skills: "+person.matchedSkills,style=MaterialTheme.typography.labelSmall,color=teal,maxLines=2,overflow=TextOverflow.Ellipsis)}
+                        Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false));if(person.identityVerified)SeraIdentityBadge()};if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis);if(view=="Discover"&&person.matchedSkills.isNotBlank())Text("Shared skills: "+person.matchedSkills,style=MaterialTheme.typography.labelSmall,color=teal,maxLines=2,overflow=TextOverflow.Ellipsis)}
                         if(person.id in connected)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}
                     }
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){

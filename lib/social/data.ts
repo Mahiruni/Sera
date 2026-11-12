@@ -32,6 +32,7 @@ export type SocialPost = {
   published_at: string;
   edited_at: string | null;
   photo?: string | null;
+  identityVerified?:boolean;
   author: { id: string; full_name: string; headline: string; location: string };
   images: { url: string; alt: string }[];
   liked: boolean;
@@ -125,6 +126,7 @@ export async function loadSocialFeed(
     posts: posts.map((p) => ({
       ...p,
       photo: people.get(p.author_id)?.photo,
+      identityVerified:people.get(p.author_id)?.identityVerified,
       author: { ...(authorMap.get(p.author_id) || {
         id: p.author_id,
         full_name: "Sera member",

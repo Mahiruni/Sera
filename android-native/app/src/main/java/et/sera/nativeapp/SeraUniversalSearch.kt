@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
@@ -123,6 +124,7 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
     val scope=rememberCoroutineScope()
     val context=LocalContext.current
     val person=hit.kind=="People"
+    val verified by produceState(false,token,hit.id,person){value=person&&withContext(Dispatchers.IO){hit.id in identityBadges(token,listOf(hit.id))}}
     androidx.activity.compose.BackHandler{if(thread!=null)thread=null else onBack()}
     LaunchedEffect(token,hit.id,retry){loading=true;detail=null;detail=withContext(Dispatchers.IO){loadSearchDetail(token,hit)};loading=false}
     if(thread!=null){
@@ -138,7 +140,7 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
             ElevatedCard(Modifier.fillMaxWidth(),shape=RoundedCornerShape(22.dp)){
                 Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                     Text(if(person)"Professional" else "Opportunity",color=MaterialTheme.colorScheme.primary)
-                    Text(item.title,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){Text(item.title,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f,fill=false));if(verified)SeraIdentityBadge()}
                     Text(item.subtitle,style=MaterialTheme.typography.bodyMedium)
                 }
             }

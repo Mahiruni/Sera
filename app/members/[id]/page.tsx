@@ -5,6 +5,7 @@ import { MemberAvatar } from "@/components/activity/avatar";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import {IdentityBadge} from "@/components/identity/badge";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
 import { uuid, pageNumber } from "@/lib/social/validation";
@@ -85,7 +86,7 @@ export default async function Member({
           photo={member?.photo}
           size={84}
         />
-        <h1>{member?.name || author?.full_name || "Sera community member"}</h1>
+        <h1>{member?.name || author?.full_name || "Sera community member"}{member?.identityVerified&&<IdentityBadge/>}</h1>
         <div className="sera-member-activity-row"><ProfessionalPresence member={id} compact /></div>
         <p>
           {author?.headline ||

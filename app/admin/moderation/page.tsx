@@ -22,7 +22,7 @@ export default async function ModerationQueue({searchParams}:{
   const people=await memberCards((reports??[]).flatMap(r=>[r.reporter_id,r.reported_id]));
   return <main className="sera-network network-app sera-moderation">
     <h1 style={{fontSize:"clamp(2rem,5vw,3rem)",letterSpacing:"-.04em"}}>Moderation workspace</h1>
-    <p>Confidential member reports. Review evidence carefully and document every decision.</p>
+    <Link href="/admin/verification">Identity verification review</Link><p>Confidential member reports. Review evidence carefully and document every decision.</p>
     <nav aria-label="Report filters" className="sera-moderation-filters">
       {["all","open","reviewing","resolved","dismissed"].map(s=><a key={s} href={s==="all"?"/admin/moderation":"/admin/moderation?status="+s} className={(!status&&s==="all")||status===s?"is-active":""}>{s[0].toUpperCase()+s.slice(1)}</a>)}
     </nav>
