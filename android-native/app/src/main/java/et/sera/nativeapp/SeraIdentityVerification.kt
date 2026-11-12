@@ -85,6 +85,7 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
  BackHandler{if(!busy)onBack()}
  LaunchedEffect(token,refresh){loading=true;val r=withContext(Dispatchers.IO){identityJson(token,"sera_identity_status")};state=r;history=withContext(Dispatchers.IO){spaceRows(spaceCall(token,"sera_identity_history").first)};if(r==null)error="Verification is temporarily unavailable.";if(r?.optString("status")=="draft")type=r.optString("document_type","national_id");loading=false}
  val status=state?.optString("status","none")?:"none"
+ val intake=state?.optBoolean("intake_available")==true
  fun run(intent:String){if(busy)return;val id=state?.optString("id").orEmpty();val path=historicalEvidence?:state?.optString("path").orEmpty();busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){
   when(intent){"submit"->if(spaceCall(token,"sera_identity_submit",JSONObject().put("p_id",id)).first!=null)"" else "Upload evidence before submitting."
    "withdraw"->if(spaceCall(token,"sera_identity_withdraw",JSONObject().put("p_id",id)).first==null)"Unable to withdraw." else if(!evidenceCall(token,path))"Withdrawn. You can retry removing the document." else ""
@@ -109,9 +110,10 @@ private fun submitNativeIdentity(context:Context,token:String,type:String,uri:Ur
    Text("Only you and authorized reviewers can access evidence during review. Documents are scheduled for removal 30 days after a decision; incomplete requests expire after 30 days. Remove evidence earlier after a decision or withdraw an active request.",style=MaterialTheme.typography.bodyMedium)
    if(status in listOf("draft","pending"))OutlinedButton(onClick={confirm="withdraw"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Withdraw request")}
    if(status=="approved")OutlinedButton(onClick={confirm="withdraw"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Remove verification")}
-   if(status=="draft")OutlinedButton(onClick={run("submit")},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Submit uploaded draft")}
+   if(intake&&status=="draft")OutlinedButton(onClick={run("submit")},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Submit uploaded draft")}
    if(state?.optBoolean("evidence_present")==true&&status in listOf("approved","expired","rejected","withdrawn","revoked"))OutlinedButton(onClick={confirm="delete"},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Remove document")}
-   if(status in listOf("none","draft","rejected","withdrawn","revoked","expired")){
+   if(!intake&&status in listOf("none","draft","rejected","withdrawn","revoked","expired"))Text("Verification requests are temporarily paused until an authorized reviewer is available. No document is needed right now.",style=MaterialTheme.typography.bodyMedium)
+   if(intake&&status in listOf("none","draft","rejected","withdrawn","revoked","expired")){
     Text("Document type",style=MaterialTheme.typography.titleMedium)
     listOf("national_id" to "National ID","passport" to "Passport","driver_license" to "Driving licence").forEach{(key,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=type==key,onClick={type=key},enabled=!busy&&status!="draft");Text(label)}}
     OutlinedButton(onClick={picker.launch(arrayOf("image/jpeg","image/png","application/pdf"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text(if(selected==null)"Choose document" else "Document selected · change")}
