@@ -178,6 +178,44 @@ set local role authenticated;
 select public.sera_manage_post((select post from sera_qa_ids),'trash');
 reset role;
 
+-- Search uses the same RLS as the feed: no private or binned keyword matches,
+-- author discovery or topic extraction for another member.
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'restore');
+select public.sera_manage_post((select post from sera_qa_ids),'privacy','only_me');
+do $$begin
+ if not exists(select 1 from public.posts where id=(select post from sera_qa_ids) and status='published' and title ilike '%QA idea%') then raise exception 'Owner search lost private post';end if;
+end$$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if exists(select 1 from public.posts where id=(select post from sera_qa_ids) and status='published' and (title ilike '%QA idea%' or skills @> array['design'])) then raise exception 'Private post appeared in search';end if;
+ if exists(select 1 from public.post_authors where id=(select a from sera_qa_ids)) then raise exception 'Private-only author appeared in discovery';end if;
+end$$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'privacy','public');
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if not exists(select 1 from public.posts where id=(select post from sera_qa_ids) and status='published' and title ilike '%QA idea%') then raise exception 'Public post missing from search';end if;
+end$$;
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+select public.sera_manage_post((select post from sera_qa_ids),'trash');
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',(select b from sera_qa_ids),'role','authenticated')::text,true);
+set local role authenticated;
+do $$begin
+ if exists(select 1 from public.posts where id=(select post from sera_qa_ids) and status='published' and title ilike '%QA idea%') then raise exception 'Binned post appeared in search';end if;
+end$$;
+reset role;
+
 -- Simulate expiry without waiting 30 days; the fixture transaction is rolled back.
 update public.posts set deleted_at=now()-interval '31 days' where id=(select post from sera_qa_ids);
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
