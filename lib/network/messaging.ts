@@ -39,19 +39,19 @@ export async function sendProfessionalMessage(form: FormData) {
     const uploaded = await bucket.upload(path, file, { contentType: file.type, upsert: false });
     if (uploaded.error) return;
   }
-  const { data: message, error } = await db.from("professional_messages").insert({
-    conversation_id: conversation, sender_id: user.id, body: body.trim() || "Attachment",
-  }).select("id").single();
-  if (error || !message) {
+  // Use the existing atomic attachment RPC, shared with Android.
+  // A failed registration must never leave an empty attachment message.
+  const result = file && path
+    ? await db.rpc("sera_send_message_attachment", {
+        p_conversation: conversation, p_body: body.trim(), p_path: path,
+        p_name: file.name.slice(0, 180) || "attachment", p_mime: file.type, p_size: file.size,
+      })
+    : await db.from("professional_messages").insert({
+        conversation_id: conversation, sender_id: user.id, body: body.trim(),
+      }).select("id").single();
+  if (result.error || !result.data) {
     if (path) await bucket.remove([path]);
     return;
-  }
-  if (file && path) {
-    const recorded = await db.from("professional_message_attachments").insert({
-      message_id: message.id, owner_id: user.id, storage_path: path,
-      file_name: file.name.slice(0, 180) || "attachment", mime_type: file.type, byte_size: file.size,
-    });
-    if (recorded.error) await bucket.remove([path]);
   }
   // Persist and acknowledge the message without waiting on FCM provider latency.
   // after() runs during the hosting function lifecycle, after the action response.
