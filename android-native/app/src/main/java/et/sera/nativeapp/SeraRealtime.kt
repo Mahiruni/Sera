@@ -34,7 +34,7 @@ internal class SeraRealtime(private val token: String, private val conversationI
                 socket = client.newWebSocket(request, object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
                         val change = JSONObject().put("event","*").put("schema","public").put("table","professional_messages").put("filter","conversation_id=eq." + conversationId)
-                        val config = JSONObject().put("broadcast",JSONObject().put("self",false)).put("presence",JSONObject().put("key","")).put("postgres_changes",JSONArray().put(change))
+                        val config = JSONObject().put("broadcast",JSONObject().put("self",false)).put("presence",JSONObject().put("key","")).put("postgres_changes",JSONArray().put(change).put(JSONObject().put("event","*").put("schema","public").put("table","professional_message_reactions").put("filter","conversation_id=eq."+conversationId)))
                         webSocket.send(frame(topic,"phx_join",JSONObject().put("config",config).put("access_token",token)))
                     }
                     override fun onMessage(webSocket: WebSocket, text: String) {
