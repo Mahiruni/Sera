@@ -671,6 +671,8 @@ private fun BoxScope.SeraChromeOverlays(
             section = selected,
             canCompose = canCompose,
             onCompose = onCompose,
+            showCreate = expanded,
+            onMessaging = { onNavigate("Inbox") },
             onLanguage = onLanguage,
             onMenu = onMenu
         )
@@ -683,8 +685,9 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraFloatingDock(
             selected = selected,
-            sections = sections,
-            onNavigate = onNavigate,
+            sections = listOf("Home", "Network", "Create", "Jobs", "Profile"),
+            onNavigate = { if (it == "Create") onCompose() else onNavigate(it) },
+            canCompose = canCompose,
             profileAvatarUrl = profileAvatarUrl
         )
     }
