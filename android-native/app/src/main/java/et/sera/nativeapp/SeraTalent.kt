@@ -56,7 +56,7 @@ private fun loadTalentPortfolio(token:String,id:String):JSONObject? {
  }catch(_:Exception){null}finally{c?.disconnect()}
 }
 private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="null"}.orEmpty()
-@Composable private fun SeraTalentPortfolio(token:String,userId:String,id:String,modifier:Modifier,onMessage:(String)->Unit,onBack:()->Unit){
+@Composable internal fun SeraTalentPortfolio(token:String,userId:String,id:String,modifier:Modifier,onMessage:(String)->Unit,onBack:()->Unit){
  var detail by remember(id,token){mutableStateOf<JSONObject?>(null)}
  var loading by remember(id,token){mutableStateOf(true)}
  var retry by remember(id,token){mutableIntStateOf(0)}
