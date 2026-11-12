@@ -166,8 +166,9 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 }
 
 @Composable
-fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier) {
+fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}) {
     var companyInbox by remember { mutableStateOf(false) }
+    LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
     // Fail safely if encrypted storage is temporarily unavailable; never

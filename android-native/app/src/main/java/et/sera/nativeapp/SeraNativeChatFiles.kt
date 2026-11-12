@@ -74,6 +74,8 @@ internal fun sendChatAttachment(token: String,userId: String,conversation: Strin
             rpc.outputStream.use { it.write(payload.toString().toByteArray()) }
             if (rpc.responseCode !in 200..299) return "Could not send attachment. Please retry."
             committed=true
+            val messageId=rpc.inputStream.bufferedReader().use{it.readText()}.trim().trim('"')
+            SeraPush.dispatch(token,"message",messageId)
         } finally { rpc.disconnect() }
         return ""
     } catch (_: Exception) { return "Attachment transfer interrupted. Check your connection." }

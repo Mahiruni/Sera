@@ -10,11 +10,14 @@ export async function notifyProfessionalDevices(recipientId: string, notificatio
   if (!url || !key || !process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return;
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await admin.from("professional_push_devices")
-    .select("token").eq("user_id", recipientId).eq("enabled", true).limit(100);
+    .select("token,platform").eq("user_id", recipientId).eq("enabled", true).limit(100);
   if (error || !data?.length) return;
-  const result = await sendProfessionalPush(data.map(row => row.token as string), notification);
-  if (result.invalidTokens.length) {
+  const android = data.filter(row => row.platform === "android").map(row => row.token as string);
+  const web = data.filter(row => row.platform !== "android").map(row => row.token as string);
+  const results = await Promise.all([android.length ? sendProfessionalPush(android,notification,true) : null, web.length ? sendProfessionalPush(web,notification) : null]);
+  const invalidTokens = results.flatMap(result => result?.invalidTokens ?? []);
+  if (invalidTokens.length) {
     await admin.from("professional_push_devices").update({ enabled: false, updated_at: new Date().toISOString() })
-      .eq("user_id", recipientId).in("token", result.invalidTokens);
+      .eq("user_id", recipientId).in("token", invalidTokens);
   }
 }

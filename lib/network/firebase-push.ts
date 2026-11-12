@@ -52,7 +52,7 @@ async function accessToken(account: ServiceAccount): Promise<string> {
 }
 
 /** Only call from trusted server jobs after authorization and recipient selection. */
-export async function sendProfessionalPush(tokens: string[], payload: PushPayload): Promise<PushResult> {
+export async function sendProfessionalPush(tokens: string[], payload: PushPayload, nativeAndroid = false): Promise<PushResult> {
   const account = credentials();
   if (!account) throw new Error("Firebase service account is not configured");
   const token = await accessToken(account);
@@ -67,6 +67,7 @@ export async function sendProfessionalPush(tokens: string[], payload: PushPayloa
           headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
           body: JSON.stringify({ message: {
             token: deviceToken,
+            ...(nativeAndroid ? {} : { notification: { title: payload.title.slice(0,100), body: payload.body.slice(0,200) } }),
             data: { url: safeUrl, kind: payload.kind.slice(0, 50), title: payload.title.slice(0, 100), body: payload.body.slice(0, 200) },
             android: { priority: "high" },
           } }),

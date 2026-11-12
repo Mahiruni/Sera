@@ -334,7 +334,8 @@ fun SeraApp(
         }else SeraPush.register(context,token,authenticatedUserId)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
-    LaunchedEffect(pushKind,accessToken){if(pushKind!=null&&accessToken!=null){navigateTo(if(pushKind=="message"||pushKind=="company_message")"Inbox" else "Home");onPushConsumed()}}
+    var openCompanyInbox by remember { mutableStateOf(false) }
+    LaunchedEffect(pushKind,accessToken){if(pushKind!=null&&accessToken!=null){openCompanyInbox=pushKind=="company_message";navigateTo(if(pushKind=="message"||pushKind=="company_message")"Inbox" else "Home");onPushConsumed()}}
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
@@ -557,7 +558,7 @@ fun SeraApp(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         "Inbox" -> SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, pageModifier
+                                            accessToken ?: "", authenticatedUserId, pageModifier, openCompanyInbox, { openCompanyInbox=false }
                                         )
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())

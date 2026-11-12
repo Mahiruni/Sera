@@ -1,6 +1,10 @@
 package et.sera.nativeapp
 
 import android.Manifest
+import android.app.Application
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import java.util.concurrent.TimeUnit
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -24,6 +28,7 @@ import java.net.URL
 internal object SeraPush {
     const val CHANNEL="sera_messages"
     private const val PREFS="sera_push"
+    private val registrationGeneration=java.util.concurrent.atomic.AtomicInteger(0)
     fun initialize(context:Context):Boolean {
         if(FirebaseApp.getApps(context).isNotEmpty())return true
         val raw=BuildConfig.FIREBASE_CLIENT_JSON
@@ -41,23 +46,29 @@ internal object SeraPush {
     }
     fun channel(context:Context){
         val manager=context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL,"SERA notifications",NotificationManager.IMPORTANCE_HIGH).apply{description="Messages and professional activity";enableVibration(true)})
+        manager.createNotificationChannel(NotificationChannel(CHANNEL,"SERA notifications",NotificationManager.IMPORTANCE_HIGH).apply{description="Messages and professional activity";enableVibration(true);setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())})
     }
     private fun prefs(context:Context)=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
-    fun clearLocal(context:Context){prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll();if(initialize(context))FirebaseMessaging.getInstance().deleteToken()}
+    fun clearLocal(context:Context){registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
     suspend fun register(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         if(!initialize(context)||userId.isBlank())return@withContext
         if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return@withContext
-        val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull()?:return@withContext
+        val generation=registrationGeneration.get()
+        val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token,15,TimeUnit.SECONDS)}.getOrNull()?:return@withContext
+        if(generation!=registrationGeneration.get())return@withContext
         val old=prefs(context).getString("token",null)
         val oldOwner=prefs(context).getString("owner",null)
         if(old!=null&&old!=token&&oldOwner==userId)deviceRequest(access,old,userId,true)
-        if(deviceRequest(access,token,userId,false))prefs(context).edit().putString("token",token).putString("owner",userId).apply()
+        if(deviceRequest(access,token,userId,false)) {
+            if(generation==registrationGeneration.get())prefs(context).edit().putString("token",token).putString("owner",userId).apply()
+            else deviceRequest(access,token,userId,true)
+        }
     }
     suspend fun unregister(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         val token=prefs(context).getString("token",null)
         if(token!=null&&userId.isNotBlank())deviceRequest(access,token,userId,true)
-        clearLocal(context)
+        if(initialize(context))runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().deleteToken(),15,TimeUnit.SECONDS)}
+        prefs(context).edit().remove("token").apply()
     }
     fun active(context:Context)=prefs(context).getString("owner",null)!=null
     private fun deviceRequest(access:String,token:String,userId:String,remove:Boolean):Boolean{
@@ -92,6 +103,7 @@ internal object SeraPush {
         }catch(_:Exception){}finally{c?.disconnect()}
     }
 }
+class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
