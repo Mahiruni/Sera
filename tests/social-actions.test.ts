@@ -175,7 +175,14 @@ test("server actions publish actual media, handle replies and idempotent interac
       "post owner can moderate",
     );
     assert.ok((await exports.deletePost({}, form({ post_id: id }))).success);
-    assert.equal(owner.files.size, 0);
+    assert.equal(owner.files.size, 1, "trash retains media");
+    assert.ok((await exports.managePost({}, form({post_id:id,action:"restore"}))).success);
+    assert.ok((await exports.deletePost({}, form({post_id:id}))).success);
+    assert.ok((await exports.managePost({}, form({post_id:id,action:"purge"}))).success);
+    const queued=await db.query<{path:string}>("select path from public.sera_post_media_cleanup");
+    assert.equal(queued.rows.length,1);
+    await owner.storage.from("sera-post-media").remove(queued.rows.map(r=>r.path));
+    assert.equal(owner.files.size,0);
     for (const failure of ["upload", "imageRow", "publish"] as const) {
       owner.failures[failure] = true;
       assert.ok((await exports.createPost({}, post)).error, failure);

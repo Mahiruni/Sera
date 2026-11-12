@@ -84,8 +84,13 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',(select a from sera_qa_ids),'role','authenticated')::text,true);
 set local role authenticated;
 do $$declare affected integer;begin
- delete from public.posts where id=(select photo from sera_qa_ids);get diagnostics affected=row_count;
- if affected<>1 or (select count(*) from public.post_images where post_id=(select photo from sera_qa_ids))<>0 then raise exception 'Post delete did not cascade';end if;
+ perform public.sera_manage_post((select photo from sera_qa_ids),'trash');
+ if exists(select 1 from public.posts where id=(select photo from sera_qa_ids)) then raise exception 'Binned post visible';end if;
+ perform public.sera_manage_post((select photo from sera_qa_ids),'restore');
+ if not exists(select 1 from public.post_images where post_id=(select photo from sera_qa_ids)) then raise exception 'Restore lost images';end if;
+ perform public.sera_manage_post((select photo from sera_qa_ids),'trash');
+ perform public.sera_manage_post((select photo from sera_qa_ids),'purge');
+ if exists(select 1 from public.post_images where post_id=(select photo from sera_qa_ids)) then raise exception 'Purge did not cascade';end if;
 end$$;
 reset role;
 select 'PASS: social feed ownership, visibility, privacy, counters, cascades and anonymous isolation' as result;
