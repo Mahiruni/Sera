@@ -36,7 +36,7 @@ function PostPreview({ post }: { post: SocialPost }) {
       <span className="network-universal-copy">
         <strong>{title}</strong>
         <small>{post.author.full_name}</small>
-        {snippet && snippet !== title && <p>{snippet.slice(0, 160)}</p>}
+        {snippet && snippet !== title && <span className="network-universal-snippet">{snippet.slice(0, 160)}</span>}
       </span>
       <ArrowRight size={17} aria-hidden="true" />
     </Link>
