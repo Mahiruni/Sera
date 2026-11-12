@@ -29,10 +29,10 @@ import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
 
-private data class SearchHit(val id:String,val kind:String,val title:String,val subtitle:String,val body:String="")
+internal data class SearchHit(val id:String,val kind:String,val title:String,val subtitle:String,val body:String="")
 private val searchTabs=listOf("All","People","Jobs","Posts","Projects","Companies","Topics")
 private fun cleanSearch(s:String)=s.take(80).replace(Regex("[^\\p{L}\\p{N}\\s-]")," ").replace(Regex("\\s+")," ").trim()
-private fun searchRows(token:String,table:String,params:Map<String,String>):JSONArray {
+internal fun searchRows(token:String,table:String,params:Map<String,String>):JSONArray {
     val query=params.entries.joinToString("&"){Uri.encode(it.key)+"="+Uri.encode(it.value)}
     val connection=(URL(BuildConfig.SUPABASE_URL.trimEnd('/')+"/rest/v1/"+table+"?"+query).openConnection() as HttpURLConnection)
     try {
@@ -113,7 +113,7 @@ private fun loadSearchDetail(token:String,hit:SearchHit):SearchHit? = try {
 } catch(_:Exception){null}
 
 @Composable
-private fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifier:Modifier,onBack:()->Unit){
+internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifier:Modifier,onBack:()->Unit){
     var detail by remember(token,hit.id){mutableStateOf<SearchHit?>(null)}
     var loading by remember(token,hit.id){mutableStateOf(true)}
     var error by remember(token,hit.id){mutableStateOf("")}
@@ -158,6 +158,8 @@ private fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifier
 
 @Composable
 internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Modifier){
+    var discovery by remember(userId){mutableStateOf(false)}
+    if(discovery){SeraIntelligentDiscovery(token,userId,modifier){discovery=false};return}
     var query by remember(userId){mutableStateOf("")}
     var tab by remember(userId){mutableStateOf("All")}
     var location by remember(userId){mutableStateOf("")}
@@ -187,7 +189,7 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
     }
     selected?.takeIf{it.kind!="Posts"&&it.kind!="Projects"}?.let{hit->SearchResultDetail(token,userId,hit,modifier){selected=null;retry++};return}
     Column(modifier.fillMaxSize().imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        Text("Search SERA",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){Text("Search SERA",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface);TextButton(onClick={focus.clearFocus();discovery=true}){Text("For you")}}
         OutlinedTextField(value=query,onValueChange={query=it.take(80)},modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(18.dp),label={Text("People, jobs, posts, skills…")},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}),trailingIcon={TextButton(onClick={submit(query)}){Text("Go")}})
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){searchTabs.forEach{k->FilterChip(selected=tab==k,onClick={switchTab(k)},label={Text(k)})}}
         TextButton(onClick={filters=!filters}){Text(if(filters)"Hide filters" else "Filters")}
