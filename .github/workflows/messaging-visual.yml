@@ -1,0 +1,49 @@
+name: SERA Messaging Visual QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/sera-messaging-excellence.css'
+      - 'components/network/sera-message-workspace.tsx'
+      - 'components/network/sera-voice-recorder.tsx'
+      - 'tests/e2e/messaging-*'
+      - '.github/workflows/messaging-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SERA_E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false @playwright/test@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Render actual component with isolated visual fixture
+        run: |
+          mkdir -p app/qa-messaging-fixture
+          cp tests/e2e/messaging-fixture-page.tsx app/qa-messaging-fixture/page.tsx
+          npx next dev --hostname 127.0.0.1 --port 3000 > /tmp/sera-messaging-visual.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3000/qa-messaging-fixture >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS --max-time 10 http://127.0.0.1:3000/qa-messaging-fixture >/dev/null
+          npx playwright test tests/e2e/messaging-visual.spec.ts --project=chromium
+      - name: Upload actual component screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sera-messaging-visual-screenshots
+          path: |
+            test-results/
+            /tmp/sera-messaging-visual.log
+          retention-days: 7

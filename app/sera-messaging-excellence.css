@@ -66,3 +66,12 @@ html[data-sera-theme=dark] .sera-chat-page{--chat-bg:#12262b;--chat-surface:#183
  .sera-chat-reaction-picker{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%!important;right:auto!important;transform:translateX(-50%);z-index:42}
  .sera-chat-compose-row>.sera-chat-recording .sera-chat-icon{width:44px;min-width:44px}
 }
+
+/* Remove global chrome from the mobile thread, including keyboard focus targets. */
+@media(max-width:700px){
+ body:has(.sera-chat-thread) :is(.site-header,.footer-dock,.information-footer,.skip-link){display:none!important}
+ body:has(.sera-chat-thread) .sera-main{padding-top:0!important;padding-bottom:0!important}
+ .sera-chat-bubble{touch-action:pan-y}
+}
+.sera-chat-bubble[data-reply-highlight=true]{outline:2px solid var(--chat-accent);outline-offset:3px}
+.sera-chat-message-row:has(.sera-chat-menu),.sera-chat-message-row:has(.sera-chat-reaction-picker){z-index:20}
