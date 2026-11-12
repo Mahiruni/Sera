@@ -2213,7 +2213,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .network-universal-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
 .network-universal-copy strong { font-size: .9rem; line-height: 1.4; }
 .network-universal-copy small { color: var(--net-muted); font-size: .73rem; }
-.network-universal-copy p {
+.network-universal-snippet {
   color: var(--net-muted);
   font-size: .8rem;
   line-height: 1.5;
