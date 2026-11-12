@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -66,6 +66,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             .filter { it.isNotBlank() }.distinct()
         // Resolve visible profile names and avatars through the live member_cards RPC.
         // The old post_authors relation does not exist in the hosted schema.
+        val badges=identityBadges(token,authors)
         val names = mutableMapOf<String, String>()
         val avatars = mutableMapOf<String, String>()
         val headlines = mutableMapOf<String,String>()
@@ -128,7 +129,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
         val repostStates=spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}
         posts.map { post ->
             post.copy(author = names[post.authorId] ?: "SERA member",
-                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),
+                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),identityVerified=post.authorId in badges,
                 avatarUrl = avatars[post.authorId],
                 repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } }, originalTime=sourceRows[post.repostOf]?.optString("published_at"), originalTitle=sourceRows[post.repostOf]?.optString("title"), originalBody=sourceRows[post.repostOf]?.optString("body"), originalAvatar=avatars[sourceAuthors[post.repostOf]],originalAuthorId=sourceAuthors[post.repostOf],repostCount=repostStates[post.repostOf?:post.id]?.optInt("repost_count")?:0,reposted=repostStates[post.repostOf?:post.id]?.optBoolean("reposted")?:false)
         } to ""

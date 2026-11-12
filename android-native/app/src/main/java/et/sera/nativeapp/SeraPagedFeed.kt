@@ -131,10 +131,13 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     }
                                 }
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
                                     Text(buildAnnotatedString {
                                         withStyle(SpanStyle(color=feedInk,fontWeight=FontWeight.Bold,fontSize=14.sp)){append(post.author)}
                                         if(post.repostOf!=null) withStyle(SpanStyle(color=SeraPurple,fontWeight=FontWeight.Medium,fontSize=11.sp)){append(" | Reposted from "+(post.repostAuthor?:"original author"))}
-                                    },maxLines=2,overflow=TextOverflow.Ellipsis,lineHeight=17.sp)
+                                    },maxLines=2,overflow=TextOverflow.Ellipsis,lineHeight=17.sp,modifier=Modifier.weight(1f,fill=false))
+                                    if(post.identityVerified)SeraIdentityBadge()
+                                    }
                                     if(post.headline.isNotBlank()) Text(post.headline,color=feedTeal,fontSize=11.sp,lineHeight=13.sp)
                                     val details = (if(post.repostOf!=null)"Reposted " else "")+postTimeLabel(post.publishedAt)
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {

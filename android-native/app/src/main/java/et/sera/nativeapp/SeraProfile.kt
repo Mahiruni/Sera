@@ -45,6 +45,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
     val name = details?.fullName?.takeIf { it.isNotBlank() } ?: identity.lineSequence().firstOrNull().orEmpty().ifBlank { "SERA member" }
     val email = identity.lineSequence().drop(1).firstOrNull().orEmpty()
     val canEdit = token.isNotBlank() && userId.isNotBlank()
+    val verified by produceState(false,token,userId,reload){value=canEdit&&withContext(Dispatchers.IO){userId in identityBadges(token,listOf(userId))}}
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(shape = RoundedCornerShape(24.dp), color = Color.White, border = BorderStroke(1.dp, profileLine)) {
             Column(Modifier.fillMaxWidth()) {
@@ -63,7 +64,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
                     }
                 }
                 Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(name, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, color = profileInk)
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){Text(name,fontSize=25.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,color=profileInk,modifier=Modifier.weight(1f,fill=false));if(verified)SeraIdentityBadge()}
                     Text(details?.headline?.takeIf { it.isNotBlank() } ?: "Your professional profile", color = profileMuted, fontSize = 14.sp)
                     details?.location?.takeIf { it.isNotBlank() }?.let { Text(it, color = profileMuted, fontSize = 13.sp) }
                     if (email.isNotBlank()) Text(email, color = profileMuted, fontSize = 12.sp)
