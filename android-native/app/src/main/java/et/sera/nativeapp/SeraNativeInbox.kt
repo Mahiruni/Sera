@@ -463,7 +463,8 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     Text(conversation.peerName, fontWeight = FontWeight.SemiBold,fontSize = 17.sp, color = inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
                     Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 12.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                IconButton(onClick={showSearch=!showSearch},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
+                SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart={playback.pause()})
+                IconButton(onClick={showSearch=!showSearch},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
                 var threadMenu by remember{mutableStateOf(false)}
                 Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply();threadMenu=false})}}
             }

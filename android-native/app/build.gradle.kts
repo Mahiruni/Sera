@@ -89,4 +89,5 @@ dependencies {
     implementation("androidx.room:room-paging:2.7.1")
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
+    implementation("io.github.webrtc-sdk:android:144.7559.15")
 }
