@@ -40,6 +40,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 
@@ -189,7 +192,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                             if(!result.first){reactionOverrides[post.id]=previous;reactionError=result.second}
                                             reactionPending.remove(post.id)
                                         }
-                                    }, modifier = Modifier.size(48.dp)) {
+                                    }, modifier = Modifier.size(48.dp).semantics { contentDescription=if(reaction.first) "Unlike post" else "Like post"; selected=reaction.first }) {
                                         val scale by animateFloatAsState(if(reaction.first) 1.08f else 1f,label="Like scale")
                                         SeraReactionGlyph(SeraReactionKind.LIKE, active = reaction.first, modifier=Modifier.graphicsLayer { scaleX=scale; scaleY=scale })
                                     }
@@ -197,7 +200,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 }
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = { commentsPostId = post.id }, modifier = Modifier.size(48.dp)) {
+                                    IconButton(onClick = { commentsPostId = post.id }, modifier = Modifier.size(48.dp).semantics { contentDescription="Comments" }) {
                                         SeraReactionGlyph(SeraReactionKind.COMMENT)
                                     }
                                     if (post.comments > 0) Text(post.comments.toString(), fontSize = 11.sp, color = feedMuted)
@@ -209,7 +212,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         withThoughts=false
                                         repostNote = ""
                                         repostMessage = ""
-                                    }, modifier = Modifier.size(48.dp)) {
+                                    }, modifier = Modifier.size(48.dp).semantics { contentDescription="Repost"; selected=repostState.first }) {
                                         SeraReactionGlyph(SeraReactionKind.REPOST,active=repostState.first)
                                     }
                                     if(repostState.second>0)Text(repostState.second.toString(),fontSize=11.sp,color=if(repostState.first)SeraPurple else feedMuted)
@@ -221,7 +224,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                             putExtra(Intent.EXTRA_TEXT, "https://sera.hisabtech.com/posts/" + post.id)
                                         }
                                         context.startActivity(Intent.createChooser(intent, shareTitle))
-                                    }, modifier = Modifier.size(48.dp)) {
+                                    }, modifier = Modifier.size(48.dp).semantics { contentDescription="Share post" }) {
                                         SeraReactionGlyph(SeraReactionKind.SHARE)
                                     }
                                 }

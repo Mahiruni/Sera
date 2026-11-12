@@ -70,10 +70,10 @@ internal fun SeraReactionGlyph(
         }
         segments.map { PathParser().parsePathString(it).toPath() }
     }
-    Canvas(modifier.size(23.dp)) {
+    Canvas(modifier.size(22.dp)) {
         val factor = size.minDimension / 24f
         withTransform({ scale(factor, factor, pivot = Offset.Zero) }) {
-            val stroke = Stroke(width = 1.8f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            val stroke = Stroke(width = 1.65f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             paths.forEachIndexed { index, path ->
                 if (kind == SeraReactionKind.LIKE && active && index == 0) drawPath(path, ink)
                 else drawPath(path, ink, style = stroke)
