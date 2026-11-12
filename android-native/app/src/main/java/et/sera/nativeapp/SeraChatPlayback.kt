@@ -71,15 +71,15 @@ internal fun SeraChatVoicePlayer(playback:SeraChatPlayback,id:String,durationHin
     val active=playback.activeId==id
     val duration=if(active&&playback.duration>0)playback.duration else durationHint?:0
     val position=if(active)playback.position else 0
-    Row(Modifier.widthIn(min=155.dp,max=260.dp).padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
-        IconButton(onClick=onPlay,modifier=Modifier.size(48.dp)){
+    Row(Modifier.widthIn(min=150.dp,max=228.dp).padding(vertical=1.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
+        FilledIconButton(onClick=onPlay,modifier=Modifier.size(44.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=foreground.copy(alpha=.16f),contentColor=foreground)){
             if(active&&playback.loading)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=foreground)
             else Icon(if(active&&playback.playing)Icons.Outlined.Pause else Icons.Outlined.PlayArrow,if(active&&playback.playing)"Pause voice message" else "Play voice message",tint=foreground)
         }
         Column(Modifier.weight(1f)){
-            Text(label,color=foreground,fontSize=12.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
-            Slider(value=position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={playback.seek(it.toInt())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=active&&playback.duration>0&&!playback.loading,modifier=Modifier.fillMaxWidth().height(40.dp),colors=SliderDefaults.colors(thumbColor=foreground,activeTrackColor=foreground,inactiveTrackColor=foreground.copy(alpha=.25f),disabledThumbColor=foreground.copy(alpha=.5f),disabledInactiveTrackColor=foreground.copy(alpha=.25f)))
-            Text(voiceTime(position)+" / "+voiceTime(duration),color=foreground.copy(alpha=.82f),fontSize=10.sp)
+            if(label!="Voice message")Text(label,color=foreground,fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
+            Slider(value=position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={playback.seek(it.toInt())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=active&&playback.duration>0&&!playback.loading,modifier=Modifier.fillMaxWidth().height(24.dp),colors=SliderDefaults.colors(thumbColor=foreground,activeTrackColor=foreground,inactiveTrackColor=foreground.copy(alpha=.25f),disabledThumbColor=foreground.copy(alpha=.5f),disabledInactiveTrackColor=foreground.copy(alpha=.25f)))
+            Text(if(active)voiceTime(position)+" / "+voiceTime(duration) else voiceTime(duration),color=foreground.copy(alpha=.82f),fontSize=10.sp)
         }
     }
 }

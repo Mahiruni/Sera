@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -450,9 +451,10 @@ fun SeraApp(
                     }
                 )
             } else {
-                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+                val inboxBackground=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF111D21) else Color(0xFFF9FCFC)
+                BoxWithConstraints(Modifier.fillMaxSize().then(if(tab=="Inbox")Modifier.background(inboxBackground)else Modifier).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     val expanded = maxWidth >= 700.dp
-                    val standaloneThread = tab=="Inbox" && inboxThreadOpen
+                    val standaloneThread = tab=="Inbox"
                     val darkSystem = androidx.compose.foundation.isSystemInDarkTheme()
                     val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
                     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -461,7 +463,7 @@ fun SeraApp(
                     val chromeVisible = remember(tab) { mutableStateOf(true) }
                     SideEffect {
                         (context as? android.app.Activity)?.let { activity ->
-                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightNavigationBars = if(standaloneThread) !darkSystem else expanded || !chromeVisible.value || keyboardOpen
+                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply{isAppearanceLightStatusBars=if(standaloneThread)!darkSystem else true;isAppearanceLightNavigationBars=if(standaloneThread)!darkSystem else expanded || !chromeVisible.value || keyboardOpen}
                         }
                     }
                     // Listen to the actual nested scroll consumption of the active page.
@@ -580,7 +582,7 @@ fun SeraApp(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         "Inbox" -> SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },onThreadVisibility={inboxThreadOpen=it}
+                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },onThreadVisibility={inboxThreadOpen=it},onInboxExit={tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home";inboxThreadOpen=false}
                                         )
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())

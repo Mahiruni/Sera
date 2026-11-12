@@ -29,7 +29,7 @@ import java.io.File
 import kotlinx.coroutines.delay
 
 @Composable
-internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,onError:(String)->Unit,onRecordingChange:(Boolean)->Unit={}){
+internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,onError:(String)->Unit,onRecordingChange:(Boolean)->Unit={},accent:Color=Color(0xFF08747A)){
     val context=LocalContext.current
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var file by remember { mutableStateOf<File?>(null) }
@@ -66,5 +66,5 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_STOP&&recorder!=null)finish(false)};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);if(recorder!=null)finish(false)}}
     if(recorder!=null){Surface(shape=RoundedCornerShape(24.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){Box(Modifier.size(10.dp).background(Color(0xFFD04452),CircleShape));Column(Modifier.weight(1f)){Text("Recording voice message",fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text("%d:%02d / 2:00".format(seconds/60,seconds%60),fontSize=12.sp)};IconButton(onClick={finish(false)}){Icon(Icons.Outlined.Close,"Cancel recording")};FilledIconButton(onClick={finish(true)},colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color(0xFF08747A),contentColor=Color.White)){Icon(Icons.Outlined.Stop,"Finish recording")}}}}
-    else IconButton(enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Mic,"Record voice message")}
+    else FilledIconButton(colors=IconButtonDefaults.filledIconButtonColors(containerColor=accent,contentColor=Color(0xFF10383B)),enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Mic,"Record voice message",tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF10383B)else Color.White)}
 }

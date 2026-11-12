@@ -14,6 +14,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.animateFloatAsState
@@ -201,13 +207,13 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 }
 
 @Composable
-fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}) {
+fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}, onInboxExit:(()->Unit)?=null) {
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
     val scheme=if(dark) darkColorScheme(primary=Color(0xFF6DE0D8),onPrimary=Color(0xFF10383B),surface=Color(0xFF14282D),onSurface=Color(0xFFE6F2F1),surfaceVariant=Color(0xFF233E43),onSurfaceVariant=Color(0xFFA8C3C5),background=Color(0xFF14282D),onBackground=Color(0xFFE6F2F1)) else MaterialTheme.colorScheme
-    MaterialTheme(colorScheme=scheme,typography=MaterialTheme.typography,shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility)}
+    MaterialTheme(colorScheme=scheme,typography=MaterialTheme.typography,shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)}
 }
 @Composable
-private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit){
+private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit,onInboxExit:(()->Unit)?){
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
@@ -308,13 +314,16 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         }
     }
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
-    LaunchedEffect(token, userId, refresh) {
-        if (userId.isBlank()) return@LaunchedEffect
-        loading = true
-        val result = withContext(Dispatchers.IO) { loadNativeConversations(token, userId) }
-        result.first?.let { conversations = it }
-        error = result.second
-        loading = false
+    LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
+        if(userId.isBlank()||selected!=null)return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+            while(true){
+                val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
+                result.first?.let{conversations=it}
+                error=result.second;loading=false
+                delay(20000)
+            }
+        }
     }
     LaunchedEffect(token, selected?.id, lifecycle, historyLimit) {
         val conversation = selected ?: return@LaunchedEffect
@@ -365,25 +374,32 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
     val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
-    val chatSurface = if(dark) Color(0xFF14282D) else Color(0xFFFAFCFC)
+    val chatSurface = if(dark) Color(0xFF111D21) else Color(0xFFF9FCFC)
+    val outgoing = if(dark) Color(0xFF087478) else Color(0xFF087478)
+    val incoming = if(dark) Color(0xFF26383D) else Color(0xFFE7F0EF)
     val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
     val accent=if(dark) Color(0xFF6DE0D8) else inboxTeal
-    Column(modifier.fillMaxSize().background(chatSurface).then(if(selected!=null) Modifier.imePadding().navigationBarsPadding() else Modifier).padding(horizontal = 12.dp)) {
-        Spacer(Modifier.height(12.dp))
+    Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
+        Spacer(Modifier.height(4.dp))
         if (selected == null) {
-            Text("Messages", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = inboxInk, modifier=Modifier.padding(horizontal=6.dp,vertical=4.dp))
-            FilledTonalButton(onClick={companyInbox=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp),shape=RoundedCornerShape(16.dp)){Text("Company inbox · Job conversations")}
-            OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), singleLine = true, placeholder = { Text("Search conversations") }, leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = inboxTeal) }, shape = RoundedCornerShape(18.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = inboxTeal, unfocusedBorderColor = Color(0xFFD6E6E3)))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }
+            Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
+                if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
+                Text("Messages",fontSize=24.sp,fontWeight=FontWeight.Bold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
+                IconButton(onClick={companyInbox=true},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.WorkOutline,"Company inbox",tint=accent)}
             }
+            Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=8.dp).height(46.dp).clip(CircleShape).background(inboxSoft).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                Icon(Icons.Outlined.Search,null,tint=muted,modifier=Modifier.size(20.dp))
+                BasicTextField(value=search,onValueChange={search=it},singleLine=true,textStyle=TextStyle(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
+                if(search.isNotEmpty())IconButton(onClick={search=""},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically){Text("All messages",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=muted,modifier=Modifier.weight(1f));TextButton(onClick={companyInbox=true},contentPadding=PaddingValues(horizontal=8.dp)){Text("Company inbox",fontSize=12.sp,color=accent)}}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick={refresh++}){Text("Retry")}}
             if (!loading && conversations.isEmpty() && error.isBlank())
                 Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
-            val filtered = conversations.filter { it.peerName.contains(search.trim(), ignoreCase = true) }
+            val filtered = conversations.filter { it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true) }.sortedByDescending{it.lastAt}
             if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(3.dp),contentPadding=PaddingValues(bottom=12.dp)) {
+            LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
                 items(filtered, key = { it.id }) { conversation ->
                     Card(onClick = {
                         draft = savedDrafts?.read(userId, conversation.id).orEmpty()
@@ -393,13 +409,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                         colors = CardDefaults.cardColors(containerColor = if(conversation.unread>0) inboxSoft else chatSurface)) {
                         Row(Modifier.padding(horizontal=12.dp,vertical=12.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(52.dp).clip(CircleShape).background(inboxSoft),
+                            Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft),
                                 contentAlignment = Alignment.Center) {
                                 Text(conversation.peerName.take(1).uppercase(), color = inboxTeal, fontWeight = FontWeight.Bold)
                                 conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize())}
                             }
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                                Text(conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Text(conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
                             Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else conversation.unread.toString(),fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
@@ -410,7 +426,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         } else {
             val conversation = selected!!
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+                modifier = Modifier.fillMaxWidth().height(60.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -425,14 +441,15 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 12.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 IconButton(onClick={showSearch=!showSearch},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
-                IconButton(onClick={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},modifier=Modifier.size(48.dp)){Icon(if(sound)Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,"Message sounds",tint=inboxInk)}
+                var threadMenu by remember{mutableStateOf(false)}
+                Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply();threadMenu=false})}}
             }
             if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
-            HorizontalDivider()
+            HorizontalDivider(color=inboxSoft,thickness=1.dp)
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-            val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp-84.dp).coerceIn(120.dp,360.dp)
-            LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 14.dp)) {
+            val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp*.76f).coerceIn(120.dp,340.dp)
+            LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(5.dp,Alignment.Bottom),
+                contentPadding = PaddingValues(vertical = 12.dp)) {
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick={historyLimit=(historyLimit+100).coerceAtMost(1000)}){Text("Load earlier messages")}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
                 itemsIndexed(filteredMessages,key={_,message->message.id}) { index,message ->
@@ -444,7 +461,6 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(110),label="Reply gesture")
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent) Box {
-                            IconButton(onClick={menu=message.id},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.MoreVert,"Message actions",tint=muted)}
                             DropdownMenu(expanded=menu==message.id,onDismissRequest={menu=null}) {
                                 DropdownMenuItem(text={Text("Reply")},onClick={reply=message;menu=null})
                                 DropdownMenuItem(text={Text("React")},onClick={reaction=message;menu=null})
@@ -455,14 +471,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
-                        if(own) actions()
-                        Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
-                            color = if (own) inboxTeal else inboxSoft,
-                            modifier = Modifier.widthIn(max = maxBubbleWidth).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){reply=message;haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
-                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Box { Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
+                            color = if(message.unsent) inboxSoft else if (own) outgoing else incoming,
+                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.semantics{onLongClick(label="Message actions"){menu=message.id;true}}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){reply=message;haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else accent)
-                                if(message.replyId.isNotBlank()&&!message.unsent)Surface(color=if(own)Color.White.copy(alpha=.13f)else chatSurface,shape=RoundedCornerShape(10.dp),modifier=Modifier.padding(bottom=6.dp)){Column(Modifier.padding(horizontal=10.dp,vertical=7.dp)){Text("Reply",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color.White else accent);Text(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}
-                                if (message.body != "Attachment" || message.files.isEmpty()) Text(if(message.unsent) "Message unsent" else message.body, color = if (own) Color.White else inboxInk,fontSize=15.sp,lineHeight=21.sp)
+                                if(message.replyId.isNotBlank()&&!message.unsent){val original=messages.firstOrNull{it.id==message.replyId};Surface(color=if(own)Color.Black.copy(alpha=.12f)else chatSurface,shape=RoundedCornerShape(9.dp),modifier=Modifier.padding(bottom=5.dp)){Row(Modifier.height(IntrinsicSize.Min)){Box(Modifier.width(3.dp).fillMaxHeight().background(if(own)Color(0xFFB5FFF4)else accent));Column(Modifier.padding(horizontal=8.dp,vertical=5.dp)){Text(if(original?.senderId==userId)"You" else conversation.peerName,fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color(0xFFB5FFF4)else accent,maxLines=1);Text(if(original?.unsent==true)"Message unsent" else original?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}}}
+                                if(message.unsent||message.files.isEmpty()||message.body !in listOf("Attachment","Voice message"))Text(if(message.unsent) "Message unsent" else message.body,color=if(message.unsent)muted else if(own)Color.White else inboxInk,fontSize=14.sp,lineHeight=20.sp)
                                 if(!message.unsent&&message.reactions.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.entries.chunked(3).forEach{group->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){group.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=5.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}}}
 
                                 message.files.filter{!message.unsent}.forEach { file ->
@@ -475,20 +490,19 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                                     }
                                     Text("${file.bytes / 1024} KB · ${if (file.mime == "application/pdf") "PDF" else "Image"}",fontSize=11.sp,color=if(own) Color.White.copy(alpha=.8f) else inboxInk)}
                                 }
-                                Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp,Alignment.End)) {
+                                Row(Modifier.align(Alignment.End).padding(top=2.dp),verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
-                                    Text(time, color = if (own) Color.White.copy(alpha = 0.8f) else Color(0xFF607478), fontSize = 10.sp)
-                                    if (own) {
+                                    Text(time, color = if (own&&!message.unsent) Color.White.copy(alpha = 0.8f) else muted, fontSize = 10.sp)
+                                    if (own&&!message.unsent) {
                                         val read = message.readAt.isNotBlank() && message.readAt != "null"
                                         val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
                                         val receipt = if (read) "Read" else if (delivered) "Delivered" else "Sent"
                                         Icon(if (delivered) Icons.Outlined.DoneAll else Icons.Outlined.Check, contentDescription = receipt, tint = if(read) Color(0xFFB5FFF4) else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(16.dp))
-                                        Text(receipt, color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
                                     }
                                 }
                             }
                         }
-                        if(!own) actions()
+                        actions() }
                     }
                 }
             }
@@ -505,11 +519,10 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
             Row(
                 Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(48.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=accent) }
-                SeraChatVoice(enabled=!sending&&attachment==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()})
-                if(!recordingVoice) OutlinedTextField(
+                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(44.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=accent) }
+                if(!recordingVoice) BasicTextField(
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {
                             draft = it
@@ -517,10 +530,10 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                             runCatching { savedDrafts?.write(userId, conversation.id, it) }
                         }
                     },
-                    modifier = Modifier.weight(1f), placeholder = { Text("Write a message…") },
-                    shape = RoundedCornerShape(24.dp), maxLines = 5, colors=OutlinedTextFieldDefaults.colors(focusedContainerColor=inboxSoft,unfocusedContainerColor=inboxSoft,focusedBorderColor=inboxTeal,unfocusedBorderColor=Color.Transparent)
+                    modifier=Modifier.weight(1f).clip(CircleShape).background(inboxSoft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=TextStyle(color=inboxInk,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}}
                 )
-                if(!recordingVoice) Button(onClick = {
+                if(recordingVoice||draft.isBlank()&&attachment==null) SeraChatVoice(enabled=!sending&&attachment==null&&queued==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()},accent=accent)
+                if(!recordingVoice&&(draft.isNotBlank()||attachment!=null)) Button(onClick = {
                     val body = draft.trim()
                     val file=attachment
                     if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@Button
@@ -536,7 +549,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     }
                 }, enabled = (draft.isNotBlank() || attachment != null) && !sending && !checkingFile && queued==null,
                     contentPadding = PaddingValues(horizontal = 14.dp),
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(46.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = inboxTeal)) {
                     if (sending) {
