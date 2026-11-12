@@ -36,6 +36,8 @@ import java.util.Locale
  var comments by remember(postId){mutableStateOf(false)}
  var photo by remember(postId){mutableStateOf<String?>(null)}
  var pending by remember(postId){mutableStateOf(false)}
+ var currentUser by remember(token){mutableStateOf("")}
+ LaunchedEffect(token){currentUser=withContext(Dispatchers.IO){loadSeraUserId(token).first.orEmpty()}}
  val scope=rememberCoroutineScope()
  val teal=Color(0xFF087E83)
  LaunchedEffect(token,postId,reload){
@@ -50,7 +52,7 @@ import java.util.Locale
    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()){
     Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
      IconButton(onClick=onClose){Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Back",tint=teal)}
-     Text("Post",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,color=Color(0xFF183B40))
+     Text("Post",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,color=Color(0xFF183B40),modifier=Modifier.weight(1f));post?.let{p->SeraPostOptions(token,p,currentUser.isNotBlank()&&p.authorId==currentUser){action->if(action=="trash")onClose() else reload++}}
     }
     HorizontalDivider(color=Color(0xFFDCEAE7))
     if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())

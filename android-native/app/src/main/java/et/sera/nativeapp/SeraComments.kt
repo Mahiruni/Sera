@@ -216,8 +216,8 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
                 placeholder = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.weight(1f),
                 maxLines = 3, enabled = !sending, shape = RoundedCornerShape(18.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
+                singleLine=false,
+                keyboardOptions = seraMultilineKeyboard
             )
             }
             if (publishingError.isNotBlank()) Text(publishingError, color = MaterialTheme.colorScheme.error)

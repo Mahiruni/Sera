@@ -566,6 +566,7 @@ fun SeraApp(
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset)
                                         )
+                                        "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
                                         "Search" -> SeraNativeNetwork(accessToken ?: "", authenticatedUserId, pageModifier, initialSearch=true)
                                         "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)

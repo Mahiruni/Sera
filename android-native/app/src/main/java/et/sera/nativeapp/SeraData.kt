@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -28,7 +28,7 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
 fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false): Pair<List<SeraPost>?, String> {
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
-    val result = if(personalized&&postId==null) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*20).put("p_limit",20)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note&status=eq.published&order=published_at.desc,id.desc&limit=20&offset=${page * 20}$filter")
+    val result = if(personalized&&postId==null) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*20).put("p_limit",20)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at&status=eq.published&order=published_at.desc,id.desc&limit=20&offset=${page * 20}$filter")
     val body = result.first ?: return null to result.second
     return try {
         val array = JSONArray(body)
@@ -44,7 +44,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 shares = item.optInt("share_count"),
                 kind = item.optString("kind"),
                 publishedAt = item.optString("published_at"),
-                repostOf = item.optString("repost_of").takeIf { it.isNotBlank() && it != "null" }, repostNote = item.optString("repost_note").takeUnless{it=="null"}.orEmpty()
+                repostOf = item.optString("repost_of").takeIf { it.isNotBlank() && it != "null" }, repostNote = item.optString("repost_note").takeUnless{it=="null"}.orEmpty(), audience=item.optString("audience","public"),editedAt=item.optString("edited_at").takeUnless{it.isBlank()||it=="null"}
             )
         }
         if (posts.isEmpty()) return emptyList<SeraPost>() to ""

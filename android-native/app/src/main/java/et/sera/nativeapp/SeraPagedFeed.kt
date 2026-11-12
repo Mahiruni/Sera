@@ -128,10 +128,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     val details = (if(post.repostOf!=null)"Reposted " else "")+postTimeLabel(post.publishedAt)
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                                         if(post.authorId in activeAuthors) { SeraOnlineDot(); Text("Active now",color=feedTeal,fontSize=10.sp) }
-                                        Text(details, color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(details+(if(post.editedAt!=null)" · Edited" else ""), color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
-
+                                SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ posts.refresh() }
                             }
                             // A composer may store the same copy in title and body.
                             // Never render identical content twice in a feed card.

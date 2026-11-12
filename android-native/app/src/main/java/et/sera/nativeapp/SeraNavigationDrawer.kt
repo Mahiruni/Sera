@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -95,6 +96,7 @@ internal fun SeraNavigationDrawer(
                 icon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
                 onClick = onCompose)
             IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Language, contentDescription = "Change language", tint = drawerTeal) }
+            NavigationDrawerItem(label={Text("Settings")},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
             NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
                 icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                 onClick = onCheckUpdates)

@@ -158,8 +158,8 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 shape = RoundedCornerShape(18.dp),
                 placeholder = { Text(stringResource(R.string.composer_placeholder)) },
                 supportingText = { Text("${body.length} / 4000 characters") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default, capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
-                keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                singleLine=false,
+                keyboardOptions = seraMultilineKeyboard,
                 minLines = if(keyboardOpen)2 else 8,
                 maxLines=if(keyboardOpen)5 else 20,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent, unfocusedBorderColor = Color(0xFFD8E7E5), focusedContainerColor = Color(0xFFF7FBFA), unfocusedContainerColor = Color(0xFFF7FBFA), cursorColor = accent)
