@@ -44,3 +44,22 @@ export function recommendProjects<T extends ProjectCandidate>(profile:MatchProfi
   return score?[{project,score,matchedSkills,matchedRoles}]:[];
  }).sort((a,b)=>b.score-a.score||b.project.published_at.localeCompare(a.project.published_at)||a.project.id.localeCompare(b.project.id)).slice(0,5);
 }
+
+export type CommunityCandidate={id:string;name:string;description:string;topic:string;member_count:number;joined:boolean;is_owner:boolean};
+export function recommendCommunities<T extends CommunityCandidate>(profile:MatchProfile,groups:T[]){
+ const skills=matchTerms(profile.skills),roles=matchTerms(profile.preferred_roles),seen=new Set<string>();
+ return groups.flatMap(group=>{
+  if(!group.id||group.joined||group.is_owner||seen.has(group.id))return [];
+  seen.add(group.id);
+  const text=[group.name,group.description,group.topic].join(" ");
+  const matchedSkills=skills.filter(t=>containsTerm(text,t));
+  const matchedRoles=roles.filter(t=>containsTerm(text,t));
+  const score=matchedSkills.length*3+matchedRoles.length*2;
+  return score?[{group,score,matchedSkills,matchedRoles}]:[];
+ }).sort((a,b)=>b.score-a.score||a.group.id.localeCompare(b.group.id)).slice(0,5);
+}
+export type CollaborationCandidate={id:string;name:string;description:string;status:string};
+export function relevantSpaces<T extends CollaborationCandidate>(profile:MatchProfile,spaces:T[]){
+ const terms=[...new Set([...matchTerms(profile.skills),...matchTerms(profile.preferred_roles)])];
+ return spaces.filter(s=>s.status==="active"||s.status==="invited").map(space=>({space,matches:terms.filter(t=>containsTerm(space.name+" "+space.description,t))})).filter(r=>r.matches.length).sort((a,b)=>b.matches.length-a.matches.length||a.space.id.localeCompare(b.space.id)).slice(0,3);
+}

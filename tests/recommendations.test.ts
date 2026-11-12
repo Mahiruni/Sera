@@ -34,3 +34,14 @@ test("projects support exact skill punctuation, recency ties and empty profiles"
  assert.equal(recommendProjects({skills:"Java"},rows,"self").length,0);
  assert.equal(recommendProjects({},rows,"self").length,0);
 });
+
+test("community recommendations exclude memberships and rank relevant skills",async()=>{
+ const {recommendCommunities}=await import("../lib/network/recommendations");
+ const group=(id:string,description:string,joined=false)=>({id,name:id,description,topic:"technology",member_count:10,joined,is_owner:false});
+ assert.deepEqual(recommendCommunities({skills:"React, SQL"},[group("a","React"),group("b","React and SQL"),group("c","React",true),group("d","Accounting"),group("a","React")]).map(r=>r.group.id),["b","a"]);
+});
+test("collaboration recommendations only include active or invited spaces",async()=>{
+ const {relevantSpaces}=await import("../lib/network/recommendations");
+ const space=(id:string,status:string)=>({id,name:"React team",description:"SQL",status});
+ assert.deepEqual(relevantSpaces({skills:"React"},[space("a","active"),space("b","invited"),space("c","declined"),space("d","private")]).map(r=>r.space.id),["a","b"]);
+});
