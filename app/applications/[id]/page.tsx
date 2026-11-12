@@ -1,6 +1,8 @@
 import { memberCards } from "@/lib/activity/members";
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
+import {revalidatePath} from "next/cache";
+async function saveReviewNote(f:FormData){"use server";await requiredProfile();const id=String(f.get("application_id"));const c=await serverClient();const {error}=await c.rpc("sera_save_recruitment_note",{p_application:id,p_body:String(f.get("note")||"")});if(error)throw new Error("Unable to save review notes.");revalidatePath("/applications/"+id); }
 import { notFound } from "next/navigation";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -36,6 +38,7 @@ export default async function Page({
   if (!r.data) notFound();
   const a = r.data as unknown as LiveApplication;
   const employer = a.jobs?.employer_id === user.id;
+  const review=employer?await c.rpc("sera_candidate_review",{p_application:id}):null;
   const messages = await c
     .from("application_messages")
     .select("id,sender_id,body,created_at")
@@ -167,6 +170,7 @@ export default async function Page({
           )}
         </section>
         <section className="panel live-copy">
+          {employer&&<section className="panel live-copy"><h2>Private recruitment notes</h2><p>Only the job owner can read these notes.</p><form action={saveReviewNote} className="live-form"><input type="hidden" name="application_id" value={id}/><textarea name="note" maxLength={4000} defaultValue={review?.data?.notes||""} rows={5} aria-label="Private recruitment notes"/><button className="button">Save notes</button></form></section>}
           <h2>Conversation</h2>
           <p className="auth-help">
             Visible only to the applicant and job poster. Messages are saved in
