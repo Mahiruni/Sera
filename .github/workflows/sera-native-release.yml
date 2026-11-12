@@ -93,11 +93,11 @@ jobs:
           trap 'rm -f "$KEYSTORE"' EXIT
           printf '%s' "$SERA_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           export SERA_RELEASE_KEYSTORE="$KEYSTORE"
-          gradle :app:assembleRelease --no-daemon \
-            -PSERA_VERSION_CODE="$VERSION_CODE" \
-            -PSERA_VERSION_NAME="$VERSION_NAME" \
-            -PSERA_SUPABASE_URL="https://okegwojigrtxadvgxpwm.supabase.co" \
-            -PSERA_SUPABASE_ANON_KEY="$SERA_SUPABASE_ANON_KEY"
+          # Separate lint and packaging JVM lifetimes so R8 never shares a heap
+          # with a live lint analysis. Neither quality gate is disabled.
+          args=(--no-daemon --max-workers=1 "-PSERA_VERSION_CODE=$VERSION_CODE" "-PSERA_VERSION_NAME=$VERSION_NAME" "-PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co" "-PSERA_SUPABASE_ANON_KEY=$SERA_SUPABASE_ANON_KEY")
+          gradle :app:lintVitalRelease "${args[@]}"
+          gradle :app:assembleRelease "${args[@]}"
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
