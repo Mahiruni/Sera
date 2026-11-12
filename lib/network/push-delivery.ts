@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { sendProfessionalPush } from "@/lib/network/firebase-push";
 
-type Notification = { title: string; body: string; url: string; kind: string };
+type Notification = { title: string; body: string; url: string; kind: string; callId?:string; recipientId?:string; expiresAt?:string };
 /** Server-only delivery; the service role is never exposed to browsers or authenticated users. */
 export async function notifyProfessionalDevices(recipientId: string, notification: Notification) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

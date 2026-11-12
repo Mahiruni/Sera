@@ -1,4 +1,6 @@
 "use server";
+import { after } from "next/server";
+import { sendIncomingCallPush } from "@/lib/network/call-push";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
@@ -18,7 +20,8 @@ export async function getCallStatus(conversation:string,id:string|null):Promise<
 }
 export async function startCall(conversation:string,id:string,offer:string):Promise<CallSession>{
   const db=await dbFor(conversation);if(!validMessageId(id)||typeof offer!=="string"||offer.length>65536)throw new Error("Invalid call.");
-  const {data,error}=await db.rpc("sera_call_start",{p_conversation:conversation,p_id:id,p_offer:offer});if(error||!data)throw new Error("Cannot start call. The person may be busy or unavailable.");return data;
+  const {data,error}=await db.rpc("sera_call_start",{p_conversation:conversation,p_id:id,p_offer:offer});if(error||!data)throw new Error("Cannot start call. The person may be busy or unavailable.");
+  after(async()=>{try{await sendIncomingCallPush(db,id);}catch{console.error("Call push failed");}});return data;
 }
 export async function changeCall(conversation:string,id:string,action:"accept"|"decline"|"end"|"fail",answer?:string):Promise<CallSession>{
   const db=await dbFor(conversation);if(!validMessageId(id)||!["accept","decline","end","fail"].includes(action)||(answer!=null&&(typeof answer!=="string"||answer.length>65536)))throw new Error("Invalid call.");
