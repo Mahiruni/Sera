@@ -315,12 +315,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     }
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
-        if(userId.isBlank()||selected!=null)return@LaunchedEffect
+        if(userId.isBlank())return@LaunchedEffect
         lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
             while(true){
                 val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
                 result.first?.let{conversations=it}
-                error=result.second;loading=false
+                if(selected==null)error=result.second;loading=false
+                if(selected!=null)break
                 delay(20000)
             }
         }
