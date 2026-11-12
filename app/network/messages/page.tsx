@@ -6,6 +6,7 @@ import "./conversations.css";
 import { ConversationTyping } from "@/components/network/conversation-typing";
 import { ProfessionalPresence } from "@/components/network/professional-presence";
 import Link from "next/link";
+import { Fragment } from "react";
 import { Send, Search, MessageCircle, ArrowLeft, Check, CheckCheck, Plus } from "lucide-react";
 import { requiredProfile } from "@/lib/auth/profile";
 import { serverClient } from "@/lib/supabase/server";
@@ -18,7 +19,7 @@ export default async function ProfessionalInbox({ searchParams }: {
 }) {
   const { user } = await requiredProfile("/network/messages");
   const db = await serverClient();
-  const { data: threads } = await db.from("professional_conversations")
+  const { data: threads,error:threadError } = await db.from("professional_conversations")
     .select("id,member_a,member_b,created_at,last_message_at,professional_messages(body,sender_id,created_at,read_at,delivered_at)")
     .or("member_a.eq." + user.id + ",member_b.eq." + user.id)
     .order("last_message_at", { ascending: false }).order("created_at",{ascending:false,referencedTable:"professional_messages"}).limit(1,{referencedTable:"professional_messages"}).limit(80);
@@ -37,6 +38,8 @@ export default async function ProfessionalInbox({ searchParams }: {
         return query.order("created_at", { ascending: false }).limit(100);
       })()
     : { data: [] };
+  const timeline=[...(messages??[])].reverse();
+  const day=(value:string)=>new Date(value).toLocaleDateString("en-GB",{timeZone:"Africa/Addis_Ababa",dateStyle:"medium"});
   const messageIds = (messages ?? []).map((m) => m.id);
   const { data: attachments } = messageIds.length
     ? await db.from("professional_message_attachments").select("message_id,storage_path,file_name,mime_type").in("message_id", messageIds)
@@ -89,12 +92,13 @@ export default async function ProfessionalInbox({ searchParams }: {
                 aria-current={selected?.id === c.id ? "page" : undefined}
                 className="sera-conversation-link">
                 <MemberAvatar name={person?.name ?? "Sera member"} photo={person?.photo} />
-                <div className="sera-chat-list-copy"><strong className="sera-conversation-name">{person?.name ?? "Sera member"} {person?.identityVerified&&<IdentityBadge/>}</strong><small>{latest?(latest.sender_id===user.id?"You: ":"")+latest.body:"Start a conversation"}</small></div><div className="sera-chat-list-meta">{latest&&<time dateTime={latest.created_at}>{new Date(latest.created_at).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Addis_Ababa"})}</time>}
+                <div className="sera-chat-list-copy"><strong className="sera-conversation-name">{person?.name ?? "Sera member"} {person?.identityVerified&&<IdentityBadge/>}</strong><small>{latest?(latest.sender_id===user.id?"You: ":"")+latest.body:"Start a conversation"}</small></div><div className="sera-chat-list-meta">{latest?.sender_id===user.id&&(latest.read_at||latest.delivered_at?<CheckCheck size={14} aria-label={latest.read_at?"Read":"Delivered"}/>:<Check size={14} aria-label="Sent"/>)}{latest&&<time dateTime={latest.created_at}>{new Date(latest.created_at).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Addis_Ababa"})}</time>}
                 {Boolean(unreadCounts.get(c.id)) && <span aria-label={`${unreadCounts.get(c.id)} unread messages`} className="sera-conversation-unread">{unreadCounts.get(c.id)}</span>}</div>
               </Link>
             );
           })}
-          {!conversations.length && <p>No conversations yet. Connect with a professional to start one.</p>}
+          {threadError&&<p role="alert">Messages could not be loaded. Refresh to retry.</p>}
+          {!conversations.length && !threadError && <p>No conversations yet. Connect with a professional to start one.</p>}
           {candidates.length > 0 && <>
             <h3>Start a conversation</h3>
             {candidates.map((id) => <form key={id} action={startConversation} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
@@ -116,11 +120,11 @@ export default async function ProfessionalInbox({ searchParams }: {
               {search && <Link href={"/network/messages?thread=" + selected.id} className="sera-inbox-search-clear">Clear</Link>}
             </form>
             <div aria-live="polite" className="sera-inbox-messages">
-              {[...(messages ?? [])].reverse().map((m) => <article key={m.id} className={m.sender_id === user.id ? "sera-message-bubble is-mine" : "sera-message-bubble"}>
+              {timeline.map((m,index) => <Fragment key={m.id}>{(index===0||day(timeline[index-1].created_at)!==day(m.created_at))&&<div className="sera-chat-date">{day(m.created_at)}</div>}<article className={m.sender_id === user.id ? "sera-message-bubble is-mine" : "sera-message-bubble"}>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{m.body}</p>
                 {(fileLinks.get(m.id) ?? []).map((file) => <a key={file.url} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontWeight: 700, marginTop: 8, textDecoration: "underline" }}>📎 {file.name}</a>)}
                 <small><time dateTime={m.created_at}>{new Date(m.created_at).toLocaleString("en-GB", { timeZone: "Africa/Addis_Ababa", dateStyle: "medium", timeStyle: "short" })}</time> {m.sender_id===user.id&&(m.read_at||m.delivered_at?<CheckCheck size={15} aria-label={m.read_at?"Read":"Delivered"} className={m.read_at?"sera-receipt-read":""}/>:<Check size={15} aria-label="Sent"/>)}</small>
-              </article>)}
+              </article></Fragment>)}
               {!messages?.length && <p>{search ? "No matching messages found." : "Say hello and start a meaningful professional conversation."}</p>}
             </div>
             <form action={sendProfessionalMessage} encType="multipart/form-data" className="sera-inbox-composer">

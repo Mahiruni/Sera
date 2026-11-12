@@ -68,7 +68,7 @@ private class SeraInboxDrafts(context: Context) {
     }
 }
 
-private data class NativeConversation(val id:String,val peerId:String,val peerName:String,val avatar:String?=null,val preview:String="",val lastAt:String="",val mine:Boolean=false,val verified:Boolean=false)
+private data class NativeConversation(val id:String,val peerId:String,val peerName:String,val avatar:String?=null,val preview:String="",val lastAt:String="",val mine:Boolean=false,val verified:Boolean=false,val unread:Int=0)
 private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>)
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
@@ -126,10 +126,13 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
                 }
             }
         }
+        val unread=mutableMapOf<String,Int>()
+        val conversationIds=peers.map{it.optString("id")}.filter{it.isNotBlank()}
+        if(conversationIds.isNotEmpty()){val rawUnread=inboxRequest(token,"professional_messages?select=conversation_id&conversation_id=in.("+conversationIds.joinToString(",")+")&sender_id=neq.$userId&read_at=is.null&limit=1000").first; if(rawUnread!=null){val rows=JSONArray(rawUnread);for(i in 0 until rows.length()){val id=rows.getJSONObject(i).optString("conversation_id");unread[id]=(unread[id]?:0)+1}}}
         peers.map { row ->
             val id = if (row.optString("member_a") == userId) row.optString("member_b") else row.optString("member_a")
             val latest=row.optJSONArray("professional_messages")?.optJSONObject(0)
-            NativeConversation(row.optString("id"),id,names[id]?.takeIf{it.isNotBlank()&&it!="null"}?:"SERA professional",avatars[id],latest?.optString("body").orEmpty(),latest?.optString("created_at").orEmpty(),latest?.optString("sender_id")==userId,id in badges)
+            NativeConversation(row.optString("id"),id,names[id]?.takeIf{it.isNotBlank()&&it!="null"}?:"SERA professional",avatars[id],latest?.optString("body").orEmpty(),latest?.optString("created_at").orEmpty(),latest?.optString("sender_id")==userId,id in badges,unread[row.optString("id")]?:0)
         } to ""
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
@@ -245,7 +248,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
                     if (unread.isNotEmpty()) {
                         val receipt=withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_message_receipt", "POST", JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(unread.map { it.id })).put("p_read",true)) }
-                        if(receipt.first!=null)SeraUnreadRefresh.changed()
+                        if(receipt.first!=null){SeraUnreadRefresh.changed();conversations=conversations.map{if(it.id==conversation.id)it.copy(unread=0) else it}}
                     }
                 }
                 error = result.second
@@ -299,7 +302,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(conversation.peerName,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false));if(conversation.verified)SeraIdentityBadge()}
                                 Text((if(conversation.mine)"You: " else "")+conversation.preview.ifBlank{"Start a conversation"},fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
-                            Text(inboxTime(conversation.lastAt),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(horizontalAlignment=Alignment.End){Text(inboxTime(conversation.lastAt),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant);if(conversation.unread>0)Badge(containerColor=inboxTeal,contentColor=Color.White){Text(if(conversation.unread>99)"99+" else conversation.unread.toString())}}
                         }
                     }
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
@@ -329,6 +332,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 14.dp)) {
                 items(messages, key = { it.id }) { message ->
+                    val index=messages.indexOf(message)
+                    val date=inboxDay(message.createdAt)
+                    if(index==0||inboxDay(messages[index-1].createdAt)!=date){Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Text(date,fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
                     val own = message.senderId == userId
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
                         Surface(shape = RoundedCornerShape(18.dp),
@@ -426,3 +432,5 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
 }
 
 private fun inboxTime(raw:String):String=runCatching{val date=java.time.Instant.parse(raw).atZone(java.time.ZoneId.systemDefault());if(date.toLocalDate()==java.time.LocalDate.now())date.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) else date.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))}.getOrDefault("")
+
+private fun inboxDay(raw:String):String=runCatching{val day=java.time.Instant.parse(raw).atZone(java.time.ZoneId.systemDefault()).toLocalDate();when(day){java.time.LocalDate.now()->"Today";java.time.LocalDate.now().minusDays(1)->"Yesterday";else->day.format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy"))}}.getOrDefault("")
