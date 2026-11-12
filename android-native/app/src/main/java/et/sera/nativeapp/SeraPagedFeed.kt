@@ -5,6 +5,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +51,11 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val shareTitle = stringResource(R.string.share_post)
     val stream = remember(token, refreshKey) { pagedSeraPosts(token) }
     val posts = stream.collectAsLazyPagingItems()
+    val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
+    var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
+    val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,authorIds,presenceLifecycle) { presenceLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while(true) { activeAuthors=withContext(Dispatchers.IO){feedPresence(token,authorIds)} ?: emptySet(); kotlinx.coroutines.delay(30000) } } }
+
     var commentsPostId by remember { mutableStateOf<String?>(null) }
     var expandedImage by remember { mutableStateOf<String?>(null) }
     var repostTarget by remember { mutableStateOf<SeraPost?>(null) }
@@ -112,8 +118,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         overflow = TextOverflow.Ellipsis)
                                     val details = listOfNotNull(post.headline.takeIf { it.isNotBlank() },
                                         postTimeLabel(post.publishedAt).takeIf { it.isNotBlank() }).joinToString(" · ")
-                                    Text(details, color = feedMuted, fontSize = 11.sp, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis)
+                                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                                        if(post.authorId in activeAuthors) { SeraOnlineDot(); Text("Active now",color=feedTeal,fontSize=10.sp) }
+                                        Text(details, color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
                                 }
                                 Text(post.kind.replaceFirstChar { it.uppercase() }, color = feedTeal,
                                     fontWeight = FontWeight.Medium, fontSize = 10.sp)

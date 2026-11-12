@@ -184,8 +184,10 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var refresh by remember { mutableIntStateOf(0) }
     var search by remember { mutableStateOf("") }
     var peerTyping by remember { mutableStateOf(false) }
+    var peerActivity by remember(selected?.id) { mutableStateOf<String?>(null) }
     var typingPulse by remember { mutableIntStateOf(0) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
     val messageListState = rememberLazyListState()
     var lastVisibleConversation by remember { mutableStateOf<String?>(null) }
     var lastMessageId by remember { mutableStateOf<String?>(null) }
@@ -308,7 +310,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 Column(Modifier.weight(1f)) {
                     Text(conversation.peerName, fontWeight = FontWeight.Bold,
                         fontSize = 19.sp, color = inboxInk)
-                    Text(if (peerTyping) "Typing…" else "Private conversation", fontSize = 11.sp, color = Color(0xFF6B8185))
+                    Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 11.sp, color = Color(0xFF6B8185))
                 }
             }
             HorizontalDivider()

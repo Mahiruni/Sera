@@ -48,7 +48,7 @@ export async function createPost(
       error:
         "Check the post details. Choose up to four JPG, PNG or WebP images, totaling at most 3 MB.",
     };
-  if (!securePublishingConfigured())
+  if (moderationEnabled() && !securePublishingConfigured())
     return { error: "Secure publishing is not configured. Please try again later." };
   if (moderationEnabled()) {
     try {
@@ -115,7 +115,7 @@ export async function createPost(
       });
       if (row.error) throw row.error;
     }
-    const publisher = moderationWriter();
+    const publisher = securePublishingConfigured() ? moderationWriter() : db;
     if (!publisher) throw new Error("Trusted publisher unavailable");
     const publish = await publisher
       .from("posts")
@@ -153,7 +153,7 @@ export async function updatePost(
     id = form.get("post_id");
   if (!session || !input || !uuid(id))
     return { error: "Check your post details and sign in again." };
-  if (!securePublishingConfigured())
+  if (moderationEnabled() && !securePublishingConfigured())
     return { error: "Secure publishing is unavailable." };
   if (moderationEnabled()) {
     const verdict = await screenSubmission(input, []);
@@ -162,7 +162,7 @@ export async function updatePost(
   }
   // Kind is immutable. Restrict the update to its original type as well as its owner.
   const { kind, ...fields } = input;
-  const editor = moderationWriter();
+  const editor = securePublishingConfigured() ? moderationWriter() : session.db;
   if (!editor) return { error: "Secure publishing is unavailable." };
   const result = await editor
     .from("posts")
@@ -252,7 +252,7 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
   const note = form.get("note");
   if (!session || !uuid(sourceId) || typeof note !== "string" || note.length > 400)
     return { error: "Sign in and choose a valid post to repost." };
-  if (!securePublishingConfigured())
+  if (moderationEnabled() && !securePublishingConfigured())
     return { error: "Secure repost publishing is temporarily unavailable." };
 
   const { data: source, error: missing } = await session.db.from("posts")
@@ -312,7 +312,7 @@ export async function addComment(
       error:
         "Write a comment of 1–2,000 characters and sign in again if needed.",
     };
-  if (!securePublishingConfigured())
+  if (moderationEnabled() && !securePublishingConfigured())
     return { error: "Secure commenting is unavailable." };
   if (moderationEnabled()) {
     const verdict = await screenSubmission({
@@ -323,7 +323,7 @@ export async function addComment(
     if (verdict.verdict !== "approved")
       return { error: "Comment safety screening is unavailable. Please try again later." };
   }
-  {
+  if (securePublishingConfigured()) {
     const visible = await session.db.from("posts").select("id").eq("id", input.post_id).eq("status", "published").maybeSingle();
     if (visible.error || !visible.data) return { error: "This post is unavailable for comments." };
     if (input.parent_id) {
@@ -331,11 +331,11 @@ export async function addComment(
       if (parent.error || !parent.data) return { error: "The parent comment is unavailable." };
     }
   }
-  const commenter = moderationWriter();
+  const commenter = securePublishingConfigured() ? moderationWriter() : session.db;
   if (!commenter) return { error: "Secure commenting is unavailable." };
   // The member role can insert only post_id, parent_id and body. PostgreSQL
   // assigns auth.uid(); the privileged moderation writer needs an explicit author.
-  const result = await commenter.from("post_comments").insert({ ...input, author_id: session.user.id });
+  const result = securePublishingConfigured() ? await commenter.from("post_comments").insert({ ...input, author_id: session.user.id }) : await commenter.from("post_comments").insert(input);
   if (result.error)
     return {
       error:

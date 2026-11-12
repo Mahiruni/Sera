@@ -347,6 +347,7 @@ fun SeraApp(
         member.first?.let { identity = it }
         profileAvatarUrl = withContext(Dispatchers.IO) { loadSeraCurrentAvatar(token, id) }
     }
+    SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
     LaunchedEffect(accessToken, tab, refresh) {

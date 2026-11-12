@@ -84,6 +84,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
                 if (canEdit) TextButton(onClick = { editing = true }, contentPadding = PaddingValues(0.dp)) { Text("Update professional details", color = profileTeal) }
             }
         }
+        if(canEdit) Surface(shape=RoundedCornerShape(22.dp),color=Color.White,border=BorderStroke(1.dp,profileLine)){Box(Modifier.fillMaxWidth().padding(18.dp)){SeraPresenceSettings(token,userId)}}
         if (loading) SeraLoadingCards(count = 1)
         if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } }
         Surface(shape = RoundedCornerShape(22.dp), color = Color.White, border = BorderStroke(1.dp, profileLine)) {
