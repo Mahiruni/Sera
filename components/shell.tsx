@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { IdentityBadge } from "@/components/identity/badge";
+import { signOut } from "@/lib/auth/actions";
 import { MemberAvatar } from "./activity/avatar";
 import { ActivityBell, InboxBadge } from "./activity/bell";
 import Link from "next/link";
@@ -31,23 +33,25 @@ import {
   Star,
   Menu,
   Settings,
+  UsersRound,
+  Pencil,
 } from "lucide-react";
 import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
 import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
-import { navigationGroups, navIsActive, feedAutoHideEnabled, nextFeedChrome } from "@/lib/navigation";
+import { navigationGroups, memberNavigationGroups, navIsActive, feedAutoHideEnabled, nextFeedChrome } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({
   children,
   authenticated = false,
   verified = false,
-  profileName="SERA member",profilePhoto=null,
+  profileName="SERA member",profilePhoto=null,profileId="",profileHeadline="",identityVerified=false,
 }: {
   children: React.ReactNode;
   authenticated?: boolean;
   verified?: boolean;
-  profileName?:string;profilePhoto?:string|null;
+  profileName?:string;profilePhoto?:string|null;profileId?:string;profileHeadline?:string;identityVerified?:boolean;
 }) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
@@ -77,7 +81,9 @@ export function Shell({
   const [open, setOpen] = useState(false);
   const [profileOpen,setProfileOpen]=useState(false);
   const profileMenu=useRef<HTMLDivElement>(null);
-  useEffect(()=>{if(!profileOpen)return;const dismiss=(e:PointerEvent)=>{if(!profileMenu.current?.contains(e.target as Node))setProfileOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==="Escape")setProfileOpen(false)};document.addEventListener("pointerdown",dismiss);document.addEventListener("keydown",key);return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",key)}},[profileOpen]);
+  const profileTrigger=useRef<HTMLButtonElement>(null);
+  const profileHref=profileId?"/members/"+profileId:"/settings";
+  useEffect(()=>{if(!profileOpen)return;const dismiss=(e:PointerEvent)=>{if(!profileMenu.current?.contains(e.target as Node))setProfileOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==="Escape"){setProfileOpen(false);profileTrigger.current?.focus();}};document.addEventListener("pointerdown",dismiss);document.addEventListener("keydown",key);return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",key)}},[profileOpen]);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -96,7 +102,7 @@ export function Shell({
   useEffect(() => {
     const root = document.documentElement;
     delete root.dataset.navHidden;
-    if (!feedAutoHideEnabled(pathname, authenticated, open)) return;
+    if (!feedAutoHideEnabled(pathname, authenticated, open||profileOpen)) return;
 
     let chrome = {anchor:Math.max(0,window.scrollY),hidden:false};
     function onScroll() {
@@ -110,14 +116,16 @@ export function Shell({
       window.removeEventListener("scroll", onScroll);
       delete root.dataset.navHidden;
     };
-  }, [pathname, open, authenticated]);
+  }, [pathname, open, profileOpen, authenticated]);
   const close = () => {
     setOpen(false);
     trigger.current?.focus();
   };
-  const groups = navigationGroups(authenticated ? null : state.role);
+  const groups = authenticated?memberNavigationGroups():navigationGroups(state.role);
   const icons: Record<string, typeof Home> = {
     home: Home,
+    network:UsersRound,
+    settings:Settings,
     discover: Compass,
     saved: Bookmark,
     matches: Sparkles,
@@ -146,7 +154,7 @@ export function Shell({
           aria-label={t("menu")}
           aria-expanded={open}
           aria-controls="navigation-drawer"
-          onClick={() => setOpen(true)}
+          onClick={() => {setProfileOpen(false);setOpen(true);}}
         >
           <Menu size={24}/>
         </button>
@@ -155,7 +163,7 @@ export function Shell({
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
           {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
-          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={30}/></button>{profileOpen&&<div className="sera-profile-popover"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={36}/><strong>{profileName}</strong></div><Link href="/profile" onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings</Link></div>}</div>}
+          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button ref={profileTrigger} className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} aria-controls="sera-profile-popover" onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={32}/></button>{profileOpen&&<div id="sera-profile-popover" className="sera-profile-popover" aria-label="Account actions"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={44}/><div><strong>{profileName}{identityVerified&&<IdentityBadge/>}</strong>{profileHeadline&&<small>{profileHeadline}</small>}</div></div><Link href={profileHref} onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings?edit=1" onClick={()=>setProfileOpen(false)}><Pencil size={19}/> Edit profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings & privacy</Link><SignOutControl/></div>}</div>}
         </div>
       </header>
       <dialog
@@ -204,12 +212,12 @@ export function Shell({
               <X size={21} />
             </button>
           </div>
-          {authenticated&&<Link className="sera-drawer-profile" href="/profile" onClick={close}><MemberAvatar name={profileName} photo={profilePhoto} size={48}/><span>{profileName}<small>View professional identity</small></span><ArrowUpRight size={16}/></Link>}
+          {authenticated&&<Link className="sera-drawer-profile" href={profileHref} onClick={close}><MemberAvatar name={profileName} photo={profilePhoto} size={48}/><span>{profileName}{identityVerified&&<IdentityBadge/>}<small>{profileHeadline||"View professional identity"}</small></span><ArrowUpRight size={16}/></Link>}
           <p className="sr-only" id="drawer-title">
             {t("navigation")}
           </p>
           <nav className="grouped-navigation" aria-label={t("navigation")}>
-            {groups.map((group) => {
+            {authenticated?groups.map(group=><section className="sera-drawer-section" key={group.id}><h3>{t(group.title)}</h3><div className="drawer-group-links">{group.items.map(item=>{const Icon=icons[item.icon];return <Link key={item.href} href={item.href} onClick={close} aria-current={navIsActive(pathname,item.href)?"page":undefined} className={navIsActive(pathname,item.href)?"active":""}><Icon size={19}/><span>{t(item.key)}</span></Link>;})}{group.id==="preferences"&&<LanguageSelector compact onNavigate={close}/>}</div></section>):groups.map((group) => {
               const active = group.items.some((item) =>
                 navIsActive(pathname, item.href),
               );
@@ -261,6 +269,7 @@ export function Shell({
               );
             })}
           </nav>
+          {authenticated&&open&&<SignOutControl/>}
           {!authenticated&&<div className="drawer-actions">
             <Link
               className="role-switch"
@@ -325,3 +334,5 @@ export function Shell({
     </>
   );
 }
+
+function SignOutControl(){const [confirm,setConfirm]=useState(false);return confirm?<form className="sera-signout-confirm" action={signOut}><p>Sign out of SERA?</p><div><button type="button" onClick={()=>setConfirm(false)}>Cancel</button><button type="submit" className="sera-signout-danger">Sign out</button></div></form>:<button type="button" className="sera-signout-control" onClick={()=>setConfirm(true)}><LogOut size={19}/> Sign out</button>;}

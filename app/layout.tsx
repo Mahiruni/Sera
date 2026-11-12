@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Provider } from "@/components/store";
 import { memberCards } from "@/lib/activity/members";
-import { currentUser } from "@/lib/supabase/server";
+import { currentUser,serverClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
 import { pageMetadata, siteOrigin } from "@/lib/seo";
@@ -50,6 +50,7 @@ export default async function RootLayout({
 }) {
   const user = await currentUser();
   const member=user? (await memberCards([user.id])).get(user.id):undefined;
+  const ownProfile=user?.email_confirmed_at?await (await serverClient()).from("profiles").select("full_name,headline").eq("id",user.id).maybeSingle():null;
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
@@ -72,7 +73,10 @@ export default async function RootLayout({
         <WebsiteData />
         <Provider initialLocale={language}>
           <Shell
-            profileName={member?.name||"SERA member"}
+            profileName={member?.name||ownProfile?.data?.full_name||"SERA member"}
+            profileId={user?.email_confirmed_at?user.id:""}
+            profileHeadline={ownProfile?.data?.headline||""}
+            identityVerified={member?.identityVerified===true}
             profilePhoto={member?.photo||null}
             authenticated={Boolean(user)}
             verified={Boolean(user?.email_confirmed_at)}

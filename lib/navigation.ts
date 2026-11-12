@@ -116,3 +116,9 @@ export function nextFeedChrome(state:FeedChromeState,scrollY:number,maxScroll:nu
   const hidden=state.hidden?y>16&&anchor-y<10:y>72&&y-anchor>=20;
   return {anchor:hidden!==state.hidden?y:anchor,hidden};
 }
+
+/** Authenticated drawer uses real member destinations, not the public marketing home. */
+export function memberNavigationGroups():NavGroup[]{return [
+{id:"primary",title:"exploreGroup",items:[{href:"/feed",key:"home",icon:"home"},{href:"/connections",key:"networkMenu",icon:"network"},{href:"/discover",key:"discover",icon:"discover"},{href:"/jobs",key:"findJobs",icon:"employer"},{href:"/network/messages",key:"messages",icon:"messages"},{href:"/saved",key:"saved",icon:"saved"},{href:"/workspace",key:"workspace",icon:"workspace"}]},
+{id:"career",title:"yourWorkspace",items:[{href:"/applications",key:"applications",icon:"applications"},{href:"/matches",key:"matches",icon:"matches"},{href:"/employer",key:"employerDashboard",icon:"employer"},{href:"/employer/post",key:"post",icon:"post"},{href:"/employer/pipeline",key:"pipeline",icon:"pipeline"}]},
+{id:"preferences",title:"preferencesGroup",items:[{href:"/settings",key:"settingsMenu",icon:"settings"},{href:"/help",key:"helpContact",icon:"help"},{href:"/privacy",key:"privacyTerms",icon:"privacy"},{href:"/guides",key:"guides",icon:"about"},{href:"/education",key:"education",icon:"about"}]}];}
