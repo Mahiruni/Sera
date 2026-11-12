@@ -67,7 +67,7 @@ begin
  update private.sera_identity_requests set status='pending',submitted_at=now() where id=r.id;
  insert into private.sera_identity_audit(request_id,actor_id,action) values(r.id,auth.uid(),'submit');
 end$$;
-create function public.sera_identity_withdraw(p_id uuid) returns void language plpgsql security definer set search_path='' as $
+create function public.sera_identity_withdraw(p_id uuid) returns void language plpgsql security definer set search_path='' as $$
 declare new_status text;
 begin
  if not private.account_verified() then raise exception 'Verified email required';end if;
