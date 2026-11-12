@@ -14,6 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -187,7 +190,7 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 }
 
 @Composable
-fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null) {
+fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}) {
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
@@ -197,6 +200,8 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     val savedDrafts = remember(context) { runCatching { SeraInboxDrafts(context) }.getOrNull() }
     var conversations by remember { mutableStateOf<List<NativeConversation>>(emptyList()) }
     var selected by remember(initialThread) { mutableStateOf(initialThread?.let{NativeConversation(it,initialPeer,initialName)}) }
+    LaunchedEffect(selected?.id){onThreadVisibility(selected!=null)}
+    DisposableEffect(Unit){onDispose{onThreadVisibility(false)}}
     var messages by remember { mutableStateOf<List<NativeMessage>>(emptyList()) }
     var draft by remember(initialThread) { mutableStateOf(initialThread?.let{savedDrafts?.read(userId,it)}.orEmpty()) }
     var error by remember { mutableStateOf("") }
@@ -333,7 +338,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
     val chatSurface = if(dark) Color(0xFF14282D) else Color(0xFFFAFCFC)
     val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
-    Column(modifier.fillMaxSize().background(chatSurface).padding(horizontal = 12.dp)) {
+    Column(modifier.fillMaxSize().background(chatSurface).then(if(selected!=null) Modifier.imePadding().navigationBarsPadding() else Modifier).padding(horizontal = 12.dp)) {
         Spacer(Modifier.height(12.dp))
         if (selected == null) {
             Text("Messages", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = inboxInk, modifier=Modifier.padding(horizontal=6.dp,vertical=4.dp))
@@ -395,20 +400,34 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
             HorizontalDivider()
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp-84.dp).coerceIn(120.dp,360.dp)
             LazyColumn(Modifier.weight(1f), state = messageListState, verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 14.dp)) {
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick={historyLimit=(historyLimit+100).coerceAtMost(1000)}){Text("Load earlier messages")}}
                 items(messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}, key = { it.id }) { message ->
                     val own = message.senderId == userId
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
+                    val actions: @Composable () -> Unit = {
+                        if(!message.unsent) Box {
+                            IconButton(onClick={menu=message.id},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.MoreVert,"Message actions",tint=muted)}
+                            DropdownMenu(expanded=menu==message.id,onDismissRequest={menu=null}) {
+                                DropdownMenuItem(text={Text("Reply")},onClick={reply=message;menu=null})
+                                DropdownMenuItem(text={Text("React")},onClick={reaction=message;menu=null})
+                                DropdownMenuItem(text={Text("Forward")},onClick={forwarding=message;forwardClient=UUID.randomUUID().toString();menu=null})
+                                if(own)DropdownMenuItem(text={Text("Unsend")},onClick={remove=message;menu=null})
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
+                        if(own) actions()
                         Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
                             color = if (own) inboxTeal else inboxSoft,
-                            modifier = Modifier.widthIn(max = 280.dp)) {
+                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}else Modifier)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else inboxTeal)
-                                if(message.replyId.isNotBlank()&&!message.unsent)Text("Reply · "+(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message"),fontSize=11.sp,color=if(own)Color.White else inboxTeal)
+                                if(message.replyId.isNotBlank()&&!message.unsent)Surface(color=if(own)Color.White.copy(alpha=.13f)else chatSurface,shape=RoundedCornerShape(10.dp),modifier=Modifier.padding(bottom=6.dp)){Column(Modifier.padding(horizontal=10.dp,vertical=7.dp)){Text("Reply",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color.White else inboxTeal);Text(messages.firstOrNull{it.id==message.replyId}?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}
                                 if (message.body != "Attachment" || message.files.isEmpty()) Text(if(message.unsent) "Message unsent" else message.body, color = if (own) Color.White else inboxInk,fontSize=15.sp,lineHeight=21.sp)
-                                if(!message.unsent){Row(verticalAlignment=Alignment.CenterVertically){message.reactions.groupBy{it.second}.forEach{(emoji,people)->TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk)}};Box{IconButton(onClick={menu=message.id},modifier=Modifier.size(30.dp)){Icon(Icons.Outlined.MoreVert,"Message actions",tint=if(own)Color.White else inboxInk)};DropdownMenu(expanded=menu==message.id,onDismissRequest={menu=null}){DropdownMenuItem(text={Text("Reply")},onClick={reply=message;menu=null});DropdownMenuItem(text={Text("React")},onClick={reaction=message;menu=null});DropdownMenuItem(text={Text("Forward")},onClick={forwarding=message;forwardClient=UUID.randomUUID().toString();menu=null});if(own)DropdownMenuItem(text={Text("Unsend")},onClick={remove=message;menu=null})}}}}
+                                if(!message.unsent&&message.reactions.isNotEmpty()) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=6.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}
+
                                 message.files.filter{!message.unsent}.forEach { file ->
                                     if(file.mime.startsWith("audio/")){TextButton(onClick={if(playingPath==file.path){runCatching{playback?.release()};playback=null;playingPath=""}else{scope.launch{val r=withContext(Dispatchers.IO){runCatching{downloadChatFile(context,token,file)}};r.onSuccess{uri->runCatching{playback?.release();val player=MediaPlayer();playback=player;playingPath=file.path;player.setDataSource(context,uri);player.setOnPreparedListener{it.start()};player.setOnCompletionListener{it.release();playback=null;playingPath=""};player.prepareAsync()}.onFailure{error="Audio unavailable."}}.onFailure{error="Audio unavailable."}}}},colors=ButtonDefaults.textButtonColors(contentColor=if(own)Color.White else inboxTeal)){Icon(if(playingPath==file.path)Icons.Outlined.Pause else Icons.Outlined.PlayArrow,"Play voice");Text("Voice message"+(file.durationMs?.let{" · "+(it/1000)+"s"}?:""))}}else{
                                     TextButton(onClick = { scope.launch {
@@ -432,6 +451,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                                 }
                             }
                         }
+                        if(!own) actions()
                     }
                 }
             }
@@ -447,8 +467,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 }
             }
             Row(
-                Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
-                    .padding(top = 11.dp, bottom = 10.dp),
+                Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {

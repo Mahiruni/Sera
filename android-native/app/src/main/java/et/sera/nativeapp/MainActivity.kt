@@ -321,12 +321,14 @@ fun SeraApp(
     var showComposer by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     var authenticatedUserId by remember { mutableStateOf("") }
+    var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
         if (destination == tab) return
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         tabHistory.add(tab)
         if (tabHistory.size > 12) tabHistory.removeAt(0)
+        inboxThreadOpen = false
         tab = destination
     }
     val scope = rememberCoroutineScope()
@@ -396,7 +398,7 @@ fun SeraApp(
             } },
             confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
-    BackHandler(enabled = accessToken != null && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
+    BackHandler(enabled = accessToken != null && !(tab=="Inbox"&&inboxThreadOpen) && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = teal, onPrimary = Color.White,
@@ -450,6 +452,8 @@ fun SeraApp(
             } else {
                 BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     val expanded = maxWidth >= 700.dp
+                    val standaloneThread = tab=="Inbox" && inboxThreadOpen
+                    val darkSystem = androidx.compose.foundation.isSystemInDarkTheme()
                     val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
                     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -457,7 +461,7 @@ fun SeraApp(
                     val chromeVisible = remember(tab) { mutableStateOf(true) }
                     SideEffect {
                         (context as? android.app.Activity)?.let { activity ->
-                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightNavigationBars = expanded || !chromeVisible.value || keyboardOpen
+                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightNavigationBars = if(standaloneThread) !darkSystem else expanded || !chromeVisible.value || keyboardOpen
                         }
                     }
                     // Listen to the actual nested scroll consumption of the active page.
@@ -489,7 +493,7 @@ fun SeraApp(
                     }
                     ModalNavigationDrawer(
                         drawerState = drawerState,
-                        gesturesEnabled = !expanded,
+                        gesturesEnabled = !expanded && !standaloneThread,
                         drawerContent = {
                             SeraNavigationDrawer(
                                 selected = tab,
@@ -527,7 +531,7 @@ fun SeraApp(
                         }
                     ) {
                         Row(Modifier.fillMaxSize()) {
-                            if (expanded) NavigationRail {
+                            if (expanded && !standaloneThread) NavigationRail {
                                 sections.forEach { item ->
                                     NavigationRailItem(
                                         selected = tab == item, onClick = { navigateTo(item) },
@@ -576,7 +580,7 @@ fun SeraApp(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         "Inbox" -> SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, pageModifier, openCompanyInbox, { openCompanyInbox=false }
+                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },onThreadVisibility={inboxThreadOpen=it}
                                         )
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -591,7 +595,7 @@ fun SeraApp(
                                         }
                                     }
                                 }
-                                SeraChromeOverlays(
+                                if(!standaloneThread) SeraChromeOverlays(
                                     notificationCount=unreadActivity.first,
                                     inboxCount=unreadActivity.second,
                                     visible = (tab != "Home" || chromeVisible.value) && !keyboardOpen,
