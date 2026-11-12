@@ -1,6 +1,7 @@
 "use server";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
 const uuid = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
@@ -79,4 +80,14 @@ export async function markProfessionalMessagesRead(form: FormData) {
   await db.from("professional_messages").update({ read_at: new Date().toISOString() })
     .eq("conversation_id", conversation).neq("sender_id", user.id).is("read_at", null);
   revalidatePath("/network/messages");
+}
+
+/** Open the existing or newly created conversation using the same participant-only RLS rules. */
+export async function openProfessionalConversation(form:FormData){
+  const user=await currentUser();const peer=form.get("recipient");
+  if(!user?.email_confirmed_at||!uuid(peer)||peer===user.id)return;
+  await startConversation(form);
+  const db=await serverClient();const [a,b]=[user.id,peer].sort();
+  const {data}=await db.from("professional_conversations").select("id").eq("member_a",a).eq("member_b",b).maybeSingle();
+  if(data?.id)redirect("/network/messages?thread="+data.id);
 }

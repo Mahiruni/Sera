@@ -1,19 +1,8 @@
 import { PostOptions } from "./PostOptions";
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  Pencil,
-  Trash2,
-  MoreHorizontal,
-  Flag,
-} from "lucide-react";
-import {
-  toggleLikePost,
-  toggleSavePost,
-  deletePost,
-  reportPost,
-} from "@/lib/social/actions";
+import { ArrowUpRight } from "lucide-react";
+import { toggleLikePost, toggleSavePost } from "@/lib/social/actions";
 import type { SocialPost } from "@/lib/social/data";
 import { ActionForm, Submit } from "./forms";
 import { ShareButton } from "./share";
@@ -102,12 +91,12 @@ export function PostCard({
           <span key={skill}>#{skill}</span>
         ))}
       </div>
-      <footer className="social-post-actions">
+      <footer className="social-post-actions sera-premium-reactions" aria-label="Post interactions">
         <ActionForm
           action={toggleLikePost}
           fields={{ post_id: post.id, remove: post.liked ? "yes" : "no" }}
         >
-          <Submit
+          <Submit preserveContent
             aria-pressed={post.liked}
             aria-label={`${post.liked ? "Unlike" : "Like"} post, ${post.like_count} likes`}
           >
@@ -118,6 +107,7 @@ export function PostCard({
         <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} currentUserId={currentUserId} />
         <RepostButton id={post.repost_of||post.id} author={post.original?.name||post.author.full_name} reposted={post.reposted||false} count={post.repost_count||0} disabled={post.repost_of?(!post.original||post.original.author_id===currentUserId||post.original.audience!=="public"):(owner||post.audience!==undefined&&post.audience!=="public")} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
+        <ActionForm action={toggleSavePost} fields={{post_id:post.id,remove:post.saved?"yes":"no"}}><Submit preserveContent aria-pressed={post.saved} aria-label={post.saved?"Remove saved post":"Save post"}><SeraReactionIcon kind="save" active={post.saved}/></Submit></ActionForm>
       </footer>
 
     </article>

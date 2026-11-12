@@ -104,3 +104,15 @@ export function navIsActive(pathname: string, href: string) {
     return ["/help", "/contact", "/how-it-works"].includes(pathname);
   return pathname === href || pathname.startsWith(href + "/");
 }
+
+/** Auto-hiding chrome belongs only to the authenticated main feed. */
+export function feedAutoHideEnabled(pathname:string,authenticated:boolean,drawerOpen=false){
+  return authenticated&&pathname==="/feed"&&!drawerOpen;
+}
+export type FeedChromeState={anchor:number;hidden:boolean};
+export function nextFeedChrome(state:FeedChromeState,scrollY:number,maxScroll:number):FeedChromeState{
+  const y=Math.max(0,Math.min(scrollY,Math.max(0,maxScroll)));
+  const anchor=state.hidden?Math.max(state.anchor,y):Math.min(state.anchor,y);
+  const hidden=state.hidden?y>16&&anchor-y<10:y>72&&y-anchor>=20;
+  return {anchor:hidden!==state.hidden?y:anchor,hidden};
+}

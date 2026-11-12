@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { addComment,editComment,deleteComment,likeComment } from "@/lib/social/actions";
 import { SeraReactionIcon } from "./SeraReactionIcon";
+import { SignatureSheetHandle } from "./SignatureSheetHandle";
 
 type ConversationComment = {
   id: string;
@@ -207,7 +208,7 @@ export function SeraConversationSheet({
       }}>
         <div className="sera-conversation-sheet" role="dialog" aria-modal="true"
           aria-labelledby={"sera-conversation-title-" + postId} ref={dialog}>
-          <div className="sera-conversation-handle" aria-hidden="true"/>
+          <SignatureSheetHandle onClose={requestClose} disabled={pending}/>
           <header className="sera-conversation-header">
             <h2 id={"sera-conversation-title-" + postId}>
               <SeraReactionIcon kind="comment" /> Comments · {count}

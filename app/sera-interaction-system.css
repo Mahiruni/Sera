@@ -124,3 +124,23 @@
 @media(max-width:420px){.sera-conversation-header{padding:8px 16px}.sera-conversation-context{padding:10px 16px}.sera-conversation-scroll{padding:6px 14px}.sera-conversation-composer{padding:12px 14px max(12px,env(safe-area-inset-bottom))}.sera-conversation-composer-actions>a{max-width:105px}}
 @media(prefers-reduced-motion:no-preference){.sera-conversation-sheet{animation:sera-signature-rise .28s cubic-bezier(.2,.8,.2,1) both}}
 @media(prefers-reduced-motion:reduce){.sera-conversation-sheet *, .sera-conversation-sheet{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Final cascade: keep the editorial feed and shared five-action row consistent. */
+.social-page .social-card .social-post-actions.sera-premium-reactions{grid-template-columns:repeat(5,minmax(0,1fr));gap:0;border-top:0;padding-top:0;margin-top:2px}
+.social-page .social-post-actions.sera-premium-reactions :is(button,a){gap:4px;padding:0 2px;min-height:44px;font-size:12px}
+.social-page .social-post-actions.sera-premium-reactions .sera-signature-glyph{width:22px;height:22px}
+.sera-repost-sheet:before{display:none}
+.sera-signature-sheet .sera-premium-editor{background:var(--sera-sheet-surface);border-color:var(--sera-sheet-line);border-radius:16px}
+.sera-signature-sheet .sera-premium-toolbar button{background:transparent;border:0;box-shadow:none;color:var(--sera-sheet-ink);border-radius:12px}
+.sera-signature-sheet .sera-premium-types button[aria-pressed=true]{background:#087e83;color:#fff;border-color:#087e83}
+.sera-signature-sheet .sera-premium-publish{box-shadow:none}
+.sera-conversation-sheet .sera-conversation-comment-content,.sera-conversation-sheet .sera-conversation-byline a,.sera-repost-sheet .sera-repost-body,.sera-compose-dialog .sera-premium-headline{color:var(--sera-sheet-ink)}
+html[data-sera-theme=dark] .sera-editorial-feed .social-post-list>.social-card{background:transparent!important;box-shadow:none!important}
+html[data-sera-theme=dark] .sera-signature-sheet :is(input,select),html[data-sera-theme=dark] .sera-control-dialog :is(input,select),html[data-sera-theme=dark] .sera-repost-sheet .sera-repost-options button{background:var(--sera-sheet-surface);color:var(--sera-sheet-ink);border-color:var(--sera-sheet-line)}
+html[data-sera-theme=dark] .sera-conversation-confirm>div{background:var(--sera-sheet-surface);color:var(--sera-sheet-ink)}
+html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-muted)}
+
+@media(max-width:699px){
+ .sera-compose-dialog,.sera-conversation-sheet,.sera-repost-sheet{margin-bottom:var(--sera-sheet-bottom,0px)}
+ .sera-control-dialog:not(.sera-control-compact){margin-bottom:var(--sera-sheet-bottom,0px)!important}
+}

@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -106,6 +106,8 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 for (i in 0 until rows.length()) likedIds.add(rows.getJSONObject(i).optString("post_id"))
             }
         }
+        val savedIds=mutableSetOf<String>()
+        if(idsForLikes.isNotBlank()){request(token,"post_saves?select=post_id&post_id=in.($idsForLikes)").first?.let{json->val rows=JSONArray(json);for(i in 0 until rows.length())savedIds.add(rows.getJSONObject(i).optString("post_id"))}}
         val images = mutableMapOf<String, String>()
         val ids = (posts.map { it.id } + sourceIds).distinct().filter { it.isNotBlank() }.joinToString(",")
         if (ids.isNotBlank()) {
@@ -126,7 +128,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
         val repostStates=spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}
         posts.map { post ->
             post.copy(author = names[post.authorId] ?: "SERA member",
-                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id),
+                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),
                 avatarUrl = avatars[post.authorId],
                 repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } }, originalTime=sourceRows[post.repostOf]?.optString("published_at"), originalTitle=sourceRows[post.repostOf]?.optString("title"), originalBody=sourceRows[post.repostOf]?.optString("body"), originalAvatar=avatars[sourceAuthors[post.repostOf]],originalAuthorId=sourceAuthors[post.repostOf],repostCount=repostStates[post.repostOf?:post.id]?.optInt("repost_count")?:0,reposted=repostStates[post.repostOf?:post.id]?.optBoolean("reposted")?:false)
         } to ""
@@ -166,14 +168,16 @@ fun loadSeraIdentity(token: String): Pair<String?, String> {
     } catch (e: Exception) { null to "Unable to read your account." }
 }
 
-fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, String> {
+fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, String> = setSeraPostInteraction(token,postId,liked,"post_likes")
+fun setSeraSaved(token:String,postId:String,saved:Boolean):Pair<Boolean,String> = setSeraPostInteraction(token,postId,saved,"post_saves")
+private fun setSeraPostInteraction(token:String,postId:String,liked:Boolean,table:String):Pair<Boolean,String> {
     if (!Regex("^[0-9a-fA-F-]{36}$").matches(postId)) return false to "Invalid post."
     return try {
         val userResult = request(token, "user", true)
         val userBody = userResult.first ?: return false to "Please sign in again."
         val userId = JSONObject(userBody).optString("id")
         if (userId.isBlank()) return false to "Please sign in again."
-        val path = if (liked) "post_likes?post_id=eq.$postId&user_id=eq.$userId" else "post_likes"
+        val path = if (liked) "$table?post_id=eq.$postId&user_id=eq.$userId" else table
         val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/" + path).openConnection() as HttpURLConnection).apply {
             requestMethod = if (liked) "DELETE" else "POST"
             connectTimeout = 15000; readTimeout = 15000

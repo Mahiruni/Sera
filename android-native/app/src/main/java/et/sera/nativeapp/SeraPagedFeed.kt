@@ -4,7 +4,6 @@ import android.content.Intent
 import org.json.JSONObject
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.flow.collect
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -41,6 +42,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 
@@ -50,8 +54,11 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {}) {
     val context = LocalContext.current
+    val listState=rememberLazyListState()
+    val topCallback by rememberUpdatedState(onAtTop)
+    LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
     var personalized by remember(token){mutableStateOf(true)}
     val stream = remember(token, refreshKey,personalized) { pagedSeraPosts(token,personalized) }
@@ -68,6 +75,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     var repostNote by remember { mutableStateOf("") }
     var repostMessage by remember { mutableStateOf("") }
     var reposting by remember { mutableStateOf(false) }
+    var discardRepost by remember { mutableStateOf(false) }
+    fun closeRepost(){if(!reposting){if(repostNote.isNotBlank())discardRepost=true else repostTarget=null}}
     var withThoughts by remember{mutableStateOf(false)}
     val repostOverrides=remember(token){mutableStateMapOf<String,Pair<Boolean,Int>>()}
     var currentUserId by remember(token){mutableStateOf("")}
@@ -76,18 +85,21 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val expandedPosts = remember { mutableStateMapOf<String, Boolean>() }
     val reactionOverrides = remember(token, refreshKey) { mutableStateMapOf<String, Pair<Boolean, Int>>() }
     val reactionPending = remember(token) { mutableStateMapOf<String, Boolean>() }
+    val saveOverrides=remember(token,refreshKey){mutableStateMapOf<String,Boolean>()}
+    val savePending=remember(token){mutableStateMapOf<String,Boolean>()}
     var reactionError by remember { mutableStateOf("") }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     PullToRefreshBox(
         isRefreshing = posts.loadState.refresh is LoadState.Loading,
-        onRefresh = { reactionOverrides.clear(); repostOverrides.clear(); posts.refresh() },
+        onRefresh = { reactionOverrides.clear(); repostOverrides.clear(); saveOverrides.clear(); posts.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
+            state=listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
                 top = 73.dp, bottom = 92.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item(key="feed-mode") { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
@@ -96,13 +108,12 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 val post = posts[index]
                 if (post != null) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFE4EEEC)),
+                        shape = RoundedCornerShape(0.dp),
+                        color = MaterialTheme.colorScheme.surface,
                         modifier = Modifier.fillMaxWidth().animateContentSize()
                     ) {
-                        Column(Modifier.padding(horizontal = 15.dp, vertical = 15.dp),
-                            verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                        Column(Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
                                     Modifier.size(43.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
@@ -171,64 +182,34 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         .clickable { expandedImage = url }
                                 )
                             }
-                            HorizontalDivider(color = Color(0xFFE9F0F0), thickness = .7.dp)
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val reaction = reactionOverrides[post.id] ?: (post.liked to post.likes)
-                                val likeTint = if (reaction.first) feedTeal else feedMuted
-                                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = {
-                                        if(reactionPending[post.id]==true) return@IconButton
-                                        val previous=reactionOverrides[post.id] ?: (post.liked to post.likes)
-                                        reactionOverrides[post.id]=(!previous.first to (previous.second + if(previous.first) -1 else 1).coerceAtLeast(0))
-                                        reactionPending[post.id]=true
-                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        scope.launch {
-                                            val result=withContext(Dispatchers.IO){setSeraLike(token,post.id,previous.first)}
-                                            if(!result.first){reactionOverrides[post.id]=previous;reactionError=result.second}
-                                            reactionPending.remove(post.id)
-                                        }
-                                    }, modifier = Modifier.size(48.dp)) {
-                                        val scale by animateFloatAsState(if(reaction.first) 1.08f else 1f,label="Like scale")
-                                        SeraReactionGlyph(SeraReactionKind.LIKE, active = reaction.first, modifier=Modifier.graphicsLayer { scaleX=scale; scaleY=scale })
-                                    }
-                                    if (reaction.second > 0) Text(reaction.second.toString(), fontSize = 11.sp, color = likeTint)
+                                val reaction=reactionOverrides[post.id]?: (post.liked to post.likes)
+                                val repostState=repostOverrides[post.repostOf?:post.id]?: (post.reposted to post.repostCount)
+                                val saved=saveOverrides[post.id]?:post.saved
+                                FeedReactionControl(SeraReactionKind.LIKE,reaction.second,reaction.first,Modifier.weight(1f),enabled=reactionPending[post.id]!=true){
+                                    val previous=reactionOverrides[post.id]?: (post.liked to post.likes)
+                                    reactionOverrides[post.id]=(!previous.first to (previous.second+if(previous.first)-1 else 1).coerceAtLeast(0))
+                                    reactionPending[post.id]=true
+                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraLike(token,post.id,previous.first)};if(!result.first){reactionOverrides[post.id]=previous;reactionError=result.second};reactionPending.remove(post.id)}
                                 }
-                                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center) {
-                                    IconButton(onClick = { commentsPostId = post.id }, modifier = Modifier.size(48.dp)) {
-                                        SeraReactionGlyph(SeraReactionKind.COMMENT)
-                                    }
-                                    if (post.comments > 0) Text(post.comments.toString(), fontSize = 11.sp, color = feedMuted)
+                                FeedReactionControl(SeraReactionKind.COMMENT,post.comments,false,Modifier.weight(1f)){commentsPostId=post.id}
+                                FeedReactionControl(SeraReactionKind.REPOST,repostState.second,repostState.first,Modifier.weight(1f)){repostTarget=post;withThoughts=false;repostNote="";repostMessage=""}
+                                FeedReactionControl(SeraReactionKind.SHARE,post.shares,false,Modifier.weight(1f)){
+                                    val intent=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"https://sera.hisabtech.com/posts/"+post.id)}
+                                    context.startActivity(Intent.createChooser(intent,shareTitle))
                                 }
-                                Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center) {
-                                    val repostState=repostOverrides[post.repostOf?:post.id]?: (post.reposted to post.repostCount)
-                                    IconButton(onClick = {
-                                        repostTarget = post
-                                        withThoughts=false
-                                        repostNote = ""
-                                        repostMessage = ""
-                                    }, modifier = Modifier.size(48.dp)) {
-                                        SeraReactionGlyph(SeraReactionKind.REPOST,active=repostState.first)
-                                    }
-                                    if(repostState.second>0)Text(repostState.second.toString(),fontSize=11.sp,color=if(repostState.first)SeraPurple else feedMuted)
-                                }
-                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                    IconButton(onClick = {
-                                        val intent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, "https://sera.hisabtech.com/posts/" + post.id)
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, shareTitle))
-                                    }, modifier = Modifier.size(48.dp)) {
-                                        SeraReactionGlyph(SeraReactionKind.SHARE)
-                                    }
+                                FeedReactionControl(SeraReactionKind.SAVE,0,saved,Modifier.weight(1f),enabled=savePending[post.id]!=true){
+                                    val previous=saveOverrides[post.id]?:post.saved
+                                    saveOverrides[post.id]=!previous;savePending[post.id]=true
+                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second};savePending.remove(post.id)}
                                 }
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.7.dp)
                         }
                     }
                 }
@@ -258,7 +239,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         val repostState=repostOverrides[originalId]?: (selected.reposted to selected.repostCount)
         val ownOriginal=currentUserId.isNotBlank()&&(selected.originalAuthorId?:selected.authorId)==currentUserId
         val sourceAvailable=selected.repostOf==null||selected.originalBody!=null
-        SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {
+        SeraSignatureSheet(onDismissRequest = { closeRepost() }, allowPartial=true,canDismiss=!reposting&&repostNote.isBlank()) {
             Column(
                 Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -274,7 +255,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             fontWeight = FontWeight.Bold)
                         
                     }
-                    TextButton(onClick = { repostTarget = null }, enabled = !reposting) {
+                    TextButton(onClick = { closeRepost() }, enabled = !reposting) {
                         Text("Close", color = feedTeal)
                     }
                 }
@@ -299,7 +280,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 color = feedMuted, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
-                    if(!repostState.first&&!ownOriginal) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!withThoughts,onClick={withThoughts=false;repostNote=""},label={Text("Repost")});FilterChip(selected=withThoughts,onClick={withThoughts=true},label={Text("Add thoughts")})}
+                    if(!repostState.first&&!ownOriginal) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!withThoughts,onClick={withThoughts=false},label={Text("Repost")});FilterChip(selected=withThoughts,onClick={withThoughts=true},label={Text("Add thoughts")})}
                     if(withThoughts&&!repostState.first) OutlinedTextField(
                         value = repostNote,
                         onValueChange = { if (it.length <= 400) repostNote = it },
@@ -356,6 +337,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             }
         }
     }
+    if(discardRepost)SeraConfirmAction("Discard repost draft?","Your thoughts have not been published.","Discard","Keep writing",onCancel={discardRepost=false},onConfirm={discardRepost=false;repostTarget=null;repostNote=""})
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), accessToken=token, onDismiss = { expandedImage = null }) }
     nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;posts.refresh()}) }
     commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }
@@ -366,3 +348,12 @@ private fun postTimeLabel(value: String): String = runCatching {
         .withZone(ZoneId.systemDefault())
         .format(Instant.parse(value))
 }.getOrDefault("")
+
+@Composable private fun FeedReactionControl(kind:SeraReactionKind,count:Int,active:Boolean,modifier:Modifier=Modifier,enabled:Boolean=true,onClick:()->Unit){
+    val label=when(kind){SeraReactionKind.LIKE->if(active)"Unlike post" else "Like post";SeraReactionKind.COMMENT->"Comments";SeraReactionKind.REPOST->"Repost";SeraReactionKind.SHARE->"Share post";SeraReactionKind.SAVE->if(active)"Remove saved post" else "Save post"}
+    Row(modifier.heightIn(min=48.dp).clip(RoundedCornerShape(12.dp)).clickable(enabled=enabled,onClick=onClick).semantics{contentDescription=label+if(count>0)", $count" else "";selected=active},verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center){
+        val scale by animateFloatAsState(if(active&&kind==SeraReactionKind.LIKE)1.06f else 1f,label="Reaction scale")
+        SeraReactionGlyph(kind,active,Modifier.graphicsLayer{scaleX=scale;scaleY=scale})
+        if(count>0){Spacer(Modifier.width(3.dp));Text(if(count>=1000)"${count/1000}k" else count.toString(),fontSize=11.sp,color=if(active)feedTeal else MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)}
+    }
+}

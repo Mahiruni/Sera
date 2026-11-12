@@ -154,7 +154,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
         shape = RoundedCornerShape(24.dp)
     )
     removing?.let{c->AlertDialog(onDismissRequest={removing=null},title={Text("Remove comment?")},text={Text("This also removes replies to your comment.")},confirmButton={TextButton(onClick={removing=null;sending=true;scope.launch{val r=withContext(Dispatchers.IO){mutateNativeComment(token,postId,c.id,"delete","")};sending=false;if(r.first){retry++;onChanged()}else publishingError=r.second}}){Text("Remove")}},dismissButton={TextButton(onClick={removing=null}){Text("Keep")}})}
-    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!sending&&draft.isBlank()) {
         Column(
             Modifier.fillMaxWidth().fillMaxHeight(0.94f).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)

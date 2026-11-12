@@ -8,12 +8,13 @@ export type SocialAction = (
 ) => Promise<SocialState>;
 export function Submit({
   children,
+  preserveContent = false,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {preserveContent?:boolean}) {
   const { pending } = useFormStatus();
   return (
     <button {...props} disabled={pending || props.disabled} aria-busy={pending}>
-      {pending ? "Please wait…" : children}
+      {pending && !preserveContent ? "Please wait…" : children}
     </button>
   );
 }

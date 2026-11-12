@@ -2264,3 +2264,38 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-notification-avatar-stack{width:48px;height:48px;display:flex;align-items:flex-start;position:relative}
 .sera-notification-avatar-stack>*{position:absolute!important;top:0;left:0;border:2px solid var(--net-surface);border-radius:50%}
 .sera-notification-avatar-stack>*:nth-child(2){top:13px;left:13px}
+
+/* Relationship hub: one selected destination, clean editorial rows. */
+.sera-relationship-hub{max-width:760px;margin-inline:auto;display:grid;gap:16px;color:var(--net-ink)}
+.sera-hub-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0}
+.sera-hub-heading h1{font-size:clamp(26px,5vw,36px);letter-spacing:-.04em;line-height:1.1;margin:0}
+.sera-hub-heading p{font-size:13px;color:var(--net-muted);margin:5px 0 0}
+.sera-hub-primary,.sera-hub-discover{display:inline-flex;align-items:center;gap:7px;color:var(--net-deep);font-weight:650;font-size:13px;min-height:44px}
+.sera-hub-metrics{display:grid;grid-template-columns:repeat(3,1fr);border-block:1px solid var(--net-line);padding:12px 0}
+.sera-hub-metrics a{display:grid;gap:4px;text-align:center;padding:4px 8px;min-height:54px}
+.sera-hub-metrics a+a{border-inline-start:1px solid var(--net-line)}
+.sera-hub-metrics strong{font-size:25px;letter-spacing:-.04em;color:var(--net-ink)}
+.sera-hub-metrics span{font-size:12px;color:var(--net-muted)}
+.sera-hub-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--net-line)}
+.sera-hub-tabs a{display:flex;align-items:center;gap:5px;min-height:44px;padding:8px 12px;white-space:nowrap;color:var(--net-muted);border-bottom:2px solid transparent;font-size:13px;font-weight:650}
+.sera-hub-tabs a[aria-current=page]{color:var(--net-deep);border-bottom-color:var(--net-deep)}
+.sera-hub-count{font-size:10px;background:var(--net-soft);color:var(--net-deep);border-radius:30px;padding:2px 6px}
+.sera-hub-search{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 12px;border:1px solid var(--net-line);border-radius:14px;background:var(--net-surface);color:var(--net-muted)}
+.sera-hub-search input:not([type=hidden]){flex:1;min-width:0;border:0;background:transparent;color:var(--net-ink);font:inherit;padding:10px 0}
+.sera-hub-search button{border:0;background:transparent;color:var(--net-deep);font-weight:650;min-height:44px}
+.sera-hub-list{padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.sera-hub-list h2{font-size:16px;margin:0 0 8px}.sera-hub-list h2 small{font-size:12px;color:var(--net-muted);font-weight:500}
+.sera-hub-list ul{list-style:none;margin:0;padding:0}
+.sera-relationship-hub .sera-connection-person{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--net-line);border-radius:0;background:transparent;box-shadow:none;padding:12px 0;margin:0}
+.sera-network-person-name{flex:1;min-width:100px;font-weight:650;font-size:14px;color:var(--net-ink)}
+.sera-relationship-hub .sera-connection-action{min-height:44px;padding:8px 12px;border-radius:24px;font-size:12px;background:var(--net-deep);color:white;border:1px solid transparent}
+.sera-relationship-hub .sera-connection-action.secondary{background:transparent;border-color:var(--net-line);color:var(--net-muted)}
+.sera-hub-empty{display:grid;justify-items:center;gap:8px;text-align:center;padding:32px 12px;color:var(--net-muted)}
+.sera-hub-empty h3,.sera-hub-empty p{margin:0}.sera-hub-empty h3{color:var(--net-ink);font-size:17px}.sera-hub-empty p{font-size:13px}
+.sera-hub-empty a{display:inline-flex;align-items:center;gap:5px;color:var(--net-deep);min-height:44px}
+
+.sera-network-person-identity{flex:1;min-width:110px;display:grid;gap:3px}
+.sera-network-person-identity small{font-size:12px;line-height:1.35;color:var(--net-muted);overflow-wrap:anywhere}
+.sera-network-person-identity .sera-network-person-reason{color:var(--net-deep);font-size:11px}
+.sera-hub-limit{font-size:12px;color:var(--net-muted);margin:0}
+.sera-relationship-hub .sera-connection-action:disabled{opacity:.55;cursor:wait}

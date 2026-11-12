@@ -7,7 +7,8 @@ import java.net.URL
 
 internal data class SeraNetworkRelations(
     val follows: Set<String>,
-    val requests: List<SeraConnectionRequest>
+    val requests: List<SeraConnectionRequest>,
+    val followers: Set<String> = emptySet()
 )
 internal data class SeraConnectionRequest(val id: String, val requester: String, val recipient: String, val status: String)
 
@@ -50,7 +51,10 @@ internal fun loadSeraRelations(token: String, userId: String): Pair<SeraNetworkR
     val (requestRows, requestError) = relationRequest(token,
         "professional_connection_requests?select=id,requester_id,recipient_id,status&or=(requester_id.eq.$userId,recipient_id.eq.$userId)&order=created_at.desc&limit=500")
     if (requestRows == null) return null to requestError
+    val (followerRows,followerError)=relationRequest(token,"professional_follows?select=follower_id&followed_id=eq.$userId&limit=500")
+    if(followerRows==null)return null to followerError
     return try {
+        val followerArray=JSONArray(followerRows)
         val followArray = JSONArray(followRows)
         val requestArray = JSONArray(requestRows)
         SeraNetworkRelations(
@@ -59,7 +63,8 @@ internal fun loadSeraRelations(token: String, userId: String): Pair<SeraNetworkR
                 val obj = requestArray.getJSONObject(it)
                 SeraConnectionRequest(obj.optString("id"), obj.optString("requester_id"),
                     obj.optString("recipient_id"), obj.optString("status"))
-            }
+            },
+            (0 until followerArray.length()).map{followerArray.getJSONObject(it).optString("follower_id")}.toSet()
         ) to ""
     } catch (_: Exception) { null to "Unable to read network relationships." }
 }
