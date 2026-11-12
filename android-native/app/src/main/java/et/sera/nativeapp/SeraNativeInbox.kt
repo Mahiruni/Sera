@@ -29,6 +29,9 @@ import java.util.UUID
 import android.media.MediaPlayer
 import android.media.ToneGenerator
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.foundation.BorderStroke
@@ -206,7 +209,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         val last = messages.lastOrNull()?.id ?: return@LaunchedEffect
         val changedConversation = lastVisibleConversation != id
         val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
-        if (changedConversation || (last != lastMessageId && nearBottom)) messageListState.scrollToItem(messages.lastIndex)
+        if (changedConversation || (last != lastMessageId && nearBottom)) { val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
         lastVisibleConversation = id
         lastMessageId = last
     }
@@ -225,11 +228,26 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var sound by remember{mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",false))}
     var playback by remember{mutableStateOf<MediaPlayer?>(null)}
     var playingPath by remember{mutableStateOf("")}
-    var clientId by remember(selected?.id){mutableStateOf(UUID.randomUUID().toString())}
     var sendFailed by remember(selected?.id){mutableStateOf(false)}
+    val outbox=remember(context){runCatching{NativeChatOutbox(context)}.getOrNull()}
+    var queued by remember(selected?.id){mutableStateOf<NativePending?>(null)}
+    var retrySignal by remember(selected?.id){mutableIntStateOf(0)}
+    var connectionAvailable by remember{mutableStateOf(true)}
+    LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;reply=null}}
+    LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
     DisposableEffect(selected?.id){onDispose{runCatching{playback?.release()};playback=null;playingPath=""}}
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
+    LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
+        val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
+        if(!connectionAvailable)return@LaunchedEffect
+        sending=true
+        try{
+            val result=withContext(Dispatchers.IO){sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId)}
+            if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
+            else{sendFailed=true;error=result.second}
+        }finally{sending=false}
+    }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
     if(remove!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Unsend message?")},text={Text("This message will be removed for everyone.")},confirmButton={TextButton(onClick={val id=remove!!.id;remove=null;scope.launch{val r=withContext(Dispatchers.IO){unsendNativeMessage(token,id)};if(r.first==null)error=r.second else reload()}}){Text("Unsend")}},dismissButton={TextButton(onClick={remove=null}){Text("Cancel")}})
     if(reaction!=null)AlertDialog(onDismissRequest={reaction=null},title={Text("React to message")},text={Row{listOf("👍","❤️","😂","😮","😢","👏").forEach{emoji->TextButton(onClick={reaction?.let{react(it,emoji)}},contentPadding=PaddingValues(2.dp)){Text(emoji,fontSize=20.sp)}}}},confirmButton={TextButton(onClick={reaction=null}){Text("Close")}})
@@ -264,13 +282,23 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId)chime()
                     messages = latest
                     val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
-                    if (unread.isNotEmpty()) {
-                        val receipt=withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_message_receipt", "POST", JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(unread.map { it.id })).put("p_read",true)) }
-                        if(receipt.first!=null)SeraUnreadRefresh.changed()
-                    }
+                    val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
+                    if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
                 }
                 error = result.second
             }
+        }
+    }
+    LaunchedEffect(token,selected?.id,lifecycle){
+        val c=selected?:return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+            val seen=mutableSetOf<String>()
+            snapshotFlow{messageListState.layoutInfo.visibleItemsInfo.map{it.key.toString()} to messages}
+                .collectLatest{(visible,latest)->
+                    delay(600)
+                    val ids=latest.filter{it.id in visible&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
+                    if(ids.isNotEmpty()){val r=withContext(Dispatchers.IO){chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",c.id).put("p_ids",JSONArray(ids)).put("p_read",true))};if(r.first!=null){seen.addAll(ids);SeraUnreadRefresh.changed()}}
+                }
         }
     }
     LaunchedEffect(token, selected?.id, lifecycle) {
@@ -393,7 +421,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 }
             }
             reply?.let{m->Surface(color=inboxSoft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp);IconButton(onClick={reply=null}){Icon(Icons.Outlined.Close,"Cancel reply")}}}}
-            if(sendFailed)Text("Not sent · retry using the send button",color=MaterialTheme.colorScheme.error,fontSize=12.sp)
+            queued?.let{q->Surface(color=inboxSoft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Text(q.body.ifBlank{q.file?.name?:"Attachment"},maxLines=2);Text(if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=inboxTeal);Row{TextButton(onClick={retrySignal++},enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick={scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},enabled=!sending){Text("Edit message")}}}}}
             attachment?.let { file ->
                 Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -425,21 +453,18 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 Button(onClick = {
                     val body = draft.trim()
                     val file=attachment
-                    if ((body.isBlank() && file == null) || sending || checkingFile) return@Button
+                    if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@Button
                     sending = true
                     scope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            sendNativeMessageV2(token,userId,conversation.id,clientId,body,file,reply?.id)
-                        }
-                        if (result.first != null) {
-                            if (selected?.id == conversation.id) { draft = ""; attachment=null;reply=null;clientId=UUID.randomUUID().toString();sendFailed=false;chime() }
-                            runCatching { savedDrafts?.clear(userId, conversation.id) }
-                            val refreshed = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
-                            if (selected?.id == conversation.id) refreshed.first?.let { messages = it }
-                        } else {error = result.second;sendFailed=true}
+                        val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file)
+                        val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.save(userId,conversation.id,p)}}
+                        if(saved.isSuccess){
+                            runCatching{savedDrafts?.clear(userId,conversation.id)}
+                            if(selected?.id==conversation.id){draft="";attachment=null;reply=null;queued=p;sendFailed=false;error=""}
+                        }else error="Secure message storage is unavailable. Your draft was retained."
                         sending = false
                     }
-                }, enabled = (draft.isNotBlank() || attachment != null) && !sending && !checkingFile,
+                }, enabled = (draft.isNotBlank() || attachment != null) && !sending && !checkingFile && queued==null,
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     modifier = Modifier.heightIn(min = 54.dp),
                     shape = RoundedCornerShape(17.dp),
