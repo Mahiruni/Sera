@@ -2293,3 +2293,9 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-hub-empty{display:grid;justify-items:center;gap:8px;text-align:center;padding:32px 12px;color:var(--net-muted)}
 .sera-hub-empty h3,.sera-hub-empty p{margin:0}.sera-hub-empty h3{color:var(--net-ink);font-size:17px}.sera-hub-empty p{font-size:13px}
 .sera-hub-empty a{display:inline-flex;align-items:center;gap:5px;color:var(--net-deep);min-height:44px}
+
+.sera-network-person-identity{flex:1;min-width:110px;display:grid;gap:3px}
+.sera-network-person-identity small{font-size:12px;line-height:1.35;color:var(--net-muted);overflow-wrap:anywhere}
+.sera-network-person-identity .sera-network-person-reason{color:var(--net-deep);font-size:11px}
+.sera-hub-limit{font-size:12px;color:var(--net-muted);margin:0}
+.sera-relationship-hub .sera-connection-action:disabled{opacity:.55;cursor:wait}
