@@ -2,7 +2,6 @@ import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import {
   ArrowUpRight,
-  Search,
   BriefcaseBusiness,
   Compass,
   Bookmark,
@@ -12,6 +11,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { UniversalSearchBox } from "./universal-search-box";
+import { currentUser } from "@/lib/supabase/server";
 export type MemberCard = {
   id: string;
   full_name: string;
@@ -36,31 +37,16 @@ export function NetworkBrand() {
 }
 export async function NetworkToolbar({
   query = "",
-  discover = false,
 }: {
   query?: string;
   discover?: boolean;
 }) {
+  const user = await currentUser();
   return (
     <div className="network-toolbar">
       <NetworkBrand />
-      <form action="/discover" role="search" className="network-search">
-        <Search size={17} aria-hidden="true" />
-        <label className="sr-only" htmlFor="network-q">
-          Search professionals, skills and stories
-        </label>
-        <input
-          id="network-q"
-          name="q"
-          defaultValue={query}
-          maxLength={80}
-          placeholder="People, jobs, posts…"
-        />
-        {discover && <input type="hidden" name="tab" value="all" />}
-        <button type="submit" aria-label="Search Sera">
-          <ArrowRight size={17} />
-        </button>
-      </form>
+      <UniversalSearchBox key={(user?.id||"guest")+query} query={query} userId={user?.id||"guest"} />
+
       <ThemeToggle />
     </div>
   );

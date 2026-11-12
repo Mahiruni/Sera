@@ -25,6 +25,7 @@ import {
   OpportunityPreview,
 } from "@/components/network/shared";
 import { PostList, SocialPagination } from "@/components/social/feed";
+import { UniversalSearchBox } from "@/components/network/universal-search-box";
 import { UniversalSearchResults } from "@/components/network/universal-search-results";
 export const metadata = {
   title: "Discover people, projects and possibilities",
@@ -55,13 +56,8 @@ export default async function Discover({
           <h1>Search SERA</h1>
           <p>Find people, opportunities and ideas in one place.</p>
         </section>
-        <form action="/discover" className="network-search network-discover-search" role="search">
-          <Search size={18} aria-hidden="true" />
-          <label className="sr-only" htmlFor="universal-query">Search SERA</label>
-          <input id="universal-query" name="q" type="search" defaultValue={query} maxLength={80} placeholder="People, jobs, posts, skills…" />
-          <input type="hidden" name="tab" value="all" />
-          <button type="submit" aria-label="Search all categories"><ArrowRight size={18} /></button>
-        </form>
+        <UniversalSearchBox key={user.id+query} query={query} userId={user.id} prominent />
+
         <DiscoverTabs kind={kind} query={query} />
         <UniversalSearchResults query={query} />
       </div>

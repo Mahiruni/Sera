@@ -71,3 +71,15 @@ test("universal search defaults to All for a global query and preserves category
   assert.equal(universalDiscoveryInput({ q: "design", tab: ["all"] }).kind, "people");
   assert.equal(universalDiscoveryInput({ q: "%_\\", tab: "all" }).query, "");
 });
+
+test("recent searches are sanitized, deduplicated and bounded", async () => {
+  const { recentSearches, rememberSearch } = await import("../lib/network/search-model");
+  assert.deepEqual(rememberSearch(["React", "Design"], "react"), ["react", "Design"]);
+  assert.deepEqual(recentSearches(["አዲስ አበባ", null, "%_", "Design"]), ["አዲስ አበባ", "Design"]);
+  assert.equal(recentSearches(Array.from({length:20},(_,i)=>"search "+i)).length,8);
+});
+test("suggestions prioritize exact and prefix labels", async () => {
+  const { rankSuggestions } = await import("../lib/network/search-model");
+  const items = [{id:"1",label:"Senior React",kind:"Jobs" as const},{id:"2",label:"React developer",kind:"People" as const},{id:"3",label:"React",kind:"Posts" as const}];
+  assert.deepEqual(rankSuggestions(items,"React").map(r=>r.id),["3","2","1"]);
+});
