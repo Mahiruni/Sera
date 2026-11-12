@@ -49,6 +49,10 @@ do $$declare affected integer;pid uuid:=(select post from sera_qa_ids);parent uu
  update public.post_comments set body='Edited QA comment' where id=parent;
  perform public.sera_undo_repost(pid);
  if (select repost_count from public.sera_repost_states(array[pid]))<>0 then raise exception 'Undo repost failed';end if;
+ insert into public.professional_blocks(blocker_id,blocked_id) select b,a from sera_qa_ids;
+ if exists(select 1 from public.posts where id=pid) then raise exception 'Blocked post leaked';end if;
+ if exists(select 1 from public.post_comments where post_id=pid) then raise exception 'Blocked post comments leaked';end if;
+ delete from public.professional_blocks where blocker_id=(select b from sera_qa_ids) and blocked_id=(select a from sera_qa_ids);
  if (select (like_count,comment_count,share_count)::text from public.posts where id=pid)<>'(1,2,1)' then raise exception 'Counters wrong: %',(select (like_count,comment_count,share_count)::text from public.posts where id=pid);end if;
 end$$;
 reset role;

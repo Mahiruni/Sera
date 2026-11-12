@@ -253,7 +253,8 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     repostTarget?.let { selected ->
         val originalId=selected.repostOf?:selected.id
         val repostState=repostOverrides[originalId]?: (selected.reposted to selected.repostCount)
-        val ownOriginal=(selected.originalAuthorId?:selected.authorId)==currentUserId
+        val ownOriginal=currentUserId.isNotBlank()&&(selected.originalAuthorId?:selected.authorId)==currentUserId
+        val sourceAvailable=selected.repostOf==null||selected.originalBody!=null
         SeraSignatureSheet(onDismissRequest = { if (!reposting) repostTarget = null }) {
             Column(
                 Modifier.fillMaxWidth().imePadding().navigationBarsPadding(),
@@ -290,7 +291,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(selected.repostAuthor?:selected.author, color = feedInk,
                                 fontWeight = FontWeight.SemiBold)
-                            Text((selected.originalBody?:selected.body).ifBlank { selected.originalTitle?:selected.title }.take(260),
+                            Text((if(selected.repostOf!=null)selected.originalBody.orEmpty().ifBlank{selected.originalTitle?:"Original post unavailable"} else selected.body.ifBlank{selected.title}).take(260),
                                 maxLines = 4, overflow = TextOverflow.Ellipsis,
                                 color = feedMuted, style = MaterialTheme.typography.bodyMedium)
                         }
@@ -332,7 +333,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 else repostMessage = result.second
                             }
                         },
-                        enabled = !reposting && !ownOriginal && (!withThoughts||repostNote.isNotBlank()||repostState.first),
+                        enabled = !reposting && currentUserId.isNotBlank() && (repostState.first||(!ownOriginal&&sourceAvailable)) && (!withThoughts||repostNote.isNotBlank()||repostState.first),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = feedTeal),
                         modifier = Modifier.weight(1.5f).heightIn(min = 50.dp)

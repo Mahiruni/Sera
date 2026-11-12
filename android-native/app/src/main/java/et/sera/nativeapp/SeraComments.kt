@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.imePadding
 import kotlinx.coroutines.launch
 import java.net.HttpURLConnection
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
@@ -226,8 +227,9 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
                 publishingError = ""
                 focus.clearFocus()
                 scope.launch {
+                    val editId=editing?.id;val submitted=draft.trim();val parent=replyTarget?.let{it.parentId?:it.id}
                     val result = withContext(Dispatchers.IO) {
-                        if(editing!=null)mutateNativeComment(token,postId,editing!!.id,"edit",draft.trim()) else publishNativeComment(token, postId, draft.trim(), replyTarget?.let { it.parentId ?: it.id })
+                        if(editId!=null)mutateNativeComment(token,postId,editId,"edit",submitted) else publishNativeComment(token, postId, submitted, parent)
                     }
                     if (result.first) {
                         draft = ""
@@ -344,8 +346,9 @@ private fun publishNativeComment(token: String, postId: String, body: String, pa
     } catch (_: Exception) { false to "Network unavailable. Your comment is still here." }
 }
 
+private val socialCommentHttp=okhttp3.OkHttpClient.Builder().connectTimeout(15,java.util.concurrent.TimeUnit.SECONDS).readTimeout(25,java.util.concurrent.TimeUnit.SECONDS).build()
 private fun mutateNativeComment(token:String,postId:String,id:String,action:String,body:String):Pair<Boolean,String>{
-    return try{val request=okhttp3.Request.Builder().url("https://sera.hisabtech.com/api/native/comments").header("Authorization","Bearer "+token).post(okhttp3.RequestBody.create("application/json".toMediaType(),JSONObject().put("post_id",postId).put("comment_id",id).put("action",action).put("body",body).toString())).build()
-    okhttp3.OkHttpClient().newCall(request).execute().use{r->val message=r.body?.string().orEmpty();r.isSuccessful to if(r.isSuccessful)"" else runCatching{JSONObject(message).optString("error")}.getOrDefault("Unable to update comment.")}}
+    return try{val request=okhttp3.Request.Builder().url("https://sera.hisabtech.com/api/native/comments").header("Authorization","Bearer "+token).post(JSONObject().put("post_id",postId).put("comment_id",id).put("action",action).put("body",body).toString().toRequestBody("application/json".toMediaType())).build()
+    socialCommentHttp.newCall(request).execute().use{r->val message=r.body?.string().orEmpty();r.isSuccessful to if(r.isSuccessful)"" else runCatching{JSONObject(message).optString("error")}.getOrDefault("Unable to update comment.")}}
     catch(_:Exception){false to "Connection unavailable. Please retry."}
 }

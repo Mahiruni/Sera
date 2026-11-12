@@ -68,7 +68,7 @@ fun loadSeraFeed(token: String, page: Int = 0): Pair<List<SeraPost>?, String> {
         val avatars = mutableMapOf<String, String>()
         val headlines = mutableMapOf<String,String>()
         val profileRows = spaceRows(spaceCall(token,"sera_feed_headlines",JSONObject().put("p_ids",JSONArray(authors))).first)
-        profileRows.forEach { headlines[it.optString("id")]=it.optString("headline") }
+        profileRows.forEach { headlines[it.optString("id")]=it.optString("headline").takeUnless{v->v=="null"}.orEmpty() }
         if (authors.isNotEmpty()) {
             try {
                 val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/rpc/member_cards").openConnection() as HttpURLConnection).apply {
