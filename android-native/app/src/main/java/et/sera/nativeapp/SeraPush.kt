@@ -27,6 +27,8 @@ import java.net.URL
 
 internal object SeraPush {
     const val CHANNEL="sera_messages"
+    const val CALL_CHANNEL="sera_voice_calls"
+    private val callUuid=Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     private const val PREFS="sera_push"
     private val registrationGeneration=java.util.concurrent.atomic.AtomicInteger(0)
     fun initialize(context:Context):Boolean {
@@ -47,6 +49,7 @@ internal object SeraPush {
     fun channel(context:Context){
         val manager=context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL,"SERA notifications",NotificationManager.IMPORTANCE_HIGH).apply{description="Messages and professional activity";enableVibration(true);setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())})
+        manager.createNotificationChannel(NotificationChannel(CALL_CHANNEL,"SERA voice calls",NotificationManager.IMPORTANCE_HIGH).apply{description="Incoming voice calls";enableVibration(true);vibrationPattern=longArrayOf(0,350,250,350);lockscreenVisibility=android.app.Notification.VISIBILITY_PRIVATE;setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build())})
         SeraNotificationSounds.createChannels(context)
     }
     private fun prefs(context:Context)=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
@@ -95,6 +98,25 @@ internal object SeraPush {
         val n=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind)).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pi).build()
         context.getSystemService(NotificationManager::class.java).notify(id,n)
     }
+    fun clearCallNotification(context:Context,id:String){if(callUuid.matches(id))context.getSystemService(NotificationManager::class.java).cancel("sera-call:"+id,1)}
+    fun notifyCall(context:Context,data:Map<String,String>){
+        val id=data["call_id"]?:return
+        val recipient=data["recipient_id"]?:return
+        if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return
+        if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
+        val remaining=runCatching{java.time.Instant.parse(data["expires_at"]).toEpochMilli()-System.currentTimeMillis()}.getOrDefault(0)
+        if(remaining<=0)return
+        channel(context)
+        val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
+        val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("SERA.et").setContentText("Incoming call").build()
+        val notification=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
+            .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
+            .addAction(android.R.drawable.sym_call_incoming,"Open call",pi).build()
+        context.getSystemService(NotificationManager::class.java).notify("sera-call:"+id,1,notification)
+    }
     fun dispatch(access:String,kind:String,id:String){
         if(!id.matches(Regex("[0-9a-f-]{36}")))return
         var c:HttpURLConnection?=null
@@ -107,6 +129,7 @@ internal object SeraPush {
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
+        if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token)}

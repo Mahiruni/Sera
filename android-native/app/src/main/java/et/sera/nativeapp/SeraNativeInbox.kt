@@ -341,7 +341,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
             while(true){
                 val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
-                result.first?.let{conversations=it}
+                result.first?.let{rows->conversations=rows;val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
                 if(selected==null)error=result.second;loading=false
                 if(selected!=null)break
                 delay(20000)

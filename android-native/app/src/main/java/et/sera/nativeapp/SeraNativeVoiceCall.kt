@@ -66,7 +66,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     fun payload()=JSONObject().put("p_conversation",conversation)
     fun cleanup(){rtc?.close();rtc=null;phase="";muted=false;speaker=false;started=0;seconds=0;lastAnswer=null;row=null}
     suspend fun end(action:String,message:String=""){
-        val call=row;cleanup();if(message.isNotBlank())error=message
+        val call=row;call?.let{SeraPush.clearCallNotification(context,it.id)};cleanup();if(message.isNotBlank())error=message
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action))}.onFailure{error="Call closed locally. Remote status will expire."}
     }
     fun peer():SeraNativeRtc{
@@ -83,7 +83,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             if(!fresh.optBoolean("enabled"))error("Calling is unavailable.")
             config=fresh;val p=peer()
             if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(started==0L)phase="Connecting…"}
-            else{val offer=p.offer();val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;phase="Ringing…"}
+            else{val offer=p.offer();val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;phase="Ringing…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
         }catch(e:CancellationException){cleanup();throw e}catch(e:Exception){if(accept)end("fail",e.message?:"Call unavailable.")else{cleanup();error=e.message?:"Call unavailable."}}finally{busy=false}}
     }
     var permissionAccept by remember{mutableStateOf(false)}
@@ -113,6 +113,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
     LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(25000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()
+    LaunchedEffect(incoming,row?.id){if(incoming)row?.let{SeraPush.clearCallNotification(context,it.id)}}
     DisposableEffect(incoming){val ringtone=if(incoming)runCatching{RingtoneManager.getRingtone(context,RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)).apply{play()}}.getOrNull()else null;onDispose{runCatching{ringtone?.stop()}}}
     DisposableEffect(lifecycle,conversation){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP&&row!=null)scope.launch{end("end")}};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);rtc?.close()}}
     if(!enabled)return

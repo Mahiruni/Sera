@@ -344,7 +344,25 @@ fun SeraApp(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
     var openCompanyInbox by remember { mutableStateOf(false) }
-    LaunchedEffect(pushKind,accessToken){if(pushKind!=null&&accessToken!=null){openCompanyInbox=pushKind=="company_message";navigateTo(if(pushKind=="message"||pushKind=="company_message")"Inbox" else "Notifications");onPushConsumed()}}
+    var callThread by remember(authenticatedUserId){mutableStateOf<String?>(null)}
+    var callPeer by remember(authenticatedUserId){mutableStateOf("")}
+    LaunchedEffect(pushKind,accessToken,authenticatedUserId){
+        val kind=pushKind?:return@LaunchedEffect
+        val token=accessToken?:return@LaunchedEffect
+        if(authenticatedUserId.isBlank())return@LaunchedEffect
+        if(kind.startsWith("voice_call:")){
+            val id=kind.substringAfter(':')
+            if(id.matches(Regex("[0-9a-fA-F-]{36}"))){
+                val incoming=withContext(Dispatchers.IO){runCatching{chatRpc(token,"sera_call_incoming",JSONObject().put("p_id",id)).first?.let{if(it=="null")null else JSONObject(it)}}.getOrNull()}
+                SeraPush.clearCallNotification(context,id)
+                if(incoming!=null){
+                    openCompanyInbox=false;callThread=incoming.optString("conversation_id").takeIf{it.matches(Regex("[0-9a-fA-F-]{36}"))};callPeer=incoming.optString("caller")
+                    navigateTo("Inbox")
+                }else navigateTo("Inbox")
+            }
+        }else{openCompanyInbox=kind=="company_message";navigateTo(if(kind=="message"||kind=="company_message")"Inbox" else "Notifications")}
+        onPushConsumed()
+    }
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
@@ -582,7 +600,7 @@ fun SeraApp(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         "Inbox" -> SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },onThreadVisibility={inboxThreadOpen=it},onInboxExit={tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home";inboxThreadOpen=false}
+                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },initialThread=callThread,initialPeer=callPeer,initialName="SERA member",onThreadExit=if(callThread!=null){{callThread=null;callPeer="";inboxThreadOpen=false}}else null,onThreadVisibility={inboxThreadOpen=it},onInboxExit={callThread=null;callPeer="";tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home";inboxThreadOpen=false}
                                         )
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
