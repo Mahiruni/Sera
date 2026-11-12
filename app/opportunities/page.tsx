@@ -1,55 +1,9 @@
 import Link from "next/link";
-import { Breadcrumbs, GuideCards } from "@/components/public-site";
-import { publicMetadata } from "@/lib/seo";
-export const metadata = publicMetadata("/opportunities");
-export default function Page() {
-  return (
-    <div className="container page public-hub">
-      <Breadcrumbs
-        items={[{ name: "Career opportunities", path: "/opportunities" }]}
-      />
-      <h1>A clearer starting point for your job search in Ethiopia.</h1>
-      <p className="subtext">
-        Build a focused application and check the source of an opportunity
-        before you respond. Sera.et offers practical guidance and a recruitment
-        demonstration; it is not currently a source of verified live vacancies.
-      </p>
-      <section className="public-editorial">
-        <h2>Check the announcement, then plan the application</h2>
-        <p>
-          Keep the original vacancy source, its date, the stated deadline and
-          the official application route together. Compare responsibilities with
-          examples of work you can demonstrate. Record clarification from the
-          organization rather than filling gaps with assumptions. Treat
-          forwarded messages and copied posters as leads to investigate.
-        </p>
-        <p>
-          Our guide explains a practical sequence for checking an employer’s
-          published information and preparing a careful application. It does not
-          guarantee a vacancy’s legitimacy or replace independent verification.
-        </p>
-        <Link className="inline-link" href="/guides/check-a-job-opportunity">
-          Read the opportunity checklist
-        </Link>
-      </section>
-      <section className="public-release">
-        <h2>Try the interface with sample information</h2>
-        <p>
-          The demo includes filters, bookmarks, editable profiles, local
-          applications and employer stages. Its vacancies, employer names and
-          salaries are demonstration content. No application is sent externally
-          and there is no live recruitment database.
-        </p>
-        <div className="public-actions">
-          <Link className="button" href="/demo">
-            Open the recruitment demo
-          </Link>
-          <Link className="button secondary" href="/how-it-works">
-            How the demo works
-          </Link>
-        </div>
-      </section>
-      <GuideCards />
-    </div>
-  );
-}
+import {requiredProfile} from "@/lib/auth/profile";
+import {serverClient} from "@/lib/supabase/server";
+import {revalidatePath} from "next/cache";
+import "../events/events.css";
+export const dynamic="force-dynamic";
+async function act(f:FormData){"use server";await requiredProfile("/opportunities");const db=await serverClient();const a=String(f.get("action"));const id=String(f.get("id"));const r=a==="create"?await db.rpc("sera_create_opportunity",{p_title:String(f.get("title")),p_description:String(f.get("description")),p_skills:String(f.get("skills"))}):a==="close"?await db.rpc("sera_close_opportunity",{p_id:id}):await db.rpc("sera_opportunity_interest",{p_id:id,p_interested:a==="interest"});if(r.error)throw new Error("Unable to update opportunity.");revalidatePath("/opportunities");}
+type Opportunity={id:string;owner_id:string;full_name:string;title:string;description:string;skills:string;matched_skills:string;interested:boolean;closed:boolean;interest_count:number};
+export default async function Opportunities({searchParams}:{searchParams:Promise<{tab?:string;id?:string}>}){const {user}=await requiredProfile("/opportunities");const q=await searchParams;const mine=q.tab==="mine";const db=await serverClient();const {data,error}=await db.rpc("sera_opportunities_list",{p_mine:mine});const rows=(data||[]) as Opportunity[];const selected=rows.find(o=>o.id===q.id);const {data:people}=selected?.owner_id===user.id?await db.rpc("sera_opportunity_applicants",{p_id:selected.id}):{data:[]};const applicants=(people||[]) as {member_id:string;full_name:string}[];return <main className="container page sera-events"><header className="sera-event-hero"><h1>{selected?.title||"Build together"}</h1><p>Discover ideas, complementary skills and your next collaboration.</p></header><nav><Link href="/opportunities">Discover</Link><Link href="/opportunities?tab=mine">My opportunities</Link><Link href="/collaboration">Team spaces</Link></nav><details className="sera-event-card"><summary>Publish collaboration</summary><form action={act}><label>Project or idea<input name="title" required minLength={3} maxLength={120}/></label><label>Description<textarea name="description" required minLength={3} maxLength={2000}/></label><label>Skills needed (comma-separated)<input name="skills" required minLength={2} maxLength={500}/></label><button name="action" value="create" className="button">Publish opportunity</button></form></details>{error&&<p role="alert">Opportunities unavailable.</p>}{selected?<article className="sera-event-card"><h2>{selected.title}</h2><p>By {selected.full_name}</p><p style={{whiteSpace:"pre-wrap"}}>{selected.description}</p><h3>Skills needed</h3><p>{selected.skills}</p>{selected.matched_skills&&<p>Matches your skills: {selected.matched_skills}</p>}<p>{selected.closed?"Closed":selected.interest_count+" interested"}</p>{selected.owner_id===user.id?<><h3>Interested professionals</h3>{applicants.map(p=><Link key={p.member_id} href={"/members/"+p.member_id}>{p.full_name}</Link>)}{!selected.closed&&<details><summary>Close opportunity</summary><form action={act}><input type="hidden" name="id" value={selected.id}/><button name="action" value="close">Confirm close</button></form></details>}</>:(!selected.closed||selected.interested)&&<form action={act}><input type="hidden" name="id" value={selected.id}/><button name="action" value={selected.interested?"withdraw":"interest"} className="button">{selected.interested?"Withdraw interest":"I'm interested"}</button></form>}<Link href={mine?"/opportunities?tab=mine":"/opportunities"}>Back to opportunities</Link></article>:<div className="sera-event-grid">{rows.map(o=><Link className="sera-event-card" key={o.id} href={"/opportunities?"+(mine?"tab=mine&":"")+"id="+o.id}><small>{o.matched_skills?"Matches your skills: "+o.matched_skills:"Collaboration opportunity"}</small><h2>{o.title}</h2><p>By {o.full_name}</p><p>{o.skills}</p><p>{o.closed?"Closed":o.interest_count+" interested"}</p></Link>)}{!rows.length&&!error&&<p>No opportunities yet.</p>}</div>}</main>}
