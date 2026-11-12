@@ -123,7 +123,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
-    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&body.isBlank()&&selectedImages.isEmpty()&&selectedVideo==null) {
         val keyboardOpen=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
         Column(
             Modifier.fillMaxWidth().heightIn(max = 680.dp)

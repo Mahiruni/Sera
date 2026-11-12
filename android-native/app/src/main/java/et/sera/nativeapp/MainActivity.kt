@@ -456,7 +456,10 @@ fun SeraApp(
                     }
                     // Listen to the actual nested scroll consumption of the active page.
                     // No scroll distance is consumed here; gestures stay natural.
-                    val scrollObserver = remember(tab) {
+                    val chromeDensity=LocalDensity.current
+                    val hideTravel=with(chromeDensity){28.dp.toPx()}
+                    val revealTravel=with(chromeDensity){18.dp.toPx()}
+                    val scrollObserver = remember(tab,hideTravel,revealTravel) {
                         object : NestedScrollConnection {
                             var travel = 0f
                             override fun onPostScroll(
@@ -471,9 +474,9 @@ fun SeraApp(
                                     return Offset.Zero
                                 }
                                 if (travel * delta < 0f) travel = 0f
-                                travel = (travel + delta).coerceIn(-90f, 90f)
-                                if (travel < -25f) chromeVisible.value = false
-                                if (travel > 18f) chromeVisible.value = true
+                                travel = (travel + delta).coerceIn(-hideTravel*3, hideTravel*3)
+                                if (travel < -hideTravel) {chromeVisible.value=false;travel=0f}
+                                if (travel > revealTravel) {chromeVisible.value=true;travel=0f}
                                 return Offset.Zero
                             }
                         }
@@ -564,7 +567,8 @@ fun SeraApp(
                                                     if (!result.first) dataError = result.second
                                                 }
                                             },
-                                            modifier = Modifier.fillMaxSize().padding(bottom = bottomInset)
+                                            modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
+                                            onAtTop={chromeVisible.value=true}
                                         )
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)

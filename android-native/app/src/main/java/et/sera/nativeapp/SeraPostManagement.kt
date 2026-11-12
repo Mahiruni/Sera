@@ -103,7 +103,7 @@ private fun editPostText(token:String,post:SeraPost,title:String,body:String):Pa
   }
  }
  IconButton(onClick={panel="menu";error="";copied=false},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreHoriz,"Post options",tint=controlInk)}
- if(panel.isNotBlank())SeraSignatureSheet(onDismissRequest={requestClose()},allowPartial=panel=="menu"||panel=="privacy"){
+ if(panel.isNotBlank())SeraSignatureSheet(onDismissRequest={requestClose()},allowPartial=panel=="menu"||panel=="privacy",canDismiss=!busy&&(panel!="edit"||(title==post.title&&body==(if(post.repostOf!=null)post.repostNote else post.body)))){
   val keyboard=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
   Column(Modifier.fillMaxWidth().heightIn(max=680.dp).padding(bottom=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
    Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text(when(panel){"edit"->"Edit post";"privacy"->"Who can see your post?";"link"->"Share this post";else->"Post options"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));IconButton(onClick={requestClose()},enabled=!busy){Icon(Icons.Outlined.Close,"Close")}}

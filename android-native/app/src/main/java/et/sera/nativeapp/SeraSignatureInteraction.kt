@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -26,9 +27,14 @@ import androidx.compose.ui.unit.dp
 internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
     allowPartial: Boolean = false,
+    canDismiss: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=!allowPartial)
+    val latestCanDismiss by rememberUpdatedState(canDismiss)
+    val latestDismiss by rememberUpdatedState(onDismissRequest)
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=!allowPartial,confirmValueChange={value->
+        if(value==SheetValue.Hidden&&!latestCanDismiss){latestDismiss();false}else true
+    })
     ModalBottomSheet(
         sheetState=sheetState,
         onDismissRequest = onDismissRequest,

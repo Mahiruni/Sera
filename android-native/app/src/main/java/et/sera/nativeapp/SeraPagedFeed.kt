@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.flow.collect
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -52,8 +54,11 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier) {
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {}) {
     val context = LocalContext.current
+    val listState=rememberLazyListState()
+    val topCallback by rememberUpdatedState(onAtTop)
+    LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
     var personalized by remember(token){mutableStateOf(true)}
     val stream = remember(token, refreshKey,personalized) { pagedSeraPosts(token,personalized) }
@@ -90,6 +95,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
+            state=listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
                 top = 73.dp, bottom = 92.dp),
@@ -233,7 +239,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
         val repostState=repostOverrides[originalId]?: (selected.reposted to selected.repostCount)
         val ownOriginal=currentUserId.isNotBlank()&&(selected.originalAuthorId?:selected.authorId)==currentUserId
         val sourceAvailable=selected.repostOf==null||selected.originalBody!=null
-        SeraSignatureSheet(onDismissRequest = { closeRepost() }, allowPartial=true) {
+        SeraSignatureSheet(onDismissRequest = { closeRepost() }, allowPartial=true,canDismiss=!reposting&&repostNote.isBlank()) {
             Column(
                 Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)

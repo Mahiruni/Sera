@@ -201,7 +201,7 @@ internal fun SeraNativeJobComposer(
         shape = RoundedCornerShape(24.dp)
     )
 
-    SeraSignatureSheet(onDismissRequest = { requestClose() }) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!sending&&!edited) {
         Column(
             modifier = Modifier.fillMaxWidth().heightIn(max = 760.dp)
                 .imePadding().navigationBarsPadding()
