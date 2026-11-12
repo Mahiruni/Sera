@@ -33,7 +33,7 @@ import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
 import { Brand } from "./ui";
 import { SiteFooter } from "./footer";
-import { navigationGroups, navIsActive } from "@/lib/navigation";
+import { navigationGroups, navIsActive, feedAutoHideEnabled, nextFeedChrome } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
 export function Shell({
   children,
@@ -88,21 +88,14 @@ export function Shell({
   useEffect(() => {
     const root = document.documentElement;
     delete root.dataset.navHidden;
-    if (open || !authenticated || pathname !== "/feed") return;
+    if (!feedAutoHideEnabled(pathname, authenticated, open)) return;
 
-    let anchor = window.scrollY;
-    let hidden = false;
+    let chrome = {anchor:Math.max(0,window.scrollY),hidden:false};
     function onScroll() {
       // Clamp elastic overscroll before deciding which way the reader is moving.
-      const bottom = Math.max(0, root.scrollHeight - root.clientHeight);
-      const y = Math.max(0, Math.min(window.scrollY, bottom));
-      if (hidden) anchor = Math.max(anchor, y);
-      else anchor = Math.min(anchor, y);
-      const next = hidden ? y > 16 && anchor - y < 10 : y > 72 && y - anchor >= 20;
-      if (next === hidden) return;
-      hidden = next;
-      anchor = y;
-      root.toggleAttribute("data-nav-hidden", hidden);
+      const next=nextFeedChrome(chrome,window.scrollY,root.scrollHeight-root.clientHeight);
+      if(next.hidden!==chrome.hidden)root.toggleAttribute("data-nav-hidden",next.hidden);
+      chrome=next;
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {

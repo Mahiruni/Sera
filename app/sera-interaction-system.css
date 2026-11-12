@@ -139,3 +139,8 @@ html[data-sera-theme=dark] .sera-editorial-feed .social-post-list>.social-card{b
 html[data-sera-theme=dark] .sera-signature-sheet :is(input,select),html[data-sera-theme=dark] .sera-control-dialog :is(input,select),html[data-sera-theme=dark] .sera-repost-sheet .sera-repost-options button{background:var(--sera-sheet-surface);color:var(--sera-sheet-ink);border-color:var(--sera-sheet-line)}
 html[data-sera-theme=dark] .sera-conversation-confirm>div{background:var(--sera-sheet-surface);color:var(--sera-sheet-ink)}
 html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-muted)}
+
+@media(max-width:699px){
+ .sera-compose-dialog,.sera-conversation-sheet,.sera-repost-sheet{margin-bottom:var(--sera-sheet-bottom,0px)}
+ .sera-control-dialog:not(.sera-control-compact){margin-bottom:var(--sera-sheet-bottom,0px)!important}
+}
