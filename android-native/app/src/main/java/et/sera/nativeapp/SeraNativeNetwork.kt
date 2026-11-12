@@ -87,7 +87,7 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 @Composable
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
     var showTalent by remember { mutableStateOf(false) }
-    if(showTalent){SeraTalent(token,modifier,onBack={showTalent=false});return}
+    if(showTalent){SeraTalent(token,userId,modifier,onBack={showTalent=false});return}
     var showCommunities by remember { mutableStateOf(false) }
     if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}
     var people by remember { mutableStateOf<List<SeraProfessional>>(emptyList()) }

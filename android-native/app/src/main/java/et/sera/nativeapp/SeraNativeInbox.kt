@@ -166,7 +166,7 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 }
 
 @Composable
-fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}) {
+fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null) {
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
@@ -175,9 +175,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     // downgrade private message drafts to unencrypted preferences.
     val savedDrafts = remember(context) { runCatching { SeraInboxDrafts(context) }.getOrNull() }
     var conversations by remember { mutableStateOf<List<NativeConversation>>(emptyList()) }
-    var selected by remember { mutableStateOf<NativeConversation?>(null) }
+    var selected by remember(initialThread) { mutableStateOf(initialThread?.let{NativeConversation(it,initialPeer,initialName)}) }
     var messages by remember { mutableStateOf<List<NativeMessage>>(emptyList()) }
-    var draft by remember { mutableStateOf("") }
+    var draft by remember(initialThread) { mutableStateOf(initialThread?.let{savedDrafts?.read(userId,it)}.orEmpty()) }
     var error by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
@@ -214,7 +214,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
             }
         }
     }
-    BackHandler(selected != null) { selected = null; messages = emptyList(); error = "" }
+    BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     LaunchedEffect(token, userId, refresh) {
         if (userId.isBlank()) return@LaunchedEffect
         loading = true
@@ -302,7 +302,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                IconButton(onClick = { selected = null; messages = emptyList(); error = "" },
+                IconButton(onClick = { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} },
                     modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to conversations",
                         tint = inboxInk)

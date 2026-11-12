@@ -22,11 +22,13 @@ private fun fetchTalent(token:String,q:String,offset:Int):Pair<List<Talent>?,Str
  val field: (String) -> String = { k -> r.optString(k).takeUnless { value -> value == "null" }.orEmpty() }
  Talent(field("member_id"),field("full_name"),field("headline"),field("skills"),field("username"),field("showcase_title"),field("showcase_kind"))} to ""}}catch(_:Exception){null to "Connection unavailable."}finally{c?.disconnect()}
 }
-@Composable internal fun SeraTalent(token:String,modifier:Modifier=Modifier,onBack:()->Unit){
- var query by remember{mutableStateOf("")};var page by remember{mutableIntStateOf(0)};var rows by remember{mutableStateOf<List<Talent>>(emptyList())};var loading by remember{mutableStateOf(true)};var error by remember{mutableStateOf("")};var retry by remember{mutableIntStateOf(0)};var selected by remember { mutableStateOf<Talent?>(null) }
+@Composable internal fun SeraTalent(token:String,userId:String,modifier:Modifier=Modifier,onBack:()->Unit){
+ var query by remember{mutableStateOf("")};var page by remember{mutableIntStateOf(0)};var rows by remember{mutableStateOf<List<Talent>>(emptyList())};var loading by remember{mutableStateOf(true)};var error by remember{mutableStateOf("")};var retry by remember{mutableIntStateOf(0)};var selected by remember { mutableStateOf<Talent?>(null) };var thread by remember { mutableStateOf<String?>(null) }
  androidx.activity.compose.BackHandler(enabled=selected==null,onBack=onBack)
  LaunchedEffect(token,query,page,retry){loading=true;delay(300);val r=withContext(Dispatchers.IO){fetchTalent(token,query.trim(),page*30)};rows=r.first.orEmpty();error=r.second;loading=false}
- selected?.let { member -> SeraTalentPortfolio(token,member.id,modifier){selected=null}; return }
+ selected?.let { member ->
+ if(thread!=null){SeraNativeInbox(token,userId,modifier,initialThread=thread,initialPeer=member.id,initialName=member.name,onThreadExit={thread=null});return}
+ SeraTalentPortfolio(token,userId,member.id,modifier,onMessage={thread=it}){selected=null}; return }
  Column(modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
  TextButton(onClick=onBack){Text("Back")};Text("Discover talent",style=MaterialTheme.typography.headlineSmall);Text("Explore published work and professional achievements.",style=MaterialTheme.typography.bodySmall)
  OutlinedTextField(query,{query=it.take(80);page=0},label={Text("Search skills or projects")},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp))
@@ -50,7 +52,7 @@ private fun loadTalentPortfolio(token:String,id:String):JSONObject? {
  }catch(_:Exception){null}finally{c?.disconnect()}
 }
 private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="null"}.orEmpty()
-@Composable private fun SeraTalentPortfolio(token:String,id:String,modifier:Modifier,onBack:()->Unit){
+@Composable private fun SeraTalentPortfolio(token:String,userId:String,id:String,modifier:Modifier,onMessage:(String)->Unit,onBack:()->Unit){
  var detail by remember(id,token){mutableStateOf<JSONObject?>(null)}
  var loading by remember(id,token){mutableStateOf(true)}
  var retry by remember(id,token){mutableIntStateOf(0)}
@@ -65,6 +67,7 @@ private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="
    val entries=p.optJSONArray("items")?:JSONArray()
    LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(12.dp)){
     item { ElevatedCard(shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("Professional portfolio",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelLarge);Text(p.portfolioText("name"),style=MaterialTheme.typography.headlineMedium);Text(p.portfolioText("headline"));Text(p.portfolioText("location"),style=MaterialTheme.typography.bodySmall)}} }
+    item { SeraTalentActions(token,userId,id,onMessage) }
     listOf("About" to "summary","Skills" to "skills","Experience" to "experience","Education" to "education").forEach{(label,key)->
      if(p.portfolioText(key).isNotBlank())item { Column(verticalArrangement=Arrangement.spacedBy(4.dp)){Text(label,style=MaterialTheme.typography.titleMedium);Text(p.portfolioText(key))} }
     }
