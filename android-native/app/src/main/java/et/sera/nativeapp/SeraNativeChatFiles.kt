@@ -27,7 +27,7 @@ internal fun selectChatFile(context: Context, uri: Uri): NativeChatSelection {
     require(mime in chatMimes) { "Choose a supported image, PDF or audio file." }
     val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
         if (it.moveToFirst()) it.getString(0) else null
-    }?.take(180)?.takeIf { it.isNotBlank() } ?: "Attachment"
+    }?.replace(Regex("[\\p{Cntrl}/\\\\]"),"_")?.take(180)?.takeIf { it.isNotBlank() } ?: "Attachment"
     val bytes = resolver.openInputStream(uri)?.use { it.readChatBounded() } ?: error("Could not read file.")
     require(bytes.size in 1..CHAT_LIMIT) { "File must be 5 MB or smaller." }
     val valid = when(mime) {

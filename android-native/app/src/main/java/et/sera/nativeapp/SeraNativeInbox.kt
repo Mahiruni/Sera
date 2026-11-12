@@ -302,6 +302,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     }},confirmButton={Button(enabled=forwardTarget!=null&&!forwardBusy,onClick={val source=forwarding?:return@Button;val target=forwardTarget?:return@Button;forwardBusy=true;scope.launch{try{val r=withContext(Dispatchers.IO){runCatching{val f=source.files.firstOrNull()?.let{NativeChatSelection(it.name,it.mime,readChatFile(token,it),it.durationMs)};sendNativeMessageV2(token,userId,target,forwardClient,source.body,f,forward=source.id)}.getOrElse{null to "Forward failed. Retry."}};if(r.first!=null){forwarding=null;refresh++;reload()}else error=r.second}finally{forwardBusy=false}}}){Text(if(forwardBusy)"Forwarding…" else "Forward")}},dismissButton={TextButton(onClick={forwarding=null},enabled=!forwardBusy){Text("Cancel")}})
 
 
+    var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
     val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             val conversationId = selected?.id
@@ -313,6 +314,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
             }
         }
     }
+    val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()){uri->
+        if(uri!=null){val conversationId=selected?.id;checkingFile=true;scope.launch{val result=withContext(Dispatchers.IO){runCatching{selectChatFile(context,uri)}};if(selected?.id==conversationId)result.onSuccess{attachment=it;error=""}.onFailure{error=it.message?:"Could not read photo."};checkingFile=false}}
+    }
+    val cameraPicker=rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()){bitmap->
+        if(bitmap!=null){val conversationId=selected?.id;checkingFile=true;scope.launch{val result=withContext(Dispatchers.IO){runCatching{val stream=java.io.ByteArrayOutputStream();check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,90,stream));val bytes=stream.toByteArray();require(bytes.size in 1..5*1024*1024){"Photo exceeds 5 MB."};NativeChatSelection("Photo-${System.currentTimeMillis()}.jpg","image/jpeg",bytes)}};if(selected?.id==conversationId)result.onSuccess{attachment=it;error=""}.onFailure{error=it.message?:"Could not prepare photo."};checkingFile=false}}
+    }
+    if(attachmentStudio&&selected!=null) SeraAttachmentStudio(onDismiss={attachmentStudio=false},onChoose={kind->attachmentStudio=false;runCatching{when(kind){SeraAttachmentKind.PHOTO->photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly));SeraAttachmentKind.CAMERA->cameraPicker.launch(null);SeraAttachmentKind.DOCUMENT->attachmentPicker.launch(arrayOf("application/pdf"));SeraAttachmentKind.AUDIO->attachmentPicker.launch(arrayOf("audio/mp4","audio/webm","audio/ogg","audio/mpeg"))}}.onFailure{error="No compatible app is available."}})
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
         if(userId.isBlank())return@LaunchedEffect
@@ -505,7 +513,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
             attachment?.let { file ->
                 Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{Icon(Icons.Outlined.Description,null,tint=accent); Spacer(Modifier.width(8.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }}
+                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{SeraAttachmentThumbnail(file,accent); Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.SemiBold,fontSize=13.sp,color=inboxInk); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp,color=muted) }}
                         IconButton(onClick={attachment=null},enabled=!sending) { Icon(Icons.Outlined.Close,"Remove attachment") }
                     }
                 }
@@ -515,7 +523,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if(!recordingVoice) IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg"))},enabled=!sending && !checkingFile,modifier=Modifier.size(44.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=accent) }
+                if(!recordingVoice) IconButton(onClick={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},enabled=!sending && !checkingFile && queued==null,modifier=Modifier.size(44.dp)) { Icon(Icons.Outlined.AttachFile,"Open attachment studio",tint=accent) }
                 if(!recordingVoice) BasicTextField(
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {
