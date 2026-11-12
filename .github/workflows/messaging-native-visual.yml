@@ -39,11 +39,10 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            cd android-native
-            gradle :app:connectedDebugAndroidTest --no-daemon
-            mkdir -p ../native-messaging-qa
-            adb exec-out run-as et.sera.nativeapp cat files/messaging-qa/compact-bubbles.png > ../native-messaging-qa/compact-bubbles.png
-            test -s ../native-messaging-qa/compact-bubbles.png
+            gradle -p android-native :app:connectedDebugAndroidTest --no-daemon
+            mkdir -p native-messaging-qa
+            adb exec-out run-as et.sera.nativeapp cat files/messaging-qa/compact-bubbles.png > native-messaging-qa/compact-bubbles.png
+            test -s native-messaging-qa/compact-bubbles.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
