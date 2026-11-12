@@ -51,7 +51,9 @@ private class ComposerDrafts(context: Context) {
     private val preferences = EncryptedSharedPreferences.create(context, "sera_composer_drafts", MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(), EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
     fun load(userId: String) = preferences.getString(userId, "") ?: ""
     fun save(userId: String, text: String) { preferences.edit().putString(userId, text).apply() }
-    fun clear(userId: String) { preferences.edit().remove(userId).apply() }
+    fun audience(userId:String)=preferences.getString("$userId:audience","public")?:"public"
+    fun saveAudience(userId:String,value:String){preferences.edit().putString("$userId:audience",value).apply()}
+    fun clear(userId: String) { preferences.edit().remove(userId).remove("$userId:audience").apply() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +65,12 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var body by rememberSaveable(userId) {
         mutableStateOf(runCatching { drafts?.load(userId) }.getOrNull().orEmpty())
     }
+    var audience by rememberSaveable(userId){mutableStateOf(runCatching{drafts?.audience(userId)}.getOrNull()?:"public")}
+    var audienceOpen by remember{mutableStateOf(false)}
+    val audiences=linkedMapOf("public" to "Public","connections" to "Connections","followers" to "Followers","only_me" to "Only me")
+    var kind by rememberSaveable(userId){mutableStateOf("idea")}
+    var kindOpen by remember{mutableStateOf(false)}
+    val kinds=linkedMapOf("idea" to "Idea","quote" to "Quote","talent" to "Talent","project" to "Project","achievement" to "Achievement","question" to "Discussion")
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
@@ -71,23 +79,15 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     val selectedImages = remember { mutableStateListOf<Uri>() }
     var expandedImage by remember { mutableStateOf<Uri?>(null) }
     var mediaError by remember { mutableStateOf("") }
-    var selectedVideo by remember { mutableStateOf<Uri?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(4)) { uris ->
         if (uris.isNotEmpty()) {
             val valid = uris.size <= 4 && uris.distinct().size == uris.size &&
-                uris.all { mediaSizeAllowed(context, it, 20L * 1024 * 1024) }
+                uris.all { mediaSizeAllowed(context, it, 3L * 1024 * 1024) } && uris.sumOf{mediaBytes(context,it)} <= 3L*1024*1024
             if (valid) {
                 selectedImages.clear()
                 selectedImages.addAll(uris)
-                selectedVideo = null
                 mediaError = ""
-            } else mediaError = "Choose up to four readable images, each under 20 MB."
-        }
-    }
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            if (mediaSizeAllowed(context, uri, 100L * 1024 * 1024)) { selectedVideo = uri; selectedImages.clear(); mediaError = "" }
-            else mediaError = "Video exceeds the 100 MB attachment limit or cannot be read."
+            } else mediaError = "Choose up to four JPG, PNG or WebP photos totaling 3 MB or less."
         }
     }
     var identity by remember(userId){mutableStateOf("")}
@@ -103,7 +103,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     }
     fun requestClose() {
         if (publishing) return
-        if (body.isNotBlank() || selectedImages.isNotEmpty() || selectedVideo != null) confirmClose = true
+        if (body.isNotBlank() || selectedImages.isNotEmpty()) confirmClose = true
         else close()
     }
     BackHandler { requestClose() }
@@ -122,11 +122,11 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         dismissButton = { TextButton(onClick = { confirmClose = false }) { Text("Keep editing") } },
         shape = RoundedCornerShape(22.dp)
     )
-    LaunchedEffect(userId, body) { runCatching { drafts?.save(userId, body) } }
+    LaunchedEffect(userId, body,audience) { runCatching { drafts?.save(userId, body);drafts?.saveAudience(userId,audience) } }
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
-    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&body.isBlank()&&selectedImages.isEmpty()&&selectedVideo==null) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&body.isBlank()&&selectedImages.isEmpty()) {
         val keyboardOpen=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
         Column(
             Modifier.fillMaxWidth().heightIn(max = 720.dp)
@@ -141,7 +141,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
                 IconButton(onClick = { requestClose() }) { Icon(Icons.Outlined.Close, "Close composer", tint = accent) }
             }
-            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){if(avatar!=null)SeraMediaImage(avatar!!,"Your profile",96,96,modifier=Modifier.size(38.dp).clip(CircleShape));Column{Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink);if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall)}}
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){if(avatar!=null)SeraMediaImage(avatar!!,"Your profile",96,96,modifier=Modifier.size(38.dp).clip(CircleShape));Column{Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink);if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall);Box{TextButton(onClick={audienceOpen=true},contentPadding=PaddingValues(0.dp)){Text("Audience: "+(audiences[audience]?:"Only me"))};DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}}}}}
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(vertical = 2.dp),
@@ -149,7 +149,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             ) {
             BasicTextField(
                 value = body, onValueChange = {
-                    if (it.length <= 4000) { body = it; saved = false }
+                    if (it.length <= if(kind=="quote")600 else 4000) { body = it; saved = false }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = if(keyboardOpen)80.dp else 240.dp),
                 textStyle=TextStyle(color=ink,fontSize=19.sp,lineHeight=27.sp),
@@ -168,13 +168,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     Spacer(Modifier.width(6.dp))
                     Text("Photos")
                 }
-                TextButton(onClick = {
-                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(15.dp)) {
-                    Icon(Icons.Outlined.Videocam, contentDescription = null, modifier = Modifier.size(19.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Video preview")
-                }
+                TextButton(onClick={if(body.length<3998)body+="✨"},modifier=Modifier.weight(1f)){Text("Emoji")}
             }
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
             if (selectedImages.isNotEmpty()) {
@@ -194,13 +188,8 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     }
                 }
             }
-            selectedVideo?.let { uri ->
-                SeraVideoPlayer(url = uri.toString(), localPreview = true)
-                Text("Video preview only. Upload is not yet available.")
-                Text(uri.lastPathSegment?.take(80) ?: "Selected video", style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { selectedVideo = null }) { Text("Remove video") }
-            }
-                Text("${body.length} / 4000",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Box{TextButton(onClick={kindOpen=true}){Text("Post type: "+(if(selectedImages.isNotEmpty())"Photo" else kinds[kind]))};DropdownMenu(expanded=kindOpen,onDismissRequest={kindOpen=false}){kinds.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={kind=key;kindOpen=false})}}}
+                Text("${body.length} / ${if(kind=="quote")600 else 4000}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = Color(0xFFE4EFED))
@@ -217,13 +206,13 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 publishing = true; publishMessage = ""
                 scope.launch {
                     val result = if (selectedImages.isNotEmpty())
-                        publishNativeImages(context, token, body, selectedImages.toList())
-                    else publishNativeText(token, body)
+                        publishNativeImages(context, token, body, selectedImages.toList(),audience)
+                    else publishNativeText(token, body,audience,kind)
                     publishing = false
                     if (result.first) { runCatching { drafts?.clear(userId) }; body = ""; onPublished() }
                     else publishMessage = result.second
                 }
-            }, enabled = !publishing && body.trim().length >= 3 && selectedVideo == null,
+            }, enabled = !publishing && body.trim().length >= 3 && (kind!="quote"||body.length<=600),
                 modifier = Modifier.weight(1.35f).heightIn(min = 50.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = accent)) {
@@ -233,7 +222,6 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
-            if (selectedVideo != null) Text("Video publishing is not available yet. Remove the video to publish.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
 
         }
     }
@@ -250,3 +238,5 @@ private fun mediaSizeAllowed(context: Context, uri: Uri, maxBytes: Long): Boolea
         } ?: false
     } catch (_: Exception) { false }
 }
+
+private fun mediaBytes(context:Context,uri:Uri):Long=runCatching{context.contentResolver.query(uri,arrayOf(OpenableColumns.SIZE),null,null,null)?.use{if(it.moveToFirst())it.getLong(0) else Long.MAX_VALUE}?:Long.MAX_VALUE}.getOrDefault(Long.MAX_VALUE)

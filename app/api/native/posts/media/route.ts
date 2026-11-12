@@ -1,3 +1,4 @@
+import {readAudience} from "@/lib/social/audience";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
   }
   const files = form.getAll("media").filter((f): f is File => f instanceof File && f.size > 0);
   const input = readPost(form);
-  if (!input || !files.length || !validMedia(files)) return fail("Choose up to four JPG, PNG or WebP images totaling at most 3 MB.", 400);
+  const audience=readAudience(form.get("audience"));
+  if (!input || !audience || !files.length || !validMedia(files)) return fail("Choose up to four JPG, PNG or WebP images totaling at most 3 MB.", 400);
   const writer = moderationWriter();
   if (!writer) return fail("Secure publishing unavailable.", 503);
   const images: Buffer[] = [];
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
     return fail(verdict.verdict === "rejected" ? "Content may violate community guidelines." : "Safety screening unavailable. Nothing published.", verdict.verdict === "rejected" ? 422 : 503);
   // Verified member must own the initial draft. The privileged writer only
   // uploads already-moderated media and promotes that draft to published.
-  const draft = await client.from("posts").insert({ ...input, author_id: user.id, status: "draft" }).select("id").single();
+  const draft = await client.from("posts").insert({ ...input, audience, author_id: user.id, status: "draft" }).select("id").single();
   if (draft.error || !draft.data) {
     console.error("native media draft insert failed", { code: draft.error?.code });
     return fail("Could not create a draft.", 409);

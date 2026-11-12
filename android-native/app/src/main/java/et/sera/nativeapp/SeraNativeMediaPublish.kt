@@ -16,6 +16,7 @@ internal suspend fun publishNativeImages(
     token: String,
     body: String,
     images: List<Uri>,
+    audience:String="public",
 ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
     if (body.trim().length < 3 || images.isEmpty() || images.size > 4)
         return@withContext false to "Write a caption and select one to four photos."
@@ -36,7 +37,7 @@ internal suspend fun publishNativeImages(
         }
         if (files.sumOf { it.third } > 3L * 1024 * 1024)
             return@withContext false to "Photos must total 3 MB or less."
-        connection = (URL("https://sera.hisabtech.com/api/native/posts/media").openConnection() as HttpURLConnection).apply {
+        connection = (URL("https://sera.hisabtech.com/api/native/posts/v2/media").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             doOutput = true
             setChunkedStreamingMode(64 * 1024)
@@ -54,6 +55,7 @@ internal suspend fun publishNativeImages(
                 write(newline)
             }
             field("kind", "photos")
+            field("audience",audience)
             field("title", body.trim().take(110))
             field("body", body.trim())
             files.forEachIndexed { index, (uri, mime, _) ->
