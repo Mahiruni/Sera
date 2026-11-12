@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         // Android 12+ and earlier versions show the same static S mark first.
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        callback.value = intent?.data?.takeIf { it.scheme == "sera" }
+        callback.value = intent?.data?.takeIf { isSeraOAuthCallback(it) }
         pushKind.value = intent?.getStringExtra("sera_kind") ?: intent?.getStringExtra("kind")
         SeraPush.channel(this)
         SeraPush.initialize(this)
@@ -90,7 +90,7 @@ class MainActivity : AppCompatActivity() {
                 SeraApp(
                     context = this@MainActivity,
                     oauthCallback = callback.value,
-                    onCallbackConsumed = { callback.value = null },
+                    onCallbackConsumed = { callback.value = null; setIntent(Intent(this@MainActivity, MainActivity::class.java).setAction(Intent.ACTION_MAIN)) },
                     onInitialDestinationReady = { destinationReady = true },
                     pushKind = pushKind.value, onPushConsumed = { pushKind.value = null }
                 )
@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        callback.value = intent.data?.takeIf { it.scheme == "sera" }
+        callback.value = intent.data?.takeIf { isSeraOAuthCallback(it) }
         pushKind.value = intent.getStringExtra("sera_kind") ?: intent.getStringExtra("kind")
     }
 }
@@ -130,6 +130,7 @@ fun SeraApp(
     var accessToken by remember { mutableStateOf<String?>(null) }
     var restoring by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
+        if (oauthCallback != null) { restoring = false; return@LaunchedEffect }
         val refresh = session.readRefreshToken()
         if (refresh != null) {
             val result = withContext(Dispatchers.IO) { authenticate("refresh_token", refresh) }
@@ -297,9 +298,12 @@ fun SeraApp(
         }
     )
     var oauthFailure by remember { mutableStateOf("") }
+    var oauthProcessing by remember { mutableStateOf(false) }
     LaunchedEffect(oauthCallback) {
         val callbackUri = oauthCallback ?: return@LaunchedEffect
-        onCallbackConsumed()
+        if (oauthProcessing) return@LaunchedEffect
+        oauthProcessing = true
+        oauthFailure = ""
         val result = withContext(Dispatchers.IO) { finishNativeOAuth(context, callbackUri) }
         if (result.first != null) {
             val (token, refreshToken) = result.first!!
@@ -308,6 +312,8 @@ fun SeraApp(
         }
         // Failures are surfaced on the sign-in screen below.
         if (result.second.isNotBlank()) oauthFailure = result.second
+        oauthProcessing = false
+        onCallbackConsumed()
     }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -401,6 +407,11 @@ fun SeraApp(
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
+                }
+            } else if (oauthProcessing) {
+                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+                    Text("SERA.et",style=MaterialTheme.typography.headlineLarge,color=teal,fontWeight=FontWeight.Bold)
+                    Spacer(Modifier.height(24.dp));CircularProgressIndicator(color=teal);Spacer(Modifier.height(16.dp));Text("Connecting securely…",style=MaterialTheme.typography.titleMedium);Text("Preparing your workspace",style=MaterialTheme.typography.bodySmall)
                 }
             } else if (accessToken == null) {
                 SeraGuestEntry(

@@ -130,7 +130,9 @@ private fun SeraSocialFirstSignIn(
     onTogglePassword: () -> Unit
 ) {
     val context = LocalContext.current
-
+    var pending by remember { mutableStateOf(nativeOAuthPending(context)) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { pending = nativeOAuthPending(context) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -153,7 +155,8 @@ private fun SeraSocialFirstSignIn(
                 fontSize = 12.sp, color = entryMuted
             )
             OutlinedButton(
-                onClick = { onOAuthError(beginNativeOAuth(context, "google")) },
+                onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); val error=beginNativeOAuth(context, "google"); onOAuthError(error);pending=error.isBlank() },
+                enabled = !busy && !pending,
                 modifier = Modifier.fillMaxWidth().height(49.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Color(0xFFD4E1E1)),
@@ -165,7 +168,8 @@ private fun SeraSocialFirstSignIn(
                 Text("Continue with Google", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
             }
             Button(
-                onClick = { onOAuthError(beginNativeOAuth(context, "linkedin_oidc")) },
+                onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); val error=beginNativeOAuth(context, "linkedin_oidc"); onOAuthError(error);pending=error.isBlank() },
+                enabled = !busy && !pending,
                 modifier = Modifier.fillMaxWidth().height(49.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A66C2)),
@@ -180,6 +184,7 @@ private fun SeraSocialFirstSignIn(
                 Spacer(Modifier.width(11.dp))
                 Text("Continue with LinkedIn", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             }
+            if (pending) { Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp);Text("Complete secure sign-in",fontSize=12.sp,color=entryMuted);TextButton(onClick={cancelNativeOAuth(context);pending=false;onOAuthError("")}){Text("Cancel")}} }
             if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
 
             Row(
@@ -231,7 +236,7 @@ private fun SeraSocialFirstSignIn(
             }
             Button(
                 onClick = onSignIn,
-                enabled = !busy && email.contains("@") && password.isNotBlank(),
+                enabled = !busy && !pending && email.contains("@") && password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF006B6A),

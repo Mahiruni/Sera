@@ -2,6 +2,9 @@ package et.sera.nativeapp
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import android.graphics.Color
 import android.net.Uri
 import android.util.Base64
@@ -13,7 +16,16 @@ import java.security.SecureRandom
 import org.json.JSONObject
 
 private const val CALLBACK = "sera://auth/callback"
-private const val OAUTH_PREFS = "sera_native_oauth_pending"
+private const val OAUTH_PREFS = "sera_native_oauth_secure_v2"
+private val oauthLock = Any()
+private fun oauthPrefs(context: Context): SharedPreferences = EncryptedSharedPreferences.create(
+ context, OAUTH_PREFS, MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+ EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+ EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+)
+internal fun isSeraOAuthCallback(uri:Uri?):Boolean = uri?.scheme=="sera" && uri.host=="auth" && uri.path=="/callback" && uri.userInfo==null && uri.port==-1
+internal fun cancelNativeOAuth(context:Context) { synchronized(oauthLock){runCatching{oauthPrefs(context).edit().clear().commit()}} }
+internal fun nativeOAuthPending(context:Context):Boolean = runCatching { val p=oauthPrefs(context); p.contains("verifier") && System.currentTimeMillis()-p.getLong("created",0L) in 0..600000L }.getOrDefault(false)
 
 internal fun beginNativeOAuth(context: Context, provider: String): String {
     if (provider !in setOf("google", "linkedin_oidc"))
@@ -28,9 +40,11 @@ internal fun beginNativeOAuth(context: Context, provider: String): String {
     )
     val state = Base64.encodeToString(ByteArray(24).also { SecureRandom().nextBytes(it) },
         Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-    context.getSharedPreferences(OAUTH_PREFS, Context.MODE_PRIVATE).edit()
-        .putString("verifier", verifier).putString("state", state)
-        .putLong("created", System.currentTimeMillis()).apply()
+    val stored = runCatching { synchronized(oauthLock) {
+        oauthPrefs(context).edit().clear().putString("verifier", verifier).putString("state", state)
+            .putString("provider", provider).putLong("created", System.currentTimeMillis()).commit()
+    } }.getOrDefault(false)
+    if (!stored) return "Could not prepare secure sign-in. Please retry."
     val url = Uri.parse(BuildConfig.SUPABASE_URL.trimEnd('/') + "/auth/v1/authorize")
         .buildUpon().appendQueryParameter("provider", provider)
         .appendQueryParameter("redirect_to", "$CALLBACK?state=$state")
@@ -38,45 +52,41 @@ internal fun beginNativeOAuth(context: Context, provider: String): String {
         .appendQueryParameter("code_challenge_method", "s256")
         .build()
     return try {
-        // A partial-height Custom Tab keeps SERA visible behind the provider consent UI.
-        // OAuth remains in a trusted browser context, never an embedded WebView.
-        val displayHeight = context.resources.displayMetrics.heightPixels
+        // Use a standard secure Custom Tab. Partial-height windows can break provider consent layouts.
         val tab = CustomTabsIntent.Builder()
-            .setInitialActivityHeightPx(
-                (displayHeight * 0.78f).toInt(),
-                CustomTabsIntent.ACTIVITY_HEIGHT_FIXED
-            )
             .setToolbarColor(Color.rgb(8, 126, 131))
             .setShowTitle(true)
+            .setUrlBarHidingEnabled(false)
             .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
             .build()
         tab.launchUrl(context, url)
         ""
     } catch (_: Exception) {
-        context.getSharedPreferences(OAUTH_PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        cancelNativeOAuth(context)
         "Could not open the secure sign-in page."
     }
 }
 
 internal fun finishNativeOAuth(context: Context, uri: Uri): Pair<Pair<String, String>?, String> {
-    if (uri.scheme != "sera" || uri.host != "auth" || uri.path != "/callback")
-        return null to "Invalid sign-in callback."
-    val prefs = context.getSharedPreferences(OAUTH_PREFS, Context.MODE_PRIVATE)
-    val verifier = prefs.getString("verifier", null)
-    val expectedState = prefs.getString("state", null)
-    val created = prefs.getLong("created", 0L)
-    // Consume the pending attempt exactly once, even when a callback is malformed.
-    prefs.edit().clear().apply()
-    if (verifier.isNullOrEmpty() || expectedState.isNullOrEmpty() ||
-        System.currentTimeMillis() - created !in 0..600000)
-        return null to "Sign-in session expired. Please retry."
+    if (!isSeraOAuthCallback(uri)) return null to "Invalid sign-in callback."
     val returnedState = uri.getQueryParameter("state")
-    if (returnedState != expectedState)
-        return null to "Sign-in verification failed. Please retry."
-    val error = uri.getQueryParameter("error_description") ?: uri.getQueryParameter("error")
-    if (!error.isNullOrBlank()) return null to "Sign-in was not completed: $error"
+    val verifier = try { synchronized(oauthLock) {
+        val prefs = oauthPrefs(context)
+        val expected = prefs.getString("state", null)
+        val value = prefs.getString("verifier", null)
+        val created = prefs.getLong("created",0L)
+        if (expected.isNullOrBlank() || value.isNullOrBlank() || System.currentTimeMillis()-created !in 0..600000L)
+            return null to "Sign-in session expired. Please retry."
+        // Reject an unrelated callback without destroying a legitimate pending attempt.
+        if (returnedState == null || !MessageDigest.isEqual(returnedState.toByteArray(),expected.toByteArray()))
+            return null to "Sign-in verification failed. Please retry."
+        if (!prefs.edit().clear().commit()) return null to "Unable to secure sign-in. Please retry."
+        value
+    } } catch (_:Exception) { return null to "Unable to recover secure sign-in. Please retry." }
+    if (!uri.getQueryParameter("error").isNullOrBlank() || !uri.getQueryParameter("error_description").isNullOrBlank())
+        return null to "Sign-in was cancelled or declined. Please try again."
     val code = uri.getQueryParameter("code")
-    if (code.isNullOrBlank()) return null to "No authorization code was returned."
+    if (code.isNullOrBlank() || code.length>4096) return null to "No valid authorization code was returned."
     var connection: HttpURLConnection? = null
     return try {
         connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') +
@@ -93,7 +103,7 @@ internal fun finishNativeOAuth(context: Context, uri: Uri): Pair<Pair<String, St
                 .toString().toByteArray())
         }
         if (connection.responseCode !in 200..299)
-            return null to "Identity provider sign-in could not be completed (HTTP ${connection.responseCode})."
+            return null to "Identity provider sign-in could not be completed. Please retry."
         val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
         val token = data.optString("access_token")
         val refresh = data.optString("refresh_token")
