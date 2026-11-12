@@ -182,3 +182,14 @@ html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-m
 .sera-conversation-sheet .sera-conversation-comment{padding:10px 0!important;border:0!important;box-shadow:none!important;background:transparent!important}
 .sera-conversation-sheet .sera-conversation-comment-content{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
 .sera-conversation-sheet .sera-conversation-composer textarea{border-radius:22px!important;padding:10px 14px!important;min-height:44px}
+
+.sera-post-audience{display:flex;align-items:center;flex-wrap:wrap;gap:8px;color:var(--sera-sheet-muted,#587174);font-size:12px;font-weight:600}
+.sera-post-audience select{min-height:40px;border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:22px;background:var(--sera-sheet-surface,#fff);color:var(--sera-sheet-ink,#173a3f);padding:7px 12px;font:inherit;cursor:pointer}
+.sera-post-audience small{font-weight:400}
+.sera-photo-preview{position:relative;display:inline-flex}.sera-photo-preview>button{position:absolute;top:3px;right:3px;width:32px;height:32px;border:0;border-radius:50%;background:#162c31d9;color:white;font-size:20px;cursor:pointer}
+.sera-emoji-picker{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:12px}.sera-emoji-picker button{min-width:44px;min-height:44px;border:0;border-radius:9px;background:transparent;font-size:21px;cursor:pointer}
+.sera-social-composer-dialog .sera-premium-types{order:0;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+.sera-social-composer-dialog .sera-premium-types button{min-height:44px;box-shadow:none!important;background:transparent;color:var(--sera-sheet-ink,#173a3f);border:1px solid var(--sera-sheet-line,#dce9e6)}
+.sera-social-composer-dialog .sera-premium-types button[aria-pressed=true]{background:#087e8314!important;color:#087e83!important;border-color:#087e83!important}
+.sera-social-composer-dialog .sera-premium-editor textarea{min-height:160px;line-height:1.5;font-size:18px;color:var(--sera-sheet-ink,#173a3f)}
+@media(max-height:500px){.sera-social-composer-dialog .sera-premium-editor{min-height:100px}.sera-social-composer-dialog .sera-premium-editor textarea{min-height:96px}.sera-social-composer-dialog .sera-compose-dialog-author{padding-block:6px!important}.sera-social-composer-dialog .sera-compose-dialog-head{min-height:48px}}

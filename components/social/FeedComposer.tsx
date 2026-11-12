@@ -3,13 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ImagePlus, FolderKanban, Quote, PenLine, X } from "lucide-react";
+import { IdentityBadge } from "@/components/identity/badge";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { PostComposer } from "@/components/social/PostComposer";
 import { SignatureSheetHandle } from "./SignatureSheetHandle";
 import type { PostKind } from "@/lib/social/validation";
 import { seraDraftKey, draftFromSeraForm, saveSeraDraft } from "./post-drafts";
 
-export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatarUrl?: string | null; userId: string }) {
+export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerified=false }: { name: string; avatarUrl?: string | null; userId: string;headline?:string;identityVerified?:boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [initialKind, setInitialKind] = useState<PostKind>("idea");
@@ -18,6 +19,7 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
   const dialog = useRef<HTMLDivElement>(null);
   const dismiss = useCallback(() => {
     const form = dialog.current?.querySelector("form");
+    if(form?.getAttribute("aria-busy")==="true")return;
     const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) =>
       !["kind", "quote_source", "audience"].includes(key) &&
       (typeof value === "string" ? value.trim().length > 0 : value.size > 0)
@@ -72,7 +74,7 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
       <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
         <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet sera-social-composer-dialog">
           <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
-          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong></div></div>
+          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}{identityVerified&&<IdentityBadge/>}</strong>{headline&&<small>{headline}</small>}</div></div>
           <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} draftOwnerId={userId} onPublished={onPublished} /></div>
         </div>
       </div>, document.body

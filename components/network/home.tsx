@@ -52,6 +52,7 @@ export function NetworkHome({
   kind,
   mine = false,
   personalized=false,
+  identityVerified=false,
 }: {
   userId: string;
   profile: HomeProfile | null;
@@ -66,6 +67,7 @@ export function NetworkHome({
   kind?: PostKind;
   mine?: boolean;
   personalized?:boolean;
+  identityVerified?:boolean;
 }) {
   const essentials = profileEssentials(profile),
     topics = skillTopics(profile?.skills);
@@ -211,7 +213,7 @@ export function NetworkHome({
               </Link>
             ))}
           </nav>
-          <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} />
+          <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} headline={profile?.headline} identityVerified={identityVerified}/>
           <nav className="social-filters" aria-label="Filter stories">
             <Link
               href={mine ? "/feed?view=mine" : "/feed"}
