@@ -21,7 +21,7 @@ export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerif
     const form = dialog.current?.querySelector("form");
     if(form?.getAttribute("aria-busy")==="true")return;
     const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) =>
-      !["kind", "quote_source", "audience"].includes(key) &&
+      !["kind", "audience"].includes(key) &&
       (typeof value === "string" ? value.trim().length > 0 : value.size > 0)
     ) : false;
     if (dirty) {

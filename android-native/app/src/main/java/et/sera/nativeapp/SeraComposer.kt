@@ -57,6 +57,7 @@ private class ComposerDrafts(context: Context) {
     fun saveAudience(userId:String,value:String){preferences.edit().putString("$userId:audience",value).apply()}
     fun details(userId:String)=runCatching{org.json.JSONObject(preferences.getString("$userId:details","{}")?:"{}")}.getOrDefault(org.json.JSONObject())
     fun saveDetails(userId:String,value:org.json.JSONObject){preferences.edit().putString("$userId:details",value.toString()).apply()}
+    fun saveAll(userId:String,body:String,audience:String,fields:org.json.JSONObject){preferences.edit().putString(userId,body).putString("$userId:audience",audience).putString("$userId:details",fields.toString()).apply()}
     fun clear(userId: String) { preferences.edit().remove(userId).remove("$userId:audience").remove("$userId:details").apply() }
 }
 
@@ -85,6 +86,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     val kinds=linkedMapOf("idea" to "Idea","photos" to "Photo","quote" to "Quote","talent" to "Talent","project" to "Project","achievement" to "Achievement","question" to "Discussion")
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }
+    var published by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
     var publishMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -110,7 +112,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     LaunchedEffect(userId,token){kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraIdentity(token).first}?.let{identity=it.lineSequence().firstOrNull().orEmpty()};avatar=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){loadSeraCurrentAvatar(token,userId)};headline=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){spaceRows(spaceCall(token,"sera_feed_headlines",org.json.JSONObject().put("p_ids",org.json.JSONArray(listOf(userId)))).first).firstOrNull()?.optString("headline").orEmpty()};verified=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){userId in identityBadges(token,listOf(userId))}}
     val hasContent = body.isNotBlank()||title.isNotBlank()||quoteSource.isNotBlank()||category.isNotBlank()||location.isNotBlank()||skills.isNotBlank()||projectUrl.isNotBlank()
     val fields=org.json.JSONObject().put("kind",kind).put("title",title).put("quote_source",quoteSource).put("category",category).put("location",location).put("skills",skills).put("project_url",projectUrl)
-    fun persistDraft():Boolean=runCatching{drafts?.save(userId,body);drafts?.saveAudience(userId,audience);drafts?.saveDetails(userId,fields);drafts!=null}.getOrDefault(false)
+    fun persistDraft():Boolean=runCatching{drafts?.saveAll(userId,body,audience,fields);drafts!=null}.getOrDefault(false)
     val accent = Color(0xFF087E83)
     val ink = MaterialTheme.colorScheme.onSurface
     fun close() {
@@ -138,7 +140,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
         dismissButton = { TextButton(onClick = { confirmClose = false }) { Text("Keep editing") } },
         shape = RoundedCornerShape(22.dp)
     )
-    LaunchedEffect(userId,body,audience,kind,title,quoteSource,category,location,skills,projectUrl){persistDraft()}
+    LaunchedEffect(userId,body,audience,kind,title,quoteSource,category,location,skills,projectUrl){if(!published)persistDraft()}
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
@@ -157,7 +159,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
                 IconButton(onClick = { requestClose() }) { Icon(Icons.Outlined.Close, "Close composer", tint = accent) }
             }
-            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){SeraAccountAvatar(identity,avatar,42);Column(Modifier.weight(1f)){Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink,modifier=Modifier.weight(1f,fill=false));if(verified)SeraIdentityBadge()};if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall);Box{TextButton(onClick={audienceOpen=true},contentPadding=PaddingValues(0.dp)){Text("Audience: "+(audiences[audience]?:"Only me"))};DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}}}}}
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){SeraAccountAvatar(identity,avatar,42);Column(Modifier.weight(1f)){Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink,modifier=Modifier.weight(1f,fill=false));if(verified)SeraIdentityBadge()};if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall);Box{TextButton(enabled=!publishing,onClick={audienceOpen=true},contentPadding=PaddingValues(0.dp)){Text("Audience: "+(audiences[audience]?:"Only me"))};DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}}}}}
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(vertical = 2.dp),
@@ -180,7 +182,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = {
                     imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp)) {
+                }, enabled=!publishing, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp)) {
                     Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Photos")
@@ -198,7 +200,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(132.dp).clip(RoundedCornerShape(15.dp))
                                     .clickable { expandedImage = uri })
-                            TextButton(onClick = {
+                            TextButton(enabled=!publishing,onClick = {
                                 selectedImages.remove(uri)
                                 if (selectedImages.isEmpty()&&kind=="photos")kind="idea"
                                 if (expandedImage == uri) expandedImage = null
@@ -207,17 +209,17 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     }
                 }
             }
-                Box{TextButton(onClick={kindOpen=true}){Text("Post type: "+(kinds[kind]?:"Idea"))};DropdownMenu(expanded=kindOpen,onDismissRequest={kindOpen=false}){kinds.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={kind=key;kindOpen=false;if(key=="photos"&&selectedImages.isEmpty())imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))})}}}
+                Box{TextButton(enabled=!publishing,onClick={kindOpen=true}){Text("Post type: "+(kinds[kind]?:"Idea"))};DropdownMenu(expanded=kindOpen,onDismissRequest={kindOpen=false}){kinds.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={kind=key;kindOpen=false;if(key=="photos"&&selectedImages.isEmpty())imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))})}}}
                 if(kind=="quote")OutlinedTextField(value=quoteSource,onValueChange={quoteSource=it.take(120)},label={Text("Quote attribution (optional)")},modifier=Modifier.fillMaxWidth(),singleLine=true)
                 TextButton(onClick={detailsOpen=!detailsOpen}){Text(if(detailsOpen)"Hide post details" else "Add headline, skills or project details")}
-                if(detailsOpen){OutlinedTextField(value=title,onValueChange={title=it.take(140)},label={Text("Headline")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=category,onValueChange={category=it.take(80)},label={Text("Category")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=location,onValueChange={location=it.take(120)},label={Text("Location")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=skills,onValueChange={skills=it.take(500)},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(value=projectUrl,onValueChange={projectUrl=it.take(500)},label={Text("Project link (https://)")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
+                if(detailsOpen){OutlinedTextField(value=title,onValueChange={title=it.take(140)},label={Text("Headline")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=category,onValueChange={category=it.take(60)},label={Text("Category")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=location,onValueChange={location=it.take(120)},label={Text("Location")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=skills,onValueChange={skills=it.take(400)},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(value=projectUrl,onValueChange={projectUrl=it.take(500)},label={Text("Project link (https://)")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
                 Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = Color(0xFFE4EFED))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = {
-                    saved = runCatching { drafts?.save(userId, body); drafts != null }.getOrDefault(false)
+                    saved = persistDraft()
                     if (!saved) publishMessage = "Secure draft storage is unavailable."
                     focus.clearFocus()
                 }, enabled = hasContent && !publishing,
@@ -226,12 +228,13 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             Button(onClick = {
                 if (publishing) return@Button
                 publishing = true; publishMessage = ""
+                val submissionImages=selectedImages.toList(); val submissionBody=body; val submissionAudience=audience; val submissionKind=kind; val submissionFields=fields
                 scope.launch {
-                    val result = if (selectedImages.isNotEmpty())
-                        publishNativeImages(context, token, body, selectedImages.toList(),audience,fields)
-                    else publishNativeText(token, body,audience,kind,fields)
+                    val result = if (submissionImages.isNotEmpty())
+                        publishNativeImages(context, token, submissionBody, submissionImages,submissionAudience,submissionFields)
+                    else publishNativeText(token, submissionBody,submissionAudience,submissionKind,submissionFields)
                     publishing = false
-                    if (result.first) { runCatching { drafts?.clear(userId) }; editor = TextFieldValue(""); onPublished() }
+                    if (result.first) { published=true; runCatching { drafts?.clear(userId) }; onPublished() }
                     else publishMessage = result.second
                 }
             }, enabled = !publishing && (kind!="photos"||selectedImages.isNotEmpty()) && (selectedImages.isNotEmpty()||body.trim().isNotEmpty()) && (kind!="quote"||body.length in 3..600),
@@ -241,7 +244,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 Icon(Icons.Outlined.Send, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (publishing) "Publishing…" else "Post", fontWeight = FontWeight.Bold)
             }
             }
-            if (publishing) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (publishing) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text(if(selectedImages.isNotEmpty()) "Uploading photos…" else "Publishing post…",style=MaterialTheme.typography.labelSmall) }
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
 
