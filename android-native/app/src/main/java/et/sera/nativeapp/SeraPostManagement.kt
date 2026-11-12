@@ -134,7 +134,7 @@ private fun editPostText(token:String,post:SeraPost,title:String,body:String):Pa
       if(post.repostOf==null)OutlinedTextField(title,{title=it.take(140)},label={Text("Headline")},modifier=Modifier.fillMaxWidth(),singleLine=true,enabled=!busy,shape=RoundedCornerShape(14.dp))
       val limit=if(post.repostOf!=null)400 else if(post.kind=="quote")600 else 10000
       OutlinedTextField(body,{body=it.take(limit)},label={Text(if(post.repostOf!=null)"Your thoughts" else "Your post")},modifier=Modifier.fillMaxWidth().heightIn(min=if(keyboard)86.dp else 200.dp),singleLine=false,minLines=if(keyboard)2 else 7,maxLines=if(keyboard)5 else 14,keyboardOptions=seraMultilineKeyboard,enabled=!busy,shape=RoundedCornerShape(18.dp),supportingText={Text("${body.length} / $limit")})
-      if(post.repostOf==null)post.imageUrl?.let{SeraMediaImage(it,"Existing attachment",640,480,Modifier.fillMaxWidth().height(140.dp))}
+      if(post.repostOf==null)post.imageUrl?.let{SeraMediaImage(it,"Existing attachment",640,480,Modifier.fillMaxWidth().height(140.dp),accessToken=token)}
      }
      Button(onClick={confirm="edit"},enabled=!busy&&(post.repostOf!=null||(post.kind=="quote"&&body.trim().length>=3)||(post.kind=="photos"&&title.trim().length>=3)||(title.trim().length>=3&&body.isNotBlank())),modifier=Modifier.fillMaxWidth().padding(horizontal=18.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=controlTeal)){Text(if(busy)"Saving…" else "Save changes")}
     }

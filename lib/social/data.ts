@@ -2,7 +2,7 @@ import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { sanitizeDiscoveryQuery } from "@/lib/network/model";
 import { serverClient } from "@/lib/supabase/server";
-import { MEDIA_BUCKET, type PostKind } from "./validation";
+import { type PostKind } from "./validation";
 export type SocialComment = {
   id: string;
   author_id: string;
@@ -87,7 +87,7 @@ export async function loadSocialFeed(
     db.rpc("sera_feed_headlines",{p_ids:[...new Set(posts.map(p=>p.author_id))]}),
     db
       .from("post_images")
-      .select("post_id,path,alt")
+      .select("id,post_id,alt")
       .in("post_id", ids)
       .order("sort_order"),
     db
@@ -105,14 +105,6 @@ export async function loadSocialFeed(
   if ([profiles, images, likes, saves].some((r) => r.error))
     throw new Error("Unable to load post details. Please refresh.");
   const imageRows = images.data || [];
-  const signed = imageRows.length
-    ? await db.storage.from(MEDIA_BUCKET).createSignedUrls(
-        imageRows.map((i) => i.path),
-        3600,
-      )
-    : null;
-  if (signed?.error)
-    throw new Error("Unable to load post images. Please refresh.");
   const {data:repostStates}=await db.rpc("sera_repost_states",{p_ids:[...new Set(posts.map(p=>p.repost_of||p.id))]});
   const states=new Map<string,{reposted:boolean;repost_count:number}>((repostStates||[]).map((r:{id:string;reposted:boolean;repost_count:number})=>[r.id,r]));
   const authorMap = new Map<string,{id:string;headline:string;full_name:string;location:string}>((profiles.data || []).map((p:{id:string;headline:string}) => [p.id,{id:p.id,headline:p.headline||"",full_name:"SERA member",location:""}]));
@@ -130,17 +122,17 @@ export async function loadSocialFeed(
         headline: "",
         location: "",
       }), full_name: people.get(p.author_id)?.name || authorMap.get(p.author_id)?.full_name || "Sera member" },
-      images: imageRows.flatMap((i, index) =>
-        i.post_id === p.id && signed?.data?.[index]?.signedUrl
+      images: imageRows.flatMap((i) =>
+        i.post_id === p.id
           ? [
               {
-                url: signed.data[index].signedUrl,
+                url: `/api/post-media/${i.id}`,
                 alt: i.alt || "Community photo",
               },
             ]
           : [],
       ),
-      original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i,index)=>i.post_id===o.id&&signed?.data?.[index]?.signedUrl?[{url:signed.data[index].signedUrl,alt:i.alt||"Community photo"}]:[])}:null})():null,
+      original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i)=>i.post_id===o.id?[{url:`/api/post-media/${i.id}`,alt:i.alt||"Community photo"}]:[])}:null})():null,
       reposted:states.get(p.repost_of||p.id)?.reposted||false,
       repost_count:Number(states.get(p.repost_of||p.id)?.repost_count||0),
       liked: liked.has(p.id),

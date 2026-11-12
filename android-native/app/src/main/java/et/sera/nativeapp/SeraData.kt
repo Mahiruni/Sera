@@ -116,8 +116,8 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                     val row = rows.getJSONObject(i)
                     val postId = row.optString("post_id")
                     if (!images.containsKey(postId)) {
-                        val signed = signedPostImage(token, row.optString("path"))
-                        if (signed != null) images[postId] = signed
+                        val path=row.optString("path")
+                        if(path.isNotBlank()) images[postId]=authenticatedPostMedia(path)
                     }
                 }
             }
@@ -153,6 +153,8 @@ internal fun signedPostImage(token: String, path: String, bucket: String = "sera
         if (signed.isBlank()) null else if (signed.startsWith("https://")) signed else BuildConfig.SUPABASE_URL.trimEnd('/') + "/storage/v1" + signed.let { if (it.startsWith("/")) it else "/$it" }
     } catch (e: Exception) { null }
 }
+
+internal fun authenticatedPostMedia(path:String):String=BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/"+path.split('/').joinToString("/"){android.net.Uri.encode(it)}
 
 fun loadSeraIdentity(token: String): Pair<String?, String> {
     val result = request(token, "user", true)

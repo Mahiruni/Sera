@@ -15,7 +15,7 @@ import androidx.compose.ui.window.DialogProperties
 
 /** Accessible image viewer: tap to open, pinch to zoom, drag to pan, close to return. */
 @Composable
-fun SeraMediaLightbox(url: String, description: String, onDismiss: () -> Unit) {
+fun SeraMediaLightbox(url: String, description: String, accessToken:String?=null, onDismiss: () -> Unit) {
     var zoom by remember(url) { mutableFloatStateOf(1f) }
     var dx by remember(url) { mutableFloatStateOf(0f) }
     var dy by remember(url) { mutableFloatStateOf(0f) }
@@ -39,7 +39,7 @@ fun SeraMediaLightbox(url: String, description: String, onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         scaleX = zoom; scaleY = zoom; translationX = dx; translationY = dy
                     },
-                    scale = androidx.compose.ui.layout.ContentScale.Fit
+                    scale = androidx.compose.ui.layout.ContentScale.Fit, accessToken=accessToken
                 )
             }
             TextButton(onClick = { zoom = 1f; dx = 0f; dy = 0f }, modifier = Modifier.fillMaxWidth()) {

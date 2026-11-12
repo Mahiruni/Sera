@@ -68,7 +68,7 @@ import java.util.Locale
       if(p.repostOf!=null){Text("Reposted from "+(p.repostAuthor?:"original author"),color=teal);if(p.repostNote.isNotBlank())Text(p.repostNote)}
       if(title.isNotBlank()&&!body.replace(Regex("\\s+")," ").startsWith(title.replace(Regex("\\s+")," "),ignoreCase=true))Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
       Text(body.ifBlank{if(p.repostOf!=null&&p.originalBody==null)"Original post unavailable" else title},style=MaterialTheme.typography.bodyLarge)
-      p.imageUrl?.let{url->SeraMediaImage(url,"Post image",1080,720,Modifier.fillMaxWidth().heightIn(min=180.dp,max=420.dp).clip(RoundedCornerShape(18.dp)).clickable{photo=url})}
+      p.imageUrl?.let{url->SeraMediaImage(url,"Post image",1080,720,Modifier.fillMaxWidth().heightIn(min=180.dp,max=420.dp).clip(RoundedCornerShape(18.dp)).clickable{photo=url},accessToken=token)}
       HorizontalDivider()
       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceAround,verticalAlignment=Alignment.CenterVertically){
        TextButton(enabled=!pending,onClick={pending=true;scope.launch{val r=withContext(Dispatchers.IO){setSeraLike(token,p.id,p.liked)};pending=false;if(r.first)post=p.copy(liked=!p.liked,likes=(p.likes+if(p.liked)-1 else 1).coerceAtLeast(0))else error=r.second}}){SeraReactionGlyph(SeraReactionKind.LIKE,active=p.liked);Spacer(Modifier.width(6.dp));Text(p.likes.toString())}
@@ -80,5 +80,5 @@ import java.util.Locale
   }
  }
  if(comments)SeraCommentsSheet(token,postId,onDismiss={comments=false},onChanged={reload++})
- photo?.let{SeraMediaLightbox(it,"Post image",onDismiss={photo=null})}
+ photo?.let{SeraMediaLightbox(it,"Post image",accessToken=token,onDismiss={photo=null})}
 }

@@ -165,7 +165,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 SeraMediaImage(
                                     url = url,
                                     description = stringResource(R.string.post_image),
-                                    widthPx = 1080, heightPx = 720,
+                                    widthPx = 1080, heightPx = 720, accessToken=token,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 340.dp)
                                         .clip(RoundedCornerShape(14.dp))
                                         .clickable { expandedImage = url }
@@ -306,7 +306,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                         label = { Text("Your perspective (optional)") },
                         placeholder = { Text("Why is this useful to your network?") },
                         supportingText = { Text("${repostNote.length} / 400") },
-                        shape = RoundedCornerShape(18.dp), maxLines = 5,
+                        shape = RoundedCornerShape(18.dp), maxLines = 5, singleLine=false, keyboardOptions=seraMultilineKeyboard,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !reposting
                     )
@@ -356,7 +356,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             }
         }
     }
-    expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), onDismiss = { expandedImage = null }) }
+    expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), accessToken=token, onDismiss = { expandedImage = null }) }
     nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;posts.refresh()}) }
     commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }
 }
