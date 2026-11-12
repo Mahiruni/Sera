@@ -216,7 +216,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
 private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit,onInboxExit:(()->Unit)?){
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
-    if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
+    if(companyInbox){Box(modifier.fillMaxSize().navigationBarsPadding()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
     val clipboard=LocalClipboardManager.current
     val haptics=LocalHapticFeedback.current
@@ -385,14 +385,14 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
             Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
                 if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
                 Text("Messages",fontSize=24.sp,fontWeight=FontWeight.Bold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
-                IconButton(onClick={companyInbox=true},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.WorkOutline,"Company inbox",tint=accent)}
+                TextButton(onClick={companyInbox=true},contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.WorkOutline,null,tint=accent,modifier=Modifier.size(18.dp));Spacer(Modifier.width(5.dp));Text("Company",fontSize=12.sp,color=accent)}
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=8.dp).height(46.dp).clip(CircleShape).background(inboxSoft).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 Icon(Icons.Outlined.Search,null,tint=muted,modifier=Modifier.size(20.dp))
-                BasicTextField(value=search,onValueChange={search=it},singleLine=true,textStyle=TextStyle(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
+                BasicTextField(value=search,onValueChange={search=it},singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
                 if(search.isNotEmpty())IconButton(onClick={search=""},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically){Text("All messages",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=muted,modifier=Modifier.weight(1f));TextButton(onClick={companyInbox=true},contentPadding=PaddingValues(horizontal=8.dp)){Text("Company inbox",fontSize=12.sp,color=accent)}}
+            Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Text("All messages",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=muted,modifier=Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("$unreadTotal unread",fontSize=12.sp,color=accent)}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick={refresh++}){Text("Retry")}}
             if (!loading && conversations.isEmpty() && error.isBlank())
@@ -471,10 +471,9 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
-                        Box { Surface(shape = if(own) RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp) else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
+                        Box { SeraCompactMessageBubble(own=own,
                             color = if(message.unsent) inboxSoft else if (own) outgoing else incoming,
                             modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.semantics{onLongClick(label="Message actions"){menu=message.id;true}}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){reply=message;haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
-                            Column(Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else accent)
                                 if(message.replyId.isNotBlank()&&!message.unsent){val original=messages.firstOrNull{it.id==message.replyId};Surface(color=if(own)Color.Black.copy(alpha=.12f)else chatSurface,shape=RoundedCornerShape(9.dp),modifier=Modifier.padding(bottom=5.dp)){Row(Modifier.height(IntrinsicSize.Min)){Box(Modifier.width(3.dp).fillMaxHeight().background(if(own)Color(0xFFB5FFF4)else accent));Column(Modifier.padding(horizontal=8.dp,vertical=5.dp)){Text(if(original?.senderId==userId)"You" else conversation.peerName,fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color(0xFFB5FFF4)else accent,maxLines=1);Text(if(original?.unsent==true)"Message unsent" else original?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}}}
                                 if(message.unsent||message.files.isEmpty()||message.body !in listOf("Attachment","Voice message"))Text(if(message.unsent) "Message unsent" else message.body,color=if(message.unsent)muted else if(own)Color.White else inboxInk,fontSize=14.sp,lineHeight=20.sp)
@@ -490,18 +489,12 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                                     }
                                     Text("${file.bytes / 1024} KB · ${if (file.mime == "application/pdf") "PDF" else "Image"}",fontSize=11.sp,color=if(own) Color.White.copy(alpha=.8f) else inboxInk)}
                                 }
-                                Row(Modifier.align(Alignment.End).padding(top=2.dp),verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
-                                    Text(time, color = if (own&&!message.unsent) Color.White.copy(alpha = 0.8f) else muted, fontSize = 10.sp)
-                                    if (own&&!message.unsent) {
-                                        val read = message.readAt.isNotBlank() && message.readAt != "null"
-                                        val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
-                                        val receipt = if (read) "Read" else if (delivered) "Delivered" else "Sent"
-                                        Icon(if (delivered) Icons.Outlined.DoneAll else Icons.Outlined.Check, contentDescription = receipt, tint = if(read) Color(0xFFB5FFF4) else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            }
+                                val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
+                                val read = message.readAt.isNotBlank() && message.readAt != "null"
+                                val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
+                                SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)Color.White.copy(alpha=.8f)else muted)
                         }
+
                         actions() }
                     }
                 }
@@ -530,7 +523,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                             runCatching { savedDrafts?.write(userId, conversation.id, it) }
                         }
                     },
-                    modifier=Modifier.weight(1f).clip(CircleShape).background(inboxSoft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=TextStyle(color=inboxInk,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}}
+                    modifier=Modifier.weight(1f).clip(CircleShape).background(inboxSoft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}}
                 )
                 if(recordingVoice||draft.isBlank()&&attachment==null) SeraChatVoice(enabled=!sending&&attachment==null&&queued==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()},accent=accent)
                 if(!recordingVoice&&(draft.isNotBlank()||attachment!=null)) Button(onClick = {

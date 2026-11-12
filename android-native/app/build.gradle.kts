@@ -10,6 +10,7 @@ android {
         applicationId = "et.sera.nativeapp"
         minSdk = 26
         targetSdk = 35
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.gradleProperty("SERA_VERSION_CODE").orElse("1").get().toInt()
         versionName = providers.gradleProperty("SERA_VERSION_NAME").orElse("0.1.0").get()
         val supabaseUrl = providers.gradleProperty("SERA_SUPABASE_URL").orElse("").get()
@@ -56,6 +57,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
