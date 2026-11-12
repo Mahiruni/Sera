@@ -1,3 +1,4 @@
+import {readAudience} from "@/lib/social/audience";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { screenSubmission } from "@/lib/moderation/screen";
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid post." }, { status: 400 });
   const values = payload as Record<string, unknown>;
   const form = new FormData();
-  for (const field of ["kind", "title", "body", "quote_source", "category", "location", "skills", "project_url"]) {
+  for (const field of ["kind", "title", "body", "quote_source", "category", "location", "skills", "project_url", "audience"]) {
     if (values[field] !== undefined && typeof values[field] !== "string")
       return NextResponse.json({ error: "Invalid post fields." }, { status: 400 });
     form.set(field, (values[field] as string | undefined) || "");
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
   if (values.media !== undefined)
     return NextResponse.json({ error: "Media publishing is not yet enabled." }, { status: 422 });
   const input = readPost(form);
-  if (!input || input.kind === "photos")
+  const audience=readAudience(form.get("audience"));
+  if (!input || !audience || input.kind === "photos")
     return NextResponse.json({ error: "Check the post title and body." }, { status: 400 });
   const verdict = await screenSubmission(input, []);
   if (verdict.verdict !== "approved")
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
   // Database security requires INSERT to occur as the verified member, in draft state.
   // Only the trusted service-role client may promote an approved draft to published.
   const draft = await client.from("posts")
-    .insert({ ...input, author_id: user.id, status: "draft" })
+    .insert({ ...input, audience, author_id: user.id, status: "draft" })
     .select("id").single();
   if (draft.error || !draft.data) {
     console.error("native text draft insert failed", { code: draft.error?.code });

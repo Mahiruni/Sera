@@ -16,7 +16,8 @@ export const metadata = pageMetadata(
   "Account settings",
   "Manage your private profile, language and account session.",
 );
-export default async function Page() {
+export default async function Page({searchParams}:{searchParams:Promise<{edit?:string}>}) {
+  const edit=(await searchParams).edit==="1";
   const { profile, user } = await requiredProfile();
   let assets = null;
   let filesUnavailable = false;
@@ -32,6 +33,8 @@ export default async function Page() {
     <div className="container page account-foundation">
       {profile ? (
         <ProfessionalProfile
+          key={edit?"edit":"view"}
+          initialEditing={edit}
           profile={profile}
           email={user.email || ""}
           assets={assets}

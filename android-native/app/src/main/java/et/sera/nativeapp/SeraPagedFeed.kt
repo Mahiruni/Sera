@@ -54,14 +54,14 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {}) {
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false) {
     val context = LocalContext.current
     val listState=rememberLazyListState()
     val topCallback by rememberUpdatedState(onAtTop)
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
     var personalized by remember(token){mutableStateOf(true)}
-    val stream = remember(token, refreshKey,personalized) { pagedSeraPosts(token,personalized) }
+    val stream = remember(token, refreshKey,personalized,savedOnly) { pagedSeraPosts(token,personalized,savedOnly) }
     val posts = stream.collectAsLazyPagingItems()
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
@@ -101,7 +101,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item(key="feed-mode") { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
+            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
             items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->
@@ -209,7 +209,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 FeedReactionControl(SeraReactionKind.SAVE,0,saved,Modifier.weight(1f),enabled=savePending[post.id]!=true){
                                     val previous=saveOverrides[post.id]?:post.saved
                                     saveOverrides[post.id]=!previous;savePending[post.id]=true
-                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second};savePending.remove(post.id)}
+                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second}else if(savedOnly)posts.refresh();savePending.remove(post.id)}
                                 }
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.7.dp)

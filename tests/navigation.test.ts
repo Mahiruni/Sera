@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dockSection, feedAutoHideEnabled, nextFeedChrome } from "../lib/navigation";
+import { dockSection, feedAutoHideEnabled, nextFeedChrome, memberNavigationGroups } from "../lib/navigation";
 
 test("community stories keep Home selected when opening or editing a post", () => {
   for (const path of [
@@ -57,3 +57,5 @@ test("feed chrome uses directional hysteresis and returns at the top",()=>{
   state=nextFeedChrome(state,-30,1000);assert.equal(state.hidden,false);
   assert.equal(state.anchor,0);
 });
+
+test("member drawer uses distinct authenticated destinations",()=>{const links=memberNavigationGroups().flatMap(g=>g.items.map(i=>i.href));assert.equal(new Set(links).size,links.length);for(const href of ["/feed","/connections","/discover","/jobs","/network/messages","/saved","/workspace","/settings"])assert.ok(links.includes(href));assert.ok(!links.includes("/"));});

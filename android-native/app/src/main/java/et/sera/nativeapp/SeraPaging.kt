@@ -11,7 +11,7 @@ import kotlinx.coroutines.withContext
  * Network-backed paging foundation. A Room RemoteMediator will replace direct
  * network paging once the per-account offline database is migrated and tested.
  */
-class SeraPostPagingSource(private val token: String, private val personalized:Boolean=false) : PagingSource<Int, SeraPost>() {
+class SeraPostPagingSource(private val token: String, private val personalized:Boolean=false,private val savedOnly:Boolean=false) : PagingSource<Int, SeraPost>() {
     override fun getRefreshKey(state: PagingState<Int, SeraPost>): Int? {
         val anchor = state.anchorPosition ?: return null
         val page = state.closestPageToPosition(anchor)
@@ -21,7 +21,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SeraPost> {
         val page = params.key ?: 0
         return try {
-            val result = withContext(Dispatchers.IO) { loadSeraFeed(token, page, personalized=personalized) }
+            val result = withContext(Dispatchers.IO) { loadSeraFeed(token, page, personalized=personalized,savedOnly=savedOnly) }
             val posts = result.first ?: return LoadResult.Error(IllegalStateException(result.second))
             LoadResult.Page(
                 data = posts,
@@ -34,7 +34,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
     }
 }
 
-fun pagedSeraPosts(token: String, personalized:Boolean=false) = Pager(
+fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=false) = Pager(
     config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, enablePlaceholders = false),
-    pagingSourceFactory = { SeraPostPagingSource(token,personalized) }
+    pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly) }
 ).flow

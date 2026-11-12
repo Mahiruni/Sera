@@ -345,6 +345,9 @@ fun SeraApp(
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var profileHeadline by remember(authenticatedUserId){mutableStateOf("")}
+    var profileVerified by remember(authenticatedUserId){mutableStateOf(false)}
+    var editProfileRequested by remember(authenticatedUserId){mutableStateOf(false)}
     var refresh by remember { mutableIntStateOf(0) }
     LaunchedEffect(accessToken, authenticatedUserId, refresh) {
         val token = accessToken ?: return@LaunchedEffect
@@ -352,11 +355,14 @@ fun SeraApp(
         val member = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
         member.first?.let { identity = it }
         profileAvatarUrl = withContext(Dispatchers.IO) { loadSeraCurrentAvatar(token, id) }
+        profileHeadline=withContext(Dispatchers.IO){loadNativeProfile(token,id).first?.headline.orEmpty()}
+        profileVerified=withContext(Dispatchers.IO){id in identityBadges(token,listOf(id))}
     }
     val unreadActivity = rememberSeraUnreadActivity(accessToken.orEmpty(),authenticatedUserId,tab)
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
+    fun signOutSera(){accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;feed=emptyList();dataError="";dataLoading=false;editProfileRequested=false}
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         if (authenticatedUserId.isBlank()) {
@@ -488,6 +494,9 @@ fun SeraApp(
                             SeraNavigationDrawer(
                                 selected = tab,
                                 identity = identity,
+                                avatarUrl=profileAvatarUrl,
+                                headline=profileHeadline,identityVerified=profileVerified,
+                                onClose={scope.launch{drawerState.close()}},
                                 onNavigate = { destination ->
                                     navigateTo(destination)
                                     scope.launch { drawerState.close() }
@@ -513,19 +522,7 @@ fun SeraApp(
                                         }
                                     }
                                 },
-                                onSignOut = {
-                                    scope.launch { drawerState.close() }
-                                    accessToken?.let { token -> val uid=authenticatedUserId; scope.launch { SeraPush.unregister(context,token,uid) } }
-                                    SeraPush.clearLocal(context)
-                                    session.clear()
-                                    accessToken = null
-                                    authenticatedUserId = ""
-                                    showComposer = false
-                                    password = ""
-                                    message = ""
-                                    tab = "Home"
-                                    tabHistory.clear()
-                                }
+                                onSignOut={scope.launch{drawerState.close()};signOutSera()}
                             )
                         }
                     ) {
@@ -556,7 +553,7 @@ fun SeraApp(
                                     label = "section transition"
                                 ) { currentTab ->
                                     when (currentTab) {
-                                        "Home" -> SeraPagedFeed(
+                                        "Home", "Saved" -> SeraPagedFeed(
                                             accessToken ?: "", refresh,
                                             onLike = { post ->
                                                 val token = accessToken
@@ -568,8 +565,9 @@ fun SeraApp(
                                                 }
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
-                                            onAtTop={chromeVisible.value=true}
+                                            onAtTop={chromeVisible.value=true},savedOnly=tab=="Saved"
                                         )
+                                        "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)
@@ -587,19 +585,8 @@ fun SeraApp(
                                             verticalArrangement = Arrangement.spacedBy(16.dp)
                                         ) {
                                             SeraProfile(
-                                                identity, dataLoading, dataError, { refresh++ }, {
-                                                    accessToken?.let { token -> val uid=authenticatedUserId; scope.launch { SeraPush.unregister(context,token,uid) } }
-                                                    SeraPush.clearLocal(context)
-                                                    session.clear()
-                                                    accessToken = null
-                                                    authenticatedUserId = ""
-                                                    showComposer = false
-                                                    password = ""
-                                                    message = ""
-                                                    tab = "Home"
-                                                    tabHistory.clear()
-                                                },
-                                                accessToken ?: "", authenticatedUserId, profileAvatarUrl
+                                                identity, dataLoading, dataError, { refresh++ }, ::signOutSera,
+                                                accessToken ?: "", authenticatedUserId, profileAvatarUrl,editProfileRequested,{editProfileRequested=false}
                                             )
                                         }
                                     }
@@ -613,6 +600,8 @@ fun SeraApp(
                                     sections = sections,
                                     canCompose = authenticatedUserId.isNotBlank(),
                                     profileAvatarUrl = profileAvatarUrl,
+                                    profileName=identity.lineSequence().firstOrNull().orEmpty().ifBlank{"SERA member"},profileHeadline=profileHeadline,identityVerified=profileVerified,
+                                    onEditProfile={editProfileRequested=true;navigateTo("Profile")},onSignOut=::signOutSera,
                                     onCompose = { showComposer = true },
                                     onLanguage = { showLanguagePicker = true },
                                     onMenu = { scope.launch { drawerState.open() } },
@@ -644,6 +633,7 @@ private fun BoxScope.SeraChromeOverlays(
     sections: List<String>,
     canCompose: Boolean,
     profileAvatarUrl: String?,
+    profileName:String,profileHeadline:String,identityVerified:Boolean,onEditProfile:()->Unit,onSignOut:()->Unit,
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
     onMenu: () -> Unit,
@@ -665,7 +655,11 @@ private fun BoxScope.SeraChromeOverlays(
             onMessaging = { onNavigate("Inbox") },
             onSearch = { onNavigate("Search") },
             onNotifications = { onNavigate("Notifications") },
-            onMenu = onMenu
+            onMenu = onMenu,
+            avatarUrl=profileAvatarUrl,profileName=profileName,profileHeadline=profileHeadline,identityVerified=identityVerified,
+            onEditProfile=onEditProfile,onSignOut=onSignOut,
+            onProfile={onNavigate("Profile")},
+            onSettings={onNavigate("Settings")}
         )
     }
     if (!expanded) AnimatedVisibility(

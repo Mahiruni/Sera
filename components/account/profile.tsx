@@ -57,17 +57,19 @@ export function ProfessionalProfile({
   email,
   assets,
   filesUnavailable = false,
+  initialEditing=false,
 }: {
   profile: Profile;
   email: string;
   assets: Assets | null;
   filesUnavailable?: boolean;
+  initialEditing?:boolean;
 }) {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState("overview");
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
-  const [editing, setEditing] = useState(false),
+  const [editing, setEditing] = useState(initialEditing),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false),

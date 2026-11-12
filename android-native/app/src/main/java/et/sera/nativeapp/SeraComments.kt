@@ -8,6 +8,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
@@ -156,10 +158,11 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
     removing?.let{c->AlertDialog(onDismissRequest={removing=null},title={Text("Remove comment?")},text={Text("This also removes replies to your comment.")},confirmButton={TextButton(onClick={removing=null;sending=true;scope.launch{val r=withContext(Dispatchers.IO){mutateNativeComment(token,postId,c.id,"delete","")};sending=false;if(r.first){retry++;onChanged()}else publishingError=r.second}}){Text("Remove")}},dismissButton={TextButton(onClick={removing=null}){Text("Keep")}})}
     SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!sending&&draft.isBlank()) {
         Column(
-            Modifier.fillMaxWidth().fillMaxHeight(0.94f).padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().fillMaxHeight(0.94f).padding(horizontal = 16.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("Comments · "+comments.size,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);TextButton(onClick={requestClose()}){Text("Close")}}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("Comments · "+comments.size,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);IconButton(onClick={requestClose()}){Icon(Icons.Outlined.Close,"Close comments")}}
+            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) { Text(error, color = MaterialTheme.colorScheme.error); OutlinedButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) } }
             if (!loading && comments.isEmpty() && error.isBlank()) Text(stringResource(R.string.no_comments))
@@ -215,7 +218,7 @@ fun SeraCommentsSheet(token: String, postId: String, onDismiss: () -> Unit, onCh
             OutlinedTextField(
                 value = draft, onValueChange = { if (it.length <= 2000) draft = it },
                 placeholder = { Text(stringResource(R.string.write_comment)) }, modifier = Modifier.weight(1f),
-                maxLines = 3, enabled = !sending, shape = RoundedCornerShape(18.dp),
+                maxLines = 3, enabled = !sending, shape = RoundedCornerShape(24.dp),
                 singleLine=false,
                 keyboardOptions = seraMultilineKeyboard
             )

@@ -144,3 +144,54 @@ html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-m
  .sera-compose-dialog,.sera-conversation-sheet,.sera-repost-sheet{margin-bottom:var(--sera-sheet-bottom,0px)}
  .sera-control-dialog:not(.sera-control-compact){margin-bottom:var(--sera-sheet-bottom,0px)!important}
 }
+
+/* Familiar social navigation and writing surface; preserve SERA identity. */
+.sera-app-header .hamburger{background:transparent!important;border:0!important;box-shadow:none!important;color:#087e83;display:grid;place-items:center}
+.sera-app-header .hamburger svg{display:block;flex:none}
+.sera-profile-menu{position:relative;flex:none}.sera-profile-trigger{border-radius:50%!important;background:var(--sera-sheet-surface,#fff)!important;border:1px solid var(--sera-sheet-line,#dce9e6)!important;color:#087e83}
+.sera-profile-popover{position:absolute;right:0;top:calc(100% + 8px);width:196px;background:var(--sera-sheet-surface,#fff);color:var(--sera-sheet-ink,#173a3f);border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:14px;padding:6px;box-shadow:0 10px 30px #152e3524;z-index:100}
+.sera-profile-popover a{display:flex;gap:10px;align-items:center;padding:11px;border-radius:8px;min-height:44px;color:inherit;font-size:14px;font-weight:600}
+.sera-profile-popover a:hover,.sera-profile-popover a:focus-visible{background:#087e8312}
+.sera-refined-drawer .drawer-inner{padding:16px!important;gap:8px;overflow-y:auto}
+.sera-refined-drawer .drawer-top{padding:0 0 8px}.sera-refined-drawer .drawer-group{border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0!important}
+.sera-refined-drawer .drawer-group summary{padding:10px 4px;font-size:13px;font-weight:650;color:var(--sera-sheet-muted,#587174)}
+.sera-refined-drawer .drawer-group-links a{min-height:46px;border:0!important;box-shadow:none!important;border-radius:8px!important;padding:10px 12px!important;display:flex;align-items:center;gap:12px}
+.sera-refined-drawer .drawer-group-links a.active{background:#087e8312!important;color:#087e83!important}
+.sera-drawer-profile{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--sera-sheet-line,#dce9e6);color:var(--sera-sheet-ink,#173a3f)}
+.sera-drawer-profile>span{flex:1;font-weight:700}.sera-drawer-profile small{display:block;font-size:12px;font-weight:400;color:var(--sera-sheet-muted,#587174);margin-top:4px}
+.sera-social-composer-dialog{max-width:660px!important}
+.sera-social-composer-dialog .sera-compose-dialog-head{padding:10px 16px!important;border-bottom:1px solid var(--sera-sheet-line);min-height:52px}
+.sera-social-composer-dialog .sera-compose-dialog-author{padding:12px 16px!important;border:0!important}
+.sera-social-composer-dialog .sera-compose-dialog-content{padding:0 16px!important}
+.sera-social-composer-dialog .sera-premium-composer form{gap:10px}
+.sera-social-composer-dialog .sera-premium-types{order:1;padding:4px 0;gap:5px}
+.sera-social-composer-dialog .sera-premium-types button{border-radius:20px;padding:6px 11px;min-height:36px;font-size:12px}
+.sera-social-composer-dialog .sera-premium-editor{border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;min-height:190px}
+.sera-social-composer-dialog .sera-premium-editor textarea{font-size:18px;line-height:1.5;min-height:180px;padding:12px 0 28px;background:transparent!important}
+.sera-social-composer-dialog .sera-premium-counter{right:0;bottom:5px}
+.sera-social-composer-dialog .sera-premium-toolbar{display:flex;justify-content:flex-start;gap:6px;border-top:1px solid var(--sera-sheet-line);padding-top:6px}
+.sera-social-composer-dialog .sera-premium-toolbar button{min-height:44px;flex-direction:row;gap:8px;padding:8px 12px!important;font-size:13px;box-shadow:none!important;border:0!important}
+.sera-social-composer-dialog .sera-premium-footer{order:9;position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;padding:10px 0!important;background:var(--sera-sheet-surface)!important}
+.sera-social-composer-dialog .sera-premium-footer button{min-height:44px;border-radius:24px!important;padding:0 20px;font-size:14px}
+.sera-social-composer-dialog .sera-premium-publish{background:#087e83!important;min-width:92px}
+@media(max-width:420px){.sera-app-header .header-account-controls{gap:0!important}.sera-app-header .header-control{width:38px!important;min-width:38px!important;height:44px!important}.sera-app-header .sera-header-wordmark{font-size:21px!important}}
+
+.sera-profile-popover-name{display:flex;align-items:center;gap:8px;padding:8px 10px 12px;border-bottom:1px solid var(--sera-sheet-line,#dce9e6);font-size:13px;overflow-wrap:anywhere}
+.sera-refined-drawer .drawer-group-links>a>svg:last-child{flex:none;margin:0!important;width:19px!important;height:19px!important}
+.sera-conversation-sheet .sera-conversation-header{border-bottom:1px solid var(--sera-sheet-line);padding:8px 16px!important}
+.sera-conversation-sheet .sera-conversation-comment{padding:10px 0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.sera-conversation-sheet .sera-conversation-comment-content{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.sera-conversation-sheet .sera-conversation-composer textarea{border-radius:22px!important;padding:10px 14px!important;min-height:44px}
+
+.sera-post-audience{display:flex;align-items:center;flex-wrap:wrap;gap:8px;color:var(--sera-sheet-muted,#587174);font-size:12px;font-weight:600}
+.sera-post-audience select{min-height:40px;border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:22px;background:var(--sera-sheet-surface,#fff);color:var(--sera-sheet-ink,#173a3f);padding:7px 12px;font:inherit;cursor:pointer}
+.sera-post-audience small{font-weight:400}
+.sera-photo-preview{position:relative;display:inline-flex}.sera-photo-preview>button{position:absolute;top:3px;right:3px;width:32px;height:32px;border:0;border-radius:50%;background:#162c31d9;color:white;font-size:20px;cursor:pointer}
+.sera-emoji-picker{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:12px}.sera-emoji-picker button{min-width:44px;min-height:44px;border:0;border-radius:9px;background:transparent;font-size:21px;cursor:pointer}
+.sera-social-composer-dialog .sera-premium-types{order:0;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+.sera-social-composer-dialog .sera-premium-types button{min-height:44px;box-shadow:none!important;background:transparent;color:var(--sera-sheet-ink,#173a3f);border:1px solid var(--sera-sheet-line,#dce9e6)}
+.sera-social-composer-dialog .sera-premium-types button[aria-pressed=true]{background:#087e8314!important;color:#087e83!important;border-color:#087e83!important}
+.sera-social-composer-dialog .sera-premium-editor textarea{min-height:160px;line-height:1.5;font-size:18px;color:var(--sera-sheet-ink,#173a3f)}
+@media(max-height:500px){.sera-social-composer-dialog .sera-premium-editor{min-height:100px}.sera-social-composer-dialog .sera-premium-editor textarea{min-height:96px}.sera-social-composer-dialog .sera-compose-dialog-author{padding-block:6px!important}.sera-social-composer-dialog .sera-compose-dialog-head{min-height:48px}}
+
+.sera-drawer-section{border-bottom:1px solid var(--sera-sheet-line,#dce9e6);padding:8px 0}.sera-drawer-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--sera-sheet-muted,#587174);margin:4px 10px 8px}.sera-drawer-section .drawer-group-links a{min-height:46px}.sera-drawer-section .drawer-group-links a>svg{margin:0!important;flex:none}.sera-profile-popover{width: min(280px,calc(100vw - 24px));padding:8px}.sera-profile-popover-name>div{min-width:0}.sera-profile-popover-name strong{display:block;overflow-wrap:anywhere}.sera-profile-popover-name small{display:block;font-size:12px;color:var(--sera-sheet-muted,#587174);margin-top:4px;overflow-wrap:anywhere}.sera-signout-control{width:100%;min-height:44px;display:flex;gap:10px;align-items:center;text-align:left;padding:10px;border:0;border-radius:8px;background:transparent;color:var(--sera-sheet-ink,#173a3f);font-size:14px;font-weight:600;cursor:pointer}.sera-signout-confirm{padding:10px;border-top:1px solid var(--sera-sheet-line,#dce9e6);font-size:13px}.sera-signout-confirm p{margin:0 0 8px}.sera-signout-confirm>div{display:flex;gap:8px}.sera-signout-confirm button{min-height:40px;border:1px solid var(--sera-sheet-line,#dce9e6);border-radius:10px;background:var(--sera-sheet-surface,#fff);color:var(--sera-sheet-ink,#173a3f);padding:6px 12px;cursor:pointer}.sera-signout-confirm .sera-signout-danger{background:#a52a35;color:#fff;border-color:#a52a35}.sera-profile-popover a:focus-visible,.sera-signout-control:focus-visible,.sera-signout-confirm button:focus-visible{outline:2px solid #087e83;outline-offset:2px}

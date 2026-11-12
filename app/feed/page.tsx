@@ -1,3 +1,4 @@
+import {memberCards} from "@/lib/activity/members";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
 import { loadNetworkSidebars } from "@/lib/network/data";
@@ -20,9 +21,10 @@ export default async function Feed({
       : undefined,
     mine = params.view === "mine";
   const personalized=!mine&&!kind&&params.view!=="latest";
-  const [feed, sidebars] = await Promise.all([
+  const [feed, sidebars, members] = await Promise.all([
     loadSocialFeed({ page, kind, authorId: mine ? user.id : undefined,personalized }),
     loadNetworkSidebars(user.id),
+    memberCards([user.id]),
   ]);
   return (
     <NetworkHome
@@ -35,6 +37,7 @@ export default async function Feed({
       kind={kind}
       mine={mine}
       personalized={personalized}
+      identityVerified={members.get(user.id)?.identityVerified===true}
     />
   );
 }

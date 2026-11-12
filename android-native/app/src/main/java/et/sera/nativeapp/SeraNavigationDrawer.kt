@@ -1,11 +1,21 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.runtime.*
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
@@ -33,6 +43,9 @@ private fun drawerIcon(section: String): ImageVector = when (section) {
     "Network" -> Icons.Outlined.PeopleOutline
     "Jobs" -> Icons.Outlined.WorkOutline
     "Inbox" -> Icons.Outlined.ChatBubbleOutline
+    "Search" -> Icons.Outlined.Search
+    "Saved" -> Icons.Outlined.BookmarkBorder
+    "Workspace" -> Icons.Outlined.Dashboard
     else -> Icons.Outlined.AccountCircle
 }
 
@@ -45,48 +58,45 @@ internal fun SeraNavigationDrawer(
     onCompose: () -> Unit,
     onLanguage: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    avatarUrl:String?=null,
+    headline:String="",identityVerified:Boolean=false,
+    onClose:()->Unit={}
 ) {
+    var confirmSignOut by remember { mutableStateOf(false) }
     ModalDrawerSheet(
         modifier = Modifier.width(304.dp),
-        drawerContainerColor = Color(0xFFF7FCFB),
-        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+        drawerContainerColor = MaterialTheme.colorScheme.surface,
+        drawerShape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
     ) {
-        Column(Modifier.fillMaxHeight().padding(18.dp)) {
-            Text("SERA.et", color = drawerTeal, fontSize = 28.sp,
-                fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-            Text("Your professional world", color = Color(0xFF637A7E), fontSize = 12.sp)
-            Spacer(Modifier.height(26.dp))
-            Surface(color = Color(0xFFE5F5F1), shape = RoundedCornerShape(20.dp)) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(47.dp).background(Color.White, CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.AccountCircle, contentDescription = null,
-                            tint = drawerTeal, modifier = Modifier.size(30.dp))
-                    }
+        Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=12.dp)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("SERA.et",color=drawerTeal,fontSize=25.sp,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close menu")}}
+            Spacer(Modifier.height(8.dp))
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp)) {
+                Row(Modifier.fillMaxWidth().clickable{onNavigate("Profile")}.padding(vertical=12.dp,horizontal=4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SeraAccountAvatar(identity.lineSequence().firstOrNull().orEmpty(),avatarUrl,48)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(identity.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }
-                            ?: "SERA professional", maxLines = 1, fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp, color = drawerInk)
-                        Text("View your professional identity", color = Color(0xFF5B7B7D), fontSize = 11.sp)
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(identity.lineSequence().firstOrNull()?.takeIf{it.isNotBlank()}?:"SERA professional",maxLines=2,fontWeight=FontWeight.Bold,fontSize=14.sp,modifier=Modifier.weight(1f,fill=false));if(identityVerified)SeraIdentityBadge()}
+                        Text(headline.ifBlank{"View profile"},color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,maxLines=2)
                     }
+                    Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Spacer(Modifier.height(17.dp))
-            listOf("Home", "Network", "Jobs", "Inbox", "Profile").forEach { section ->
+            HorizontalDivider(Modifier.padding(vertical=8.dp))
+            listOf("Home", "Network", "Search", "Jobs", "Inbox", "Saved", "Workspace").forEach { section ->
                 NavigationDrawerItem(
-                    label = { Text(section, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
+                    label = { Text(when(section){"Search"->"Discover";"Inbox"->"Messages";else->section}, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = section == selected,
                     icon = { Icon(drawerIcon(section), contentDescription = null) },
                     onClick = { onNavigate(section) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = NavigationDrawerItemDefaults.colors(
                         selectedContainerColor = Color(0xFFDDF5EE),
                         selectedIconColor = drawerTeal,
                         selectedTextColor = drawerInk,
                         unselectedIconColor = Color(0xFF6B8384),
-                        unselectedTextColor = drawerInk
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
@@ -95,18 +105,19 @@ internal fun SeraNavigationDrawer(
             NavigationDrawerItem(label = { Text("Create post") }, selected = false,
                 icon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
                 onClick = onCompose)
-            IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Language, contentDescription = "Change language", tint = drawerTeal) }
+            NavigationDrawerItem(label={Text("Language")},selected=false,icon={Icon(Icons.Outlined.Language,null)},onClick=onLanguage)
             NavigationDrawerItem(label={Text("Settings")},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
             NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
                 icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                 onClick = onCheckUpdates)
-            Spacer(Modifier.weight(1f))
+            HorizontalDivider(Modifier.padding(vertical=8.dp))
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
-                onClick = onSignOut)
-            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Built for people and ideas",
+                onClick = {confirmSignOut=true})
+            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Developed by Hisab Technologies",
                 fontSize = 10.sp, color = Color(0xFF71888A),
                 modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }
     }
+    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
 }

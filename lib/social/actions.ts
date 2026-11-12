@@ -1,4 +1,5 @@
 "use server";
+import {readAudience} from "@/lib/social/audience";
 import { serverClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -36,11 +37,12 @@ export async function createPost(
   const session = await member();
   if (!session) return { error: "Sign in with a verified email to publish." };
   const input = readPost(form);
+  const audience=readAudience(form.get("audience"));
   const files = form
     .getAll("media")
     .filter((f): f is File => f instanceof File && f.size > 0);
   if (
-    !input ||
+    !input || !audience ||
     !validMedia(files) ||
     (input.kind === "photos" && !files.length)
   )
@@ -72,7 +74,7 @@ export async function createPost(
   // Draft -> images -> publication. A failed upload never leaves a partial post in the feed.
   const draft = await db
     .from("posts")
-    .insert({ ...input, status: "draft" })
+    .insert({ ...input, audience, status: "draft" })
     .select("id")
     .single();
   if (draft.error)

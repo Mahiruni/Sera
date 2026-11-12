@@ -1,7 +1,9 @@
+import {readAudience,type PostAudience} from "@/lib/social/audience";
 import { postKinds, type PostKind } from "@/lib/social/validation";
 
 export type SeraPostDraft = {
   kind: PostKind;
+  audience?:PostAudience;
   body: string;
   title: string;
   quoteSource: string;
@@ -47,6 +49,7 @@ export function restoreSeraDraft(key: string): SeraPostDraft | null {
     }
     return {
       kind: d.kind,
+      audience:readAudience(d.audience)||"only_me",
       body: text(d.body, 10000),
       title: text(d.title, 140),
       quoteSource: text(d.quoteSource, 120),
@@ -68,6 +71,7 @@ export function draftFromSeraForm(form: HTMLFormElement, kindFallback: PostKind)
   const currentKind = data.get("kind");
   return {
     kind: validKind(currentKind) ? currentKind : kindFallback,
+    audience:readAudience(data.get("audience"))||"only_me",
     body: read("body", 10000),
     title: read("title", 140),
     quoteSource: read("quote_source", 120),

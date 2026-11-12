@@ -2,14 +2,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { ImagePlus, FolderKanban, Quote, PenLine, X, Users } from "lucide-react";
+import { ImagePlus, FolderKanban, Quote, PenLine, X } from "lucide-react";
+import { IdentityBadge } from "@/components/identity/badge";
 import { MemberAvatar } from "@/components/activity/avatar";
 import { PostComposer } from "@/components/social/PostComposer";
 import { SignatureSheetHandle } from "./SignatureSheetHandle";
 import type { PostKind } from "@/lib/social/validation";
 import { seraDraftKey, draftFromSeraForm, saveSeraDraft } from "./post-drafts";
 
-export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatarUrl?: string | null; userId: string }) {
+export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerified=false }: { name: string; avatarUrl?: string | null; userId: string;headline?:string;identityVerified?:boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [initialKind, setInitialKind] = useState<PostKind>("idea");
@@ -18,8 +19,9 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
   const dialog = useRef<HTMLDivElement>(null);
   const dismiss = useCallback(() => {
     const form = dialog.current?.querySelector("form");
+    if(form?.getAttribute("aria-busy")==="true")return;
     const dirty = form ? Array.from(new FormData(form).entries()).some(([key, value]) =>
-      !["kind", "quote_source"].includes(key) &&
+      !["kind", "audience"].includes(key) &&
       (typeof value === "string" ? value.trim().length > 0 : value.size > 0)
     ) : false;
     if (dirty) {
@@ -70,9 +72,9 @@ export function FeedComposer({ name, avatarUrl, userId }: { name: string; avatar
     </section>
     {open && typeof document !== "undefined" && createPortal(
       <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
-        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet">
-          <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading"><span className="sera-premium-heading-icon"><PenLine size={21}/></span> Create Post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
-          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}</strong><small className="sera-premium-audience"><Users size={14}/> SERA members</small></div></div>
+        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet sera-social-composer-dialog">
+          <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
+          <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}{identityVerified&&<IdentityBadge/>}</strong>{headline&&<small>{headline}</small>}</div></div>
           <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} draftOwnerId={userId} onPublished={onPublished} /></div>
         </div>
       </div>, document.body

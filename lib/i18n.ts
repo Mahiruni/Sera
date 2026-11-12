@@ -33,6 +33,8 @@ const words = {
   jobs: ["Discover", "ሥራ ፈልግ"],
   saved: ["Saved", "የተቀመጡ"],
   workspace: ["Workspace", "የሥራ ቦታ"],
+  networkMenu: ["Network", "ግንኙነቶች"],
+  settingsMenu: ["Settings", "ቅንብሮች"],
   profile: ["My profile", "የእኔ መገለጫ"],
   applications: ["Applications", "ማመልከቻዎች"],
   messages: ["Messages", "መልዕክቶች"],
