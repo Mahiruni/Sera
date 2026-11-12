@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { MemberAvatar } from "./activity/avatar";
 import { ActivityBell, InboxBadge } from "./activity/bell";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,10 +42,12 @@ export function Shell({
   children,
   authenticated = false,
   verified = false,
+  profileName="SERA member",profilePhoto=null,
 }: {
   children: React.ReactNode;
   authenticated?: boolean;
   verified?: boolean;
+  profileName?:string;profilePhoto?:string|null;
 }) {
   const { lang, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
@@ -152,7 +155,7 @@ export function Shell({
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
           {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
-          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><UserRound size={21}/></button>{profileOpen&&<div className="sera-profile-popover"><Link href="/profile" onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings</Link></div>}</div>}
+          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={30}/></button>{profileOpen&&<div className="sera-profile-popover"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={36}/><strong>{profileName}</strong></div><Link href="/profile" onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings</Link></div>}</div>}
         </div>
       </header>
       <dialog
@@ -201,7 +204,7 @@ export function Shell({
               <X size={21} />
             </button>
           </div>
-          {authenticated&&<Link className="sera-drawer-profile" href="/profile" onClick={close}><UserRound size={24}/><span>My profile<small>View professional identity</small></span><ArrowUpRight size={16}/></Link>}
+          {authenticated&&<Link className="sera-drawer-profile" href="/profile" onClick={close}><MemberAvatar name={profileName} photo={profilePhoto} size={48}/><span>{profileName}<small>View professional identity</small></span><ArrowUpRight size={16}/></Link>}
           <p className="sr-only" id="drawer-title">
             {t("navigation")}
           </p>

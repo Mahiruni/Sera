@@ -175,3 +175,10 @@ html[data-sera-theme=dark] .sera-conversation-confirm p{color:var(--sera-sheet-m
 .sera-social-composer-dialog .sera-premium-footer button{min-height:44px;border-radius:24px!important;padding:0 20px;font-size:14px}
 .sera-social-composer-dialog .sera-premium-publish{background:#087e83!important;min-width:92px}
 @media(max-width:420px){.sera-app-header .header-account-controls{gap:0!important}.sera-app-header .header-control{width:38px!important;min-width:38px!important;height:44px!important}.sera-app-header .sera-header-wordmark{font-size:21px!important}}
+
+.sera-profile-popover-name{display:flex;align-items:center;gap:8px;padding:8px 10px 12px;border-bottom:1px solid var(--sera-sheet-line,#dce9e6);font-size:13px;overflow-wrap:anywhere}
+.sera-refined-drawer .drawer-group-links>a>svg:last-child{flex:none;margin:0!important;width:19px!important;height:19px!important}
+.sera-conversation-sheet .sera-conversation-header{border-bottom:1px solid var(--sera-sheet-line);padding:8px 16px!important}
+.sera-conversation-sheet .sera-conversation-comment{padding:10px 0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.sera-conversation-sheet .sera-conversation-comment-content{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.sera-conversation-sheet .sera-conversation-composer textarea{border-radius:22px!important;padding:10px 14px!important;min-height:44px}
