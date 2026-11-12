@@ -39,6 +39,7 @@ export default async function Page({
   if (!r.data) notFound();
   const a = r.data as unknown as LiveApplication;
   const employer = a.jobs?.employer_id === user.id;
+  const teamFeedback=employer?await c.rpc("sera_hiring_feedback_list",{p_application:id}):null;
   const review=employer?await c.rpc("sera_candidate_review",{p_application:id}):null;
   const messages = await c
     .from("application_messages")
@@ -172,6 +173,7 @@ export default async function Page({
         </section>
         <section className="panel live-copy">
           {employer&&<section className="panel live-copy"><h2>Private recruitment notes</h2><p>Only the job owner can read these notes.</p><form action={saveReviewNote} className="live-form"><input type="hidden" name="application_id" value={id}/><textarea name="note" maxLength={4000} defaultValue={review?.data?.notes||""} rows={5} aria-label="Private recruitment notes"/><button className="button">Save notes</button></form></section>}
+          {employer&&<section className="panel live-copy"><h2>Team feedback</h2>{((teamFeedback?.data||[]) as {reviewer_id:string;full_name:string;feedback:string}[]).map(f=><article key={f.reviewer_id}><strong>{f.full_name}</strong><p>{f.feedback}</p></article>)}</section>}
           <InterviewPanel id={id} employer={employer} withdrawn={a.stage==="withdrawn"}/>
           <h2>Conversation</h2>
           <p className="auth-help">

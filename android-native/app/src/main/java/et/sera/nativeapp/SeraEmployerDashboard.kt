@@ -15,8 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 @Composable internal fun SeraEmployerDashboard(token:String,userId:String,modifier:Modifier=Modifier,onBack:()->Unit){
- var data by remember(token,userId){mutableStateOf<JSONObject?>(null)};var loading by remember{mutableStateOf(true)};var error by remember{mutableStateOf("")};var refresh by remember{mutableIntStateOf(0)};var stage by remember{mutableStateOf("all")};var inbox by remember{mutableStateOf(false)};var candidate by remember{mutableStateOf<String?>(null)}
+ var data by remember(token,userId){mutableStateOf<JSONObject?>(null)};var loading by remember{mutableStateOf(true)};var error by remember{mutableStateOf("")};var refresh by remember{mutableIntStateOf(0)};var stage by remember{mutableStateOf("all")};var teams by remember{mutableStateOf(false)};var inbox by remember{mutableStateOf(false)};var candidate by remember{mutableStateOf<String?>(null)}
  candidate?.let{id->SeraCandidateReview(token,id,modifier){candidate=null;refresh++};return}
+ if(teams){SeraHiringTeams(token,userId,modifier){teams=false};return}
  if(inbox){SeraCompanyInbox(token,userId,onBack={inbox=false});return}
  androidx.activity.compose.BackHandler(onBack=onBack)
  LaunchedEffect(token,userId,refresh){loading=true;val r=withContext(Dispatchers.IO){spaceCall(token,"sera_employer_dashboard")};data=runCatching{JSONObject(r.first?:"null")}.getOrNull();error=if(data==null)r.second.ifBlank{"Unable to load hiring activity."}else "";loading=false}
@@ -25,6 +26,7 @@ import org.json.JSONObject
  TextButton(onClick=onBack){Text("Back")}
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Brush.linearGradient(listOf(Color(0xFF123A40),Color(0xFF087E83)))).padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Hiring workspace",color=Color.White,style=MaterialTheme.typography.headlineSmall);Text("Build your next great team.",color=Color(0xFFCBEBE7));if(d!=null)Text("${d.optInt("open_jobs")} open roles · ${keys.sumOf{stages.optInt(it)}} applications",color=Color.White,style=MaterialTheme.typography.titleMedium)}
  if(loading)LinearProgressIndicator(Modifier.fillMaxWidth());if(error.isNotBlank()){Text(error,color=MaterialTheme.colorScheme.error);TextButton(onClick={refresh++}){Text("Retry")}}
+ FilledTonalButton(onClick={teams=true},modifier=Modifier.fillMaxWidth()){Text("Hiring teams")}
  if(d!=null){Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilledTonalButton(onClick={inbox=true}){Text("Company inbox")};TextButton(onClick={refresh++}){Text("Refresh")}}
  LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp)){
  item{Text("Hiring pipeline",style=MaterialTheme.typography.titleLarge)}
