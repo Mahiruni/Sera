@@ -94,9 +94,7 @@ internal fun SeraNavigationDrawer(
             NavigationDrawerItem(label = { Text("Create post") }, selected = false,
                 icon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
                 onClick = onCompose)
-            NavigationDrawerItem(label = { Text("Language") }, selected = false,
-                icon = { Icon(Icons.Outlined.Language, contentDescription = null) },
-                onClick = onLanguage)
+            IconButton(onClick = onLanguage, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Language, contentDescription = "Change language", tint = drawerTeal) }
             NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
                 icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                 onClick = onCheckUpdates)

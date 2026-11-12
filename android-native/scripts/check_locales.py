@@ -6,7 +6,7 @@ import re
 import sys
 
 root = Path(__file__).resolve().parents[1] / "app" / "src" / "main" / "res"
-languages = ("am", "om", "ti", "ar", "aa", "so")
+languages = ("am", "om")
 errors = []
 
 

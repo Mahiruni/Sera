@@ -370,7 +370,7 @@ fun SeraApp(
     }
     if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, token = accessToken!!, onPublished = { showComposer = false; refresh++ }, onDismiss = { showComposer = false })
     if (showLanguagePicker) {
-        val locales = listOf("" to stringResource(R.string.system_language), "en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromoo", "ti" to "ትግርኛ", "ar" to "العربية", "aa" to "Qafar af", "so" to "Soomaali")
+        val locales = listOf("en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromo")
         AlertDialog(onDismissRequest = { showLanguagePicker = false },
             title = { Text(stringResource(R.string.language)) },
             text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
@@ -554,6 +554,8 @@ fun SeraApp(
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset)
                                         )
+                                        "Search" -> SeraNativeNetwork(accessToken ?: "", authenticatedUserId, pageModifier, initialSearch=true)
+                                        "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier
@@ -638,7 +640,8 @@ private fun BoxScope.SeraChromeOverlays(
             onCompose = onCompose,
             showCreate = expanded,
             onMessaging = { onNavigate("Inbox") },
-            onLanguage = onLanguage,
+            onSearch = { onNavigate("Search") },
+            onNotifications = { onNavigate("Notifications") },
             onMenu = onMenu
         )
     }

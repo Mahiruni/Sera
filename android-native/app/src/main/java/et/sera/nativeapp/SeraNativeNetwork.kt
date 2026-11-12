@@ -85,7 +85,7 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 }
 
 @Composable
-fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
+fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier, initialSearch: Boolean = false) {
     var showHiring by remember { mutableStateOf(false) }
     if(showHiring){SeraEmployerDashboard(token,userId,modifier,onBack={showHiring=false});return}
     var showOpportunities by remember { mutableStateOf(false) }
@@ -94,7 +94,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     if(showEvents){SeraEvents(token,userId,modifier,onBack={showEvents=false});return}
     var showCollaboration by remember { mutableStateOf(false) }
     if(showCollaboration){SeraCollaboration(token,userId,modifier,onBack={showCollaboration=false});return}
-    var showTalent by remember { mutableStateOf(false) }
+    var showTalent by remember { mutableStateOf(initialSearch) }
     if(showTalent){SeraTalent(token,userId,modifier,onBack={showTalent=false});return}
     var showCommunities by remember { mutableStateOf(false) }
     if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}

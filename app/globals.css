@@ -7404,3 +7404,5 @@ body:has(.auth-layout) .information-footer {
 
 /* Website has no fixed bottom navigation. */
 body { padding-bottom: 0 !important; }
+
+.sera-app-header .header-account-controls{display:flex;align-items:center;gap:2px}.sera-app-header .header-control{min-width:40px;min-height:44px}.drawer .header-language-picker{position:relative;width:44px;height:44px;overflow:hidden}.drawer .header-language-picker select{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}.drawer .header-language-picker label{display:grid;place-items:center;width:44px;height:44px}.drawer .header-language-picker:focus-within{outline:2px solid #087e83;outline-offset:2px}@media(max-width:360px){.sera-app-header .header-control{min-width:38px;width:38px}.sera-app-header .header-account-controls{gap:0}}

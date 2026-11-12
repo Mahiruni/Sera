@@ -40,11 +40,11 @@ test("only published useful public pages enter the indexing allowlist", () => {
     false,
   );
 });
-test("all seven preferences retain honest content-language and Arabic page direction inputs", () => {
-  assert.equal(locales.length, 7);
+test("three supported preferences retain honest content-language inputs", () => {
+  assert.equal(locales.length, 3);
   assert.equal(contentLanguage("om"), "en");
   assert.equal(contentLanguage("am"), "am");
-  assert.equal(pageLanguage("/ar", "en"), "ar");
+  assert.equal(pageLanguage("/ar", "en"), "en");
   assert.equal(pageLanguage("/guides", "am"), "en");
   assert.equal(pageLanguage("/jobs", "am"), "am");
 });

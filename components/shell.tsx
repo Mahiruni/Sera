@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
+  Search,
+  Bell,
+  Mail,
   Compass,
   Bookmark,
   LayoutDashboard,
@@ -149,8 +152,9 @@ export function Shell({
         </button>
         <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="SERA.et home">SERA<span>.et</span></Link>
         <div className="header-account-controls">
-          {verified && <ActivityBell />}
-          <LanguageSelector compact />
+          <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
+          {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
+          <Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>
         </div>
       </header>
       <dialog
@@ -226,7 +230,7 @@ export function Shell({
                   </summary>
                   <div className="drawer-group-links">
                     {group.id === "preferences" && (
-                      <LanguageSelector onNavigate={close} />
+                      <LanguageSelector compact onNavigate={close} />
                     )}
                     {group.items.map((item) => {
                       const Icon = icons[item.icon];

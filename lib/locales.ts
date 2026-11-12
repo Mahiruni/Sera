@@ -1,4 +1,4 @@
-export const locales = [
+const allLocales = [
   {
     code: "en",
     name: "English",
@@ -49,13 +49,14 @@ export const locales = [
     dir: "ltr",
   },
 ] as const;
-export type LocaleCode = (typeof locales)[number]["code"];
+export type LocaleCode = (typeof allLocales)[number]["code"];
+export const locales = allLocales.filter(l => ["en","am","om"].includes(l.code));
 export const isLocale = (value: unknown): value is LocaleCode =>
   typeof value === "string" && locales.some((l) => l.code === value);
 export const contentLanguage = (locale: LocaleCode): "en" | "am" =>
   locale === "am" ? "am" : "en";
 export function pageLanguage(path: string, preference: LocaleCode): LocaleCode {
-  if (path === "/ar") return "ar";
+  if (path === "/ar") return "en";
   if (path === "/am") return "am";
   if (
     [
