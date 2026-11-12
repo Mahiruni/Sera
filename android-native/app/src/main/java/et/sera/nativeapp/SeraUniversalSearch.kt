@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
@@ -94,6 +97,65 @@ private fun readSearch(token:String,query:String,tab:String,location:String,work
     return (if(tab=="All")searchTabs.drop(1).flatMap{k->ranked.filter{it.kind==k}.take(3)}else ranked) to failed
 }
 
+
+// Revalidate access at selection time; search previews are not authorization.
+private fun loadSearchDetail(token:String,hit:SearchHit):SearchHit? = try {
+    val people=hit.kind=="People"
+    val p=mutableMapOf("id" to "eq."+hit.id,"limit" to "1",
+        "select" to if(people)"id,full_name,headline,location" else "id,title,company,location,work_type,description,requirements")
+    if(!people)p["status"]="eq.open"
+    val row=searchRows(token,if(people)"post_authors" else "jobs",p).optJSONObject(0)
+    fun value(key:String)=row?.optString(key)?.takeUnless{it=="null"}.orEmpty()
+    if(row==null)null else if(people)SearchHit(hit.id,"People",value("full_name"),
+        listOf(value("headline"),value("location")).filter{it.isNotBlank()}.joinToString(" · "))
+    else SearchHit(hit.id,"Jobs",value("title"),listOf(value("company"),value("location"),value("work_type")).filter{it.isNotBlank()}.joinToString(" · "),
+        value("description")+"\n\n"+value("requirements"))
+} catch(_:Exception){null}
+
+@Composable
+private fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifier:Modifier,onBack:()->Unit){
+    var detail by remember(token,hit.id){mutableStateOf<SearchHit?>(null)}
+    var loading by remember(token,hit.id){mutableStateOf(true)}
+    var error by remember(token,hit.id){mutableStateOf("")}
+    var retry by remember{mutableIntStateOf(0)}
+    var thread by remember(token,hit.id){mutableStateOf<String?>(null)}
+    var busy by remember{mutableStateOf(false)}
+    val scope=rememberCoroutineScope()
+    val context=LocalContext.current
+    val person=hit.kind=="People"
+    androidx.activity.compose.BackHandler{if(thread!=null)thread=null else onBack()}
+    LaunchedEffect(token,hit.id,retry){loading=true;detail=null;detail=withContext(Dispatchers.IO){loadSearchDetail(token,hit)};loading=false}
+    if(thread!=null){
+        if(person)SeraNativeInbox(token,userId,modifier,initialThread=thread,initialPeer=hit.id,initialName=detail?.title.orEmpty(),onThreadExit={thread=null})
+        else Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,thread,onBack={thread=null})}
+        return
+    }
+    Column(modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        TextButton(onClick=onBack){Text("Back to search")}
+        if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        else if(detail==null){Text("This result is no longer available or could not be loaded.");TextButton(onClick={retry++}){Text("Retry")}}
+        else detail?.let{item->
+            ElevatedCard(Modifier.fillMaxWidth(),shape=RoundedCornerShape(22.dp)){
+                Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Text(if(person)"Professional" else "Opportunity",color=MaterialTheme.colorScheme.primary)
+                    Text(item.title,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+                    Text(item.subtitle,style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if(person){
+                SeraTalentActions(token,userId,item.id,onMessage={thread=it})
+                OutlinedButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,Uri.parse("https://sera.hisabtech.com/members/"+Uri.encode(item.id))))}},modifier=Modifier.fillMaxWidth()){Text("View full professional profile")}
+            }else{
+                Text("About the role",style=MaterialTheme.typography.titleMedium)
+                Text(item.body)
+                Button(onClick={busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){startCompanyJobChat(token,item.id)};busy=false;if(result.first!=null)thread=result.first else error=result.second}},enabled=!busy&&userId.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text(if(busy)"Opening conversation…" else "Message company")}
+                OutlinedButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,Uri.parse("https://sera.hisabtech.com/jobs/"+Uri.encode(item.id))))}},modifier=Modifier.fillMaxWidth()){Text("View full listing on SERA")}
+            }
+            if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
 @Composable
 internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Modifier){
     var query by remember(userId){mutableStateOf("")}
@@ -118,6 +180,7 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
         val response=withContext(Dispatchers.IO){readSearch(token,query,tab,location,work,skill,days)}
         results=response.first;error=response.second;loading=false
     }
+    selected?.takeIf{it.kind!="Posts"&&it.kind!="Projects"}?.let{hit->SearchResultDetail(token,userId,hit,modifier){selected=null;retry++};return}
     Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("Search SERA",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
         OutlinedTextField(value=query,onValueChange={query=it.take(80)},modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(18.dp),label={Text("People, jobs, posts, skills…")},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}),trailingIcon={TextButton(onClick={submit(query)}){Text("Go")}})
@@ -152,6 +215,6 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
     }
     selected?.let{hit->
         if(hit.kind=="Posts"||hit.kind=="Projects")SeraNativePostDetail(token,hit.id){selected=null}
-        else AlertDialog(onDismissRequest={selected=null},title={Text(hit.title)},text={Column{Text(hit.subtitle);if(hit.body.isNotBlank())Text(hit.body.take(4000))}},confirmButton={TextButton(onClick={selected=null}){Text("Close")}})
+
     }
 }
