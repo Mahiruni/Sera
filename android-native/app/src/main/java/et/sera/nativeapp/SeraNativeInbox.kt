@@ -229,6 +229,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     LaunchedEffect(selected?.id){onThreadVisibility(selected!=null)}
     DisposableEffect(Unit){onDispose{onThreadVisibility(false)}}
     var messages by remember { mutableStateOf<List<NativeMessage>>(emptyList()) }
+    var callEvents by remember(selected?.id){mutableStateOf<List<SeraCallEvent>>(emptyList())}
     var draft by remember(initialThread) { mutableStateOf(initialThread?.let{savedDrafts?.read(userId,it)}.orEmpty()) }
     var error by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
@@ -463,7 +464,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     Text(conversation.peerName, fontWeight = FontWeight.SemiBold,fontSize = 17.sp, color = inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
                     Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 12.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart={playback.pause()})
+                SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart={playback.pause()},onHistory={callEvents=it})
                 IconButton(onClick={showSearch=!showSearch},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
                 var threadMenu by remember{mutableStateOf(false)}
                 Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply();threadMenu=false})}}
@@ -476,11 +477,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                 contentPadding = PaddingValues(vertical = 12.dp)) {
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick={historyLimit=(historyLimit+100).coerceAtMost(1000)}){Text("Load earlier messages")}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
-                itemsIndexed(filteredMessages,key={_,message->message.id}) { index,message ->
-                    val date=runCatching{java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
-                    val previousDate=filteredMessages.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
+                val timeline=(filteredMessages.map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.filter{messageSearch.isBlank()||"voice call".contains(messageSearch,true)}.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
+                itemsIndexed(timeline,key={_,item->item.message?.id?:"call-"+item.event?.id}) { index,item ->
+                    val date=runCatching{java.time.Instant.parse(item.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
+                    val previousDate=timeline.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
-                    SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery=""},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
+                    val message=item.message
+                    if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery=""},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
                 }
             }
             SeraNativeComposer(draft=draft,attachment=attachment,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,

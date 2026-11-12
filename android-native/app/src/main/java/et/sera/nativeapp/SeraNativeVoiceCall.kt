@@ -42,13 +42,14 @@ import org.json.JSONObject
 import org.json.JSONArray
 import java.util.UUID
 
+internal data class SeraCallEvent(val id:String,val caller:String,val state:String,val createdAt:String)
 private data class CallRow(val id:String,val caller:String,val callee:String,val state:String,val offer:String?,val answer:String?){
     val live get()=state=="ringing"||state=="accepted"
 }
 private fun parseCall(raw:String?):CallRow?{if(raw.isNullOrBlank()||raw=="null")return null;val j=JSONObject(raw);return CallRow(j.getString("id"),j.getString("caller"),j.getString("callee"),j.getString("state"),j.optString("offer").takeUnless{it.isBlank()||it=="null"},j.optString("answer").takeUnless{it.isBlank()||it=="null"})}
 private suspend fun callRequest(token:String,fn:String,payload:JSONObject):String?=withContext(Dispatchers.IO){val r=chatRpc(token,fn,payload);if(r.first==null)error(r.second.ifBlank{"Call unavailable."});r.first}
 @Composable
-internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit){
+internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit={}){
     val context=LocalContext.current;val scope=rememberCoroutineScope();val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     var config by remember(conversation){mutableStateOf<JSONObject?>(null)}
     var row by remember(conversation){mutableStateOf<CallRow?>(null)}
@@ -110,6 +111,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
         }
     }
+    LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
     LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(25000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()

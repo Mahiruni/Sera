@@ -5,6 +5,7 @@ import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
 export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;accepted_at:string|null;ended_at:string|null};
+export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">;
 export type CallConfig={enabled:boolean;iceServers?:RTCIceServer[]};
 async function dbFor(conversation:string){
   if(!validMessageId(conversation))throw new Error("Invalid conversation.");
@@ -27,6 +28,6 @@ export async function changeCall(conversation:string,id:string,action:"accept"|"
   const db=await dbFor(conversation);if(!validMessageId(id)||!["accept","decline","end","fail"].includes(action)||(answer!=null&&(typeof answer!=="string"||answer.length>65536)))throw new Error("Invalid call.");
   const {data,error}=await db.rpc("sera_call_transition",{p_conversation:conversation,p_id:id,p_action:action,p_answer:answer??null});if(error||!data)throw new Error("Call could not be updated.");return data;
 }
-export async function getCallHistory(conversation:string):Promise<CallSession[]>{
+export async function getCallHistory(conversation:string):Promise<CallHistoryEntry[]>{
   const db=await dbFor(conversation);const {data,error}=await db.rpc("sera_call_history",{p_conversation:conversation});return !error&&Array.isArray(data)?data:[];
 }

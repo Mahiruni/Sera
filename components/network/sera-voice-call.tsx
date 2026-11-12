@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {Phone,PhoneOff,Mic,MicOff,X} from "lucide-react";
 import {MemberAvatar} from "@/components/activity/avatar";
-import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,type CallSession,type CallConfig} from "@/lib/network/voice-calls";
+import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
 
 const live=(s:CallSession)=>s.state==="ringing"||s.state==="accepted";
 async function gather(pc:RTCPeerConnection){
@@ -14,8 +14,8 @@ async function gather(pc:RTCPeerConnection){
     pc.addEventListener("icegatheringstatechange",check);check();
   });
 }
-export function SeraVoiceCall({conversation,userId,name,photo}:{conversation:string;userId:string;name:string;photo?:string|null}){
-  const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallSession[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false);
+export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conversation:string;userId:string;name:string;photo?:string|null;onHistory:(events:CallHistoryEntry[])=>void}){
+  const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallHistoryEntry[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false);
   const pc=useRef<RTCPeerConnection|null>(null),stream=useRef<MediaStream|null>(null),audio=useRef<HTMLAudioElement>(null),current=useRef<CallSession|null>(null),busy=useRef(false),mounted=useRef(true),started=useRef(0),lastRemote=useRef(""),failTimer=useRef<ReturnType<typeof setTimeout>|null>(null),pollErrors=useRef(0);
   const update=useCallback((s:CallSession|null)=>{current.current=s;if(mounted.current)setSession(s);},[]);
   const cleanup=useCallback(()=>{if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);}},[]);
@@ -31,6 +31,7 @@ export function SeraVoiceCall({conversation,userId,name,photo}:{conversation:str
     if(s.state==="accepted"&&s.caller===userId&&s.answer&&pc.current&&lastRemote.current!==s.answer){lastRemote.current=s.answer;await pc.current.setRemoteDescription({type:"answer",sdp:s.answer});if(mounted.current&&!started.current)setPhase("Connecting…");}
   }catch{if(++pollErrors.current>=3&&current.current){await terminate("fail","Call connection lost.");}}finally{busy.current=false;}};
   void poll();const timer=setInterval(()=>void poll(),1500);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,userId,cleanup,update,terminate]);
+  useEffect(()=>{if(!config.enabled)return;let stopped=false;const refresh=()=>void getCallHistory(conversation).then(events=>{if(!stopped)onHistory(events);}).catch(()=>{});refresh();const timer=setInterval(refresh,10000);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,onHistory]);
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((Date.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
   async function createPeer(){
     const fresh=await getCallConfig(conversation);if(!fresh.enabled||!fresh.iceServers?.length)throw new Error("Calling is not available.");
