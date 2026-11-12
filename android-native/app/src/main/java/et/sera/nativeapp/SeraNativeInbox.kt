@@ -1,6 +1,11 @@
 package et.sera.nativeapp
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Description
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -60,7 +65,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 private data class NativeConversation(val id: String, val peerId: String, val peerName: String)
-private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String)
+private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>)
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -123,13 +128,15 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
 
 private fun loadNativeMessages(token: String, conversationId: String): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=100")
+        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,professional_message_attachments(file_name,mime_type,storage_path,byte_size)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=100")
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
         (0 until rows.length()).map { i ->
             val item = rows.getJSONObject(i)
-            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"))
+            val attachments = item.optJSONArray("professional_message_attachments") ?: JSONArray()
+            val files = (0 until attachments.length()).map { k -> val a=attachments.getJSONObject(k); NativeChatFile(a.optString("file_name"),a.optString("mime_type"),a.optString("storage_path"),a.optInt("byte_size")) }
+            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files)
         }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
 }
@@ -189,6 +196,19 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         lastMessageId = last
     }
     val scope = rememberCoroutineScope()
+    var attachment by remember(selected?.id) { mutableStateOf<NativeChatSelection?>(null) }
+    var checkingFile by remember { mutableStateOf(false) }
+    val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val conversationId = selected?.id
+            checkingFile = true
+            scope.launch {
+                val result = withContext(Dispatchers.IO) { runCatching { selectChatFile(context,uri) } }
+                if (selected?.id == conversationId) result.onSuccess { attachment=it; error="" }.onFailure { error=it.message ?: "Could not read file." }
+                checkingFile=false
+            }
+        }
+    }
     BackHandler(selected != null) { selected = null; messages = emptyList(); error = "" }
     LaunchedEffect(token, userId, refresh) {
         if (userId.isBlank()) return@LaunchedEffect
@@ -298,7 +318,16 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                             color = if (own) inboxTeal else inboxSoft,
                             modifier = Modifier.widthIn(max = 300.dp)) {
                             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                Text(message.body, color = if (own) Color.White else inboxInk)
+                                if (message.body != "Attachment" || message.files.isEmpty()) Text(message.body, color = if (own) Color.White else inboxInk)
+                                message.files.forEach { file ->
+                                    TextButton(onClick = { scope.launch {
+                                        val result = withContext(Dispatchers.IO) { runCatching { downloadChatFile(context,token,file) } }
+                                        result.onSuccess { uri -> runCatching { openChatFile(context,uri,file.mime) }.onFailure { error="No app can open this file." } }.onFailure { error=it.message ?: "Could not open attachment." }
+                                    } }, colors = ButtonDefaults.textButtonColors(contentColor = if (own) Color.White else inboxTeal)) {
+                                        Icon(Icons.Outlined.Description,null,Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)); Text(file.name, maxLines=2)
+                                    }
+                                    Text("${file.bytes / 1024} KB · ${if (file.mime == "application/pdf") "PDF" else "Image"}",fontSize=11.sp,color=if(own) Color.White.copy(alpha=.8f) else inboxInk)
+                                }
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
                                     Text(time, color = if (own) Color.White.copy(alpha = 0.8f) else Color(0xFF607478), fontSize = 10.sp)
@@ -315,12 +344,22 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     }
                 }
             }
+            attachment?.let { file ->
+                Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Description,null,tint=inboxTeal); Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,fontWeight=FontWeight.SemiBold); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp) }
+                        IconButton(onClick={attachment=null},enabled=!sending) { Icon(Icons.Outlined.Close,"Remove attachment") }
+                    }
+                }
+            }
             Row(
                 Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
                     .padding(top = 11.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                IconButton(onClick={attachmentPicker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},enabled=!sending && !checkingFile,modifier=Modifier.size(44.dp)) { Icon(Icons.Outlined.AttachFile,"Attach image or PDF",tint=inboxTeal) }
                 OutlinedTextField(
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {
@@ -334,23 +373,23 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 )
                 Button(onClick = {
                     val body = draft.trim()
-                    if (body.isBlank() || sending) return@Button
+                    val file=attachment
+                    if ((body.isBlank() && file == null) || sending || checkingFile) return@Button
                     sending = true
                     scope.launch {
                         val result = withContext(Dispatchers.IO) {
-                            inboxRequest(token, "professional_messages", "POST",
-                                JSONObject().put("conversation_id", conversation.id)
-                                    .put("sender_id", userId).put("body", body))
+                            if(file != null) { val failure=sendChatAttachment(token,userId,conversation.id,body,file); if(failure.isBlank()) "ok" to "" else null to failure }
+                            else inboxRequest(token, "professional_messages", "POST", JSONObject().put("conversation_id",conversation.id).put("sender_id",userId).put("body",body))
                         }
                         if (result.first != null) {
-                            draft = ""
+                            if (selected?.id == conversation.id) { draft = ""; attachment=null }
                             runCatching { savedDrafts?.clear(userId, conversation.id) }
                             val refreshed = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
                             if (selected?.id == conversation.id) refreshed.first?.let { messages = it }
                         } else error = result.second
                         sending = false
                     }
-                }, enabled = draft.isNotBlank() && !sending,
+                }, enabled = (draft.isNotBlank() || attachment != null) && !sending && !checkingFile,
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     modifier = Modifier.heightIn(min = 54.dp),
                     shape = RoundedCornerShape(17.dp),
