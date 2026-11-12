@@ -98,7 +98,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 private data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="")
-private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
+internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -480,47 +480,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     val date=runCatching{java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
                     val previousDate=filteredMessages.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
-                    val own = message.senderId == userId
-                    var swipe by remember(message.id){mutableFloatStateOf(0f)}
-                    val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(110),label="Reply gesture")
-                    val actions: @Composable () -> Unit = {
-                        if(!message.unsent) Box {
-                            DropdownMenu(expanded=menu==message.id,onDismissRequest={menu=null}) {
-                                DropdownMenuItem(text={Text("Reply")},onClick={reply=message;menu=null})
-                                DropdownMenuItem(text={Text("React")},onClick={reaction=message;menu=null})
-                                DropdownMenuItem(text={Text("Forward")},onClick={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery="";menu=null})
-                                if(message.body.isNotBlank())DropdownMenuItem(text={Text("Copy text")},onClick={clipboard.setText(AnnotatedString(message.body));menu=null})
-                                if(own)DropdownMenuItem(text={Text("Unsend")},onClick={remove=message;menu=null})
-                            }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
-                        Box { SeraCompactMessageBubble(own=own,
-                            color = if(message.unsent) inboxSoft else if (own) outgoing else incoming,
-                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.semantics{onLongClick(label="Message actions"){menu=message.id;true}}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={menu=message.id})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){reply=message;haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
-                                if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else accent)
-                                if(message.replyId.isNotBlank()&&!message.unsent){val original=messages.firstOrNull{it.id==message.replyId};Surface(color=if(own)Color.Black.copy(alpha=.12f)else chatSurface,shape=RoundedCornerShape(9.dp),modifier=Modifier.padding(bottom=5.dp)){Row(Modifier.height(IntrinsicSize.Min)){Box(Modifier.width(3.dp).fillMaxHeight().background(if(own)Color(0xFFB5FFF4)else accent));Column(Modifier.padding(horizontal=8.dp,vertical=5.dp)){Text(if(original?.senderId==userId)"You" else conversation.peerName,fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color(0xFFB5FFF4)else accent,maxLines=1);Text(if(original?.unsent==true)"Message unsent" else original?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}}}
-                                if(message.unsent||message.files.isEmpty()||message.body !in listOf("Attachment","Voice message"))Text(if(message.unsent) "Message unsent" else message.body,color=if(message.unsent)muted else if(own)Color.White else inboxInk,fontSize=14.sp,lineHeight=20.sp)
-                                if(!message.unsent&&message.reactions.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(3.dp)){message.reactions.groupBy{it.second}.entries.chunked(3).forEach{group->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){group.forEach{(emoji,people)->Surface(color=if(own)Color.White.copy(alpha=.16f)else chatSurface,shape=CircleShape){TextButton(onClick={react(message,emoji)},contentPadding=PaddingValues(horizontal=5.dp,vertical=2.dp)){Text(emoji+" "+people.size,color=if(own)Color.White else inboxInk,fontSize=12.sp)}}}}}}
-
-                                message.files.filter{!message.unsent}.forEach { file ->
-                                    if(file.mime.startsWith("audio/")){SeraChatVoicePlayer(playback,file.path,file.durationMs,if(own)Color.White else accent,onPlay={scope.launch{playback.toggle(file.path,file.mime,{readChatFile(token,file)},{error=it})}})}else if(file.mime.startsWith("image/")){SeraPrivateImageCard(token,file,onOpen={mediaViewer=file},foreground=if(own)Color.White else inboxInk)}else{
-                                    TextButton(onClick = { scope.launch {
-                                        val result = withContext(Dispatchers.IO) { runCatching { downloadChatFile(context,token,file) } }
-                                        result.onSuccess { uri -> runCatching { openChatFile(context,uri,file.mime) }.onFailure { error="No app can open this file." } }.onFailure { error=it.message ?: "Could not open attachment." }
-                                    } }, colors = ButtonDefaults.textButtonColors(contentColor = if (own) Color.White else inboxTeal)) {
-                                        Icon(Icons.Outlined.Description,null,Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)); Text(file.name, maxLines=2)
-                                    }
-                                    Text("${file.bytes / 1024} KB · ${if (file.mime == "application/pdf") "PDF" else "Image"}",fontSize=11.sp,color=if(own) Color.White.copy(alpha=.8f) else inboxInk)}
-                                }
-                                val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
-                                val read = message.readAt.isNotBlank() && message.readAt != "null"
-                                val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
-                                SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)Color.White.copy(alpha=.8f)else muted)
-                        }
-
-                        actions() }
-                    }
+                    SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery=""},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
                 }
             }
             reply?.let{m->Surface(color=inboxSoft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp);IconButton(onClick={reply=null}){Icon(Icons.Outlined.Close,"Cancel reply")}}}}
