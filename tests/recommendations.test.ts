@@ -11,3 +11,10 @@ test("skill matching avoids substring false positives and duplicate terms",()=>{
  assert.equal(recommendJobs({skills:"Java"},[job("a","Developer","JavaScript")]).length,0);
  assert.equal(recommendJobs({skills:"C++"},[job("a","Developer","C++")]).length,1);
 });
+
+test("professional recommendations exclude self, existing relationships and duplicates",async()=>{
+ const {recommendProfessionals}=await import("../lib/network/recommendations");
+ const person=(id:string,skills:string)=>({member_id:id,full_name:id,headline:"Engineer",matched_skills:skills,showcase_title:"Project"});
+ const candidates=[person("self","React, SQL"),person("connected","React, SQL"),person("a","React"),person("b","React, SQL"),person("a","React"),person("none","")];
+ assert.deepEqual(recommendProfessionals(candidates,"self",new Set(["connected"])).map(p=>p.member_id),["b","a"]);
+});

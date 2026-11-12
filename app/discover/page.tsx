@@ -28,6 +28,7 @@ import { PostList, SocialPagination } from "@/components/social/feed";
 import { UniversalSearchBox } from "@/components/network/universal-search-box";
 import { SearchFilterPanel } from "@/components/network/search-filter-panel";
 import { searchFilters, categoryFilters, searchHref, type SearchFilters } from "@/lib/network/search-filters";
+import { RecommendedProfessionals } from "@/components/network/recommended-professionals";
 import { PersonalizedDiscovery } from "@/components/network/personalized-discovery";
 import { UniversalSearchResults } from "@/components/network/universal-search-results";
 export const metadata = {
@@ -123,7 +124,7 @@ export default async function Discover({
       </form>
       <DiscoverTabs kind={kind} query={query} filters={filters} />
         <SearchFilterPanel kind={kind} query={query} filters={filters} />
-      {kind === "people" && !query && page === 1 && !Object.values(filters).some(Boolean) && <PersonalizedDiscovery profile={profile} />}
+      {kind === "people" && !query && page === 1 && !Object.values(filters).some(Boolean) && <><PersonalizedDiscovery profile={profile} /><RecommendedProfessionals userId={user.id} /></>}
       <div className="network-results-heading">
         <h2>
           {query

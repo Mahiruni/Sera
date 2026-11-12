@@ -18,3 +18,12 @@ export function recommendJobs(profile:MatchProfile,jobs:MatchJob[]){
   return {job,score,matchedSkills,matchedRoles,sameLocation};
  }).filter(r=>r.matchedSkills.length||r.matchedRoles.length).sort((a,b)=>b.score-a.score||a.job.id.localeCompare(b.job.id)).slice(0,5);
 }
+
+export type ProfessionalCandidate={member_id:string;full_name:string;headline:string;matched_skills:string;showcase_title:string};
+export function recommendProfessionals<T extends ProfessionalCandidate>(candidates:T[],userId:string,excluded:ReadonlySet<string>){
+ const seen=new Set<string>();
+ return candidates.filter(p=>{
+  if(!p.member_id||p.member_id===userId||excluded.has(p.member_id)||seen.has(p.member_id)||!matchTerms(p.matched_skills).length)return false;
+  seen.add(p.member_id);return true;
+ }).sort((a,b)=>matchTerms(b.matched_skills).length-matchTerms(a.matched_skills).length||a.member_id.localeCompare(b.member_id)).slice(0,5);
+}
