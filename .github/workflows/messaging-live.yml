@@ -1,0 +1,51 @@
+name: SERA Messaging Authenticated E2E
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/e2e/messaging-live.spec.ts'
+      - '.github/workflows/messaging-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  messaging:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SERA_E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://okegwojigrtxadvgxpwm.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+      SERA_E2E_OWNER_ID: ${{ secrets.SERA_E2E_OWNER_ID }}
+      SERA_E2E_OWNER_EMAIL: ${{ secrets.SERA_E2E_OWNER_EMAIL }}
+      SERA_E2E_OWNER_PASSWORD: ${{ secrets.SERA_E2E_OWNER_PASSWORD }}
+      SERA_E2E_CONNECTED_EMAIL: ${{ secrets.SERA_E2E_CONNECTED_EMAIL }}
+      SERA_E2E_CONNECTED_PASSWORD: ${{ secrets.SERA_E2E_CONNECTED_PASSWORD }}
+      SERA_E2E_UNRELATED_EMAIL: ${{ secrets.SERA_E2E_UNRELATED_EMAIL }}
+      SERA_E2E_UNRELATED_PASSWORD: ${{ secrets.SERA_E2E_UNRELATED_PASSWORD }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require isolated verified QA accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY SERA_E2E_OWNER_ID SERA_E2E_OWNER_EMAIL SERA_E2E_OWNER_PASSWORD SERA_E2E_CONNECTED_EMAIL SERA_E2E_CONNECTED_PASSWORD SERA_E2E_UNRELATED_EMAIL SERA_E2E_UNRELATED_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "::error::Missing dedicated QA fixture: $name"; exit 1; fi
+          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false @playwright/test@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Run real authenticated messaging against local web build and existing Supabase
+        run: |
+          npx next dev --hostname 127.0.0.1 --port 3000 > /tmp/sera-messaging-live.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3000/sign-in >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS --max-time 10 http://127.0.0.1:3000/sign-in >/dev/null
+          npx playwright test tests/e2e/messaging-live.spec.ts --project=chromium
