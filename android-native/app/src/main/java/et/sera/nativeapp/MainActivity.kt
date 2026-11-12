@@ -340,6 +340,8 @@ fun SeraApp(
         }else SeraPush.register(context,token,authenticatedUserId)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
+    var inboxThreadOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(tab){if(tab!="Inbox")inboxThreadOpen=false}
     var openCompanyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(pushKind,accessToken){if(pushKind!=null&&accessToken!=null){openCompanyInbox=pushKind=="company_message";navigateTo(if(pushKind=="message"||pushKind=="company_message")"Inbox" else "Notifications");onPushConsumed()}}
     var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
@@ -489,7 +491,7 @@ fun SeraApp(
                     }
                     ModalNavigationDrawer(
                         drawerState = drawerState,
-                        gesturesEnabled = !expanded,
+                        gesturesEnabled = !expanded && !(tab=="Inbox"&&inboxThreadOpen),
                         drawerContent = {
                             SeraNavigationDrawer(
                                 selected = tab,
@@ -527,7 +529,7 @@ fun SeraApp(
                         }
                     ) {
                         Row(Modifier.fillMaxSize()) {
-                            if (expanded) NavigationRail {
+                            if (expanded && !(tab=="Inbox"&&inboxThreadOpen)) NavigationRail {
                                 sections.forEach { item ->
                                     NavigationRailItem(
                                         selected = tab == item, onClick = { navigateTo(item) },
@@ -576,7 +578,7 @@ fun SeraApp(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
                                         "Inbox" -> SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, pageModifier, openCompanyInbox, { openCompanyInbox=false }
+                                            accessToken ?: "", authenticatedUserId, if(inboxThreadOpen)Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false }, onConversationVisible={inboxThreadOpen=it}
                                         )
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -594,7 +596,7 @@ fun SeraApp(
                                 SeraChromeOverlays(
                                     notificationCount=unreadActivity.first,
                                     inboxCount=unreadActivity.second,
-                                    visible = (tab != "Home" || chromeVisible.value) && !keyboardOpen,
+                                    visible = (tab != "Home" || chromeVisible.value) && !keyboardOpen && !(tab=="Inbox"&&inboxThreadOpen),
                                     expanded = expanded,
                                     selected = tab,
                                     sections = sections,

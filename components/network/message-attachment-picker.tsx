@@ -33,7 +33,7 @@ export function MessageAttachmentPicker() {
   };
   return (
     <div className="sera-message-attachment">
-      <label htmlFor="professional-attachment"><Paperclip size={16} aria-hidden="true" /> Share a project image or PDF document (maximum 5 MB)</label>
+      <label htmlFor="professional-attachment" title="Attach image or PDF (up to 5 MB)"><Paperclip size={22} aria-hidden="true" /><span className="sr-only">Attach image or PDF, up to 5 MB</span></label>
       <input ref={input} id="professional-attachment" name="attachment" type="file"
         accept="image/jpeg,image/png,image/webp,application/pdf"
         onChange={(event) => choose(event.currentTarget.files?.[0])} />

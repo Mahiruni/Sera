@@ -38,10 +38,10 @@ export function ConversationTyping({ conversation }: { conversation: string }) {
     <p role="status" aria-live="polite" style={{ minHeight: 20, fontSize: 12, color: "#356477", margin: "4px 0" }}>
       {typing ? "Your connection is typing…" : ""}
     </p>
-    <label htmlFor="professional-message">Your message</label>
-    <textarea id="professional-message" name="body" maxLength={4000} rows={3}
+    <label className="sr-only" htmlFor="professional-message">Your message</label>
+    <textarea id="professional-message" name="body" maxLength={4000} rows={1}
       onInput={onInput} onBlur={() => announce(false)}
-      placeholder="Write a thoughtful message…"
-      style={{ width: "100%", padding: 12, borderRadius: 14, border: "1px solid #a8d5df" }} />
+      placeholder="Message…"
+      className="sera-chat-input" />
   </>;
 }
