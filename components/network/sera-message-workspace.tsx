@@ -2,14 +2,14 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import {ArrowLeft,ArrowDown,Check,CheckCheck,ChevronDown,Copy,FileText,Forward,MessageCircle,MoreHorizontal,Paperclip,Plus,Reply,Search,Send,Smile,Trash2,Volume2,VolumeX,X,Clock,AlertCircle} from "lucide-react";
+import {ArrowLeft,ArrowDown,Check,CheckCheck,Copy,FileText,Forward,MessageCircle,MoreHorizontal,Paperclip,Plus,Reply,Search,Send,Smile,Trash2,Volume2,VolumeX,X,Clock,AlertCircle} from "lucide-react";
 import {MemberAvatar} from "@/components/activity/avatar";
 import {ProfessionalPresence} from "@/components/network/professional-presence";
 import {InboxRefresh} from "@/components/network/inbox-refresh";
 import {VoiceRecorder} from "@/components/network/sera-voice-recorder";
 import {openProfessionalConversation} from "@/lib/network/messaging";
 import {prepareMessageUpload,sendMessageV2,setMessageReaction,unsendMessage,forwardMessage,recordMessageReceipts,loadEarlierMessages,refreshOlderMessages} from "@/lib/network/messaging-excellence";
-import {CHAT_MIME_EXT,REACTIONS,FILE_LIMIT,MESSAGE_LIMIT,isChatMime,validAttachment,type AttachmentMeta,type MessageView,type ThreadPreview} from "@/lib/network/message-contract";
+import {REACTIONS,FILE_LIMIT,MESSAGE_LIMIT,isChatMime,validAttachment,type AttachmentMeta,type MessageView,type ThreadPreview} from "@/lib/network/message-contract";
 import {saveOutbox,readOutbox,removeOutbox,type OutboxMessage} from "@/lib/network/message-outbox";
 type Candidate={id:string;name:string;photo?:string|null};
 type Pending=OutboxMessage&{status:"queued"|"sending"|"failed"|"sent";error?:string};
@@ -18,7 +18,7 @@ const day=(v:string)=>new Date(v).toLocaleDateString("en-GB",{timeZone:"Africa/A
 const preview=(m:MessageView)=>m.unsent?"Message unsent":m.body.slice(0,140);
 function useChatSound(){
   const [enabled,setEnabled]=useState(false);const context=useRef<AudioContext|null>(null);
-  useEffect(()=>{try{setEnabled(localStorage.getItem("sera-chat-sound")==="on");}catch{}return()=>{void context.current?.close().catch(()=>{});};},[]);
+  useEffect(()=>{const timer=setTimeout(()=>{try{setEnabled(localStorage.getItem("sera-chat-sound")==="on");}catch{}},0);return()=>{clearTimeout(timer);void context.current?.close().catch(()=>{});};},[]);
   const play=useCallback((incoming=false)=>{
     if(!enabled||document.visibilityState!=="visible")return;
     try{
@@ -117,8 +117,9 @@ function ChatThread({userId,thread,threads,messages,hasMore,search,loadError}:{u
   function changeDraft(value:string){setDraft(value.slice(0,MESSAGE_LIMIT));if(Date.now()-lastTyping.current>3000){lastTyping.current=Date.now();announce(Boolean(value.trim()));}if(typingTimer.current)clearTimeout(typingTimer.current);typingTimer.current=setTimeout(()=>announce(false),3500);}
   function choose(file:File|undefined){if(!file)return;const mime=file.type==="audio/x-m4a"?"audio/mp4":file.type;if(!isChatMime(mime)||file.size>FILE_LIMIT||!file.size){setError("Choose a supported image, PDF or audio file of 5 MB or less.");return;}const normalized=file.type===mime?file:new File([file],file.name,{type:mime});const meta={name:file.name.slice(0,180)||"Attachment",mime,size:file.size};if(!validAttachment(meta))return;setAttachment({file:normalized,meta});setError("");}
   async function send(){if(!draft.trim()&&!attachment)return;const p:Pending={clientId:crypto.randomUUID(),conversation:thread.id,body:draft.trim(),replyTo:reply?.id??null,replyLabel:reply?preview(reply):null,createdAt:new Date().toISOString(),attachment:attachment?.meta??null,file:attachment?.file??null,status:"queued"};
-    setDraft("");setAttachment(null);setReply(null);setError("");announce(false);setPending(ps=>[...ps,p]);
+    setDraft("");setAttachment(null);setReply(null);setError("");announce(false);
     try{await saveOutbox(userId,p);}catch{if(!navigator.onLine)setError("Offline storage is unavailable. Keep this chat open to retry your message.");}
+    if(mounted.current)setPending(ps=>[...ps,p]);
   }
   async function history(){if(loadingOlder||!all.length)return;setLoadingOlder(true);setError("");const first=all[0];try{const result=await loadEarlierMessages(thread.id,search,{id:first.id,createdAt:first.createdAt});if(result.error)throw new Error(result.error);const el=scroll.current;if(el)scrollAnchor.current=el.scrollHeight-el.scrollTop;setOlder(ps=>[...result.messages,...ps]);setMore(result.hasMore);}catch(e){setError(e instanceof Error?e.message:"Could not load older messages.");}finally{setLoadingOlder(false);}}
   async function react(m:MessageView,emoji:string){if(actionBusy)return;setActionBusy(true);setReactions(null);const own=m.reactions.find(r=>r.memberId===userId);try{const r=await setMessageReaction(m.id,own?.emoji===emoji?null:emoji);if(!r.ok)throw new Error(r.error);router.refresh();}catch(e){setError(e instanceof Error?e.message:"Reaction failed.");}finally{setActionBusy(false);}}
