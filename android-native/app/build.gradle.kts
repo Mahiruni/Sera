@@ -14,7 +14,10 @@ android {
         versionName = providers.gradleProperty("SERA_VERSION_NAME").orElse("0.1.0").get()
         val supabaseUrl = providers.gradleProperty("SERA_SUPABASE_URL").orElse("").get()
         val supabaseAnonKey = providers.gradleProperty("SERA_SUPABASE_ANON_KEY").orElse("").get()
-        val firebaseClient = System.getenv("SERA_FIREBASE_CLIENT_JSON").orEmpty()
+        val firebaseClient = file("google-services.json").readText()
+        val firebaseConfig = groovy.json.JsonSlurper().parseText(firebaseClient) as Map<*, *>
+        require((firebaseConfig["project_info"] as Map<*, *>)["project_id"] == "sera-8ecc2") { "SERA Firebase project mismatch" }
+        require((firebaseConfig["client"] as List<*>).any { ((it as Map<*, *>)["client_info"] as Map<*, *>)["android_client_info"].let { info -> (info as Map<*, *>)["package_name"] == "et.sera.nativeapp" } }) { "SERA Android Firebase client missing" }
         val escapedFirebase = firebaseClient.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n").replace("\r","\\r")
         buildConfigField("String", "FIREBASE_CLIENT_JSON", "\""+escapedFirebase+"\"")
         buildConfigField("String", "SUPABASE_URL", "\""+supabaseUrl+"\"")

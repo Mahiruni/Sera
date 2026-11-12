@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "857505712388",
+    "project_id": "sera-8ecc2",
+    "storage_bucket": "sera-8ecc2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:857505712388:android:1216334323d0b613f02851",
+        "android_client_info": {
+          "package_name": "et.sera.nativeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOR0iVs_ZIgQZZ6Ppa5Qw-dRbplv1VhRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
