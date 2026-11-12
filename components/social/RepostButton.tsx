@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,7 +26,7 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     }
     return result;
   }, {});
-  function requestClose(){if(pending)return;if(note.trim()&&!window.confirm("Discard your repost draft?"))return;setOpen(false);}
+  const requestClose=useCallback(()=>{if(pending)return;if(note.trim()&&!window.confirm("Discard your repost draft?"))return;setOpen(false);},[pending,note]);
   const trigger = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -36,6 +36,10 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     close.current?.focus();
+    return () => { document.body.style.overflow = oldOverflow; previouslyFocused?.focus(); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !pending) { event.preventDefault(); requestClose(); }
       if (event.key !== "Tab") return;
@@ -48,8 +52,8 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = oldOverflow; previouslyFocused?.focus(); };
-  }, [open, pending, note]);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, pending, requestClose]);
   return <>
     <button ref={trigger} type="button" onClick={() => {setThoughts(false);setNote("");setOpen(true)}} disabled={disabled} aria-pressed={reposted}
       aria-label={disabled ? "You cannot repost your own post" : "Repost this professional update"}
@@ -74,7 +78,7 @@ export function RepostButton({ id, author, disabled = false, reposted=false,coun
             {thoughts&&!reposted?<textarea aria-label="Your thoughts" name="note" maxLength={400} placeholder="Share your perspective…" rows={5} value={note} onChange={e=>setNote(e.target.value)} disabled={pending}/>:<input type="hidden" name="note" value=""/>}
             {state.error && <p role="alert" className="social-error">{state.error}</p>}
             <div className="sera-repost-actions">
-              <button type="button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
+              <button type="button" disabled={pending} onClick={requestClose}>Cancel</button>
               <button type="submit" disabled={pending||(!reposted&&thoughts&&!note.trim())}>
                 <SeraReactionIcon kind="repost" />
                 {pending ? "Saving…" : reposted?"Undo repost":"Repost"}
