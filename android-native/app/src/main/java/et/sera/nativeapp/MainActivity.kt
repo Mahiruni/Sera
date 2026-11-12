@@ -178,7 +178,7 @@ fun SeraApp(
 
     fun launchVerifiedInstaller() {
         val id = activeDownloadId ?: return
-        if (!updateDownloaded || preparingInstaller) return
+        if (!updateDownloaded || preparingInstaller || installerRequested) return
         preparingInstaller = true
         installScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -602,9 +602,9 @@ fun SeraApp(
                     }
                 }
             }
-            if (activeDownloadId != null) {
+            if (activeDownloadId != null && !installerRequested && !preparingInstaller) {
                 val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                SeraUpdateProgressPanel(highlights=activeRelease?.highlights.orEmpty(),version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) (60.dp + (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.35f)) else 12.dp))
+                SeraUpdateProgressPanel(highlights=activeRelease?.highlights.orEmpty(),version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={if(!requestSeraInstallPermission(context)) updateNotice="Allow installation in Android Settings."},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) (60.dp + (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.25f)) else 12.dp))
             }
             }
         }

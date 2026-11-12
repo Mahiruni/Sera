@@ -12,6 +12,7 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.chatfiles" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/sera_chat_file_paths"/></provider>
         <service android:name=".SeraFirebaseService" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter></service>
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="sera_messages"/>
+        <receiver android:name=".SeraPackageReplacedReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
         <receiver android:name=".SeraInstallStatusReceiver" android:exported="false"/>
         <service android:name="androidx.appcompat.app.AppLocalesMetadataHolderService" android:enabled="false" android:exported="false"><meta-data android:name="autoStoreLocales" android:value="true"/></service>
     </application>

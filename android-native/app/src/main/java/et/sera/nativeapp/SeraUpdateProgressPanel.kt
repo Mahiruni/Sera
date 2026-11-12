@@ -43,8 +43,8 @@ internal fun SeraUpdateProgressPanel(highlights:List<String>,version:String,prog
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
                 Text(title,fontSize=15.sp,fontWeight=FontWeight.Bold,color=Color.White)
-                Text(detail,fontSize=11.sp,color=Color(0xFFB6D9D8))
                 if(!downloaded && !busy && !permission) SeraUpdateHighlights(highlights)
+                Text(detail,fontSize=11.sp,color=Color(0xFFB6D9D8))
                 if(permission||downloaded&&!preparing&&!verifying) Button(onClick=if(permission)onPermission else onInstall,colors=ButtonDefaults.buttonColors(containerColor=mint,contentColor=Color(0xFF10383B)),contentPadding=PaddingValues(horizontal=12.dp,vertical=6.dp),modifier=Modifier.heightIn(min=36.dp)){Text(if(permission)"Allow" else "Install update",fontSize=12.sp,fontWeight=FontWeight.Bold)}
             }
             if(!downloaded&&!busy)Text("v$version",fontSize=11.sp,color=mint)

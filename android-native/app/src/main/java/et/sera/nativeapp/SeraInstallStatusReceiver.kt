@@ -43,6 +43,7 @@ class SeraInstallStatusReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_SUCCESS -> {
                 val id=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE).getLong("id",-1L)
                 if(id>0) discardSeraDownload(context,id) else clearSeraPendingUpdate(context)
+                reopenSeraAfterUpdate(context)
             }
             else -> {
                 val explanation = when (status) {
@@ -77,4 +78,30 @@ internal fun consumeSeraInstallError(context: Context): String? {
     val error = preferences.getString("install_error", null)
     if (error != null) preferences.edit().remove("install_error").apply()
     return error
+}
+
+/** Android may restrict background activity launches; retain a user-tappable fallback. */
+internal fun reopenSeraAfterUpdate(context: Context) {
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    runCatching { context.startActivity(launch) }
+    if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+    runCatching {
+        val manager = context.getSystemService(android.app.NotificationManager::class.java)
+        val channel = "sera_update_complete"
+        manager.createNotificationChannel(android.app.NotificationChannel(channel,"SERA updates",android.app.NotificationManager.IMPORTANCE_DEFAULT))
+        val open = android.app.PendingIntent.getActivity(context, 903, launch, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+        manager.notify(903, androidx.core.app.NotificationCompat.Builder(context,channel).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("SERA is updated").setContentText("Tap to open the latest version.").setContentIntent(open).setAutoCancel(true).build())
+    }
+}
+class SeraPackageReplacedReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if(intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        val prefs=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE)
+        val id=prefs.getLong("id",-1L)
+        if(id>0 && prefs.getInt("code",0)<=BuildConfig.VERSION_CODE) {
+            discardSeraDownload(context,id)
+            reopenSeraAfterUpdate(context)
+        }
+    }
 }
