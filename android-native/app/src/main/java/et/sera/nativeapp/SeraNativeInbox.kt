@@ -483,37 +483,17 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery=""},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
                 }
             }
-            reply?.let{m->Surface(color=inboxSoft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp);IconButton(onClick={reply=null}){Icon(Icons.Outlined.Close,"Cancel reply")}}}}
-            queued?.let{q->Surface(color=inboxSoft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Text(q.body.ifBlank{q.file?.name?:"Attachment"},maxLines=2);if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent);Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=inboxTeal);Row{TextButton(onClick={retrySignal++},enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick={scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},enabled=!sending){Text("Edit message")}}}}}
-            attachment?.let { file ->
-                Surface(color=inboxSoft, shape=RoundedCornerShape(14.dp), modifier=Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        if(file.mime.startsWith("audio/")){Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},{error=it})}})}}else{SeraAttachmentThumbnail(file,accent); Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)) { Text(file.name,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.SemiBold,fontSize=13.sp,color=inboxInk); Text("${file.bytes.size / 1024} KB · Ready to send",fontSize=11.sp,color=muted) }}
-                        IconButton(onClick={attachment=null},enabled=!sending) { Icon(Icons.Outlined.Close,"Remove attachment") }
-                    }
-                }
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if(!recordingVoice) IconButton(onClick={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},enabled=!sending && !checkingFile && queued==null,modifier=Modifier.size(44.dp)) { Icon(Icons.Outlined.AttachFile,"Open attachment studio",tint=accent) }
-                if(!recordingVoice) BasicTextField(
-                    value = draft, onValueChange = {
-                        if (it.length <= 4000) {
-                            draft = it
-                            typingPulse++
-                            runCatching { savedDrafts?.write(userId, conversation.id, it) }
-                        }
-                    },
-                    modifier=Modifier.weight(1f).clip(CircleShape).background(inboxSoft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}}
-                )
-                if(recordingVoice||draft.isBlank()&&attachment==null) SeraChatVoice(enabled=!sending&&attachment==null&&queued==null,onReady={attachment=it;error=""},onError={error=it},onRecordingChange={recordingVoice=it;if(it)playback.pause()},accent=accent)
-                if(!recordingVoice&&(draft.isNotBlank()||attachment!=null)) Button(onClick = {
+            SeraNativeComposer(draft=draft,attachment=attachment,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
+                onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
+                onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
+                onRemoveAttachment={attachment=null},onCancelReply={reply=null},onRetry={retrySignal++},
+                onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},
+                onVoice={attachment=it;error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
+                onSend={
+
                     val body = draft.trim()
                     val file=attachment
-                    if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@Button
+                    if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@SeraNativeComposer
                     sending = true
                     scope.launch {
                         val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file)
@@ -524,20 +504,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                         }else error="Secure message storage is unavailable. Your draft was retained."
                         sending = false
                     }
-                }, enabled = (draft.isNotBlank() || attachment != null) && !sending && !checkingFile && queued==null,
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    modifier = Modifier.size(46.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = inboxTeal)) {
-                    if (sending) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp,
-                            color = Color.White)
-                    } else {
-                        Icon(Icons.Outlined.Send, contentDescription = "Send message",
-                            modifier = Modifier.size(22.dp))
-                    }
-                }
-            }
+                })
         }
     }
 }
