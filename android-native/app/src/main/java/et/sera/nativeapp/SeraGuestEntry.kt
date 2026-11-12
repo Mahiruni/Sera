@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import android.content.Context
+import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -123,6 +124,7 @@ private fun SeraSocialFirstSignIn(
     message: String,
     oauthError: String,
     onOAuthError: (String) -> Unit,
+    onAuthenticated: (String, String) -> Unit,
     onSignIn: () -> Unit,
     onRecover: () -> Unit,
     onRegister: () -> Unit,
@@ -131,6 +133,8 @@ private fun SeraSocialFirstSignIn(
 ) {
     val context = LocalContext.current
     var pending by remember { mutableStateOf(nativeOAuthPending(context)) }
+    var googleBusy by remember { mutableStateOf(false) }
+    val googleScope = rememberCoroutineScope()
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { pending = nativeOAuthPending(context) }
 
@@ -155,8 +159,8 @@ private fun SeraSocialFirstSignIn(
                 fontSize = 12.sp, color = entryMuted
             )
             OutlinedButton(
-                onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); val error=beginNativeOAuth(context, "google"); onOAuthError(error);pending=error.isBlank() },
-                enabled = !busy && !pending,
+                onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); googleBusy=true; onOAuthError(""); googleScope.launch { try { val result=signInWithNativeGoogle(context); if(result.first!=null){val (token,refresh)=result.first!!;onAuthenticated(token,refresh)} else onOAuthError(result.second) } finally { googleBusy=false } } },
+                enabled = !busy && !pending && !googleBusy,
                 modifier = Modifier.fillMaxWidth().height(49.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Color(0xFFD4E1E1)),
@@ -165,11 +169,11 @@ private fun SeraSocialFirstSignIn(
             ) {
                 Text("G", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4285F4))
                 Spacer(Modifier.width(11.dp))
-                Text("Continue with Google", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
+                Text(if(googleBusy)"Connecting securely…" else "Continue with Google", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
             }
             Button(
                 onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); val error=beginNativeOAuth(context, "linkedin_oidc"); onOAuthError(error);pending=error.isBlank() },
-                enabled = !busy && !pending,
+                enabled = !busy && !pending && !googleBusy,
                 modifier = Modifier.fillMaxWidth().height(49.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A66C2)),
@@ -236,7 +240,7 @@ private fun SeraSocialFirstSignIn(
             }
             Button(
                 onClick = onSignIn,
-                enabled = !busy && !pending && email.contains("@") && password.isNotBlank(),
+                enabled = !busy && !pending && !googleBusy && email.contains("@") && password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF006B6A),
@@ -368,7 +372,7 @@ fun SeraGuestEntry(
                     SeraSocialFirstSignIn(
                         email = email, password = password, onEmailChange = onEmailChange,
                         onPasswordChange = onPasswordChange, busy = busy, message = message,
-                        oauthError = oauthError, onOAuthError = { oauthError = it },
+                        oauthError = oauthError, onOAuthError = { oauthError = it }, onAuthenticated = onAuthenticated,
                         onSignIn = onSignIn,
                         onRecover = { entryPage = "recover" },
                         onRegister = { entryPage = "register" },
