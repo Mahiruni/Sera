@@ -30,8 +30,9 @@ private val profileMuted = Color(0xFF607478)
 private val profileLine = Color(0xFFDCEAE8)
 
 @Composable
-fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -> Unit, onSignOut: () -> Unit, token: String = "", userId: String = "", avatarUrl: String? = null) {
+fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -> Unit, onSignOut: () -> Unit, token: String = "", userId: String = "", avatarUrl: String? = null, editRequested:Boolean=false,onEditConsumed:()->Unit={}) {
     var editing by remember { mutableStateOf(false) }
+    LaunchedEffect(editRequested){if(editRequested){editing=true;onEditConsumed()}}
     var changingPassword by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var details by remember(userId) { mutableStateOf<NativeProfileFields?>(null) }

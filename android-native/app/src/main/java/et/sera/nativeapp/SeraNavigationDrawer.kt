@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.runtime.*
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
@@ -39,6 +41,7 @@ private fun drawerIcon(section: String): ImageVector = when (section) {
     "Network" -> Icons.Outlined.PeopleOutline
     "Jobs" -> Icons.Outlined.WorkOutline
     "Inbox" -> Icons.Outlined.ChatBubbleOutline
+    "Search" -> Icons.Outlined.Search
     else -> Icons.Outlined.AccountCircle
 }
 
@@ -53,8 +56,10 @@ internal fun SeraNavigationDrawer(
     onCheckUpdates: () -> Unit,
     onSignOut: () -> Unit,
     avatarUrl:String?=null,
+    headline:String="",identityVerified:Boolean=false,
     onClose:()->Unit={}
 ) {
+    var confirmSignOut by remember { mutableStateOf(false) }
     ModalDrawerSheet(
         modifier = Modifier.width(304.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
@@ -65,24 +70,19 @@ internal fun SeraNavigationDrawer(
             Spacer(Modifier.height(8.dp))
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp)) {
                 Row(Modifier.fillMaxWidth().clickable{onNavigate("Profile")}.padding(vertical=12.dp,horizontal=4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(47.dp).background(Color.White, CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        if(!avatarUrl.isNullOrBlank())SeraMediaImage(avatarUrl,"Profile photo",96,96,Modifier.fillMaxSize().clip(CircleShape)) else Text(identity.trim().take(1).uppercase().ifBlank{"S"},color=drawerTeal,fontWeight=FontWeight.Bold,fontSize=22.sp)
-                    }
+                    SeraAccountAvatar(identity.lineSequence().firstOrNull().orEmpty(),avatarUrl,48)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(identity.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }
-                            ?: "SERA professional", maxLines = 1, fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                        Text("View profile",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(identity.lineSequence().firstOrNull()?.takeIf{it.isNotBlank()}?:"SERA professional",maxLines=2,fontWeight=FontWeight.Bold,fontSize=14.sp,modifier=Modifier.weight(1f,fill=false));if(identityVerified)SeraIdentityBadge()}
+                        Text(headline.ifBlank{"View profile"},color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,maxLines=2)
                     }
                     Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             HorizontalDivider(Modifier.padding(vertical=8.dp))
-            listOf("Home", "Network", "Jobs", "Inbox").forEach { section ->
+            listOf("Home", "Network", "Search", "Jobs", "Inbox").forEach { section ->
                 NavigationDrawerItem(
-                    label = { Text(section, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
+                    label = { Text(when(section){"Search"->"Discover";"Inbox"->"Messages";else->section}, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = section == selected,
                     icon = { Icon(drawerIcon(section), contentDescription = null) },
                     onClick = { onNavigate(section) },
@@ -109,10 +109,11 @@ internal fun SeraNavigationDrawer(
             HorizontalDivider(Modifier.padding(vertical=8.dp))
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
-                onClick = onSignOut)
-            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Built for people and ideas",
+                onClick = {confirmSignOut=true})
+            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Developed by Hisab Technologies",
                 fontSize = 10.sp, color = Color(0xFF71888A),
                 modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }
     }
+    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
 }
