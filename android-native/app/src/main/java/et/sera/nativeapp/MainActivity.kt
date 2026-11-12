@@ -553,7 +553,7 @@ fun SeraApp(
                                     label = "section transition"
                                 ) { currentTab ->
                                     when (currentTab) {
-                                        "Home" -> SeraPagedFeed(
+                                        "Home", "Saved" -> SeraPagedFeed(
                                             accessToken ?: "", refresh,
                                             onLike = { post ->
                                                 val token = accessToken
@@ -565,8 +565,9 @@ fun SeraApp(
                                                 }
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
-                                            onAtTop={chromeVisible.value=true}
+                                            onAtTop={chromeVisible.value=true},savedOnly=tab=="Saved"
                                         )
+                                        "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)

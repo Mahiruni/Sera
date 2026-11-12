@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.runtime.*
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -42,6 +44,8 @@ private fun drawerIcon(section: String): ImageVector = when (section) {
     "Jobs" -> Icons.Outlined.WorkOutline
     "Inbox" -> Icons.Outlined.ChatBubbleOutline
     "Search" -> Icons.Outlined.Search
+    "Saved" -> Icons.Outlined.BookmarkBorder
+    "Workspace" -> Icons.Outlined.Dashboard
     else -> Icons.Outlined.AccountCircle
 }
 
@@ -80,7 +84,7 @@ internal fun SeraNavigationDrawer(
                 }
             }
             HorizontalDivider(Modifier.padding(vertical=8.dp))
-            listOf("Home", "Network", "Search", "Jobs", "Inbox").forEach { section ->
+            listOf("Home", "Network", "Search", "Jobs", "Inbox", "Saved", "Workspace").forEach { section ->
                 NavigationDrawerItem(
                     label = { Text(when(section){"Search"->"Discover";"Inbox"->"Messages";else->section}, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = section == selected,
