@@ -15,9 +15,9 @@ import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
 import { discoverDirectory } from "@/lib/network/data";
 import {
-  discoveryInput,
+  universalDiscoveryInput,
   discoveryKinds,
-  type DiscoveryKind,
+  type UniversalDiscoveryKind,
 } from "@/lib/network/model";
 import {
   NetworkToolbar,
@@ -25,12 +25,14 @@ import {
   OpportunityPreview,
 } from "@/components/network/shared";
 import { PostList, SocialPagination } from "@/components/social/feed";
+import { UniversalSearchResults } from "@/components/network/universal-search-results";
 export const metadata = {
   title: "Discover people, projects and possibilities",
   robots: { index: false, follow: false },
 };
-const tabs: Record<DiscoveryKind, { label: string; Icon: typeof UsersRound }> =
+const tabs: Record<UniversalDiscoveryKind, { label: string; Icon: typeof UsersRound }> =
   {
+    all: { label: "All", Icon: Search },
     people: { label: "People", Icon: UsersRound },
     stories: { label: "Stories", Icon: PenLine },
     projects: { label: "Projects", Icon: FolderKanban },
@@ -44,7 +46,27 @@ export default async function Discover({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { user } = await requiredProfile("/discover");
-  const { kind, query, page } = discoveryInput(await searchParams);
+  const { kind, query, page } = universalDiscoveryInput(await searchParams);
+  if (kind === "all") {
+    return (
+      <div className="sera-network network-app">
+        <NetworkToolbar query={query} discover />
+        <section className="network-universal-heading">
+          <h1>Search SERA</h1>
+          <p>Find people, opportunities and ideas in one place.</p>
+        </section>
+        <form action="/discover" className="network-search network-discover-search" role="search">
+          <Search size={18} aria-hidden="true" />
+          <label className="sr-only" htmlFor="universal-query">Search SERA</label>
+          <input id="universal-query" name="q" type="search" defaultValue={query} maxLength={80} placeholder="People, jobs, posts, skills…" />
+          <input type="hidden" name="tab" value="all" />
+          <button type="submit" aria-label="Search all categories"><ArrowRight size={18} /></button>
+        </form>
+        <DiscoverTabs kind={kind} query={query} />
+        <UniversalSearchResults query={query} />
+      </div>
+    );
+  }
   const feed =
     kind === "stories" || kind === "projects"
       ? await loadSocialFeed({
@@ -95,25 +117,7 @@ export default async function Discover({
           <ArrowRight size={18} />
         </button>
       </form>
-      <nav className="network-discover-tabs" aria-label="Discover categories">
-        {discoveryKinds.map((tab) => {
-          const { label, Icon } = tabs[tab];
-          return (
-            <Link
-              key={tab}
-              href={
-                "/discover?tab=" +
-                tab +
-                (query ? "&q=" + encodeURIComponent(query) : "")
-              }
-              aria-current={kind === tab ? "page" : undefined}
-            >
-              <Icon size={17} />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+      <DiscoverTabs kind={kind} query={query} />
       <div className="network-results-heading">
         <h2>
           {query
@@ -210,5 +214,29 @@ export default async function Discover({
               : "Search the published work and opportunities shared on Sera."}
       </p>
     </div>
+  );
+}
+
+function DiscoverTabs({ kind, query }: { kind: UniversalDiscoveryKind; query: string }) {
+  return (
+      <nav className="network-discover-tabs" aria-label="Discover categories">
+        {(["all", ...discoveryKinds] as const).map((tab) => {
+          const { label, Icon } = tabs[tab];
+          return (
+            <Link
+              key={tab}
+              href={
+                "/discover?tab=" +
+                tab +
+                (query ? "&q=" + encodeURIComponent(query) : "")
+              }
+              aria-current={kind === tab ? "page" : undefined}
+            >
+              <Icon size={17} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
   );
 }

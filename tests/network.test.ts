@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   discoveryInput,
+  universalDiscoveryInput,
   profileEssentials,
   skillTopics,
 } from "../lib/network/model";
@@ -60,4 +61,13 @@ test("interest shortcuts are bounded, deduplicated and derived from saved skill 
   assert.deepEqual(skillTopics(undefined), []);
   assert.equal(skillTopics("aa,bb,cc,dd,ee,ff,gg").length, 6);
   assert.equal(skillTopics("x".repeat(41)).length, 0);
+});
+
+test("universal search defaults to All for a global query and preserves category deep links", () => {
+  assert.deepEqual(universalDiscoveryInput({ q: "አዲስ አበባ" }), { query: "አዲስ አበባ", kind: "all", page: 1 });
+  assert.equal(universalDiscoveryInput({}).kind, "people");
+  assert.equal(universalDiscoveryInput({ tab: "all" }).kind, "all");
+  assert.equal(universalDiscoveryInput({ q: "design", tab: "jobs", page: "2" }).kind, "jobs");
+  assert.equal(universalDiscoveryInput({ q: "design", tab: ["all"] }).kind, "people");
+  assert.equal(universalDiscoveryInput({ q: "%_\\", tab: "all" }).query, "");
 });

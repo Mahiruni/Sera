@@ -2161,3 +2161,67 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-message-attachment-preview button{display:grid;place-items:center;min-width:36px;min-height:36px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
 .sera-message-attachment-preview button:focus-visible{outline:2px solid #007e90}
 .sera-message-attachment-error{font-size:12px;color:#b42318;margin:0}
+
+/* Universal search uses the existing theme tokens and scales to narrow screens. */
+.network-universal-heading {
+  margin: 24px 0 18px;
+}
+.network-universal-heading h1 { font-size: clamp(1.65rem, 4vw, 2.6rem); }
+.network-universal-heading p { color: var(--net-muted); margin-top: 6px; }
+.network-universal-results { display: grid; gap: 16px; }
+.network-universal-section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--net-line);
+  border-radius: 18px;
+  background: var(--net-surface);
+}
+.network-universal-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.network-universal-section-head h2 { font-size: 1.05rem; }
+.network-universal-section-head a { white-space: nowrap; color: var(--net-blue); }
+.network-universal-cards { display: grid; gap: 6px; min-width: 0; }
+.network-universal-cards > :is(.network-person, .network-job, .network-universal-preview) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+}
+.network-universal-cards > :is(.network-person, .network-job, .network-universal-preview):hover {
+  background: var(--net-subtle);
+}
+.network-universal-preview > svg { flex: none; color: var(--net-muted); }
+.network-universal-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--net-soft);
+  color: var(--net-blue);
+}
+.network-universal-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.network-universal-copy strong { font-size: .9rem; line-height: 1.4; }
+.network-universal-copy small { color: var(--net-muted); font-size: .73rem; }
+.network-universal-copy p {
+  color: var(--net-muted);
+  font-size: .8rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 480px) {
+  .network-universal-section { padding: 12px; border-radius: 16px; }
+}

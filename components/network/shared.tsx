@@ -54,9 +54,9 @@ export async function NetworkToolbar({
           name="q"
           defaultValue={query}
           maxLength={80}
-          placeholder="People, skills, possibilities…"
+          placeholder="People, jobs, posts…"
         />
-        {discover && <input type="hidden" name="tab" value="people" />}
+        {discover && <input type="hidden" name="tab" value="all" />}
         <button type="submit" aria-label="Search Sera">
           <ArrowRight size={17} />
         </button>

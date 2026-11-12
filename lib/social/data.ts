@@ -49,6 +49,7 @@ export async function loadSocialFeed(
     savedOnly?: boolean;
     postId?: string;
     kind?: PostKind;
+    excludeKind?: PostKind;
     page?: number;
     personalized?: boolean;
   } = {},
@@ -70,8 +71,9 @@ export async function loadSocialFeed(
   if (options.authorId) query = query.eq("author_id", options.authorId);
   if (options.postId) query = query.eq("id", options.postId);
   if (options.kind) query = query.eq("kind", options.kind);
+  if (options.excludeKind) query = query.neq("kind", options.excludeKind);
   const start = ((options.page || 1) - 1) * 20;
-  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
+  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind && !options.excludeKind ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
     .order("published_at", { ascending: false })
     .order("id", { ascending: false })
     .range(start, start + 20);
