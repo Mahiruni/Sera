@@ -46,7 +46,7 @@ export async function refreshJobAlerts(){
 export async function setAutomaticJobAlerts(form:FormData){
  const user=await currentUser();if(!user?.email_confirmed_at)return;
  const value=form.get("enabled");if(value!=="true"&&value!=="false")return;
- const db=await serverClient();const {error}=await db.from("sera_job_alert_preferences").upsert({user_id:user.id,enabled:value==="true",updated_at:new Date().toISOString()},{onConflict:"user_id"});
+ const db=await serverClient();const {error}=await db.rpc("sera_set_job_alert_preference",{p_enabled:value==="true"});
  if(error)throw new Error("Unable to save career alert preferences.");
  revalidatePath("/notifications");
 }
