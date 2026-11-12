@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -59,7 +60,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 private data class NativeConversation(val id: String, val peerId: String, val peerName: String)
-private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String)
+private data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String)
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -122,13 +123,13 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
 
 private fun loadNativeMessages(token: String, conversationId: String): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at,created_at&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=100")
+        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=100")
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
         (0 until rows.length()).map { i ->
             val item = rows.getJSONObject(i)
-            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"))
+            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"))
         }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
 }
@@ -172,6 +173,9 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     var loading by remember { mutableStateOf(true) }
     var refresh by remember { mutableIntStateOf(0) }
     var search by remember { mutableStateOf("") }
+    var peerTyping by remember { mutableStateOf(false) }
+    var typingPulse by remember { mutableIntStateOf(0) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     val messageListState = rememberLazyListState()
     var lastVisibleConversation by remember { mutableStateOf<String?>(null) }
     var lastMessageId by remember { mutableStateOf<String?>(null) }
@@ -194,19 +198,39 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
         error = result.second
         loading = false
     }
-    LaunchedEffect(token, selected?.id) {
+    LaunchedEffect(token, selected?.id, lifecycle) {
         val conversation = selected ?: return@LaunchedEffect
-        while (true) {
-            val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
-            result.first?.let { latest ->
-                messages = latest
-                if (latest.any { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }) {
-                    withContext(Dispatchers.IO) { markNativeMessagesRead(token, conversation.id, userId) }
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            SeraRealtime(token, conversation.id).run {
+                val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id) }
+                result.first?.let { latest ->
+                    messages = latest
+                    val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
+                    if (unread.isNotEmpty()) withContext(Dispatchers.IO) {
+                        inboxRequest(token, "rpc/sera_message_receipt", "POST", JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(unread.map { it.id })).put("p_read",true))
+                    }
                 }
+                error = result.second
             }
-            if (result.second.isNotBlank()) error = result.second else error = ""
-            delay(5000)
         }
+    }
+    LaunchedEffect(token, selected?.id, lifecycle) {
+        val conversation = selected ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while (true) {
+                val result = withContext(Dispatchers.IO) { inboxRequest(token, "professional_typing_status?select=member_id&conversation_id=eq.${conversation.id}&member_id=neq.$userId&limit=1") }
+                peerTyping = runCatching { JSONArray(result.first ?: "[]").length() > 0 }.getOrDefault(false)
+                delay(2500)
+            }
+        }
+    }
+    LaunchedEffect(token, selected?.id, typingPulse) {
+        val conversation = selected ?: return@LaunchedEffect
+        if (typingPulse == 0) return@LaunchedEffect
+        delay(350)
+        withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",draft.isNotBlank())) }
+        delay(4000)
+        withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",false)) }
     }
     Column(modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(12.dp))
@@ -227,7 +251,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 items(filtered, key = { it.id }) { conversation ->
                     ElevatedCard(onClick = {
                         draft = savedDrafts?.read(userId, conversation.id).orEmpty()
-                        selected = conversation; messages = emptyList(); error = ""
+                        selected = conversation; messages = emptyList(); error = ""; typingPulse = 0; peerTyping = false
                     },
                         shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.elevatedCardColors(containerColor = Color.White)) {
@@ -260,7 +284,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                 Column(Modifier.weight(1f)) {
                     Text(conversation.peerName, fontWeight = FontWeight.Bold,
                         fontSize = 19.sp, color = inboxInk)
-                    Text("Private conversation", fontSize = 11.sp, color = Color(0xFF6B8185))
+                    Text(if (peerTyping) "Typing…" else "Private conversation", fontSize = 11.sp, color = Color(0xFF6B8185))
                 }
             }
             HorizontalDivider()
@@ -280,8 +304,10 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                                     Text(time, color = if (own) Color.White.copy(alpha = 0.8f) else Color(0xFF607478), fontSize = 10.sp)
                                     if (own) {
                                         val read = message.readAt.isNotBlank() && message.readAt != "null"
-                                        Icon(if (read) Icons.Outlined.DoneAll else Icons.Outlined.Check, contentDescription = if (read) "Read" else "Sent", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(15.dp))
-                                        Text(if (read) "Read" else "Sent", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+                                        val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
+                                        val receipt = if (read) "Read" else if (delivered) "Delivered" else "Sent"
+                                        Icon(if (delivered) Icons.Outlined.DoneAll else Icons.Outlined.Check, contentDescription = receipt, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(15.dp))
+                                        Text(receipt, color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
                                     }
                                 }
                             }
@@ -299,6 +325,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
                     value = draft, onValueChange = {
                         if (it.length <= 4000) {
                             draft = it
+                            typingPulse++
                             runCatching { savedDrafts?.write(userId, conversation.id, it) }
                         }
                     },
