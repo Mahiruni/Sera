@@ -69,6 +69,7 @@ export default async function Discover({
       <NetworkToolbar query={query} discover />
       <PageIntro icon={Compass} title="Discover your next connection."
         description="People, ideas, projects and opportunities worth exploring." />
+      <Link className="network-button" href="/talent">Discover portfolio talent <FolderKanban size={17}/></Link>
       <Link className="network-button" href="/communities">Explore professional communities <UsersRound size={17}/></Link>
       <form
         action="/discover"
