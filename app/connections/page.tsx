@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {IdentityBadge} from "@/components/identity/badge";
 import { recommendProfessionals, type ProfessionalCandidate } from "@/lib/network/recommendations";
 import { openProfessionalConversation } from "@/lib/network/messaging";
 import { Submit } from "@/components/social/forms";
@@ -63,7 +64,7 @@ export default async function ConnectionsPage({searchParams}:{searchParams:Promi
     return (
       <li key={id} className="sera-connection-person">
         <MemberAvatar name={card.name} photo={card.photo} size={46} />
-        <div className="sera-network-person-identity"><Link href={"/members/" + id} className="sera-network-person-name">{card.name}</Link>{headline&&<small>{headline}</small>}{reason&&tab==="discover"&&<small className="sera-network-person-reason">Shared skills: {reason}</small>}</div>
+        <div className="sera-network-person-identity"><Link href={"/members/" + id} className="sera-network-person-name">{card.name}{card.identityVerified&&<IdentityBadge/>}</Link>{headline&&<small>{headline}</small>}{reason&&tab==="discover"&&<small className="sera-network-person-reason">Shared skills: {reason}</small>}</div>
         {actions.map(({ action, label }) => (
           <form action={changeProfessionalRelationship} key={action}>
             <input type="hidden" name="target" value={id} />

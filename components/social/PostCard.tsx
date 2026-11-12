@@ -1,6 +1,7 @@
 import { PostOptions } from "./PostOptions";
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
+import {IdentityBadge} from "@/components/identity/badge";
 import { ArrowUpRight } from "lucide-react";
 import { toggleLikePost, toggleSavePost } from "@/lib/social/actions";
 import type { SocialPost } from "@/lib/social/data";
@@ -42,7 +43,7 @@ export function PostCard({
         </Link>
         <div>
           <Link href={"/members/" + post.author_id} className="social-author">
-            {post.author.full_name}
+            {post.author.full_name}{post.identityVerified&&<IdentityBadge/>}
           </Link>{post.repost_of&&<span className="sera-repost-byline"> | Reposted from {post.original?<Link href={"/members/"+post.original.author_id}>{post.original.name}</Link>:"original author"}</span>}
           {post.author.headline&&<p className="sera-author-occupation">{post.author.headline}</p>}
           <small>

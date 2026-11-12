@@ -1,0 +1,15 @@
+"use client";
+import {useActionState} from "react";
+import {submitIdentity,manageIdentity,reviewIdentity,type IdentityState} from "@/lib/identity/actions";
+export function IdentityForm({draftType}:{draftType?:string}){
+ const [state,action,pending]=useActionState(submitIdentity,{} as IdentityState);
+ return <form action={action} className="sera-identity-form"><label>Document type<select name="type" defaultValue={draftType||"national_id"}><option value="national_id">National ID</option><option value="passport">Passport</option><option value="driver_license">Driving licence</option></select></label><label>Identity document<input type="file" name="evidence" accept="image/jpeg,image/png,application/pdf" required/></label><small>JPG, PNG or PDF · up to 3 MB. Hide unrelated information where possible; keep your name, photo and document authenticity visible.</small><label className="sera-identity-consent"><input type="checkbox" name="consent" value="yes" required/> I consent to authorized SERA reviewers checking this document for identity verification.</label><button className="button" disabled={pending}>{pending?"Submitting securely…":"Submit for verification"}</button>{state.error&&<p role="alert">{state.error}</p>}{state.success&&<p role="status">{state.success}</p>}</form>
+}
+export function IdentityManage({id,intent,label}:{id:string;intent:string;label:string}){
+ const [state,action,pending]=useActionState(manageIdentity,{} as IdentityState);
+ return <form action={action} className="sera-identity-form"><input type="hidden" name="id" value={id}/><input type="hidden" name="intent" value={intent}/><button className="button secondary" disabled={pending} onClick={e=>{if(intent!=="submit"&&!window.confirm(intent==="withdraw"?"Withdraw this verification request?":"Remove your identity document?"))e.preventDefault()}}>{pending?"Working…":label}</button>{state.error&&<p role="alert">{state.error}</p>}{state.success&&<p role="status">{state.success}</p>}</form>
+}
+export function IdentityReview({id,status}:{id:string;status:string}){
+ const [state,action,pending]=useActionState(reviewIdentity,{} as IdentityState);
+ return <form action={action} className="sera-identity-form"><input type="hidden" name="id" value={id}/><label>Decision<select name="decision">{status==="pending"?<><option value="approved">Approve identity</option><option value="rejected">Reject identity</option></>:<option value="revoked">Revoke verification</option>}</select></label><label>Explanation visible to the applicant<textarea name="reason" minLength={10} maxLength={1000} required rows={3}/></label><button className="button" disabled={pending} onClick={e=>{if(!window.confirm("Record this identity decision?"))e.preventDefault()}}>{pending?"Recording…":"Record decision"}</button>{state.error&&<p role="alert">{state.error}</p>}{state.success&&<p role="status">{state.success}</p>}</form>
+}
