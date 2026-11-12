@@ -4,7 +4,6 @@ import android.content.Intent
 import org.json.JSONObject
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +86,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
                 top = 73.dp, bottom = 92.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item(key="feed-mode") { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
@@ -96,13 +95,12 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 val post = posts[index]
                 if (post != null) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFE4EEEC)),
+                        shape = RoundedCornerShape(0.dp),
+                        color = MaterialTheme.colorScheme.surface,
                         modifier = Modifier.fillMaxWidth().animateContentSize()
                     ) {
-                        Column(Modifier.padding(horizontal = 15.dp, vertical = 15.dp),
-                            verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                        Column(Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
                                     Modifier.size(43.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
@@ -171,7 +169,6 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                         .clickable { expandedImage = url }
                                 )
                             }
-                            HorizontalDivider(color = Color(0xFFE9F0F0), thickness = .7.dp)
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -229,6 +226,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     }
                                 }
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.7.dp)
                         }
                     }
                 }

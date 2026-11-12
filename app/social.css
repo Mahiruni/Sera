@@ -902,3 +902,27 @@ button[disabled] {
  }
  .sera-network.network-app:has(.sera-premium-hero) .social-card .social-images img{border-radius:12px}
 }
+
+/* Premium experience: flat editorial stream, only on the main feed. */
+.sera-editorial-feed.sera-network.network-app .social-post-list {gap:0}
+.sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card{
+ background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+ margin:0!important;padding:16px 0 8px!important;overflow:visible;
+}
+.sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card+.social-card{
+ border-top:1px solid var(--net-line,#dce9e6)!important;
+}
+.sera-editorial-feed.sera-network.network-app .social-card .social-post-header{margin-bottom:7px;gap:10px}
+.sera-editorial-feed.sera-network.network-app .social-card .social-body{color:var(--net-ink);line-height:1.55}
+.sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-card .social-images{margin:8px 0 4px;border-radius:12px}
+.sera-editorial-feed.sera-network.network-app .social-card .social-tags{margin:6px 0 2px}
+.sera-editorial-feed.sera-network.network-app .social-card .social-tags:empty{display:none}
+.sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-card .social-post-actions{
+ margin-top:2px;padding-top:0;border:0;gap:0;min-height:44px;
+}
+.sera-editorial-feed .social-post-actions button{min-height:44px;background:transparent;border:0;box-shadow:none;gap:5px}
+.sera-editorial-feed .social-post-actions button:focus-visible{outline:2px solid var(--net-blue,#087e83);outline-offset:2px}
+@media(max-width:600px){
+ .sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card{padding:13px 2px 6px!important}
+ .sera-editorial-feed.sera-network.network-app .social-card .social-images{margin:8px 0 4px}
+}

@@ -88,7 +88,7 @@ export function Shell({
   useEffect(() => {
     const root = document.documentElement;
     delete root.dataset.navHidden;
-    if (open) return;
+    if (open || !authenticated || pathname !== "/feed") return;
 
     let anchor = window.scrollY;
     let hidden = false;
@@ -109,7 +109,7 @@ export function Shell({
       window.removeEventListener("scroll", onScroll);
       delete root.dataset.navHidden;
     };
-  }, [pathname, open]);
+  }, [pathname, open, authenticated]);
   const close = () => {
     setOpen(false);
     trigger.current?.focus();

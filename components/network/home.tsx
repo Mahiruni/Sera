@@ -75,7 +75,7 @@ export function NetworkHome({
   else if(!personalized&&!kind)filters.set("view","latest");
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
-    <div className="sera-network network-app social-page">
+    <div className="sera-network network-app social-page sera-editorial-feed">
       <section className="sera-premium-hero" aria-label="Welcome to SERA">
         <div className="sera-premium-hero-copy">
           <h1>A good place to grow your career.</h1>

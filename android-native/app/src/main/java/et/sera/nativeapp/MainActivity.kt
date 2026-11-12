@@ -464,7 +464,7 @@ fun SeraApp(
                                 available: Offset,
                                 source: NestedScrollSource
                             ): Offset {
-                                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                                if (tab != "Home" || source != NestedScrollSource.UserInput) return Offset.Zero
                                 val delta = consumed.y
                                 if (delta == 0f) {
                                     if (available.y > 5f) chromeVisible.value = true
@@ -603,7 +603,7 @@ fun SeraApp(
                                 SeraChromeOverlays(
                                     notificationCount=unreadActivity.first,
                                     inboxCount=unreadActivity.second,
-                                    visible = chromeVisible.value && !keyboardOpen,
+                                    visible = (tab != "Home" || chromeVisible.value) && !keyboardOpen,
                                     expanded = expanded,
                                     selected = tab,
                                     sections = sections,
