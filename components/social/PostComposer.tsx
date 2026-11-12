@@ -6,6 +6,8 @@ import { createPost, updatePost } from "@/lib/social/actions";
 import { postKinds, validMedia, type PostKind } from "@/lib/social/validation";
 import type { SocialPost } from "@/lib/social/data";
 import { Submit } from "./forms";
+import {PostConfirmation} from "./PostControlDialog";
+import {PostMedia} from "./post-media";
 import { restoreSeraDraft, saveSeraDraft, seraDraftKey } from "./post-drafts";
 import "./composer-premium.css";
 
@@ -14,7 +16,9 @@ const icons = {idea:Lightbulb,photos:ImagePlus,quote:Quote,talent:Award,project:
 export function PostComposer({ post, initialKind = "idea", draftOwnerId, onPublished }: { post?: SocialPost; initialKind?: PostKind; draftOwnerId?: string; onPublished?: (postId: string) => void }) {
   const draftKey = draftOwnerId ? seraDraftKey(draftOwnerId, post?.id) : null;
   const [kind,setKind] = useState<PostKind>(post?.kind || initialKind);
-  const [body,setBody] = useState(post?.body || "");
+  const repost=Boolean(post?.repost_of);
+  const [body,setBody] = useState(repost?post?.repost_note||"":post?.body||"");
+  const [confirmEdit,setConfirmEdit]=useState<FormData|null>(null);
   const [title,setTitle] = useState(post?.title || "");
   const [quoteSource,setQuoteSource] = useState(post?.quote_source || "");
   const [category,setCategory] = useState(post?.category || "");
@@ -89,23 +93,24 @@ export function PostComposer({ post, initialKind = "idea", draftOwnerId, onPubli
     setFileError(valid?"":"Choose up to four JPG, PNG or WebP images totaling 3 MB or less.");
   };
   return <section className="social-composer sera-premium-composer" aria-label={post?"Edit post":"Create a post"}>
-    <form ref={form} onSubmit={e=>{e.preventDefault();if(fileError||pending)return;const data=new FormData(e.currentTarget);if(kind!=="quote"&&!String(data.get("title")||"").trim()){const derived=String(data.get("body")||"").trim().replace(/\s+/g," ").slice(0,140);data.set("title",derived.length>=3?derived:"Photo update");}startTransition(()=>action(data));}}>
+    <form ref={form} onSubmit={e=>{e.preventDefault();if(fileError||pending)return;const data=new FormData(e.currentTarget);if(kind!=="quote"&&!String(data.get("title")||"").trim()){const derived=String(data.get("body")||"").trim().replace(/\s+/g," ").slice(0,140);data.set("title",derived.length>=3?derived:"Photo update");}if(post)setConfirmEdit(data);else startTransition(()=>action(data));}}>
       {post&&<input type="hidden" name="post_id" value={post.id}/>}
       <input type="hidden" name="kind" value={kind}/>
       {!post&&<div className="sera-premium-types" role="group" aria-label="Post type">{postKinds.map(k=>{const Icon=icons[k];return <button type="button" key={k} aria-pressed={kind===k} onClick={()=>{setKind(k);if(k==="project")setShowHeadline(true);if(k==="photos")setDetailsOpen(true);}}><Icon size={17}/>{labels[k]}</button>;})}</div>}
-      {(showHeadline||kind==="project")?<label className="sera-premium-headline"><span>Headline</span><input name="title" maxLength={140} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Give your post a headline"/></label>:<input type="hidden" name="title" value={title}/>}
-      <div className="sera-premium-editor"><label htmlFor="sera-premium-body" className="sr-only">{kind==="quote"?"Your quote":"Your story"}</label><textarea id="sera-premium-body" ref={textarea} name="body" rows={8} maxLength={kind==="quote"?600:10000} minLength={kind==="quote"?3:1} required={kind!=="photos"} value={body} onChange={e=>{setBody(e.target.value);e.target.style.height="auto";e.target.style.height=Math.max(260,e.target.scrollHeight)+"px";}} placeholder={kind==="quote"?"Share a thought worth remembering…":kind==="project"?"What have you been building?":"What would you like to share with your professional community?"}/><span className="sera-premium-counter">{body.length.toLocaleString()} / {(kind==="quote"?600:10000).toLocaleString()}</span></div>
+      {!repost&&(showHeadline||kind==="project")?<label className="sera-premium-headline"><span>Headline</span><input name="title" maxLength={140} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Give your post a headline"/></label>:<input type="hidden" name="title" value={title}/>}
+      <div className="sera-premium-editor"><label htmlFor="sera-premium-body" className="sr-only">{kind==="quote"?"Your quote":"Your story"}</label><textarea id="sera-premium-body" ref={textarea} name="body" rows={8} maxLength={repost?400:kind==="quote"?600:10000} minLength={repost?0:kind==="quote"?3:1} required={!repost&&kind!=="photos"} value={body} onChange={e=>{setBody(e.target.value);e.target.style.height="auto";e.target.style.height=Math.max(260,e.target.scrollHeight)+"px";}} placeholder={kind==="quote"?"Share a thought worth remembering…":kind==="project"?"What have you been building?":"What would you like to share with your professional community?"}/><span className="sera-premium-counter">{body.length.toLocaleString()} / {(repost?400:kind==="quote"?600:10000).toLocaleString()}</span></div>
       {kind==="quote"?<label className="sera-premium-headline">Attribution <input name="quote_source" maxLength={120} value={quoteSource} onChange={e=>setQuoteSource(e.target.value)} placeholder="Who said it?"/></label>:<input type="hidden" name="quote_source" value={quoteSource}/>}
-      <div className="sera-premium-toolbar" aria-label="Post attachments and tools">
+      {!post&&<div className="sera-premium-toolbar" aria-label="Post attachments and tools">
         <button type="button" onClick={()=>{setDetailsOpen(true);fileInput.current?.click();}}><ImagePlus size={21} color="#19a63b"/><span>Photo</span></button>
         <button type="button" disabled title="Video publishing is coming soon"><Video size={21}/><span>Video</span></button>
         <button type="button" disabled title="Document publishing is coming soon"><FileText size={21}/><span>Document</span></button>
         <button type="button" disabled title="Mentions are coming soon"><AtSign size={21}/><span>Mention</span></button>
         <button type="button" disabled title="Polls are coming soon"><BarChart3 size={21}/><span>Poll</span></button>
         <button type="button" onClick={()=>{textarea.current?.focus();setBody(v=>v+"✨");}}><Smile size={21}/><span>Emoji</span></button>
-      </div>
-      <div className="sera-premium-extras"><button type="button" onClick={()=>setShowHeadline(v=>!v)}><FileText size={16}/> {showHeadline?"Hide headline":"Add headline"}</button><button type="button" onClick={()=>setDetailsOpen(v=>!v)} aria-expanded={detailsOpen}><ChevronDown size={16}/> Details & skills</button></div>
-      <div className="sera-premium-details" hidden={!detailsOpen}>
+      </div>}
+      {post&&!repost&&<PostMedia images={post.images}/>}
+      {!repost&&<div className="sera-premium-extras"><button type="button" onClick={()=>setShowHeadline(v=>!v)}><FileText size={16}/> {showHeadline?"Hide headline":"Add headline"}</button><button type="button" onClick={()=>setDetailsOpen(v=>!v)} aria-expanded={detailsOpen}><ChevronDown size={16}/> Details & skills</button></div>}
+      <div className="sera-premium-details" hidden={repost||!detailsOpen}>
         <div className="social-form-grid"><label>Field<input name="category" maxLength={60} value={category} onChange={e=>setCategory(e.target.value)} placeholder="Engineering, design…"/></label><label>Location<input name="location" maxLength={120} value={location} onChange={e=>setLocation(e.target.value)} placeholder="Addis Ababa"/></label></div>
         <label>Skills<input name="skills" maxLength={400} value={skills} onChange={e=>setSkills(e.target.value)} placeholder="React, design, engineering"/></label>
         <label>Project link<input type="url" name="project_url" maxLength={500} value={projectUrl} onChange={e=>setProjectUrl(e.target.value)} placeholder="https://"/></label>
@@ -114,7 +119,8 @@ export function PostComposer({ post, initialKind = "idea", draftOwnerId, onPubli
       {!!previews.length&&<div className="social-preview">{previews.map((url,i)=><Image unoptimized width={90} height={90} key={url} src={url} alt={`Selected photo ${i+1}`}/>)}</div>}
       {(fileError||state.error)&&<p role="alert" className="social-error">{fileError||state.error}</p>}
       {(state.success||draftMessage)&&<p role="status" className="social-status">{state.success||draftMessage}</p>}
-      <div className="sera-premium-footer"><button type="button" className="sera-premium-save" onClick={saveDraft} disabled={pending}><Save size={19}/> Save draft</button><Submit className="sera-premium-publish" disabled={Boolean(fileError)||pending||(kind!=="photos"&&body.trim().length<(kind==="quote"?3:1))}><Send size={19}/>{pending?"Publishing…":post?"Save changes":"Publish post"}</Submit></div>
+      <div className="sera-premium-footer"><button type="button" className="sera-premium-save" onClick={saveDraft} disabled={pending}><Save size={19}/> Save draft</button><Submit className="sera-premium-publish" disabled={Boolean(fileError)||pending||(!repost&&kind!=="photos"&&body.trim().length<(kind==="quote"?3:1))}><Send size={19}/>{pending?"Publishing…":post?"Save changes":"Publish post"}</Submit></div>
     </form>
+    {confirmEdit&&<PostConfirmation title="Publish your changes?" message="Your updated post will replace the current version. Existing likes and comments will remain." primary="Publish changes" secondary="Keep editing" onCancel={()=>setConfirmEdit(null)} onConfirm={()=>{const data=confirmEdit;setConfirmEdit(null);startTransition(()=>action(data));}}/>}
   </section>;
 }

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return fail("Choose a valid published post and a shorter note.", 400);
 
   const { data: source, error: sourceError } = await client.from("posts")
-    .select("id,author_id,title,body,kind,repost_of")
+    .select("id,author_id,title,body,kind,repost_of,audience")
     .eq("id", sourceId).eq("status", "published").maybeSingle();
   if (sourceError || !source)
     return fail("The original post is no longer available.", 404);
@@ -48,6 +48,10 @@ export async function POST(request: NextRequest) {
     return fail("This is already your own post.", 422);
   if (source.repost_of)
     return fail("Repost the original post instead.", 422);
+  if(source.audience!=="public")return fail("Only public posts can be reposted.",422);
+  const {data:restored,error:restoreError}=await client.rpc("sera_restore_own_repost",{p_original:sourceId});
+  if(restoreError)return fail("Unable to recover the previous repost.",409);
+  if(restored)return NextResponse.json({success:true,post_id:restored,restored:true},{status:201,headers:noStore});
 
   const { data: previous } = await client.from("posts").select("id,status")
     .eq("author_id", user.id).eq("repost_of", sourceId).limit(1).maybeSingle();

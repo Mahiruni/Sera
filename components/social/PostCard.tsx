@@ -1,3 +1,4 @@
+import { PostOptions } from "./PostOptions";
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
 import {
@@ -67,7 +68,7 @@ export function PostCard({
             {post.edited_at ? " · Edited" : ""}
           </small>
         </div>
-
+        <PostOptions post={post} userId={currentUserId} detail={detail}/>
       </header>
       {post.repost_of&&<>{post.repost_note&&<ExpandableCaption text={post.repost_note}/>}<div className="sera-original-byline">{post.original?<><MemberAvatar name={post.original.name} photo={post.original.photo} size={30}/><div><Link href={"/posts/"+post.original.id}>{post.original.name}</Link><small>Original · {new Date(post.original.published_at).toLocaleString("en-GB",{timeZone:"Africa/Addis_Ababa",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div></>:<span>Original post unavailable</span>}</div></>}
       {showTitle && (
@@ -115,52 +116,10 @@ export function PostCard({
           </Submit>
         </ActionForm>
         <SeraConversationSheet postId={post.id} count={post.comment_count} author={post.author.full_name} currentUserId={currentUserId} />
-        <RepostButton id={post.repost_of||post.id} author={post.original?.name||post.author.full_name} reposted={post.reposted||false} count={post.repost_count||0} disabled={post.repost_of?(!post.original||post.original.author_id===currentUserId):owner} />
+        <RepostButton id={post.repost_of||post.id} author={post.original?.name||post.author.full_name} reposted={post.reposted||false} count={post.repost_count||0} disabled={post.repost_of?(!post.original||post.original.author_id===currentUserId||post.original.audience!=="public"):(owner||post.audience!==undefined&&post.audience!=="public")} />
         <ShareButton id={post.id} title={post.title} count={post.share_count} />
       </footer>
-      <details className="social-owner">
-          <summary aria-label="Post options" title="Post options"><MoreHorizontal size={22} aria-hidden="true" /></summary>
-          <ActionForm action={toggleSavePost} fields={{ post_id: post.id, remove: post.saved ? "yes" : "no" }}>
-            <Submit aria-pressed={post.saved} aria-label={post.saved ? "Remove saved post" : "Save post"}>
-              <SeraReactionIcon kind="save" active={post.saved} />
-              {post.saved ? "Saved" : "Save post"}
-            </Submit>
-          </ActionForm>
-          {owner && <Link href={"/posts/" + post.id + "/edit"}>
-            <Pencil size={15} /> Edit story
-          </Link>}
-          {owner && <ActionForm
-            action={deletePost}
-            fields={{ post_id: post.id, return_to: detail ? "/feed" : "" }}
-            confirm="Remove this post and all its comments?"
-            reset
-          >
-            <Submit>
-              <Trash2 size={15} /> Delete story
-            </Submit>
-          </ActionForm>}
-          {!owner && <ActionForm action={reportPost} fields={{ post_id: post.id }} reset>
-            <label htmlFor={"report-reason-" + post.id}>Report reason</label>
-            <select id={"report-reason-" + post.id} name="reason" required defaultValue="">
-              <option value="" disabled>Choose a reason</option>
-              <option value="harassment">Harassment</option>
-              <option value="hate">Hate speech</option>
-              <option value="sexual">Sexual content</option>
-              <option value="fraud">Fraud or scam</option>
-              <option value="spam">Spam</option>
-              <option value="violence">Violence</option>
-              <option value="impersonation">Impersonation</option>
-              <option value="privacy">Privacy violation</option>
-              <option value="other">Other</option>
-            </select>
-            <Submit><Flag size={15} /> Submit report</Submit>
-          </ActionForm>}
-          {detail && owner && (
-            <small>
-              Deletion also removes this story from members’ saved posts.
-            </small>
-          )}
-        </details>
+
     </article>
   );
 }

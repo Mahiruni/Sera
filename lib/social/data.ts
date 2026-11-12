@@ -37,9 +37,10 @@ export type SocialPost = {
   saved: boolean;
   repost_of?: string|null;
   repost_note?: string;
+  audience?: "public"|"connections"|"followers"|"only_me";
   reposted?: boolean;
   repost_count?: number;
-  original?: {id:string;author_id:string;title:string;body:string;published_at:string;name:string;photo?:string|null;images:{url:string;alt:string}[]}|null;
+  original?: {id:string;author_id:string;title:string;body:string;published_at:string;audience?:string;name:string;photo?:string|null;images:{url:string;alt:string}[]}|null;
 };
 export async function loadSocialFeed(
   options: {
@@ -78,7 +79,7 @@ export async function loadSocialFeed(
     throw new Error("Unable to load the community feed. Please try again.");
   const posts = (rows || []).slice(0, 20) as unknown as SocialPost[];
   const sourceIds=[...new Set(posts.flatMap(p=>p.repost_of?[p.repost_of]:[]))];
-  const {data:sourceRows}=sourceIds.length?await db.from("posts").select("id,author_id,title,body,published_at").in("id",sourceIds).eq("status","published"):{data:[]};
+  const {data:sourceRows}=sourceIds.length?await db.from("posts").select("id,author_id,title,body,published_at,audience").in("id",sourceIds).eq("status","published"):{data:[]};
   const sources=sourceRows||[];
   const ids = [...new Set([...posts.map((p) => p.id),...sources.map(p=>p.id)])];
   if (!ids.length) return { posts: [], userId: auth.user.id, hasMore: false };

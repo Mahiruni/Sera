@@ -144,76 +144,35 @@ export async function createPost(
   refresh(id);
   return { success: "Published to your community.", postId: id };
 }
-export async function updatePost(
-  _: SocialState,
-  form: FormData,
-): Promise<SocialState> {
-  const session = await member(),
-    input = readPost(form),
-    id = form.get("post_id");
-  if (!session || !input || !uuid(id))
-    return { error: "Check your post details and sign in again." };
-  if (moderationEnabled() && !securePublishingConfigured())
-    return { error: "Secure publishing is unavailable." };
-  if (moderationEnabled()) {
-    const verdict = await screenSubmission(input, []);
-    if (verdict.verdict !== "approved")
-      return { error: verdict.verdict === "rejected" ? "Your changes may violate community guidelines. Please revise them." : "Safety screening is unavailable. Changes were not saved." };
-  }
-  // Kind is immutable. Restrict the update to its original type as well as its owner.
-  const { kind, ...fields } = input;
-  const editor = securePublishingConfigured() ? moderationWriter() : session.db;
-  if (!editor) return { error: "Secure publishing is unavailable." };
-  const result = await editor
-    .from("posts")
-    .update(fields)
-    .eq("id", id)
-    .eq("author_id", session.user.id)
-    .eq("kind", kind)
-    .eq("status", "published")
-    .select("id")
-    .single();
-  if (result.error)
-    return { error: "Could not update this post. It may have been removed." };
-  refresh(id);
-  return { success: "Changes saved." };
+export async function updatePost(_:SocialState,form:FormData):Promise<SocialState>{
+  const session=await member(),id=form.get("post_id");
+  if(!session||!uuid(id))return {error:"Sign in again to edit your post."};
+  const owned=await session.db.from("posts").select("id,kind,repost_of").eq("id",id).eq("author_id",session.user.id).eq("status","published").maybeSingle();
+  if(owned.error||!owned.data)return {error:"This post is unavailable for editing."};
+  const repost=Boolean(owned.data.repost_of);
+  const note=String(form.get("body")||"").trim();
+  const input=repost?{kind:"idea" as const,title:"Repost",body:note||"Shared original post",quote_source:"",category:"",location:"",skills:[],project_url:null}:readPost(form);
+  if(!input||(!repost&&input.kind!==owned.data.kind)||(repost&&note.length>400))return {error:"Check the post text and try again."};
+  if(moderationEnabled()&&!securePublishingConfigured())return {error:"Secure publishing is unavailable."};
+  if(moderationEnabled()){const verdict=await screenSubmission(input,[]);if(verdict.verdict!=="approved")return {error:"Your changes could not be approved. Please revise or retry."};}
+  const {kind,...fields}=input;
+  const writer=moderationEnabled()?moderationWriter():session.db;
+  if(!writer)return {error:"Secure publishing is unavailable."};
+  const result=await writer.from("posts").update(repost?{repost_note:note}:fields).eq("id",id).eq("author_id",session.user.id).eq("kind",owned.data.kind).eq("status","published").select("id").single();
+  if(result.error||!result.data)return {error:"Could not update this post. It may have been removed."};
+  refresh(id);return {success:"Changes published.",postId:id};
 }
-export async function deletePost(
-  _: SocialState,
-  form: FormData,
-): Promise<SocialState> {
-  const session = await member(),
-    id = form.get("post_id");
-  if (!session || !uuid(id))
-    return { error: "Sign in again to remove this post." };
-  const images = await session.db
-    .from("post_images")
-    .select("path")
-    .eq("post_id", id)
-    .eq("user_id", session.user.id);
-  if (images.error)
-    return { error: "Could not load post files. Please retry." };
-  const result = await session.db
-    .from("posts")
-    .delete()
-    .eq("id", id)
-    .eq("author_id", session.user.id)
-    .select("id")
-    .single();
-  if (result.error) return { error: "Could not remove this post." };
-  const paths = (images.data || [])
-    .map((i) => i.path as string)
-    .filter((p) => p.startsWith(`${session.user.id}/${id}/`));
-  const media = paths.length
-    ? await session.db.storage.from(MEDIA_BUCKET).remove(paths)
-    : null;
-  refresh(id);
-  if (form.get("return_to") === "/feed" && !media?.error) redirect("/feed");
-  return {
-    success: media?.error
-      ? "Post removed. Some files could not be cleaned up; please contact support."
-      : "Post removed.",
-  };
+export async function managePost(_:SocialState,form:FormData):Promise<SocialState>{
+ const session=await member(),id=form.get("post_id"),action=form.get("action"),audience=form.get("audience");
+ if(!session||!uuid(id)||typeof action!=="string"||!["trash","restore","purge","privacy"].includes(action))return {error:"Sign in and choose a valid post action."};
+ if(action==="privacy"&&(typeof audience!=="string"||!["public","connections","followers","only_me"].includes(audience)))return {error:"Choose a valid audience."};
+ const {error}=await session.db.rpc("sera_manage_post",{p_id:id,p_action:action,p_audience:action==="privacy"?audience:null});
+ if(error)return {error:action==="restore"?"This post could not be restored. Its recovery period may have expired or the original may be unavailable.":"Unable to complete this post action. Please retry."};
+ refresh(id);revalidatePath("/settings/bin");revalidatePath("/discover");revalidatePath("/notifications");
+ return {success:action==="trash"?"Post moved to your bin.":action==="restore"?"Post restored.":action==="purge"?"Post permanently deleted.":"Privacy updated.",postId:id};
+}
+export async function deletePost(_:SocialState,form:FormData):Promise<SocialState>{
+ form.set("action","trash");const result=await managePost({},form);if(result.success&&form.get("return_to")==="/feed")redirect("/feed");return result;
 }
 async function setInteraction(
   table: "post_likes" | "post_saves" | "post_shares",
@@ -256,12 +215,16 @@ export async function repostPost(_: SocialState, form: FormData): Promise<Social
     return { error: "Secure repost publishing is temporarily unavailable." };
 
   const { data: source, error: missing } = await session.db.from("posts")
-    .select("id,author_id,title,body,repost_of")
+    .select("id,author_id,title,body,repost_of,audience")
     .eq("id", sourceId).eq("status", "published").maybeSingle();
   if (missing || !source) return { error: "This post is no longer available." };
   if (source.author_id === session.user.id) return { error: "You cannot repost your own story." };
   if (source.repost_of) return { error: "Please repost the original story instead." };
+  if(source.audience!=="public")return {error:"Only public posts can be reposted."};
 
+  const {data:restored,error:restoreError}=await session.db.rpc("sera_restore_own_repost",{p_original:sourceId});
+  if(restoreError)return {error:"Unable to recover this repost. Please retry."};
+  if(restored){refresh(sourceId);return {success:"Your previous repost was restored.",postId:restored};}
   const { data: existing } = await session.db.from("posts").select("id,status")
     .eq("author_id", session.user.id).eq("repost_of", sourceId).limit(1).maybeSingle();
   if (existing?.status==="published") return { success: "Already reposted.",postId:existing.id };
