@@ -86,6 +86,8 @@ private fun loadProfessionals(token: String): Pair<List<SeraProfessional>?, Stri
 
 @Composable
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier) {
+    var showHiring by remember { mutableStateOf(false) }
+    if(showHiring){SeraEmployerDashboard(token,userId,modifier,onBack={showHiring=false});return}
     var showOpportunities by remember { mutableStateOf(false) }
     if(showOpportunities){SeraOpportunities(token,userId,modifier,onBack={showOpportunities=false});return}
     var showEvents by remember { mutableStateOf(false) }
@@ -135,6 +137,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         Spacer(Modifier.height(16.dp))
         Text("Your professional network", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color(0xFF183B40))
         Text("Discover people, skills and ideas.", fontSize = 13.sp, color = Color(0xFF657A7E))
+        FilledTonalButton(onClick={showHiring=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Hiring workspace")}
         FilledTonalButton(onClick={showOpportunities=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Collaboration opportunities")}
         FilledTonalButton(onClick={showEvents=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Professional events")}
         FilledTonalButton(onClick={showCollaboration=true},modifier=Modifier.fillMaxWidth().padding(top=8.dp)){Text("Collaboration spaces")}

@@ -1,4 +1,11 @@
-import { redirect } from "next/navigation";
-export default function Page() {
-  redirect("/employer");
+import Link from "next/link";
+import {requiredProfile} from "@/lib/auth/profile";
+import {serverClient} from "@/lib/supabase/server";
+import {stageLabel} from "@/lib/workspace/model";
+import "./pipeline.css";
+export const dynamic="force-dynamic";
+type Dashboard={open_jobs:number;closed_jobs:number;stages:Record<string,number>;jobs:{id:string;title:string;company:string;status:string;applicants:number}[];applications:{id:string;candidate_name:string;stage:string;job_title:string}[]};
+export default async function Pipeline({searchParams}:{searchParams:Promise<{stage?:string}>}){
+ await requiredProfile("/employer/pipeline");const db=await serverClient();const {data,error}=await db.rpc("sera_employer_dashboard");const d=data as Dashboard|null;const q=await searchParams;const stages=["applied","screened","interview","offer","rejected","withdrawn"];const selected=stages.includes(q.stage||"")?q.stage:"all";const total=stages.reduce((n,s)=>n+Number(d?.stages[s]||0),0);
+ return <main className="container page sera-hiring"><Link href="/employer">← Employer workspace</Link><header className="sera-hiring-hero"><h1>Build your next great team.</h1><p>Hiring activity, from first application to offer.</p><div className="sera-hiring-actions"><Link className="button" href="/employer/post">Post a job</Link><Link href="/talent?tab=saved">Talent shortlist</Link></div></header>{error||!d?<p role="alert">Hiring activity unavailable. Please retry.</p>:<><section className="sera-hiring-metrics"><article><small>Open roles</small><strong>{d.open_jobs}</strong></article><article><small>Applications</small><strong>{total}</strong></article><article><small>Interviews & offers</small><strong>{Number(d.stages.interview||0)+Number(d.stages.offer||0)}</strong></article></section><h2>Hiring pipeline</h2><section className="sera-hiring-metrics">{stages.map(s=><Link key={s} href={"/employer/pipeline?stage="+s} aria-current={selected===s?"page":undefined}><small>{stageLabel(s)}</small><strong>{d.stages[s]||0}</strong></Link>)}</section><section className="sera-hiring-card"><h2>Recent applicants</h2><Link href="/employer/pipeline">All stages</Link>{d.applications.filter(a=>selected==="all"||a.stage===selected).map(a=><Link className="sera-hiring-row" href={"/applications/"+a.id} key={a.id}><div><strong>{a.candidate_name}</strong><p>{a.job_title}</p></div><span>{stageLabel(a.stage)}</span></Link>)}{!d.applications.length&&<p>No applications yet.</p>}<Link href="/employer#incoming">View all applications</Link></section><section className="sera-hiring-card"><h2>Your postings</h2>{d.jobs.map(j=><Link className="sera-hiring-row" href={"/jobs/"+j.id} key={j.id}><div><strong>{j.title}</strong><p>{j.company}</p></div><span>{j.applicants} applicants · {j.status}</span></Link>)}<Link href="/employer#postings">Manage postings</Link></section></>}</main>;
 }

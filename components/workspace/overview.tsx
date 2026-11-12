@@ -195,6 +195,7 @@ export function WorkspaceOverview({
         </Link>
       </header>
       <WorkspaceNav employer={employer} />
+      {employer && <Link className="button secondary" href="/employer/pipeline">Advanced hiring dashboard <ArrowRight size={16}/></Link>}
       <div className="ws-metrics" aria-label="Your live activity">
         {metrics.map(({ label, value, note, icon: Icon, href }) => (
           <Link className="ws-metric" href={href} key={label}>
