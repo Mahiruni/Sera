@@ -68,8 +68,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var history by remember(conversation){mutableStateOf<List<String>>(emptyList())}
     fun payload()=JSONObject().put("p_conversation",conversation)
     fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;started=0;seconds=0;lastAnswer=null;row=null}
-    suspend fun end(action:String,message:String=""){
-        val call=row;call?.let{SeraPush.clearCallNotification(context,it.id)};cleanup();if(message.isNotBlank())error=message
+    suspend fun end(action:String,message:String="",target:CallRow?=null){
+        val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};cleanup();if(message.isNotBlank())error=message
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
     }
     fun peer():SeraNativeRtc{
@@ -83,7 +83,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         if(busy)return;busy=true;error="";phase="Preparing call…"
         preparation=scope.launch{try{
             if(!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))error("Open SERA to begin a call.")
-            foregroundLease=SeraCallForeground.start(context){preparation?.cancel();scope.launch{end("end")}}
+            foregroundLease=SeraCallForeground.start(context){val current=row;preparation?.cancel();scope.launch{end("end",target=current)}}
             val fresh=callRequest(token,"sera_call_config",payload())?.let{JSONObject(it)}?:error("Calling is unavailable.")
             if(!fresh.optBoolean("enabled"))error("Calling is unavailable.")
             config=fresh;val p=peer()
@@ -130,11 +130,11 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 val current=latestRow
                 if(current!=null&&current.state=="ringing"&&current.callee==userId&&latestPhase.isBlank()){
                     SeraPush.notifyCall(context,mapOf("call_id" to current.id,"recipient_id" to userId,"expires_at" to current.expiresAt))
-                }else if(current!=null&&!SeraCallForeground.owns(foregroundLease))scope.launch{end("end")}
+                }else if(!SeraCallForeground.owns(foregroundLease)){preparation?.cancel();if(current!=null)scope.launch{end("end",target=current)}}
             }
         }
         lifecycle.addObserver(observer)
-        onDispose{lifecycle.removeObserver(observer);rtc?.close();SeraCallForeground.stop(context,foregroundLease)}
+        onDispose{lifecycle.removeObserver(observer);preparation?.cancel();rtc?.close();SeraCallForeground.stop(context,foregroundLease)}
     }
     LaunchedEffect(incoming,resumed,row?.id){if(incoming&&resumed)row?.let{SeraPush.clearCallNotification(context,it.id)}}
     DisposableEffect(incoming,resumed,row?.id){

@@ -35,8 +35,8 @@ internal object SeraCallForeground {
     fun lost(id:String){
         val lease=active?.takeIf{it.id==id}?:return
         active=null
-        lease.ready.completeExceptionally(IllegalStateException("Call service stopped."))
-        lease.onStop()
+        if(lease.ready.isCompleted&&!lease.ready.isCancelled)lease.onStop()
+        else lease.ready.completeExceptionally(IllegalStateException("Call service stopped."))
     }
     fun stop(context:Context,id:String?){
         if(!owns(id))return
@@ -52,7 +52,7 @@ class SeraActiveCallService:Service(){
     override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
         val id=intent?.getStringExtra("lease")
         if(intent?.action=="sera.call.END"){
-            if(id!=null&&id==lease){SeraCallForeground.lost(id);stopSelf()}
+            if(id!=null&&id==lease){SeraCallForeground.lost(id);stopSelf()}else if(lease==null)stopSelf()
             return START_NOT_STICKY
         }
         if(intent?.action!="sera.call.START"||id==null||!SeraCallForeground.owns(id)){stopSelf();return START_NOT_STICKY}
@@ -71,7 +71,7 @@ class SeraActiveCallService:Service(){
         val open=PendingIntent.getActivity(this,812,Intent(this,MainActivity::class.java).setAction("sera.call.OPEN").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val end=PendingIntent.getService(this,813,Intent(this,SeraActiveCallService::class.java).setAction("sera.call.END").putExtra("lease",id),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.sym_call_outgoing)
-            .setContentTitle("SERA voice call").setContentText("Call in progress · Tap to return")
+            .setContentTitle("SERA voice call").setContentText("Tap to return to your call")
             .setCategory(NotificationCompat.CATEGORY_CALL).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel,"End call",end).build()
