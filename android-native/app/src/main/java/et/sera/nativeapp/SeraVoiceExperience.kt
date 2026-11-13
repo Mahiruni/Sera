@@ -134,7 +134,7 @@ internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample)
                 Surface(color=c.surfaceVariant.copy(alpha=.5f),shape=RoundedCornerShape(16.dp)){
                     Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                         Box(Modifier.size(36.dp).clip(CircleShape).background(c.primaryContainer),contentAlignment=Alignment.Center){Icon(if(missed)Icons.Outlined.CallMissed else if(incoming)Icons.Outlined.CallReceived else Icons.Outlined.CallMade,null,tint=if(missed)c.error else c.onPrimaryContainer)}
-                        Column(Modifier.weight(1f)){Text(voiceText(event.outcome(userId)),fontWeight=FontWeight.Medium,color=c.onSurface,fontSize=13.sp);Text(voiceText(if(incoming)"Incoming" else "Outgoing")+" · "+event.dateTime(),fontSize=11.sp,color=c.onSurfaceVariant)}
+                        Column(Modifier.weight(1f)){Text(voiceText(event.outcome(userId)),fontWeight=FontWeight.Medium,color=c.onSurface,fontSize=13.sp);Text(voiceText(if(incoming)"Incoming" else "Outgoing")+" · "+event.dateTime()+(event.connectedSeconds?.let{" · "+seraCallDuration(it)}?:""),fontSize=11.sp,color=c.onSurfaceVariant)}
                         IconButton(onClick=onCall){Icon(Icons.Outlined.Call,voiceText("Call again"),tint=c.primary)}
                     }
                 }
