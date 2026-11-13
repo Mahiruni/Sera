@@ -43,10 +43,10 @@ import org.json.JSONArray
 import java.util.UUID
 
 internal data class SeraCallEvent(val id:String,val caller:String,val state:String,val createdAt:String)
-private data class CallRow(val id:String,val caller:String,val callee:String,val state:String,val offer:String?,val answer:String?){
+private data class CallRow(val id:String,val caller:String,val callee:String,val state:String,val offer:String?,val answer:String?,val expiresAt:String){
     val live get()=state=="ringing"||state=="accepted"
 }
-private fun parseCall(raw:String?):CallRow?{if(raw.isNullOrBlank()||raw=="null")return null;val j=JSONObject(raw);return CallRow(j.getString("id"),j.getString("caller"),j.getString("callee"),j.getString("state"),j.optString("offer").takeUnless{it.isBlank()||it=="null"},j.optString("answer").takeUnless{it.isBlank()||it=="null"})}
+private fun parseCall(raw:String?):CallRow?{if(raw.isNullOrBlank()||raw=="null")return null;val j=JSONObject(raw);return CallRow(j.getString("id"),j.getString("caller"),j.getString("callee"),j.getString("state"),j.optString("offer").takeUnless{it.isBlank()||it=="null"},j.optString("answer").takeUnless{it.isBlank()||it=="null"},j.optString("expires_at"))}
 private suspend fun callRequest(token:String,fn:String,payload:JSONObject):String?=withContext(Dispatchers.IO){val r=chatRpc(token,fn,payload);if(r.first==null)error(r.second.ifBlank{"Call unavailable."});r.first}
 @Composable
 internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit={}){
@@ -115,9 +115,29 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
     LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(25000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()
-    LaunchedEffect(incoming,row?.id){if(incoming)row?.let{SeraPush.clearCallNotification(context,it.id)}}
-    DisposableEffect(incoming){val ringtone=if(incoming)runCatching{RingtoneManager.getRingtone(context,RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)).apply{play()}}.getOrNull()else null;onDispose{runCatching{ringtone?.stop()}}}
-    DisposableEffect(lifecycle,conversation){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP&&row!=null)scope.launch{end("end")}};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);rtc?.close()}}
+    var resumed by remember(lifecycle){mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}
+    val latestRow by rememberUpdatedState(row)
+    val latestPhase by rememberUpdatedState(phase)
+    DisposableEffect(lifecycle,conversation){
+        val observer=androidx.lifecycle.LifecycleEventObserver{_,event->
+            if(event==Lifecycle.Event.ON_RESUME)resumed=true
+            if(event==Lifecycle.Event.ON_PAUSE)resumed=false
+            if(event==Lifecycle.Event.ON_STOP){
+                val current=latestRow
+                if(current!=null&&current.state=="ringing"&&current.callee==userId&&latestPhase.isBlank()){
+                    SeraPush.notifyCall(context,mapOf("call_id" to current.id,"recipient_id" to userId,"expires_at" to current.expiresAt))
+                }else if(current!=null)scope.launch{end("end")}
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose{lifecycle.removeObserver(observer);rtc?.close()}
+    }
+    LaunchedEffect(incoming,resumed,row?.id){if(incoming&&resumed)row?.let{SeraPush.clearCallNotification(context,it.id)}}
+    DisposableEffect(incoming,resumed,row?.id){
+        val id=row?.id
+        val ringtone=if(incoming&&resumed&&id!=null&&!SeraPush.isCallSilenced(context,id))runCatching{RingtoneManager.getRingtone(context,RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)).apply{audioAttributes=android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build();if(android.os.Build.VERSION.SDK_INT>=28)isLooping=true;play()}}.getOrNull()else null
+        onDispose{runCatching{ringtone?.stop()}}
+    }
     if(!enabled)return
     IconButton(onClick={showHistory=true;scope.launch{history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")}}.getOrDefault(emptyList())}},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,"Voice call",tint=ink)}
     if(showHistory)AlertDialog(onDismissRequest={showHistory=false},title={Text("Voice call")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Call "+name);if(history.isNotEmpty()){Text("Recent calls",fontWeight=FontWeight.SemiBold);history.take(5).forEach{Text(it,fontSize=12.sp)}}}},confirmButton={TextButton(onClick={showHistory=false;request(false)},enabled=row==null&&!busy){Text("Call",color=accent)}},dismissButton={TextButton(onClick={showHistory=false}){Text("Cancel")}})

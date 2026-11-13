@@ -109,23 +109,33 @@ internal object SeraPush {
         editor.putLong(id,now+90000).apply()
         clearCallNotification(context,id)
     }
+    private fun silencedAlerts(context:Context)=context.getSharedPreferences("sera_call_silenced",Context.MODE_PRIVATE)
+    internal fun isCallSilenced(context:Context,id:String)=silencedAlerts(context).getLong(id,0)>System.currentTimeMillis()
+    @Synchronized fun silenceCall(context:Context,id:String,recipient:String){
+        if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return
+        val now=System.currentTimeMillis();val store=silencedAlerts(context);val editor=store.edit()
+        store.all.forEach{(key,value)->if(value !is Long||value<now)editor.remove(key)}
+        editor.putLong(id,now+90000).apply();clearCallNotification(context,id)
+    }
     @Synchronized fun notifyCall(context:Context,data:Map<String,String>){
         val id=data["call_id"]?:return
         val recipient=data["recipient_id"]?:return
         if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return
-        if(callAlerts(context).getLong(id,0)>System.currentTimeMillis())return
+        if(callAlerts(context).getLong(id,0)>System.currentTimeMillis()||isCallSilenced(context,id))return
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         val remaining=runCatching{java.time.Instant.parse(data["expires_at"]).toEpochMilli()-System.currentTimeMillis()}.getOrDefault(0)
         if(remaining<=0)return
         channel(context)
         val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("SERA.et").setContentText("Incoming call").build()
         val notification=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
-            .addAction(android.R.drawable.sym_call_incoming,"Open call",pi).build()
+            .addAction(android.R.drawable.sym_call_incoming,"Open call",pi)
+            .addAction(android.R.drawable.ic_lock_silent_mode,"Silence",silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
         context.getSystemService(NotificationManager::class.java).notify("sera-call:"+id,1,notification)
     }
     fun dispatch(access:String,kind:String,id:String){
@@ -136,6 +146,9 @@ internal object SeraPush {
             c.outputStream.use{it.write(JSONObject().put("kind",kind).put("id",id).toString().toByteArray())};c.responseCode
         }catch(_:Exception){}finally{c?.disconnect()}
     }
+}
+class SeraCallSilenceReceiver:android.content.BroadcastReceiver(){
+    override fun onReceive(context:Context,intent:Intent){if(intent.action=="et.sera.nativeapp.SILENCE_CALL")SeraPush.silenceCall(context,intent.getStringExtra("call_id")?:return,intent.getStringExtra("recipient_id")?:return)}
 }
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
