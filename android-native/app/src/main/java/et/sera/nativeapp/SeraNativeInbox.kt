@@ -97,7 +97,7 @@ private class SeraInboxDrafts(context: Context) {
     }
 }
 
-private data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="")
+internal data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="")
 internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
@@ -265,9 +265,6 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     var remove by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var forwarding by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
     var forwardClient by remember{mutableStateOf("")}
-    var forwardQuery by remember(selected?.id){mutableStateOf("")}
-    var forwardTarget by remember(selected?.id){mutableStateOf<String?>(null)}
-    var forwardBusy by remember(selected?.id){mutableStateOf(false)}
     var historyLimit by remember(selected?.id){mutableIntStateOf(100)}
     var messageSearch by remember(selected?.id){mutableStateOf("")}
     var showSearch by remember(selected?.id){mutableStateOf(false)}
@@ -296,14 +293,9 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         }finally{sending=false;transferProgress=-1}
     }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
-    if(remove!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Unsend message?")},text={Text("This message will be removed for everyone.")},confirmButton={TextButton(onClick={val id=remove!!.id;remove=null;scope.launch{val r=withContext(Dispatchers.IO){unsendNativeMessage(token,id)};if(r.first==null)error=r.second else reload()}}){Text("Unsend")}},dismissButton={TextButton(onClick={remove=null}){Text("Cancel")}})
-    if(reaction!=null)AlertDialog(onDismissRequest={reaction=null},title={Text("React to message")},text={Column(verticalArrangement=Arrangement.spacedBy(4.dp)){listOf("👍","❤️","😂","😮","😢","👏").chunked(3).forEach{group->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){group.forEach{emoji->IconButton(onClick={reaction?.let{react(it,emoji)}},modifier=Modifier.size(48.dp)){Text(emoji,fontSize=23.sp)}}}}}},confirmButton={TextButton(onClick={reaction=null}){Text("Close")}})
-    if(forwarding!=null)AlertDialog(onDismissRequest={if(!forwardBusy)forwarding=null},title={Text("Forward message")},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-        Text(forwarding?.body?.take(120).orEmpty(),maxLines=3,overflow=TextOverflow.Ellipsis,fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedTextField(forwardQuery,{forwardQuery=it},singleLine=true,placeholder={Text("Search conversations")},modifier=Modifier.fillMaxWidth())
-        LazyColumn(Modifier.heightIn(max=220.dp)){items(conversations.filter{it.peerName.contains(forwardQuery.trim(),true)},key={it.id}){target->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){RadioButton(selected=forwardTarget==target.id,onClick={forwardTarget=target.id},enabled=!forwardBusy);TextButton(onClick={forwardTarget=target.id},enabled=!forwardBusy,modifier=Modifier.weight(1f)){Text(target.peerName,maxLines=1,overflow=TextOverflow.Ellipsis)}}}}
-    }},confirmButton={Button(enabled=forwardTarget!=null&&!forwardBusy,onClick={val source=forwarding?:return@Button;val target=forwardTarget?:return@Button;forwardBusy=true;scope.launch{try{val r=withContext(Dispatchers.IO){runCatching{val f=source.files.firstOrNull()?.let{NativeChatSelection(it.name,it.mime,readChatFile(token,it),it.durationMs)};sendNativeMessageV2(token,userId,target,forwardClient,source.body,f,forward=source.id)}.getOrElse{null to "Forward failed. Retry."}};if(r.first!=null){forwarding=null;refresh++;reload()}else error=r.second}finally{forwardBusy=false}}}){Text(if(forwardBusy)"Forwarding…" else "Forward")}},dismissButton={TextButton(onClick={forwarding=null},enabled=!forwardBusy){Text("Cancel")}})
-
+    SeraNativeMessageDialogs(remove=remove,reaction=reaction,forwarding=forwarding,conversations=conversations,token=token,userId=userId,forwardClient=forwardClient,
+        onRemoveDismiss={remove=null},onReactionDismiss={reaction=null},onForwardDismiss={forwarding=null},
+        onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
 
     var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
     SeraNativeAttachmentPicker(conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
@@ -457,7 +449,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     val previousDate=timeline.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
                     val message=item.message
-                    if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString();forwardTarget=null;forwardQuery=""},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
+                    if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
                 }
             }
             SeraNativeComposer(draft=draft,attachment=attachment,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
