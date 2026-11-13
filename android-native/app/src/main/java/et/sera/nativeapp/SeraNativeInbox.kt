@@ -615,7 +615,9 @@ private class InboxController(
 
     @Composable
     fun PresenceAndScroll() {
-        LaunchedEffect(token,selected?.id,lifecycle) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
+        val link=LocalSeraLink.current
+        val activeCall=LocalSeraGlobalCall.current?.pinned==true
+        LaunchedEffect(token,selected?.id,lifecycle,link,activeCall) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; if(!link.available)return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(seraSecondarySyncDelay(link,activeCall,30000L))}} }
         val ime = WindowInsets.ime
         val density = LocalDensity.current
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
@@ -712,7 +714,8 @@ private class InboxController(
     @Composable
     fun ConnectionAndPlayback() {
         LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;album=emptyList();reply=null}}
-        LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
+        val link=LocalSeraLink.current
+        SideEffect{connectionAvailable=link.available}
         LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
         DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.stop()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
         LaunchedEffect(attachment){if(playback.activeId?.startsWith("preview:")==true&&playback.activeId!="preview:"+System.identityHashCode(attachment))playback.stop()}
@@ -807,9 +810,11 @@ private class InboxController(
 
     @Composable
     fun ConversationPolling() {
+        val link=LocalSeraLink.current
+        val activeCall=LocalSeraGlobalCall.current?.pinned==true
         val unreadRevision=SeraUnreadRefresh.revision
         val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
-        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision,connectionAvailable) {
+        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision,connectionAvailable,link,activeCall) {
             if(userId.isBlank())return@LaunchedEffect
             if(conversations.isEmpty()){val saved=withContext(Dispatchers.IO){runCatching{cache?.readInbox(userId).orEmpty()}.getOrDefault(emptyList())};if(saved.isNotEmpty()){conversations=saved;loading=false}}
             if(!connectionAvailable){loading=false;return@LaunchedEffect}
@@ -819,7 +824,7 @@ private class InboxController(
                     result.first?.let{rows->conversations=rows;withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}};val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
-                    delay(20000)
+                    delay(seraSecondarySyncDelay(link,activeCall,20000L))
                 }
             }
         }
@@ -827,9 +832,10 @@ private class InboxController(
 
     @Composable
     fun MessagePolling() {
+        val link=LocalSeraLink.current
         val recoveryRevision=SeraPushRecovery.revision
         val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
-        LaunchedEffect(token, selected?.id, lifecycle,recoveryRevision,connectionAvailable) {
+        LaunchedEffect(token, selected?.id, lifecycle,recoveryRevision,connectionAvailable,link.networkId) {
             val conversation = selected ?: return@LaunchedEffect
             if(!thread.initialMessagesLoaded&&messages.isEmpty()){
                 val cached=withContext(Dispatchers.IO){runCatching{cache?.read(userId,conversation.id)?.let{parseNativeMessageRows(it).first}}.getOrNull()}
@@ -844,9 +850,9 @@ private class InboxController(
 
     @Composable
     fun ReadReceipts() {
-        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget,thread.cachedHistory){
+        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget,thread.cachedHistory,connectionAvailable){
             val c=selected?:return@LaunchedEffect
-            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null||thread.cachedHistory)return@LaunchedEffect
+            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null||thread.cachedHistory||!connectionAvailable)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
@@ -861,17 +867,21 @@ private class InboxController(
 
     @Composable
     fun TypingEffects() {
-        LaunchedEffect(token, selected?.id, lifecycle) {
+        val link=LocalSeraLink.current
+        val activeCall=LocalSeraGlobalCall.current?.pinned==true
+        LaunchedEffect(token, selected?.id, lifecycle,link,activeCall) {
+            if(!link.available){peerTyping=false;return@LaunchedEffect}
             val conversation = selected ?: return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 while (true) {
                     val result = withContext(Dispatchers.IO) { inboxRequest(token, "professional_typing_status?select=member_id&conversation_id=eq.${conversation.id}&member_id=neq.$userId&limit=1") }
                     peerTyping = runCatching { JSONArray(result.first ?: "[]").length() > 0 }.getOrDefault(false)
-                    delay(2500)
+                    delay(seraSecondarySyncDelay(link,activeCall,2500L))
                 }
             }
         }
-        LaunchedEffect(token,selected?.id,lifecycle) {
+        LaunchedEffect(token,selected?.id,lifecycle,link.available) {
+            if(!link.available)return@LaunchedEffect
             val conversation=selected?:return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 var lastPulse=typingPulse

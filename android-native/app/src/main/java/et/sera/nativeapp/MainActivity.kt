@@ -445,8 +445,9 @@ fun SeraApp(
         profileHeadline=withContext(Dispatchers.IO){loadNativeProfile(token,id).first?.headline.orEmpty()}
         profileVerified=withContext(Dispatchers.IO){id in identityBadges(token,listOf(id))}
     }
-    val unreadActivity = rememberSeraUnreadActivity(accessToken.orEmpty(),authenticatedUserId,tab)
-    SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
+    val networkLink=rememberSeraLink(context.applicationContext)
+    val unreadActivity = rememberSeraUnreadActivity(accessToken.orEmpty(),authenticatedUserId,tab,networkLink,globalVoice.pinned)
+    SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId,networkLink.available)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
     fun signOutSera(){feedSession?.clearOnSignOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
@@ -569,7 +570,7 @@ fun SeraApp(
                             }
                         }
                     }
-                    CompositionLocalProvider(LocalSeraGlobalCall provides globalVoice){
+                    CompositionLocalProvider(LocalSeraGlobalCall provides globalVoice,LocalSeraLink provides networkLink){
                     Column(Modifier.fillMaxSize()){
                     if(BuildConfig.LIVE_CALLING_INCLUDED&&authenticatedUserId.isNotBlank())SeraGlobalVoiceHost(globalVoice,accessToken ?: "",authenticatedUserId)
                     Box(Modifier.weight(1f).fillMaxWidth()){

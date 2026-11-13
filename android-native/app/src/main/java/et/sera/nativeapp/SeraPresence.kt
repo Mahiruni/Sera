@@ -47,9 +47,9 @@ internal fun peerPresence(token:String,id:String):String?{
  seraRelativeActivity(seconds)
  }.getOrNull()
 }
-@Composable internal fun SeraPresenceHeartbeat(token:String,userId:String){
+@Composable internal fun SeraPresenceHeartbeat(token:String,userId:String,available:Boolean=true){
  val lifecycle=LocalLifecycleOwner.current.lifecycle
- LaunchedEffect(token,userId,lifecycle){if(token.isNotBlank()&&userId.isNotBlank())lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){withContext(Dispatchers.IO){presenceHeartbeat(token)};delay(30000)}}}
+ LaunchedEffect(token,userId,lifecycle,available){if(available&&token.isNotBlank()&&userId.isNotBlank())lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){withContext(Dispatchers.IO){presenceHeartbeat(token)};delay(30000)}}}
 }
 @Composable internal fun SeraPresenceSettings(token:String,userId:String){
  var visibility by remember(userId){mutableStateOf<String?>(null)}

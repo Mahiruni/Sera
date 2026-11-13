@@ -12,17 +12,18 @@ internal object SeraUnreadRefresh {
  var revision by mutableIntStateOf(0)
  fun changed(){if(android.os.Looper.myLooper()==android.os.Looper.getMainLooper())revision++ else android.os.Handler(android.os.Looper.getMainLooper()).post{revision++}}
 }
-@Composable internal fun rememberSeraUnreadActivity(token:String,userId:String,section:String):Pair<Int,Int>{
+@Composable internal fun rememberSeraUnreadActivity(token:String,userId:String,section:String,link:SeraLinkState=SeraLinkState(),activeCall:Boolean=false):Pair<Int,Int>{
  var counts by remember(token,userId){mutableStateOf(0 to 0)}
  val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
  val revision=SeraUnreadRefresh.revision
- LaunchedEffect(token,userId,section,revision,lifecycle){
+ LaunchedEffect(token,userId,section,revision,lifecycle,link,activeCall){
   if(token.isBlank()||userId.isBlank()){counts=0 to 0;return@LaunchedEffect}
+  if(!link.available)return@LaunchedEffect
   lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){
    while(true){
     val result=withContext(Dispatchers.IO){spaceCall(token,"sera_unread_activity")}
     runCatching{JSONObject(result.first?:"null")}.getOrNull()?.let{counts=it.optInt("notifications") to it.optInt("inbox")}
-    delay(15000)
+    delay(seraSecondarySyncDelay(link,activeCall,15000L))
    }
   }
  }

@@ -62,6 +62,7 @@ private val feedMuted = Color(0xFF667A7E)
 @Composable
 internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={},session:SeraFeedSession?=null,retainedListState:androidx.compose.foundation.lazy.LazyListState?=null,homeReselect:Int=0,activeCall:Boolean=false,retainedPersonalized:Boolean=false,onPersonalized:(Boolean)->Unit={}) {
     val context = LocalContext.current
+    val link=LocalSeraLink.current
     val feedInk=MaterialTheme.colorScheme.onSurface
     val feedMuted=MaterialTheme.colorScheme.onSurfaceVariant
     val feedTeal=MaterialTheme.colorScheme.primary
@@ -85,11 +86,11 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     val currentHead by rememberUpdatedState(displayedHead)
     LaunchedEffect(displayedHead){if(displayedHead?.id==newHead)newHead=null}
     val freshnessLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle){if(!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null&&current!=null){newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraFeedProbeInterval(activeCall))}}}
+    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle,link){if(link.available&&!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null&&current!=null){newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraSecondarySyncDelay(link,activeCall,60000L))}}}
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(token,authorIds,presenceLifecycle) { presenceLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while(true) { activeAuthors=withContext(Dispatchers.IO){feedPresence(token,authorIds)} ?: emptySet(); kotlinx.coroutines.delay(30000) } } }
+    LaunchedEffect(token,authorIds,presenceLifecycle,link,activeCall) { if(!link.available||activeCall){activeAuthors=emptySet();return@LaunchedEffect};presenceLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while(true) { activeAuthors=withContext(Dispatchers.IO){feedPresence(token,authorIds)} ?: emptySet(); kotlinx.coroutines.delay(seraSecondarySyncDelay(link,false,30000L)) } } }
 
     var nativePostId by remember { mutableStateOf<String?>(null) }
     var commentsPostId by remember { mutableStateOf<String?>(null) }
