@@ -173,6 +173,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     Text("Create a post", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, color = ink, fontSize=if(keyboardOpen)19.sp else 24.sp)
                 }
+                if(keyboardOpen)Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=muted,maxLines=1)
                 IconButton(onClick = { requestClose() },modifier=Modifier.background(soft,CircleShape)) { Icon(Icons.Outlined.Close, "Close composer", tint = actionInk) }
             }
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(if(keyboardOpen)8.dp else 12.dp)){
@@ -255,7 +256,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     Icon(if(detailsOpen)Icons.Outlined.ExpandMore else Icons.Outlined.ChevronRight,null,Modifier.size(19.dp),tint=muted)
                 }
                 if(detailsOpen){OutlinedTextField(value=title,onValueChange={title=it.take(140)},label={Text("Headline")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=category,onValueChange={category=it.take(60)},label={Text("Category")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=location,onValueChange={location=it.take(120)},label={Text("Location")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=skills,onValueChange={skills=it.take(400)},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(value=projectUrl,onValueChange={projectUrl=it.take(500)},label={Text("Project link (https://)")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
-                Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=muted)
+                if(!keyboardOpen)Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=muted)
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
             HorizontalDivider(color = line)
