@@ -71,10 +71,10 @@ class SeraActiveCallService:Service(){
         val open=PendingIntent.getActivity(this,812,Intent(this,MainActivity::class.java).setAction("sera.call.OPEN").putExtra("sera_kind","voice_call_active").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val end=PendingIntent.getService(this,813,Intent(this,SeraActiveCallService::class.java).setAction("sera.call.END").putExtra("lease",id),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.sym_call_outgoing)
-            .setContentTitle("SERA voice call").setContentText("Tap to return to your call")
+            .setContentTitle(voiceText("Ongoing voice call")).setContentText(voiceText("Tap to return to your call"))
             .setCategory(NotificationCompat.CATEGORY_CALL).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel,"End call",end).build()
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel,voiceText("End call"),end).build()
     }
     override fun onTaskRemoved(rootIntent:Intent?){lease?.let{SeraCallForeground.lost(it)};stopSelf();super.onTaskRemoved(rootIntent)}
     override fun onDestroy(){lease?.let{SeraCallForeground.lost(it)};lease=null;stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy()}
