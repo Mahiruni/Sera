@@ -112,6 +112,10 @@ jobs:
           args=(--no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=true -PSERA_SPLIT_RELEASE=true "-PSERA_VERSION_CODE=$VERSION_CODE" "-PSERA_VERSION_NAME=$VERSION_NAME" "-PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co" "-PSERA_SUPABASE_ANON_KEY=$SERA_SUPABASE_ANON_KEY")
           gradle :app:lintVitalRelease "${args[@]}"
           gradle :app:assembleRelease "${args[@]}"
+          gradle :app:assembleReleaseAndroidTest "${args[@]}" -PSERA_SIGNED_CALL_SMOKE=true
+          TEST_APK="$(find app/build/outputs/apk/androidTest/release -name '*.apk' -print -quit)"
+          test -s "$TEST_APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$KEYSTORE" --ks-key-alias "$SERA_RELEASE_KEY_ALIAS" --ks-pass env:SERA_RELEASE_STORE_PASSWORD --key-pass env:SERA_RELEASE_KEY_PASSWORD --out "$RUNNER_TEMP/sera-call-smoke.apk" "$TEST_APK"
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*universal*release*.apk' -print -quit)"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
@@ -166,6 +170,7 @@ jobs:
           disable-animations: true
           script: |
             bash android-native/scripts/verify_signed_upgrade.sh
+            bash android-native/scripts/verify_signed_call_engine.sh
       - name: Publish signed APK to GitHub Releases
         shell: bash
         env:
