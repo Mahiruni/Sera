@@ -46,7 +46,7 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
         Box(Modifier.size(136.dp).background(accent.copy(alpha=.07f),CircleShape).border(1.dp,accent.copy(alpha=pulse),CircleShape),contentAlignment=Alignment.Center){
             Box(Modifier.size(112.dp).clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
                 Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
-                if(!photo.isNullOrBlank())SeraMediaImage(photo,"Profile photo",224,224,Modifier.fillMaxSize())
+                if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
             }
         }
     }
@@ -59,9 +59,9 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
     val foreground=if(destructive||accept)Color.White else if(active)c.onPrimary else c.onSurfaceVariant
     Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){
         FilledIconButton(onClick={haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove);onClick()},enabled=enabled,modifier=Modifier.size(if(destructive||accept)68.dp else 56.dp).testTag("sera_voice_"+label),colors=IconButtonDefaults.filledIconButtonColors(containerColor=background,contentColor=foreground)){
-            Icon(icon,label,Modifier.size(if(destructive||accept)28.dp else 24.dp))
+            Icon(icon,voiceText(label),Modifier.size(if(destructive||accept)28.dp else 24.dp))
         }
-        Text(label,color=c.onSurfaceVariant,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=6.dp),maxLines=2)
+        Text(voiceText(label),color=c.onSurfaceVariant,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=6.dp),maxLines=2)
     }
 }
 
@@ -69,13 +69,13 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
     val c=MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().padding(24.dp).testTag("sera_voice_summary"),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
         SeraVoiceAvatar(name,photo,c.primary,false,Modifier)
-        Text(summary.title,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,color=c.onSurface)
+        Text(voiceText(summary.title),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,color=c.onSurface)
         Text(name,style=MaterialTheme.typography.titleMedium,color=c.onSurface)
         if(summary.connectedSeconds!=null)Text(seraCallDuration(summary.connectedSeconds),fontFamily=FontFamily.Monospace,fontSize=28.sp,color=c.primary,modifier=Modifier.testTag("sera_voice_summary_duration"))
-        Text((if(summary.incoming)"Incoming" else "Outgoing")+" · "+java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM,java.text.DateFormat.SHORT).format(java.util.Date(summary.endedAt)),fontSize=12.sp,color=c.onSurfaceVariant,textAlign=TextAlign.Center)
-        if(summary.detail.isNotBlank())Text(summary.detail,color=c.onSurfaceVariant,fontSize=13.sp,textAlign=TextAlign.Center)
-        Button(onClick=onAgain,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Icon(Icons.Outlined.Call,null);Spacer(Modifier.width(8.dp));Text("Call again")}
-        OutlinedButton(onClick=onDone,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text("Back to messages")}
+        Text(voiceText(if(summary.incoming)"Incoming" else "Outgoing")+" · "+java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM,java.text.DateFormat.SHORT).format(java.util.Date(summary.endedAt)),fontSize=12.sp,color=c.onSurfaceVariant,textAlign=TextAlign.Center)
+        if(summary.detail.isNotBlank())Text(voiceText(summary.detail),color=c.onSurfaceVariant,fontSize=13.sp,textAlign=TextAlign.Center)
+        Button(onClick=onAgain,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Icon(Icons.Outlined.Call,null);Spacer(Modifier.width(8.dp));Text(voiceText("Call again"))}
+        OutlinedButton(onClick=onDone,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text(voiceText("Back to messages"))}
     }
 }
 
@@ -87,14 +87,14 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
             TextButton(onClick=onRestore,modifier=Modifier.weight(1f),contentPadding=PaddingValues(horizontal=4.dp,vertical=2.dp)){
                 Box(Modifier.size(36.dp).clip(CircleShape).background(c.surface),contentAlignment=Alignment.Center){
                     Text(name.take(1).uppercase(),color=c.onSurface)
-                    if(!photo.isNullOrBlank())SeraMediaImage(photo,"Profile photo",72,72,Modifier.fillMaxSize())
+                    if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),72,72,Modifier.fillMaxSize())
                 }
                 Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)){Text(name,color=c.onPrimaryContainer,maxLines=1,fontWeight=FontWeight.SemiBold);Text(status,color=c.onPrimaryContainer,fontSize=12.sp,maxLines=1)}
-                Icon(Icons.Outlined.KeyboardArrowUp,"Return to call",tint=c.onPrimaryContainer)
+                Column(Modifier.weight(1f)){Text(name,color=c.onPrimaryContainer,maxLines=1,fontWeight=FontWeight.SemiBold);Text(voiceText(status),color=c.onPrimaryContainer,fontSize=12.sp,maxLines=1)}
+                Icon(Icons.Outlined.KeyboardArrowUp,voiceText("Return to call"),tint=c.onPrimaryContainer)
             }
-            IconButton(onClick=onMute,enabled=canMute,modifier=Modifier.size(48.dp)){Icon(if(muted)Icons.Outlined.MicOff else Icons.Outlined.Mic,if(muted)"Unmute" else "Mute",tint=c.onPrimaryContainer)}
-            IconButton(onClick=onEnd,modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.CallEnd,"End call",tint=Color(0xFFC5374B))}
+            IconButton(onClick=onMute,enabled=canMute,modifier=Modifier.size(48.dp)){Icon(if(muted)Icons.Outlined.MicOff else Icons.Outlined.Mic,voiceText(if(muted)"Unmute" else "Mute"),tint=c.onPrimaryContainer)}
+            IconButton(onClick=onEnd,modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.CallEnd,voiceText("End call"),tint=Color(0xFFC5374B))}
         }
     }
 }
@@ -117,14 +117,14 @@ internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample)
     val filtered=events.filter{when(filter){"Missed"->it.state=="missed"&&it.incoming(userId);"Incoming"->it.incoming(userId);"Outgoing"->!it.incoming(userId);else->true}}
     Column(Modifier.fillMaxWidth().padding(20.dp).testTag("sera_voice_history"),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-            Column(Modifier.weight(1f)){Text("Recent calls",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(name,color=c.onSurfaceVariant,fontSize=13.sp,maxLines=1)}
-            IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close call history")}
+            Column(Modifier.weight(1f)){Text(voiceText("Recent calls"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(name,color=c.onSurfaceVariant,fontSize=13.sp,maxLines=1)}
+            IconButton(onClick=onClose){Icon(Icons.Outlined.Close,voiceText("Close call history"))}
         }
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
-            listOf("All","Missed","Incoming","Outgoing").forEach{label->FilterChip(selected=filter==label,onClick={filter=label},label={Text(label,fontSize=10.sp,maxLines=1)},modifier=Modifier.weight(1f))}
+            listOf("All","Missed","Incoming","Outgoing").forEach{label->FilterChip(selected=filter==label,onClick={filter=label},label={Text(voiceText(label),fontSize=10.sp,maxLines=1)},modifier=Modifier.weight(1f))}
         }
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
-        else if(filtered.isEmpty())Text("No calls in this view",color=c.onSurfaceVariant,modifier=Modifier.padding(vertical=24.dp))
+        else if(filtered.isEmpty())Text(voiceText("No calls in this view"),color=c.onSurfaceVariant,modifier=Modifier.padding(vertical=24.dp))
         else LazyColumn(Modifier.fillMaxWidth().heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
             items(filtered,key={it.id}){event->
                 val incoming=event.incoming(userId)
@@ -132,12 +132,12 @@ internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample)
                 Surface(color=c.surfaceVariant.copy(alpha=.5f),shape=RoundedCornerShape(16.dp)){
                     Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                         Box(Modifier.size(36.dp).clip(CircleShape).background(c.primaryContainer),contentAlignment=Alignment.Center){Icon(if(missed)Icons.Outlined.CallMissed else if(incoming)Icons.Outlined.CallReceived else Icons.Outlined.CallMade,null,tint=if(missed)c.error else c.onPrimaryContainer)}
-                        Column(Modifier.weight(1f)){Text(event.outcome(userId),fontWeight=FontWeight.Medium,color=c.onSurface,fontSize=13.sp);Text((if(incoming)"Incoming" else "Outgoing")+" · "+event.dateTime(),fontSize=11.sp,color=c.onSurfaceVariant)}
-                        IconButton(onClick=onCall){Icon(Icons.Outlined.Call,"Call again",tint=c.primary)}
+                        Column(Modifier.weight(1f)){Text(voiceText(event.outcome(userId)),fontWeight=FontWeight.Medium,color=c.onSurface,fontSize=13.sp);Text(voiceText(if(incoming)"Incoming" else "Outgoing")+" · "+event.dateTime(),fontSize=11.sp,color=c.onSurfaceVariant)}
+                        IconButton(onClick=onCall){Icon(Icons.Outlined.Call,voiceText("Call again"),tint=c.primary)}
                     }
                 }
             }
         }
-        Button(onClick=onCall,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text("Call "+name,maxLines=1)}
+        Button(onClick=onCall,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text(voiceText("Call again"),maxLines=1)}
     }
 }
