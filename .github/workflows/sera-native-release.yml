@@ -123,16 +123,16 @@ jobs:
           set -euo pipefail
           old="$(mktemp -d)"
           trap 'rm -rf "$old"' EXIT
-          gh release download android-v1.0.82 --pattern 'SERA-1.0.82.apk' --dir "$old"
+          gh release download android-v1.0.83 --pattern 'SERA-1.0.83.apk' --dir "$old"
           APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           SIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          old_cert="$("$SIGNER" verify --print-certs "$old/SERA-1.0.82.apk" | grep 'certificate SHA-256 digest:' | sort)"
+          old_cert="$("$SIGNER" verify --print-certs "$old/SERA-1.0.83.apk" | grep 'certificate SHA-256 digest:' | sort)"
           new_cert="$("$SIGNER" verify --print-certs "$APK" | grep 'certificate SHA-256 digest:' | sort)"
           [[ -n "$old_cert" && "$old_cert" == "$new_cert" ]] || { echo "::error::APK signing certificate mismatch"; exit 1; }
-          old_package="$("$AAPT" dump badging "$old/SERA-1.0.82.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          old_package="$("$AAPT" dump badging "$old/SERA-1.0.83.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           new_package="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
-          old_code="$("$AAPT" dump badging "$old/SERA-1.0.82.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
+          old_code="$("$AAPT" dump badging "$old/SERA-1.0.83.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
           new_code="$("$AAPT" dump badging "$APK" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
           [[ "$old_package" == "et.sera.nativeapp" && "$new_package" == "$old_package" && "$old_code" =~ ^[0-9]+$ && "$new_code" =~ ^[0-9]+$ ]] || { echo "::error::APK package metadata mismatch"; exit 1; }
           (( new_code > old_code )) || { echo "::error::APK version code must increase"; exit 1; }
