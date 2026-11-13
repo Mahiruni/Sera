@@ -36,7 +36,7 @@ private val headerTeal=Color(0xFF087E83)
     notificationCount:Int=0,inboxCount:Int=0,section:String,canCompose:Boolean,onCompose:()->Unit,showCreate:Boolean,
     onMessaging:()->Unit,onSearch:()->Unit,onNotifications:()->Unit,onMenu:()->Unit,
     avatarUrl:String?=null,profileName:String="SERA member",profileHeadline:String="",identityVerified:Boolean=false,
-    onProfile:()->Unit={},onEditProfile:()->Unit={},onSettings:()->Unit={},onSignOut:()->Unit={}
+    onProfile:()->Unit={},onEditProfile:()->Unit={},onSettings:()->Unit={},onSignOut:()->Unit={},showMessaging:Boolean=true
 ){
     var profileOpen by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -49,7 +49,7 @@ private val headerTeal=Color(0xFF087E83)
             Text(buildAnnotatedString{withStyle(SpanStyle(color=headerTeal,fontWeight=FontWeight.Black)){append("SERA")};withStyle(SpanStyle(color=ink,fontWeight=FontWeight.Bold)){append(".et")}},Modifier.weight(1f),fontSize=22.sp,maxLines=1,overflow=TextOverflow.Ellipsis,letterSpacing=(-1).sp)
             IconButton(onClick=onSearch,modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Search,"Discover",tint=ink,modifier=Modifier.size(22.dp))}
             IconButton(onClick=onNotifications,modifier=Modifier.size(48.dp)){BadgedBox(badge={SeraUnreadBadge(notificationCount)}){Icon(Icons.Outlined.NotificationsNone,if(notificationCount>0)"Notifications, $notificationCount unread" else "Notifications",tint=ink,modifier=Modifier.size(22.dp))}}
-            IconButton(onClick=onMessaging,modifier=Modifier.size(48.dp)){BadgedBox(badge={SeraUnreadBadge(inboxCount)}){Icon(Icons.Outlined.ChatBubbleOutline,if(inboxCount>0)"Inbox, $inboxCount unread messages" else "Inbox",tint=ink,modifier=Modifier.size(22.dp))}}
+            if(showMessaging) IconButton(onClick=onMessaging,modifier=Modifier.size(48.dp)){BadgedBox(badge={SeraUnreadBadge(inboxCount)}){Icon(Icons.Outlined.ChatBubbleOutline,if(inboxCount>0)"Inbox, $inboxCount unread messages" else "Inbox",tint=ink,modifier=Modifier.size(22.dp))}}
             Box{
                 IconButton(onClick={profileOpen=true},modifier=Modifier.size(48.dp).semantics{contentDescription="Profile menu"}){SeraAccountAvatar(profileName,avatarUrl,32)}
                 DropdownMenu(expanded=profileOpen,onDismissRequest={profileOpen=false},modifier=Modifier.widthIn(min=250.dp,max=300.dp)){
