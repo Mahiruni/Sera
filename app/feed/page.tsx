@@ -1,43 +1,50 @@
-import {memberCards} from "@/lib/activity/members";
+import {Suspense} from "react";
+import {memberCard} from "@/lib/activity/members";
 import { requiredProfile } from "@/lib/auth/profile";
 import { loadSocialFeed } from "@/lib/social/data";
 import { loadNetworkSidebars } from "@/lib/network/data";
 import { pageNumber, postKinds, type PostKind } from "@/lib/social/validation";
-import { NetworkHome } from "@/components/network/home";
-export const metadata = {
-  title: "Your professional community",
-  robots: { index: false, follow: false },
-};
-export default async function Feed({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const { user, profile } = await requiredProfile("/feed");
-  const params = await searchParams;
-  const page = pageNumber(params.page),
-    kind = postKinds.includes(params.kind as PostKind)
-      ? (params.kind as PostKind)
-      : undefined,
-    mine = params.view === "mine";
+import { NetworkHome, NetworkPeopleStrip, NetworkRightRail } from "@/components/network/home";
+import {PostList,SocialPagination} from "@/components/social/feed";
+
+export const metadata={title:"Your professional community",robots:{index:false,follow:false}};
+type FeedPromise=ReturnType<typeof loadSocialFeed>;
+type SidebarPromise=ReturnType<typeof loadNetworkSidebars>;
+
+async function FeedResults({result,userId,page,href}:{result:FeedPromise;userId:string;page:number;href:string}){
+  try{
+    const feed=await result;
+    return <><PostList posts={feed.posts} userId={userId}/><SocialPagination page={page} hasMore={feed.hasMore} href={href}/></>;
+  }catch{
+    return <div className="social-empty" role="alert"><h2>Unable to load your feed</h2><p>Check your connection, then refresh to try again.</p><a href={href}>Retry</a></div>;
+  }
+}
+async function People({result}:{result:SidebarPromise}){
+  try{const data=await result;return <NetworkPeopleStrip people={data.people}/>;}catch{return <NetworkPeopleStrip people={[]}/>;}
+}
+async function RightRail({result}:{result:SidebarPromise}){
+  try{return <NetworkRightRail {...await result}/>;}catch{return <NetworkRightRail people={[]} jobs={[]} peopleError jobsError/>;}
+}
+function FeedSkeleton(){
+  return <div aria-label="Loading posts" aria-busy="true" className="social-post-list sera-feed-loading">
+    {[0,1,2].map(i=><div key={i} className="social-card"><div className="sera-feed-skeleton-head"><span/><span/></div><span className="sera-feed-skeleton-line"/><span className="sera-feed-skeleton-line short"/></div>)}
+  </div>;
+}
+export default async function Feed({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  const [{user,profile},params]=await Promise.all([requiredProfile("/feed"),searchParams]);
+  const page=pageNumber(params.page),kind=postKinds.includes(params.kind as PostKind)?params.kind as PostKind:undefined,mine=params.view==="mine";
   const personalized=!mine&&!kind&&params.view==="for-you";
-  const [feed, sidebars, members] = await Promise.all([
-    loadSocialFeed({ page, kind, authorId: mine ? user.id : undefined,personalized }),
-    loadNetworkSidebars(user.id),
-    memberCards([user.id]),
-  ]);
-  return (
-    <NetworkHome
-      userId={user.id}
-      profile={profile}
-      posts={feed.posts}
-      {...sidebars}
-      page={page}
-      hasMore={feed.hasMore}
-      kind={kind}
-      mine={mine}
-      personalized={personalized}
-      identityVerified={members.get(user.id)?.identityVerified===true}
-    />
-  );
+  const feed=loadSocialFeed({page,kind,authorId:mine?user.id:undefined,personalized});
+  const sidebars=loadNetworkSidebars(user.id);
+  const member=await memberCard(user.id);
+  const filters=new URLSearchParams();
+  if(kind)filters.set("kind",kind);
+  if(mine)filters.set("view","mine");
+  else if(personalized)filters.set("view","for-you");
+  const href="/feed"+(filters.size?"?"+filters.toString():"");
+  return <NetworkHome userId={user.id} profile={profile} posts={[]} people={[]} jobs={[]} avatarUrl={member?.photo||null}
+    page={page} kind={kind} mine={mine} personalized={personalized} identityVerified={member?.identityVerified===true}
+    peopleContent={<Suspense fallback={<NetworkPeopleStrip people={[]}/>}><People result={sidebars}/></Suspense>}
+    feedContent={<Suspense fallback={<FeedSkeleton/>}><FeedResults result={feed} userId={user.id} page={page} href={href}/></Suspense>}
+    rightContent={<Suspense fallback={<aside className="network-right" aria-busy="true"/>}><RightRail result={sidebars}/></Suspense>}/>;
 }
