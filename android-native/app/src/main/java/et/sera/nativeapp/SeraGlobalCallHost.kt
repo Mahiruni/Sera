@@ -78,8 +78,8 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
     DisposableEffect(host,conversation){onDispose{host.unselect(conversation)}}
     if(host.target?.conversation==conversation&&host.eligible){
         IconButton(onClick={host.start(conversation)},modifier=Modifier.size(44.dp)){
-            Icon(Icons.Outlined.Call,if(host.pinned)"Return to call" else "Voice call",tint=if(host.pinned)accent else ink)
+            Icon(Icons.Outlined.Call,voiceText(if(host.pinned)"Return to call" else "Voice call"),tint=if(host.pinned)accent else ink)
         }
-        if(!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
+        if(!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}
     }
 }
