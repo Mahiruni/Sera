@@ -59,7 +59,7 @@ private data class CallRow(val id:String,val caller:String,val callee:String,val
 private fun parseCall(raw:String?):CallRow?{if(raw.isNullOrBlank()||raw=="null")return null;val j=JSONObject(raw);return CallRow(j.getString("id"),j.getString("caller"),j.getString("callee"),j.getString("state"),j.optString("offer").takeUnless{it.isBlank()||it=="null"},j.optString("answer").takeUnless{it.isBlank()||it=="null"},j.optString("expires_at"))}
 private suspend fun callRequest(token:String,fn:String,payload:JSONObject):String?=withContext(Dispatchers.IO){val r=chatRpc(token,fn,payload);if(r.first==null)error(r.second.ifBlank{"Call unavailable."});r.first}
 @Composable
-internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit={}){
+internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit={},host:SeraGlobalCallState?=null){
     val context=LocalContext.current;val scope=rememberCoroutineScope();val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     var foregroundLease by remember(conversation){mutableStateOf<String?>(null)}
     var preparation by remember(conversation){mutableStateOf<kotlinx.coroutines.Job?>(null)}
@@ -110,8 +110,9 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         }catch(e:kotlinx.coroutines.TimeoutCancellationException){if(accept)end(if(cancelRequested)"decline" else "fail",if(cancelRequested)"" else "Call preparation timed out.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error="Call preparation timed out."}}catch(e:CancellationException){cleanup();throw e}catch(e:LinkageError){android.util.Log.e("SeraRtc","Native call engine linkage failure",e);if(accept)end("fail","Voice engine could not start. Update Sera.")else{cleanup();error="Voice engine could not start. Update Sera."}}catch(e:Exception){android.util.Log.e("SeraRtc","Call preparation failed: "+e.javaClass.simpleName);if(accept)end("fail",e.message?:"Call unavailable.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error=e.message?:"Call unavailable."}}finally{busy=false}}
     }
     var permissionAccept by remember{mutableStateOf(false)}
-    val micPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)begin(permissionAccept)else error="Microphone permission is required for voice calling."}
-    fun request(accept:Boolean){permissionAccept=accept;if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){error="Enable SERA notifications in Android settings before starting a call.";return};if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)begin(accept)else micPermission.launch(Manifest.permission.RECORD_AUDIO)}
+    var permissionPending by remember{mutableStateOf(false)}
+    val micPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){permissionPending=false;if(it)begin(permissionAccept)else error="Microphone permission is required for voice calling."}
+    fun request(accept:Boolean){permissionAccept=accept;if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){error="Enable SERA notifications in Android settings before starting a call.";return};if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)begin(accept)else {permissionPending=true;micPermission.launch(Manifest.permission.RECORD_AUDIO)}}
     LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull()}
     val enabled=config?.optBoolean("enabled")==true
     LaunchedEffect(enabled,token,conversation,lifecycle){
@@ -168,13 +169,23 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             try{while(true){tone?.startTone(android.media.ToneGenerator.TONE_SUP_RINGTONE,1000);delay(4000)}}finally{tone?.stopTone();tone?.release()}
         }
     }
-    if(!enabled&&summary==null)return
     val active=row!=null||phase.isNotBlank()
-    IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,if(active)"Return to call" else "Voice call",tint=if(active)accent else ink)}
-    if(minimized&&active){
+    if(host!=null){
+        SideEffect{host.report(conversation,active||busy||permissionPending||summary!=null,enabled)}
+        var seenStart by remember{mutableIntStateOf(host.callRequest)}
+        var seenReturn by remember{mutableIntStateOf(host.returnRequest)}
+        var seenHistory by remember{mutableIntStateOf(host.historyRequest)}
+        LaunchedEffect(host.callRequest){if(seenStart!=host.callRequest){seenStart=host.callRequest;host.consumeStart();request(false)}}
+        LaunchedEffect(host.returnRequest){if(seenReturn!=host.returnRequest){seenReturn=host.returnRequest;minimized=false}}
+        LaunchedEffect(host.historyRequest){if(seenHistory!=host.historyRequest){seenHistory=host.historyRequest;showHistory=true;history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")+" · "+j.optString("created_at").take(10)}}.getOrDefault(emptyList())}}
+        if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelRequested=true;rtc?.mute(true);phase="Cancelling…"}else scope.launch{end("end")}},canMute=row?.state=="accepted")
+    }
+    if(!enabled&&summary==null&&!active)return
+    if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,if(active)"Return to call" else "Voice call",tint=if(active)accent else ink)}
+    if(host==null&&minimized&&active){
         TextButton(onClick={minimized=false}){Text(if(started>0)seraCallDuration(seconds) else "Return to call",color=accent,maxLines=1)}
     }
-    if(!active)IconButton(onClick={showHistory=true;scope.launch{history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")+" · "+j.optString("created_at").take(10)}}.getOrDefault(emptyList())}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
+    if(host==null&&!active)IconButton(onClick={showHistory=true;scope.launch{history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")+" · "+j.optString("created_at").take(10)}}.getOrDefault(emptyList())}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
     if(showHistory)AlertDialog(onDismissRequest={showHistory=false},title={Text("Recent calls")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){Text(name,fontWeight=FontWeight.SemiBold);if(history.isEmpty())Text("No recent calls") else history.take(10).forEach{Text(it,fontSize=13.sp)}}},confirmButton={TextButton(onClick={showHistory=false;request(false)},enabled=!active&&!busy){Text("Call",color=accent)}},dismissButton={TextButton(onClick={showHistory=false}){Text("Close")}})
     if(active&&!minimized)Dialog(onDismissRequest={if(!incoming)minimized=true},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false,dismissOnBackPress=!incoming)){
         val colors=MaterialTheme.colorScheme
