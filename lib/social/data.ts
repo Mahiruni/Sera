@@ -2,7 +2,7 @@ import { memberCards } from "@/lib/activity/members";
 import "server-only";
 import { sanitizeDiscoveryQuery } from "@/lib/network/model";
 import { searchSince, type SearchFilters } from "@/lib/network/search-filters";
-import { serverClient } from "@/lib/supabase/server";
+import { serverClient, currentUser } from "@/lib/supabase/server";
 import { type PostKind } from "./validation";
 export type SocialComment = {
   id: string;
@@ -34,7 +34,7 @@ export type SocialPost = {
   photo?: string | null;
   identityVerified?:boolean;
   author: { id: string; full_name: string; headline: string; location: string };
-  images: { url: string; alt: string }[];
+  images: { url: string; alt: string; width?:number; height?:number }[];
   liked: boolean;
   saved: boolean;
   repost_of?: string|null;
@@ -42,7 +42,7 @@ export type SocialPost = {
   audience?: "public"|"connections"|"followers"|"only_me";
   reposted?: boolean;
   repost_count?: number;
-  original?: {id:string;author_id:string;title:string;body:string;published_at:string;audience?:string;name:string;photo?:string|null;images:{url:string;alt:string}[]}|null;
+  original?: {id:string;author_id:string;title:string;body:string;published_at:string;audience?:string;name:string;photo?:string|null;images:{url:string;alt:string;width?:number;height?:number}[]}|null;
 };
 export async function loadSocialFeed(
   options: {
@@ -58,7 +58,8 @@ export async function loadSocialFeed(
   } = {},
 ) {
   const db = await serverClient();
-  const { data: auth } = await db.auth.getUser();
+  const user = await currentUser();
+  const auth = { user };
   if (!auth.user)
     return { posts: [] as SocialPost[], userId: "", hasMore: false };
   let query = db
@@ -93,11 +94,11 @@ export async function loadSocialFeed(
   const sources=sourceRows||[];
   const ids = [...new Set([...posts.map((p) => p.id),...sources.map(p=>p.id)])];
   if (!ids.length) return { posts: [], userId: auth.user.id, hasMore: false };
-  const [profiles, images, likes, saves, people] = await Promise.all([
+  const [profiles, images, likes, saves, people, repostStateResult] = await Promise.all([
     db.rpc("sera_feed_headlines",{p_ids:[...new Set(posts.map(p=>p.author_id))]}),
     db
       .from("post_images")
-      .select("id,post_id,alt")
+      .select("id,post_id,alt,width,height")
       .in("post_id", ids)
       .order("sort_order"),
     db
@@ -111,11 +112,12 @@ export async function loadSocialFeed(
       .in("post_id", ids)
       .eq("user_id", auth.user.id),
     memberCards([...posts.map((p) => p.author_id),...sources.map(p=>p.author_id)]),
+    db.rpc("sera_repost_states",{p_ids:[...new Set(posts.map(p=>p.repost_of||p.id))]}),
   ]);
   if ([profiles, images, likes, saves].some((r) => r.error))
     throw new Error("Unable to load post details. Please refresh.");
   const imageRows = images.data || [];
-  const {data:repostStates}=await db.rpc("sera_repost_states",{p_ids:[...new Set(posts.map(p=>p.repost_of||p.id))]});
+  const {data:repostStates}=repostStateResult;
   const states=new Map<string,{reposted:boolean;repost_count:number}>((repostStates||[]).map((r:{id:string;reposted:boolean;repost_count:number})=>[r.id,r]));
   const authorMap = new Map<string,{id:string;headline:string;full_name:string;location:string}>((profiles.data || []).map((p:{id:string;headline:string}) => [p.id,{id:p.id,headline:p.headline||"",full_name:"SERA member",location:""}]));
   const liked = new Set((likes.data || []).map((p) => p.post_id));
@@ -139,11 +141,12 @@ export async function loadSocialFeed(
               {
                 url: `/api/post-media/${i.id}`,
                 alt: i.alt || "Community photo",
+                width:i.width||undefined,height:i.height||undefined,
               },
             ]
           : [],
       ),
-      original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i)=>i.post_id===o.id?[{url:`/api/post-media/${i.id}`,alt:i.alt||"Community photo"}]:[])}:null})():null,
+      original: p.repost_of ? (()=>{const o=sources.find(x=>x.id===p.repost_of);return o?{...o,name:people.get(o.author_id)?.name||"SERA member",photo:people.get(o.author_id)?.photo,images:imageRows.flatMap((i)=>i.post_id===o.id?[{url:`/api/post-media/${i.id}`,alt:i.alt||"Community photo",width:i.width||undefined,height:i.height||undefined}]:[])}:null})():null,
       reposted:states.get(p.repost_of||p.id)?.reposted||false,
       repost_count:Number(states.get(p.repost_of||p.id)?.repost_count||0),
       liked: liked.has(p.id),
