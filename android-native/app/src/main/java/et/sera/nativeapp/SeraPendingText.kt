@@ -33,7 +33,7 @@ internal fun SeraPendingTextBubble(p:NativeQueuedText,online:Boolean,outgoing:Co
             SeraRichMessageText(p.body,color=Color.White,linkColor=Color(0xFFB5FFF4),interactive=false)
             Row(Modifier.align(Alignment.End),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
                 val time=runCatching{java.time.Instant.parse(p.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("")
-                Text(time,color=Color.White.copy(alpha=.8f),fontSize=10.sp)
+                Text(time,color=seraChatColors().outgoingMeta,style=seraChatMeta(MaterialTheme.typography.labelSmall))
                 if(failed){
                     Icon(Icons.Outlined.ErrorOutline,status,tint=Color(0xFFFFC3C3),modifier=Modifier.size(15.dp))
                     TextButton(onClick=onRetry,contentPadding=PaddingValues(horizontal=4.dp,vertical=0.dp)){Text("Retry",color=Color.White,fontSize=12.sp)}

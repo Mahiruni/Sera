@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
@@ -21,18 +22,19 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun SeraCompactMessageBubble(own:Boolean,color:Color,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
     Surface(
-        shape=if(own)RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=20.dp,bottomEnd=6.dp)
-        else RoundedCornerShape(topStart=20.dp,topEnd=20.dp,bottomStart=6.dp,bottomEnd=20.dp),
-        color=color,modifier=modifier
+        shape=seraChatBubbleShape(own),
+        color=color,modifier=modifier,
+        border=if(!own)BorderStroke(1.dp,seraChatColors().border)else null
     ){
-        Column(Modifier.padding(horizontal=12.dp,vertical=7.dp),content=content)
+        Column(Modifier.padding(horizontal=13.dp,vertical=9.dp),verticalArrangement=Arrangement.spacedBy(3.dp),content=content)
     }
 }
 
 @Composable
-internal fun ColumnScope.SeraCompactReceipt(time:String,own:Boolean,delivered:Boolean,read:Boolean,foreground:Color){
+internal fun ColumnScope.SeraCompactReceipt(time:String,own:Boolean,delivered:Boolean,read:Boolean,foreground:Color,edited:Boolean=false){
     Row(Modifier.align(Alignment.End).padding(top=2.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){
-        Text(time,color=foreground,fontSize=10.sp)
+        if(edited)Text("Edited ·",color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
+        Text(time,color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         if(own){
             val status=if(read)"Read" else if(delivered)"Delivered" else "Sent"
             val tint by animateColorAsState(if(read)Color(0xFFB5FFF4)else foreground,tween(150),label="Receipt tint")

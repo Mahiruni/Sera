@@ -228,8 +228,9 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 @Composable
 fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}, onInboxExit:(()->Unit)?=null) {
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
-    val scheme=if(dark) darkColorScheme(primary=Color(0xFF6DE0D8),onPrimary=Color(0xFF10383B),surface=Color(0xFF14282D),onSurface=Color(0xFFE6F2F1),surfaceVariant=Color(0xFF233E43),onSurfaceVariant=Color(0xFFA8C3C5),background=Color(0xFF14282D),onBackground=Color(0xFFE6F2F1)) else MaterialTheme.colorScheme
-    MaterialTheme(colorScheme=scheme,typography=MaterialTheme.typography,shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)}
+    val palette=seraChatPalette(dark)
+    val scheme=seraChatScheme(if(dark)darkColorScheme()else lightColorScheme(),palette,dark)
+    MaterialTheme(colorScheme=scheme,typography=seraChatTypography(MaterialTheme.typography),shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)}
 }
 @Composable
 private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit,onInboxExit:(()->Unit)?){
@@ -758,13 +759,14 @@ private class InboxController(
         global.historicalTarget?.let{(chat,id)->SeraHistoricalMessageDialog(token,userId,chat,id,playback,conversations.firstOrNull{it.id==chat}?.peerName?:"Contact",onDismiss={playback.stop();global.historicalTarget=null})}
         val clipboard = LocalClipboardManager.current
         val dark = androidx.compose.foundation.isSystemInDarkTheme()
-        val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
-        val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
-        val chatSurface = if(dark) Color(0xFF111D21) else Color(0xFFF9FCFC)
-        val outgoing = if(dark) Color(0xFF087478) else Color(0xFF087478)
-        val incoming = if(dark) Color(0xFF26383D) else Color(0xFFE7F0EF)
-        val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
-        val accent=if(dark) Color(0xFF6DE0D8) else inboxTeal
+        val palette=seraChatPalette(dark)
+        val inboxInk=palette.ink
+        val inboxSoft=palette.quote
+        val chatSurface=palette.canvas
+        val outgoing=palette.outgoing
+        val incoming=palette.incoming
+        val muted=palette.muted
+        val accent=palette.accent
         Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
             Spacer(Modifier.height(4.dp))
             if (selected == null) {
@@ -809,7 +811,7 @@ private class InboxController(
     @Composable
     fun RenderComposer(conversation: NativeConversation, inboxInk: Color, inboxSoft: Color, muted: Color, accent: Color) {
         val haptics = LocalHapticFeedback.current
-        SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile||!thread.textLoaded,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
+        SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile||!thread.textLoaded,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=seraChatColors().outgoing,playback=playback,
             onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
             onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
             onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},

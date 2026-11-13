@@ -1,5 +1,6 @@
 package et.sera.nativeapp
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -39,5 +40,5 @@ internal fun seraRichMessage(body:String,linkColor:Color,interactive:Boolean=tru
 }
 @Composable internal fun SeraRichMessageText(body:String,color:Color,linkColor:Color,interactive:Boolean=true){
  val styled=remember(body,linkColor,interactive){seraRichMessage(body,linkColor,interactive)}
- Text(styled,color=color,fontSize=14.sp,lineHeight=20.sp)
+ Text(styled,color=color,style=seraChatBody(MaterialTheme.typography.bodyLarge))
 }
