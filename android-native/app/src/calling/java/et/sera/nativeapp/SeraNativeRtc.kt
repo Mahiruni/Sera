@@ -96,14 +96,14 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         manager.requestAudioFocus(focusRequest)
         android.util.Log.i("SeraRtc","Audio track ready")
     }
-    private suspend fun description(offer:Boolean):SessionDescription=suspendCancellableCoroutine{c->
+    private suspend fun description(offer:Boolean,restart:Boolean=false):SessionDescription=suspendCancellableCoroutine{c->
         val observer=object:SdpObserver{
             override fun onCreateSuccess(s:SessionDescription){if(c.isActive)c.resume(s)}
             override fun onCreateFailure(message:String){if(c.isActive)c.resumeWithException(IllegalStateException("Could not prepare call."))}
             override fun onSetSuccess(){}
             override fun onSetFailure(message:String){}
         }
-        if(offer)pc.createOffer(observer,MediaConstraints())else pc.createAnswer(observer,MediaConstraints())
+        if(offer)pc.createOffer(observer,MediaConstraints().apply{if(restart)mandatory.add(MediaConstraints.KeyValuePair("IceRestart","true"))})else pc.createAnswer(observer,MediaConstraints())
     }
     private suspend fun set(s:SessionDescription,local:Boolean)=suspendCancellableCoroutine<Unit>{c->
         val observer=object:SdpObserver{
@@ -129,12 +129,24 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
     suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);applySpeechProfile();gather()}
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false);appliedBitrate=null;applySpeechProfile()}
-    private suspend fun gather():String{
-        val deadline=android.os.SystemClock.elapsedRealtime()+25000L
+    fun signalingStable()=!closed&&pc.signalingState()==PeerConnection.SignalingState.STABLE
+    suspend fun restartOffer():String=withTimeout(16000){
+        val previous=pc.localDescription?.description.orEmpty()
+        val offer=speechDescription(description(true,true))
+        fun ufrag(s:String)=s.lineSequence().firstOrNull{it.startsWith("a=ice-ufrag:")}?.trim()
+        check(ufrag(offer.description)!=null&&ufrag(offer.description)!=ufrag(previous)){"ICE restart did not rotate credentials"}
+        set(offer,true);gather(true)
+    }
+    suspend fun restartAnswer(sdp:String):String=withTimeout(16000){
+        set(SessionDescription(SessionDescription.Type.OFFER,sdp),false)
+        set(speechDescription(description(false)),true);gather(true)
+    }
+    private suspend fun gather(restart:Boolean=false):String{
+        val deadline=android.os.SystemClock.elapsedRealtime()+(if(restart)12000L else 25000L)
         while(!closed&&pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){
             // Non-trickle signaling can proceed as soon as a valid relay candidate exists.
             val current=pc.localDescription?.description.orEmpty()
-            if(current.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})break
+            if(!restart&&current.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})break
             delay(100)
         }
         if(closed)throw kotlinx.coroutines.CancellationException("Call closed")
