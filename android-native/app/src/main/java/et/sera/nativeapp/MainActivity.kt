@@ -415,6 +415,7 @@ fun SeraApp(
                 val incoming=withContext(Dispatchers.IO){runCatching{chatRpc(token,"sera_call_incoming",JSONObject().put("p_id",id)).first?.let{if(it=="null")null else JSONObject(it)}}.getOrNull()}
                 SeraPush.clearCallNotification(context,id)
                 if(incoming!=null){
+                    if(SeraNotificationAnswer.take(id,authenticatedUserId))globalVoice.queueAnswer(id)
                     openCompanyInbox=false;callThread=incoming.optString("conversation_id").takeIf{it.matches(Regex("[0-9a-fA-F-]{36}"))};callPeer=incoming.optString("caller")
                     navigateTo("Inbox")
                 }else navigateTo("Inbox")
