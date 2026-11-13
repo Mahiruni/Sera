@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
@@ -79,6 +80,13 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+
+/** One quiet, theme-aware separator between chat identity and quick actions. */
+@Composable internal fun SeraThreadHeaderDivider(){
+    Box(Modifier.fillMaxWidth().padding(horizontal=20.dp).height(1.dp)
+        .clip(CircleShape).background(seraChatColors().border.copy(alpha=.8f))
+        .testTag("sera_thread_header_divider"))
+}
 
 @Composable internal fun SeraThreadHeader(conversation:NativeConversation,fallbackPhoto:String?,token:String,userId:String,peerTyping:Boolean,peerActivity:String?,sound:Boolean,inboxInk:Color,inboxSoft:Color,muted:Color,accent:Color,inboxTeal:Color,onBack:()->Unit,onSearch:()->Unit,onSound:()->Unit,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit,onDetails:()->Unit={}){
             Row(
