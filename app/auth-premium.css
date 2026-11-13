@@ -616,3 +616,31 @@ html[data-sera-theme="dark"] .ax-input input::placeholder { color: #a3b8c5; }
 @media (prefers-reduced-motion: reduce) {
   .ax,.ax * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Signature web entry: quiet mobile form and spacious desktop identity panel. */
+.sera-web-auth{--ax-primary:var(--sera-accent);--ax-ink:var(--sera-text);--ax-muted:var(--sera-text-secondary);--ax-line:var(--sera-border);--ax-ice:var(--sera-selected);--ax-radius:13px;max-width:1120px;margin-inline:auto;align-items:start;gap:0;padding:12px 16px 28px}
+html[data-sera-theme=dark] .sera-web-auth{--ax-ink:var(--sera-text);--ax-muted:var(--sera-text-secondary);--ax-line:var(--sera-border);--ax-ice:var(--sera-selected);--ax-primary:var(--sera-accent)}
+.sera-web-auth .ax-card{background:var(--sera-surface);color:var(--sera-text);border:1px solid var(--sera-border);border-radius:22px;box-shadow:none;max-width:480px;padding:26px 24px}
+.sera-web-auth .ax-brand{display:inline-flex;align-items:center;gap:9px;color:var(--sera-text)}
+.sera-web-auth .ax-head{justify-items:start;text-align:start;gap:8px;margin-bottom:22px}
+.sera-web-auth .ax-head p{max-width:44ch}
+.sera-web-auth .ax-head h1{font-size:clamp(25px,3vw,32px)}
+.sera-web-auth :is(.ax-input input,.ax-type-card,.ax-dial){background-color:var(--sera-surface-soft);border-color:var(--sera-border);color:var(--sera-text)}
+.sera-web-auth .ax-input input::placeholder{color:var(--sera-text-secondary)}
+.sera-web-auth .ax-type input:checked+.ax-type-card{background:var(--sera-selected);border-color:var(--sera-accent)}
+.sera-web-auth .ax-primary{background:#087e83;color:white;box-shadow:none}
+.sera-web-auth .ax-google{background:var(--sera-surface);border-color:var(--sera-border);color:var(--sera-text)}
+.sera-web-auth .ax-google:hover:not(:disabled){background:var(--sera-surface-soft)}
+.sera-web-auth .ax-secure{color:var(--sera-text-secondary)}
+.ax-brand-panel{display:none}
+@media(min-width:900px){
+ .sera-web-auth{display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,480px);padding:20px 24px 40px;align-items:stretch;gap:16px}
+ .sera-web-auth .ax-card{max-width:none;padding:32px}
+ .ax-brand-panel{display:flex;position:relative;isolation:isolate;overflow:hidden;flex-direction:column;justify-content:space-between;min-height:540px;border-radius:24px;padding:36px;background:#104e53;color:#f0fcfa}
+ .ax-brand-panel-mark{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:750}
+ .ax-brand-panel-mark .sera-brand-mark{width:42px;height:42px}
+ .ax-brand-panel h2{font-size:clamp(34px,4vw,53px);line-height:1.12;letter-spacing:-.055em;max-width:12ch;margin:0 0 18px;color:#f0fcfa}
+ .ax-brand-panel p{font-size:15px;line-height:1.65;max-width:35ch;color:#d2eae8;margin:0 0 24px}
+ .ax-brand-panel-lines{position:absolute;z-index:-1;inset:auto -35% -32% auto;width:95%;aspect-ratio:1;border-radius:50%;border:1px solid #ffffff24;box-shadow:0 0 0 35px #ffffff0b,0 0 0 70px #ffffff08,0 0 0 105px #ffffff05;pointer-events:none}
+}
+@media(max-width:480px){.sera-web-auth{padding:8px 12px 24px}.sera-web-auth .ax-card{padding:22px 18px;border-radius:18px}.sera-web-auth .ax-head{gap:7px;margin-bottom:18px}.sera-web-auth .ax-brand{margin-bottom:4px}}

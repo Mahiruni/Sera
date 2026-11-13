@@ -266,3 +266,12 @@
  .sera-collab-invite{flex-wrap:wrap}
 }
 @media(max-width:360px){.sera-web-jobs .sera-web-job-search{grid-template-columns:1fr}}
+
+/* Onboarding shares the same compact web form rhythm. */
+#main-content>.sera-web-onboarding{max-width:850px}
+.sera-web-onboarding .profile-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:24px;border-radius:20px;box-shadow:none;background:var(--sera-surface);border-color:var(--sera-border)}
+.sera-web-onboarding .profile-form .auth-label{display:grid;gap:7px;min-width:0;font-size:13px;font-weight:650;color:var(--sera-text)}
+.sera-web-onboarding .profile-form :is(input,select){min-width:0;width:100%;min-height:46px;border-radius:12px;border:1px solid var(--sera-border);background:var(--sera-surface-soft);color:var(--sera-text);padding:10px 12px;font-size:16px}
+.sera-web-onboarding .profile-form :is(.auth-help,.auth-feedback,.button){grid-column:1/-1}
+.sera-web-onboarding .profile-form .auth-help{color:var(--sera-text-secondary);font-size:12px;line-height:1.6}
+@media(max-width:600px){.sera-web-onboarding .profile-form{grid-template-columns:1fr;gap:13px;padding:16px}}
