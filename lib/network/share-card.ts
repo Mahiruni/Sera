@@ -26,3 +26,14 @@ export function messageShareCards(body:string):ShareCard[]{
   }
   return cards;
 }
+
+/** Portable plain-text contact: explicit selection, never sync an address book. */
+export function contactShare(name:string,phone:string):string|null{
+  const n=name.trim(),p=phone.trim();
+  if(!n||n.length>100||/[\x00-\x1f\x7f]/.test(n)||!/^\+?[0-9][0-9 ().-]{2,29}$/.test(p)||p.replace(/\D/g,"").length<3)return null;
+  return "Contact: "+n+"\nPhone: "+p;
+}
+export function messageContact(body:string):{name:string;phone:string}|null{
+  const match=/(?:^|\n)Contact: ([^\n]+)\nPhone: ([^\n]+)(?:\n|$)/.exec(body);
+  return match&&contactShare(match[1],match[2])?{name:match[1],phone:match[2]}:null;
+}

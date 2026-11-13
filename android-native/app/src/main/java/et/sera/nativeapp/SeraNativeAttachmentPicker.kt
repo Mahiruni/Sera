@@ -86,7 +86,7 @@ internal fun SeraNativeAttachmentPicker(
         try{
             when(kind){
                 SeraAttachmentKind.PHOTO->{pickerConversation=conversationId;photos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}
-                SeraAttachmentKind.PROFESSIONAL,SeraAttachmentKind.LOCATION->shareMode=kind
+                SeraAttachmentKind.PROFESSIONAL,SeraAttachmentKind.LOCATION,SeraAttachmentKind.CONTACT->shareMode=kind
                 SeraAttachmentKind.CV->{val owner=conversationId;checkingCallback(true);scope.launch{try{val file=withContext(Dispatchers.IO){readProfileCvForChat(token,userId)};if(currentConversation==owner)selectedCallback(file)}catch(e:CancellationException){throw e}catch(e:Exception){if(currentConversation==owner)errorCallback(e.message?:"Could not load profile CV.")}finally{checkingCallback(false)}}}
                 SeraAttachmentKind.VIDEO->{pickerConversation=conversationId;documents.launch(arrayOf("video/mp4"))}
                 SeraAttachmentKind.DOCUMENT->{pickerConversation=conversationId;documents.launch(arrayOf("application/pdf"))}

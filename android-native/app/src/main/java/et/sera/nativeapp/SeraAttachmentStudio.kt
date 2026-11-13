@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Description
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PROFESSIONAL,LOCATION }
+internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PROFESSIONAL,LOCATION,CONTACT }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SeraAttachmentStudio(onDismiss:()->Unit,onChoose:(SeraAttachmentKind)->Unit){
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
@@ -58,6 +59,10 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PR
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 AttachmentTile("SERA content","Profile, portfolio or job",Icons.Outlined.Description,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.PROFESSIONAL)}
                 AttachmentTile("Location","Enter a map pin",Icons.Outlined.Place,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.LOCATION)}
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                AttachmentTile("Contact","Share name and phone",Icons.Outlined.Person,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.CONTACT)}
+                Spacer(Modifier.weight(1f))
             }
             Text("Private conversation · Up to 5 MB per file",fontSize=12.sp,color=muted)
         }
