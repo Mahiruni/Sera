@@ -140,16 +140,16 @@ internal fun seraHighlightedMessage(body:String,query:String,background:Color,fo
   offset=index+query.length
  }
 }
-@Composable internal fun SeraHistoricalMessageDialog(token:String,userId:String,thread:String,target:String,playback:SeraChatPlayback,peerName:String,onDismiss:()->Unit,onImage:(NativeChatFile)->Unit){
+@Composable internal fun SeraHistoricalMessageDialog(token:String,userId:String,thread:String,target:String,playback:SeraChatPlayback,peerName:String,onDismiss:()->Unit){
  var rows by remember(thread,target){mutableStateOf<List<NativeMessage>>(emptyList())}
  var loading by remember(thread,target){mutableStateOf(true)}
  var error by remember(thread,target){mutableStateOf("")}
  var anchor by remember(thread,target){mutableStateOf(target)}
  var image by remember(thread,target){mutableStateOf<NativeChatFile?>(null)}
- image?.let{SeraPrivateImageViewer(token,it,onDismiss={image=null})}
  val list=rememberLazyListState()
  LaunchedEffect(token,thread,anchor){
   loading=true;error=""
+  image=null
   val r=withContext(Dispatchers.IO){loadNativeMessageContext(token,thread,anchor)}
   rows=r.first.orEmpty();error=r.second;loading=false
   val index=rows.indexOfFirst{it.id==anchor}
@@ -163,15 +163,16 @@ internal fun seraHighlightedMessage(body:String,query:String,background:Color,fo
     if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
     if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
     LazyColumn(Modifier.weight(1f),state=list,verticalArrangement=Arrangement.spacedBy(6.dp),contentPadding=PaddingValues(vertical=8.dp)){
-     item{TextButton(enabled=!loading&&rows.size>1,onClick={rows.firstOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Earlier messages")}}
+     item{TextButton(enabled=!loading&&rows.firstOrNull{!it.unsent}?.id?.let{it!=anchor}==true,onClick={rows.firstOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Earlier messages")}}
      items(rows,key={it.id}){m->
       if(m.id==target)Text("Selected message",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium)
       val colors=MaterialTheme.colorScheme
       SeraNativeMessageRow(m,rows.firstOrNull{it.id==m.replyId},userId,peerName,token,playback,320.dp,colors.onSurface,colors.surfaceVariant,colors.surface,colors.onSurfaceVariant,colors.primary,Color(0xFF087478),colors.surfaceVariant,false,{},{},{},{},{},{},{},{image=it},{error=it},readOnly=true)
      }
-     item{TextButton(enabled=!loading&&rows.size>1,onClick={rows.lastOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Later messages")}}
+     item{TextButton(enabled=!loading&&rows.lastOrNull{!it.unsent}?.id?.let{it!=anchor}==true,onClick={rows.lastOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Later messages")}}
     }
    }
   }
  }
+ image?.let{SeraPrivateImageViewer(token,it,onDismiss={image=null})}
 }

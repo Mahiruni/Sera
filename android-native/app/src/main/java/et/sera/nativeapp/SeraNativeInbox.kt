@@ -733,7 +733,7 @@ private class InboxController(
     @Composable
     fun Render(modifier: Modifier, onInboxExit: (() -> Unit)?, onCompany: () -> Unit) {
         if(global.globalStars)SeraMessageLibraryDialog(token,null,userId,"star",onDismiss={global.globalStars=false},onJump={entry->global.globalStars=false;global.historicalTarget=entry.conversationId to entry.id})
-        global.historicalTarget?.let{(chat,id)->SeraHistoricalMessageDialog(token,userId,chat,id,playback,conversations.firstOrNull{it.id==chat}?.peerName?:"Contact",onDismiss={playback.stop();global.historicalTarget=null},onImage={mediaViewer=it})}
+        global.historicalTarget?.let{(chat,id)->SeraHistoricalMessageDialog(token,userId,chat,id,playback,conversations.firstOrNull{it.id==chat}?.peerName?:"Contact",onDismiss={playback.stop();global.historicalTarget=null})}
         val clipboard = LocalClipboardManager.current
         val dark = androidx.compose.foundation.isSystemInDarkTheme()
         val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
