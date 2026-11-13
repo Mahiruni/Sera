@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { shouldSuppressMessage } from "@/lib/network/message-control-model";
 import { messagePushPayload } from "@/lib/network/message-push-model";
 import { sendProfessionalPush } from "@/lib/network/firebase-push";
 
@@ -34,6 +35,12 @@ export async function notifyMessageOnce(recipient:string, conversation:string, m
   const payload=messagePushPayload(recipient,conversation,message,kind);
   if(!payload)return;
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  const [prefs,thread]=await Promise.all([
+    admin.from("sera_message_preferences").select("notifications_enabled,quiet_enabled,quiet_start,quiet_end,quiet_timezone").eq("user_id",recipient).maybeSingle(),
+    kind==="message"?admin.from("sera_conversation_preferences").select("muted_until").eq("user_id",recipient).eq("conversation_id",conversation).maybeSingle():Promise.resolve({data:null,error:null}),
+  ]);
+  if(prefs.error||thread.error)throw new Error("Message notification preferences unavailable");
+  if(shouldSuppressMessage(prefs.data,thread.data?.muted_until??null,new Date()))return;
   const claim=await admin.from("sera_native_push_events").insert({event_id:message,kind});
   if(claim.error){if(claim.error.code==="23505")return;throw new Error("Message push claim unavailable");}
   await notifyProfessionalDevices(recipient,payload);
