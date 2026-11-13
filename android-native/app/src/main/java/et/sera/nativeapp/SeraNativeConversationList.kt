@@ -77,12 +77,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 
-@Composable internal fun SeraNativeConversationList(conversations:List<NativeConversation>,search:String,loading:Boolean,error:String,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,inboxTeal:Color,onInboxExit:(()->Unit)?,onCompany:()->Unit,onSearch:(String)->Unit,onRetry:()->Unit,onSelect:(NativeConversation)->Unit){
+@Composable internal fun SeraNativeConversationList(conversations:List<NativeConversation>,search:String,loading:Boolean,error:String,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,inboxTeal:Color,onInboxExit:(()->Unit)?,onCompany:()->Unit,onSearch:(String)->Unit,onRetry:()->Unit,onSelect:(NativeConversation)->Unit,token:String="",userId:String="",onControlChanged:()->Unit={}){
     var unreadOnly by remember{mutableStateOf(false)}
+    var archivedOnly by remember{mutableStateOf(false)}
+    var controls by remember{mutableStateOf(false)}
+    if(controls)SeraMessagingControlDialog(token,userId,onDismiss={controls=false})
     Column(Modifier.fillMaxSize()){
             Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
                 if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
                 Text("Messages",fontSize=24.sp,fontWeight=FontWeight.Bold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
+                if(userId.isNotBlank())IconButton(onClick={controls=true}){Icon(Icons.Outlined.MoreVert,"Messaging settings",tint=accent)}
                 TextButton(onClick=onCompany,contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.WorkOutline,null,tint=accent,modifier=Modifier.size(18.dp));Spacer(Modifier.width(5.dp));Text("Company",fontSize=12.sp,color=accent)}
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=8.dp).height(46.dp).clip(CircleShape).background(inboxSoft).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
@@ -90,12 +94,12 @@ import java.net.URL
                 BasicTextField(value=search,onValueChange=onSearch,singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
                 if(search.isNotEmpty())IconButton(onClick={onSearch("")},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!unreadOnly,onClick={unreadOnly=false},label={Text("All")});FilterChip(selected=unreadOnly,onClick={unreadOnly=true},label={Text("Unread")});Spacer(Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("${if(unreadTotal>99) "99+" else unreadTotal} unread",fontSize=12.sp,color=accent)}
+            Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!unreadOnly&&!archivedOnly,onClick={unreadOnly=false;archivedOnly=false},label={Text("All")});FilterChip(selected=unreadOnly,onClick={unreadOnly=true;archivedOnly=false},label={Text("Unread")});FilterChip(selected=archivedOnly,onClick={archivedOnly=true;unreadOnly=false},label={Text("Archived")});Spacer(Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("${if(unreadTotal>99) "99+" else unreadTotal} unread",fontSize=12.sp,color=accent)}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick=onRetry){Text("Retry")}}
             if (!loading && conversations.isEmpty() && error.isBlank())
                 Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
-            val filtered = conversations.filter { (!unreadOnly||it.unread>0)&&(it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true)) }.sortedByDescending{it.lastAt}
+            val filtered = conversations.filter { (if(archivedOnly)it.archived else !it.archived&&(!unreadOnly||it.unread>0||it.markedUnread))&&(it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true)) }.sortedWith(compareByDescending<NativeConversation>{it.pinned}.thenByDescending{it.lastAt})
             if(unreadOnly&&filtered.isEmpty()&&!loading&&search.isBlank())Text("You’re all caught up.",modifier=Modifier.padding(16.dp),color=muted)
             if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
             LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
@@ -111,10 +115,11 @@ import java.net.URL
                                 conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize())}
                             }
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                                Text(conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Text((if(conversation.pinned)"⌖ " else "")+conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
-                            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else conversation.unread.toString(),fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
+                            if(userId.isNotBlank())SeraConversationControlMenu(token,conversation,onControlChanged)
+                            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0||conversation.markedUnread) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
                         }
                     }
                 }

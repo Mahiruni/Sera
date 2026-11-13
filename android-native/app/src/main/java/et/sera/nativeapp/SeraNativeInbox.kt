@@ -97,7 +97,7 @@ private class SeraInboxDrafts(context: Context) {
     }
 }
 
-internal data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="")
+internal data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="",val pinned:Boolean=false,val archived:Boolean=false,val markedUnread:Boolean=false,val mutedUntil:String?=null)
 internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
@@ -166,9 +166,11 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
             val connection=(URL(base+"/storage/v1/object/sign/sera-account-private").openConnection() as HttpURLConnection).apply{requestMethod="POST";doOutput=true;connectTimeout=10000;readTimeout=10000;setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY);setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}
             try{connection.outputStream.use{it.write(JSONObject().put("paths",JSONArray(paths.values.toList())).put("expiresIn",300).toString().toByteArray())};if(connection.responseCode in 200..299){val signed=JSONArray(connection.inputStream.bufferedReader().use{it.readText()});for(i in 0 until signed.length()){val item=signed.getJSONObject(i);val path=item.optString("path");val url=item.optString("signedURL").ifBlank{item.optString("signedUrl")};if(url.startsWith("/object/sign/")){paths.entries.filter{it.value==path}.forEach{photos[it.key]=base+"/storage/v1"+url}}}}}finally{connection.disconnect()}
         }
+        val controls=runCatching{val raw=inboxRequest(token,"sera_conversation_preferences?select=conversation_id,pinned,archived,marked_unread,muted_until&user_id=eq.$userId").first;val rows=JSONArray(raw?:"[]");(0 until rows.length()).map{rows.getJSONObject(it)}.associateBy{it.getString("conversation_id")}}.getOrDefault(emptyMap())
         peers.map { row ->
             val id = if (row.optString("member_a") == userId) row.optString("member_b") else row.optString("member_a")
-            NativeConversation(row.optString("id"), id, names[id]?.takeIf { it.isNotBlank() && it != "null" } ?: "SERA professional",row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"),photos[id],row.optString("last_created_at").takeUnless{it=="null"}.orEmpty())
+            val control=controls[row.optString("id")]
+            NativeConversation(row.optString("id"), id, names[id]?.takeIf { it.isNotBlank() && it != "null" } ?: "SERA professional",row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"),photos[id],row.optString("last_created_at").takeUnless{it=="null"}.orEmpty(),control?.optBoolean("pinned")?:false,control?.optBoolean("archived")?:false,control?.optBoolean("marked_unread")?:false,control?.optString("muted_until")?.takeUnless{it=="null"||it.isBlank()})
         } to ""
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
@@ -657,7 +659,7 @@ private class InboxController(
         Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
             Spacer(Modifier.height(4.dp))
             if (selected == null) {
-                SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany=onCompany,onSearch={search=it},onRetry={refresh++},onSelect={conversation->
+                SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany=onCompany,onSearch={search=it},onRetry={refresh++},token=token,userId=userId,onControlChanged={refresh++},onSelect={conversation->
                     draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
                 })
             } else {
