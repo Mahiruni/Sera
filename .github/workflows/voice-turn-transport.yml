@@ -7,7 +7,7 @@ on:
       - '.github/workflows/voice-turn-transport.yml'
       - 'lib/network/voice-calls.ts'
       - 'components/network/sera-voice-call.tsx'
-      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeRtc.kt'
+      - 'android-native/app/src/calling/java/et/sera/nativeapp/SeraNativeRtc.kt'
   workflow_dispatch:
 permissions:
   contents: read

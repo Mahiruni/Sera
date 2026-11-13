@@ -42,7 +42,6 @@ import org.json.JSONObject
 import org.json.JSONArray
 import java.util.UUID
 
-internal data class SeraCallEvent(val id:String,val caller:String,val state:String,val createdAt:String)
 private data class CallRow(val id:String,val caller:String,val callee:String,val state:String,val offer:String?,val answer:String?,val expiresAt:String){
     val live get()=state=="ringing"||state=="accepted"
 }

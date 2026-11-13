@@ -350,6 +350,11 @@ fun SeraApp(
         val kind=pushKind?:return@LaunchedEffect
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isBlank())return@LaunchedEffect
+        if(kind.startsWith("voice_call:") && !BuildConfig.LIVE_CALLING_INCLUDED){
+            SeraPush.clearCallNotification(context,kind.substringAfter(':'))
+            onPushConsumed()
+            return@LaunchedEffect
+        }
         if(kind.startsWith("voice_call:")){
             val id=kind.substringAfter(':')
             if(id.matches(Regex("[0-9a-fA-F-]{36}"))){

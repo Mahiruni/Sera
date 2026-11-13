@@ -3,11 +3,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
+    .map { it.toBooleanStrict() }.orElse(false).get()
+
 android {
+    sourceSets.getByName("main").java.srcDir(if (includeLiveCalling) "src/calling/java" else "src/lightweight/java")
     namespace = "et.sera.nativeapp"
     compileSdk = 35
     defaultConfig {
         applicationId = "et.sera.nativeapp"
+        buildConfigField("boolean", "LIVE_CALLING_INCLUDED", includeLiveCalling.toString())
         minSdk = 26
         targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -89,5 +94,5 @@ dependencies {
     implementation("androidx.room:room-paging:2.7.1")
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
-    implementation("io.github.webrtc-sdk:android:144.7559.15")
+    if (includeLiveCalling) implementation("io.github.webrtc-sdk:android:144.7559.15")
 }

@@ -118,6 +118,7 @@ internal object SeraPush {
         editor.putLong(id,now+90000).apply();clearCallNotification(context,id)
     }
     @Synchronized fun notifyCall(context:Context,data:Map<String,String>){
+        if (!BuildConfig.LIVE_CALLING_INCLUDED) return
         val id=data["call_id"]?:return
         val recipient=data["recipient_id"]?:return
         if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return

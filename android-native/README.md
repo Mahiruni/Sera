@@ -12,3 +12,6 @@ Native login via Supabase password auth and a native navigation shell. Not yet a
 token is held in memory only; refresh/persistence, registration, OAuth, profile loading, data views,
 push notifications and production security hardening remain to be implemented.
 Do not distribute as production-ready.
+
+## Android release configurations
+The default build is lightweight and does not include WebRTC. Voice messages and file sharing remain available. Live calling shows an availability message; incoming live-call notifications are suppressed. The full transport and UI are retained under `app/src/calling/java`. To compile that edition explicitly, use `gradle :app:assembleDebug -PSERA_ENABLE_LIVE_CALLING=true` with the existing public Supabase settings. This is not a production activation: managed TURN configuration and device/relay tests are still required. Production signed releases explicitly build the lightweight edition and reject APKs over 10 MiB or containing native WebRTC libraries.
