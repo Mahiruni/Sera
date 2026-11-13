@@ -40,7 +40,7 @@ export function SeraVoiceProvider({userId,children}:{userId:string;children:Reac
  const register=useCallback((target:VoiceTarget)=>setState(s=>({...s,selected:target,target:s.pinned?s.target:target})),[]);
  const unregister=useCallback((node:HTMLElement)=>setState(s=>s.selected?.node!==node?s:{...s,selected:null,target:s.pinned?s.target:null}),[]);
  const report=useCallback((id:string,pinned:boolean)=>setState(s=>s.target?.conversation!==id||s.pinned===pinned?s:{...s,pinned,target:pinned?s.target:s.selected}),[]);
- const stateRef=useRef(state);stateRef.current=state;
+ const stateRef=useRef(state);useLayoutEffect(()=>{stateRef.current=state;},[state]);
  const history=useCallback((events:CallHistoryEntry[])=>{const s=stateRef.current;if(s.selected?.conversation===s.target?.conversation)s.selected?.onHistory(events);},[]);
  const api=useMemo(()=>({register,unregister}),[register,unregister]);
  const target=state.target;
@@ -49,7 +49,7 @@ export function SeraVoiceProvider({userId,children}:{userId:string;children:Reac
 }
 export function SeraVoiceCall(props:VoiceEntry){
  const host=useContext(VoiceHost),node=useRef<HTMLSpanElement>(null),historyRef=useRef(props.onHistory);
- historyRef.current=props.onHistory;
+ useLayoutEffect(()=>{historyRef.current=props.onHistory;},[props.onHistory]);
  useLayoutEffect(()=>{if(!host||!node.current)return;const element=node.current;
   host.register({...props,node:element,onHistory:events=>historyRef.current(events)});
   return()=>host.unregister(element);
@@ -202,7 +202,7 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
 
   const held=Boolean(session||phase||summary);
   useLayoutEffect(()=>{report?.(conversation,held);},[report,conversation,held]);
-  useEffect(()=>{if(!selected&&session?.state!=="ringing")setMinimized(true);},[selected,session?.state]);
+  useEffect(()=>{if(!selected&&session?.state!=="ringing"){const frame=requestAnimationFrame(()=>setMinimized(true));return()=>cancelAnimationFrame(frame);}},[selected,session?.state]);
   if(!config.enabled)return null;
   const incoming=session?.state==="ringing"&&session.callee===userId&&!phase;
   const duration=formatDuration(seconds);
