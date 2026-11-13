@@ -53,6 +53,7 @@ export function NetworkHome({
   mine = false,
   personalized=false,
   identityVerified=false,
+  feedContent,peopleContent,rightContent,
 }: {
   userId: string;
   profile: HomeProfile | null;
@@ -68,6 +69,7 @@ export function NetworkHome({
   mine?: boolean;
   personalized?:boolean;
   identityVerified?:boolean;
+  feedContent?:React.ReactNode;peopleContent?:React.ReactNode;rightContent?:React.ReactNode;
 }) {
   const essentials = profileEssentials(profile),
     topics = skillTopics(profile?.skills);
@@ -202,18 +204,7 @@ export function NetworkHome({
             </Link>
           </nav>
           <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} headline={profile?.headline} identityVerified={identityVerified}/>
-          <nav className="sera-premium-people" aria-label="Professionals to discover">
-            <Link href="/discover?tab=people" className="sera-premium-person sera-premium-add">
-              <span className="sera-premium-person-avatar"><Plus size={27} /></span>
-              <small>Find people</small>
-            </Link>
-            {people.slice(0, 6).map((person) => (
-              <Link href={"/members/" + person.id} className="sera-premium-person" key={person.id}>
-                <span className="sera-premium-person-avatar"><MemberAvatar name={person.full_name} photo={person.photo} size={52} /></span>
-                <small>{person.full_name.split(" ")[0] || "Member"}</small>
-              </Link>
-            ))}
-          </nav>
+          {peopleContent ?? <NetworkPeopleStrip people={people}/>}
           <nav className="social-filters" aria-label="Filter stories">
             <Link
               href={mine ? "/feed?view=mine" : "/feed"}
@@ -231,14 +222,31 @@ export function NetworkHome({
               </Link>
             ))}
           </nav>
-          <PostList posts={posts} userId={userId} />
-          <SocialPagination
-            page={page}
-            hasMore={hasMore}
-            href={"/feed" + (filters.size ? "?" + filters.toString() : "")}
-          />
+          {feedContent ?? <><PostList posts={posts} userId={userId}/><SocialPagination page={page} hasMore={hasMore} href={"/feed"+(filters.size?"?"+filters.toString():"")}/></>}
         </section>
-        <aside
+        {rightContent ?? <NetworkRightRail people={people} jobs={jobs} peopleError={peopleError} jobsError={jobsError}/>}
+
+      </div>
+    </div>
+  );
+}
+
+export function NetworkPeopleStrip({people}:{people:MemberCard[]}){return (
+<nav className="sera-premium-people" aria-label="Professionals to discover">
+            <Link href="/discover?tab=people" className="sera-premium-person sera-premium-add">
+              <span className="sera-premium-person-avatar"><Plus size={27} /></span>
+              <small>Find people</small>
+            </Link>
+            {people.slice(0, 6).map((person) => (
+              <Link href={"/members/" + person.id} className="sera-premium-person" key={person.id}>
+                <span className="sera-premium-person-avatar"><MemberAvatar name={person.full_name} photo={person.photo} size={52} /></span>
+                <small>{person.full_name.split(" ")[0] || "Member"}</small>
+              </Link>
+            ))}
+          </nav>
+);}
+export function NetworkRightRail({people,jobs,peopleError=false,jobsError=false}:{people:MemberCard[];jobs:OpportunityCard[];peopleError?:boolean;jobsError?:boolean}){return (
+<aside
           className="network-right"
           aria-label="Explore your professional world"
         >
@@ -280,7 +288,4 @@ export function NetworkHome({
           </section>
           <NextOnSera compact />
         </aside>
-      </div>
-    </div>
-  );
-}
+);}
