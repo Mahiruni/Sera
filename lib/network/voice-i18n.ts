@@ -258,6 +258,31 @@ const voiceWords:Record<string,[string,string]>={
   "Allow microphone access in your browser to call.": [
     "ለመደወል በአሳሽዎ የማይክሮፎን ፈቃድ ይስጡ።",
     "Bilbiluuf biraawzara keessatti hayyama maayikiroofonii kenni."
-  ]
+  ],
+  "Video call": ["የቪዲዮ ጥሪ","Bilbila viidiyoo"],
+  "Incoming video call": ["ገቢ የቪዲዮ ጥሪ","Bilbila viidiyoo dhufaa"],
+  "Video quality": ["የቪዲዮ ጥራት","Qulqullina viidiyoo"],
+  "Video adapts to your network. Voice always comes first.": ["ቪዲዮው ከኔትወርክዎ ጋር ይስማማል። ድምፅ ቅድሚያ ይሰጠዋል።","Viidiyoon neetworkii keetitti madaqa. Sagaleen dursa qaba."],
+  "Recipient must open Sera Web to receive video calls.": ["የቪዲዮ ጥሪ ለመቀበል ተቀባዩ Sera Web መክፈት አለበት።","Fudhataan bilbila viidiyoo fudhachuuf Sera Web banuu qaba."],
+  "Free": ["ነፃ","Bilisa"],
+  "Premium": ["ፕሪሚየም","Premium"],
+  "HD and Super HD require an active subscription.": ["HD እና Super HD ንቁ ደንበኝነት ይፈልጋሉ።","HD fi Super HD miseensummaa kaffaltii hojiirra jiru barbaadu."],
+  "Subscription required": ["ደንበኝነት ያስፈልጋል","Miseensummaan barbaachisa"],
+  "Camera off": ["ካሜራ ጠፍቷል","Kaameraan cufameera"],
+  "Camera on": ["ካሜራ አብራ","Kaameraa bani"],
+  "Video paused · audio continues": ["ቪዲዮ ቆሟል፤ ድምፅ ይቀጥላል","Viidiyoon dhaabbate · sagaleen itti fufa"],
+  "Data Saver · 360p": ["ዳታ ቆጣቢ · 360p","Daataa qusatu · 360p"],
+  "Data Saver": ["ዳታ ቆጣቢ","Daataa qusatu"],
+  "On": ["በርቷል","Banaa"],
+  "Off": ["ጠፍቷል","Cufaa"],
+  "Answer with video": ["በቪዲዮ መልስ","Viidiyoodhaan deebisi"],
+  "Audio only": ["ድምፅ ብቻ","Sagalee qofa"],
+  "Remote video": ["የሌላው ተሳታፊ ቪዲዮ","Viidiyoo hirmaataa biraa"],
+  "Your camera": ["ካሜራዎ","Kaameraa kee"],
+  "Camera unavailable. Your audio call continues.": ["ካሜራ አይገኝም። የድምፅ ጥሪዎ ይቀጥላል።","Kaameraan hin jiru. Bilbilli sagalee kee itti fufa."],
+  "Allow camera and microphone access in your browser.": ["በአሳሽዎ የካሜራ እና ማይክሮፎን ፈቃድ ይስጡ።","Biraawzara keessatti hayyama kaameraa fi maayikiroofonii kenni."],
+  "Video unavailable. Check recipient availability or subscription.": ["ቪዲዮ አይገኝም። ተቀባዩን ወይም ደንበኝነትዎን ያረጋግጡ።","Viidiyoon hin jiru. Fudhataa yookaan miseensummaa kee mirkaneessi."],
+  "Video quality unavailable": ["የቪዲዮ ጥራት አይገኝም","Qulqullinni viidiyoo hin jiru"],
+  "Close": ["ዝጋ","Cufi"]
 };
 export function voiceText(locale:string,value:string):string {const pair=voiceWords[value];return pair?(locale==="am"?pair[0]:locale==="om"?pair[1]:value):value;}
