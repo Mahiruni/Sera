@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'tests/voice-turn-transport.mjs'
+      - 'tests/video-turn-transport.mjs'
+      - 'lib/network/video-policy.ts'
       - '.github/workflows/voice-turn-transport.yml'
       - 'lib/network/voice-calls.ts'
       - 'components/network/sera-voice-call.tsx'
@@ -44,6 +46,8 @@ jobs:
           sudo tc qdisc replace dev lo root netem delay 45ms 15ms loss 2% rate 384kbit limit 1000
           trap 'sudo tc qdisc del dev lo root || true' EXIT
           SERA_TEST_WEAK_NETWORK=1 node tests/voice-turn-transport.mjs
+      - name: Verify video frames, audio-first fallback and video ICE restart
+        run: node tests/video-turn-transport.mjs
       - name: Stop test relay
         if: always()
         run: docker rm -f sera-test-turn || true
