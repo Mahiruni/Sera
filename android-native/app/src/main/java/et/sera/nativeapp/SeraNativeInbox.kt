@@ -250,6 +250,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     val controller = InboxController(global, selection, thread, token, userId, context, savedDrafts, lifecycle, messageListState, scope, playback, outbox, onThreadExit)
     controller.PresenceAndScroll()
     controller.KeyboardScroll()
+    controller.JumpToMessage()
     controller.ConnectionAndPlayback()
     controller.TransferEffects()
     controller.TextEffects()
@@ -314,6 +315,7 @@ private class InboxThreadState {
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
+    var jumpMessageId by mutableStateOf<String?>(null)
 }
 
 private class InboxController(
@@ -453,10 +455,10 @@ private class InboxController(
         val ime = WindowInsets.ime
         val density = LocalDensity.current
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
-        LaunchedEffect(selected?.id, tail,thread.initialMessagesLoaded) {
+        LaunchedEffect(selected?.id, tail,thread.initialMessagesLoaded,thread.detailsOpen) {
             val id = selected?.id ?: return@LaunchedEffect
             val last = tail ?: return@LaunchedEffect
-            if(!thread.initialMessagesLoaded)return@LaunchedEffect
+            if(!thread.initialMessagesLoaded||thread.detailsOpen||thread.jumpMessageId!=null)return@LaunchedEffect
             val changedConversation = !thread.initialScrollComplete
             val layout=messageListState.layoutInfo
             val nearBottom=layout.visibleItemsInfo.lastOrNull()?.index?.let{it>=layout.totalItemsCount-3}?:true
@@ -467,6 +469,23 @@ private class InboxController(
             }
             lastVisibleConversation = id
             lastMessageId = last
+        }
+    }
+
+    @Composable
+    fun JumpToMessage() {
+        LaunchedEffect(selected?.id,thread.jumpMessageId,thread.detailsOpen){
+            val id=thread.jumpMessageId?:return@LaunchedEffect
+            if(thread.detailsOpen)return@LaunchedEffect
+            val timeline=(mergeAcknowledgedText(messages,thread.textAcknowledged).map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
+            val index=timeline.indexOfFirst{it.message?.id==id}
+            if(index>=0){
+                withFrameNanos{}
+                val offset=if(mergeAcknowledgedText(messages,thread.textAcknowledged).size>=historyLimit&&historyLimit<1000)1 else 0
+                messageListState.scrollToItem(index+offset)
+                thread.initialScrollComplete=true
+            }else error="This message is no longer available."
+            thread.jumpMessageId=null
         }
     }
 
@@ -495,7 +514,7 @@ private class InboxController(
                     // Wait for the resized list to be measured before scrolling.
                     withFrameNanos{}
                     val latestCount=messageListState.layoutInfo.totalItemsCount
-                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch && messageListState.canScrollForward){
+                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch && thread.jumpMessageId==null && messageListState.canScrollForward){
                         messageListState.scrollToItem(latestCount-1)
                         // A very tall last bubble may still extend below the viewport.
                         val layout=messageListState.layoutInfo
@@ -717,7 +736,7 @@ private class InboxController(
                 if(thread.detailsOpen){
                     val current=conversations.firstOrNull{it.id==conversation.id}?:conversation
                     SeraConversationDetails(current,token,userId,peerActivity,messages,historyLimit,!thread.initialMessagesLoaded,playback,inboxInk,inboxSoft,muted,accent,
-                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true})
+                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true},onJumpToMessage={id->thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
                 }else{
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
