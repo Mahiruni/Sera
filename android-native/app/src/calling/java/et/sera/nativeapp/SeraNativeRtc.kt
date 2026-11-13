@@ -16,7 +16,7 @@ import kotlin.coroutines.resumeWithException
 internal data class SeraAudioRoute(val id:Int,val label:String)
 
 /** Voice only. TURN relay is mandatory; no direct exposure of peer IP addresses. */
-internal class SeraNativeRtc(private val context:Context,config:JSONObject,private val onState:(String)->Unit){
+internal class SeraNativeRtc(private val context:Context,config:JSONObject,private val manageAudioFocus:Boolean=true,private val onState:(String)->Unit){
     private val manager=context.getSystemService(AudioManager::class.java)
     private val previousMode=manager.mode
     private val previousSpeaker=manager.isSpeakerphoneOn
@@ -44,6 +44,46 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
                     check(sdp.contains("useinbandfec=1")&&sdp.contains("maxaveragebitrate=32000")){"Speech protection was not negotiated in local SDP"}
                 }finally{onMain{engine.close()}}
             }
+        }
+        /** Isolated emulator QA: real authenticated relay, no production credentials.
+         *  Two native peers in one process share an audio device, so this proves transport
+         *  and renegotiation, not human speech quality or two physical microphones. */
+        @JvmStatic fun verifyRelayRecovery(context:Context,main:java.util.concurrent.Executor,url:String,username:String,credential:String){
+            fun <T> onMain(block:()->T):T{
+                val task=java.util.concurrent.FutureTask<T>{block()}
+                main.execute(task)
+                return task.get(15,java.util.concurrent.TimeUnit.SECONDS)
+            }
+            val config=JSONObject().put("iceServers",org.json.JSONArray().put(JSONObject().put("urls",url).put("username",username).put("credential",credential)))
+            val a=onMain{SeraNativeRtc(context,config,false){}}
+            try{
+                val b=onMain{SeraNativeRtc(context,config,false){}}
+                try{
+                    kotlinx.coroutines.runBlocking{
+                        fun ufrag(sdp:String)=sdp.lineSequence().firstOrNull{it.startsWith("a=ice-ufrag:")}?.trim()
+                        fun relayOnly(sdp:String):Boolean{
+                            val candidates=sdp.lineSequence().filter{it.startsWith("a=candidate:")}.toList()
+                            return candidates.isNotEmpty()&&candidates.all{it.contains(" typ relay ")}
+                        }
+                        suspend fun awaitConnected(){
+                            withTimeout(25000){
+                                while(!(a.connectedThroughRelay()&&b.connectedThroughRelay()))delay(250)
+                            }
+                        }
+                        val offer=a.offer();check(relayOnly(offer)){"Native initial offer is not relay-only"}
+                        val answer=b.answer(offer);check(relayOnly(answer)){"Native initial answer is not relay-only"}
+                        a.remoteAnswer(answer);awaitConnected()
+                        val initialA=a.track;val initialB=b.track
+                        val next=a.restartOffer()
+                        check(ufrag(next)!=null&&ufrag(next)!=ufrag(offer)&&relayOnly(next)){"Native restart offer did not rotate credentials"}
+                        val nextAnswer=b.restartAnswer(next)
+                        check(ufrag(nextAnswer)!=null&&ufrag(nextAnswer)!=ufrag(answer)&&relayOnly(nextAnswer)){"Native restart answer did not rotate credentials"}
+                        a.remoteAnswer(nextAnswer);awaitConnected()
+                        check(a.track===initialA&&b.track===initialB){"Native restart replaced the audio track"}
+                        check(a.signalingStable()&&b.signalingStable()){"Native restart signaling did not become stable"}
+                    }
+                }finally{onMain{b.close()}}
+            }finally{onMain{a.close()}}
         }
         private var initialized=false
         @Synchronized private fun ensureInitialized(context:Context){
@@ -92,8 +132,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         })
         track=factory.createAudioTrack("sera-voice",source)
         sender=pc.addTrack(track,listOf("sera-audio"))?:error("Voice track unavailable.")
-        manager.mode=AudioManager.MODE_IN_COMMUNICATION
-        manager.requestAudioFocus(focusRequest)
+        if(manageAudioFocus){manager.mode=AudioManager.MODE_IN_COMMUNICATION;manager.requestAudioFocus(focusRequest)}
         android.util.Log.i("SeraRtc","Audio track ready")
     }
     private suspend fun description(offer:Boolean,restart:Boolean=false):SessionDescription=suspendCancellableCoroutine{c->
@@ -129,6 +168,19 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
     suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);applySpeechProfile();gather()}
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false);appliedBitrate=null;applySpeechProfile()}
+    private suspend fun connectedThroughRelay():Boolean=kotlinx.coroutines.withTimeoutOrNull(2000){
+        suspendCancellableCoroutine<Boolean>{c->
+            if(closed){c.resume(false);return@suspendCancellableCoroutine}
+            pc.getStats{report->
+                val pairId=report.statsMap.values.firstOrNull{it.type=="transport"}?.members?.get("selectedCandidatePairId") as? String
+                val pair=pairId?.let{report.statsMap[it]}
+                val local=(pair?.members?.get("localCandidateId") as? String)?.let{report.statsMap[it]}
+                val remote=(pair?.members?.get("remoteCandidateId") as? String)?.let{report.statsMap[it]}
+                val ok=pc.connectionState()==PeerConnection.PeerConnectionState.CONNECTED&&pair?.members?.get("state")=="succeeded"&&local?.members?.get("candidateType")=="relay"&&remote?.members?.get("candidateType")=="relay"
+                if(c.isActive)c.resume(ok)
+            }
+        }
+    }?:false
     fun signalingStable()=!closed&&pc.signalingState()==PeerConnection.SignalingState.STABLE
     suspend fun restartOffer():String=withTimeout(16000){
         val previous=pc.localDescription?.description.orEmpty()
@@ -224,6 +276,6 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         runCatching{track.setEnabled(false)}
         runCatching{pc.close();pc.dispose()}
         runCatching{track.dispose();source.dispose();factory.dispose()}
-        runCatching{manager.abandonAudioFocusRequest(focusRequest);if(Build.VERSION.SDK_INT>=31)manager.clearCommunicationDevice()else @Suppress("DEPRECATION") run{manager.isSpeakerphoneOn=previousSpeaker};manager.mode=previousMode}
+        if(manageAudioFocus)runCatching{manager.abandonAudioFocusRequest(focusRequest);if(Build.VERSION.SDK_INT>=31)manager.clearCommunicationDevice()else @Suppress("DEPRECATION") run{manager.isSpeakerphoneOn=previousSpeaker};manager.mode=previousMode}
     }
 }
