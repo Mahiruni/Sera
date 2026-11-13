@@ -94,7 +94,7 @@ import java.net.URL
 
 
 @Composable
-internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMessage?,userId:String,peerName:String,token:String,playback:SeraChatPlayback,maxBubbleWidth:androidx.compose.ui.unit.Dp,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,menuOpen:Boolean,onMenu:(Boolean)->Unit,onReply:()->Unit,onReact:()->Unit,onForward:()->Unit,onCopy:()->Unit,onUnsend:()->Unit,onReaction:(String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,conversationId:String="",onLibraryChanged:()->Unit={},readOnly:Boolean=false,onQuote:(String)->Unit={},highlighted:Boolean=false,selectionMode:Boolean=false,selected:Boolean=false,onSelect:()->Unit={}){
+internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMessage?,userId:String,peerName:String,token:String,playback:SeraChatPlayback,maxBubbleWidth:androidx.compose.ui.unit.Dp,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,menuOpen:Boolean,onMenu:(Boolean)->Unit,onReply:()->Unit,onReact:()->Unit,onForward:()->Unit,onCopy:()->Unit,onUnsend:()->Unit,onReaction:(String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,conversationId:String="",onLibraryChanged:()->Unit={},readOnly:Boolean=false,onQuote:(String)->Unit={},highlighted:Boolean=false,selectionMode:Boolean=false,selected:Boolean=false,onSelect:()->Unit={},peerPhoto:String?=null,showPeerAvatar:Boolean=false,reservePeerAvatar:Boolean=false){
     val palette=seraChatColors()
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
@@ -132,6 +132,16 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                     }
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).then(if(selectionMode)Modifier.background(if(selected)palette.selection else Color.Transparent).semantics{this.selected=selected}.clickable(enabled=!message.unsent,onClick=onSelect)else Modifier), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
                         if(selectionMode)Checkbox(checked=selected,onCheckedChange={onSelect()},enabled=!message.unsent,modifier=Modifier.align(Alignment.CenterVertically))
+                        if(!own&&!selectionMode&&reservePeerAvatar){
+                            Box(Modifier.padding(end=6.dp,bottom=2.dp).size(22.dp),contentAlignment=Alignment.Center){
+                                if(showPeerAvatar&&!message.unsent){
+                                    Box(Modifier.fillMaxSize().clip(CircleShape).background(inboxSoft).testTag("sera_message_avatar_"+message.id),contentAlignment=Alignment.Center){
+                                        Text(peerName.trim().take(1).uppercase().ifBlank{"S"},color=accent,fontSize=11.sp,fontWeight=FontWeight.SemiBold)
+                                        peerPhoto?.takeIf{it.isNotBlank()}?.let{SeraMediaImage(it,"",64,64,Modifier.fillMaxSize())}
+                                    }
+                                }
+                            }
+                        }
                         Box {
                             if(kotlin.math.abs(swipe)>4f)Box(Modifier.align(if(own)Alignment.CenterEnd else Alignment.CenterStart).size(36.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.Reply,null,tint=accent.copy(alpha=(kotlin.math.abs(swipe)/swipeThreshold).coerceIn(.25f,1f)),modifier=Modifier.size(20.dp))}
                             SeraCompactMessageBubble(own=own,
