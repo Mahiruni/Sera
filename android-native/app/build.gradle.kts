@@ -9,10 +9,12 @@ val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
     .map { it.toBooleanStrict() }.orElse(true).get()
 
 val signedCallSmoke = providers.gradleProperty("SERA_SIGNED_CALL_SMOKE").orElse("false").get().toBoolean()
+val nativeRelayQa = providers.gradleProperty("SERA_NATIVE_RELAY_QA").orElse("false").get().toBoolean()
+val platformCallSmoke = signedCallSmoke || nativeRelayQa
 
 android {
-    if (signedCallSmoke) {
-        testBuildType = "release"
+    if (platformCallSmoke) {
+        testBuildType = if (signedCallSmoke) "release" else "debug"
         sourceSets.getByName("androidTest").java.setSrcDirs(listOf("src/callingPlatformSmoke/java"))
     }
     sourceSets.getByName("main").java.srcDir(if (includeLiveCalling) "src/calling/java" else "src/lightweight/java")
@@ -24,7 +26,7 @@ android {
         if (pilotArm64) { require(includeLiveCalling); ndk { abiFilters += "arm64-v8a" } }
         minSdk = 26
         targetSdk = 35
-        testInstrumentationRunner = if (signedCallSmoke) "et.sera.nativeapp.SeraSignedCallInstrumentation" else "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = if (platformCallSmoke) "et.sera.nativeapp.SeraSignedCallInstrumentation" else "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.gradleProperty("SERA_VERSION_CODE").orElse("1").get().toInt()
         versionName = providers.gradleProperty("SERA_VERSION_NAME").orElse("0.1.0").get()
         val supabaseUrl = providers.gradleProperty("SERA_SUPABASE_URL").orElse("").get()
@@ -76,7 +78,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
-    if (!signedCallSmoke) {
+    if (!platformCallSmoke) {
         androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
         androidTestImplementation("androidx.compose.ui:ui-test-junit4")
         androidTestImplementation("androidx.test:runner:1.6.2")
