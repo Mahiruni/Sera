@@ -476,13 +476,13 @@ html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
  grid-template-columns:repeat(3,minmax(0,1fr));background:transparent;margin-top:10px;padding-top:5px;
 }
 .sera-main .sera-editorial-feed.sera-network.network-app .social-post-list>.social-card{
- background:var(--sera-surface,#fff)!important;border:1px solid var(--sera-border,#dce8e5)!important;
- border-radius:20px!important;margin:0 0 10px!important;padding:14px!important;box-shadow:none!important;
+ background:transparent!important;border:0!important;
+ border-radius:0!important;margin:0!important;padding:14px 2px 8px!important;box-shadow:none!important;
 }
 .sera-main .sera-editorial-feed.sera-network.network-app .social-post-list>.social-card+.social-card{
  border-top:1px solid var(--sera-border,#dce8e5)!important;
 }
-.sera-main .sera-editorial-feed.sera-network.network-app .social-card .social-post-header{margin-bottom:8px}
+.sera-main .sera-editorial-feed.sera-network.network-app .social-card .social-post-header{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--sera-border,#dce8e5) 55%,transparent)}
 .sera-main .sera-editorial-feed.sera-network.network-app .social-card .social-body{font-size:15px;line-height:1.6;color:var(--sera-text,#183b40)}
 .sera-main .sera-editorial-feed.sera-network.network-app .social-card .social-images{margin:10px 0 6px;width:100%;max-width:100%;border-radius:14px}
 .sera-main .sera-editorial-feed.sera-network.network-app .social-card .social-images img{border-radius:14px}
@@ -490,6 +490,6 @@ html[data-nav-hidden] .footer-dock:not(:has(:focus-visible)) {
 html[data-sera-theme=dark] .sera-main .sera-editorial-feed.sera-network.network-app .sera-feed-compose-pencil{color:#8ad7ca}
 @media(max-width:600px){
  .sera-main .sera-editorial-feed .sera-premium-people{display:none}
- .sera-main .sera-editorial-feed.sera-network.network-app .social-post-list>.social-card{padding:12px!important}
+ .sera-main .sera-editorial-feed.sera-network.network-app .social-post-list>.social-card{padding:12px 2px 8px!important}
  .sera-main .sera-editorial-feed .sera-feed-compose-trigger strong{font-size:14px}
 }
