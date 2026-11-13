@@ -26,6 +26,10 @@ internal class SeraGlobalCallState {
         private set
     var historyRequest by mutableIntStateOf(0)
         private set
+    var pendingAnswerId by mutableStateOf<String?>(null)
+        private set
+    fun queueAnswer(id:String){pendingAnswerId=id}
+    fun consumeAnswer(id:String):Boolean{if(pendingAnswerId!=id)return false;pendingAnswerId=null;return true}
     private var pendingStart=false
     private var historySink:((List<SeraCallEvent>)->Unit)?=null
     private var audioStart:(()->Unit)?=null
