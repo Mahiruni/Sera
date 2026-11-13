@@ -313,6 +313,7 @@ private class InboxThreadState {
     var unreadBoundary by mutableStateOf<String?>(null)
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
+    var detailsOpen by mutableStateOf(false)
 }
 
 private class InboxController(
@@ -476,8 +477,8 @@ private class InboxController(
     fun KeyboardScroll() {
         val ime = WindowInsets.ime
         val density = LocalDensity.current
-        LaunchedEffect(selected?.id, showSearch, density, ime) {
-            if(selected==null||showSearch)return@LaunchedEffect
+        LaunchedEffect(selected?.id, showSearch, thread.detailsOpen, density, ime) {
+            if(selected==null||showSearch||thread.detailsOpen)return@LaunchedEffect
             var previousIme = 0
             var previousHeight = 0
             var previousCount = 0
@@ -601,7 +602,7 @@ private class InboxController(
         mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
         // The system keyboard owns Back while visible; do not close the thread.
         val imeVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
-        BackHandler(selected != null && !imeVisible) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
+        BackHandler(selected != null && !imeVisible) { if(thread.detailsOpen)thread.detailsOpen=false else if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     }
 
     @Composable
@@ -646,8 +647,9 @@ private class InboxController(
 
     @Composable
     fun ReadReceipts() {
-        LaunchedEffect(token,selected?.id,lifecycle){
+        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen){
             val c=selected?:return@LaunchedEffect
+            if(thread.detailsOpen)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
@@ -712,10 +714,15 @@ private class InboxController(
                 })
             } else {
                 val conversation = selected!!
+                if(thread.detailsOpen){
+                    val current=conversations.firstOrNull{it.id==conversation.id}?:conversation
+                    SeraConversationDetails(current,token,userId,peerActivity,messages,historyLimit,!thread.initialMessagesLoaded,playback,inboxInk,inboxSoft,muted,accent,
+                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true})
+                }else{
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
-                    onAudioStart={playback.pause()},onHistory={callEvents=it})
+                    onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
                 if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
@@ -725,6 +732,7 @@ private class InboxController(
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
                     onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary)
                 key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
+                }
             }
         }
     }
