@@ -147,14 +147,14 @@ internal object SeraPush {
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val decline=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallDeclineReceiver::class.java).apply{action="et.sera.nativeapp.DECLINE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText("Incoming call").build()
+        val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText(context.voiceText("Incoming voice call")).build()
         return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(context.voiceText("Incoming voice call")).setContentText(context.voiceText("Open Sera to answer")).setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
-            .addAction(android.R.drawable.sym_call_incoming,"Open call",pi)
-            .addAction(android.R.drawable.sym_call_missed,"Decline",decline)
-            .addAction(android.R.drawable.ic_lock_silent_mode,"Silence",silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
+            .addAction(android.R.drawable.sym_call_incoming,context.voiceText("Open call"),pi)
+            .addAction(android.R.drawable.sym_call_missed,context.voiceText("Decline"),decline)
+            .addAction(android.R.drawable.ic_lock_silent_mode,context.voiceText("Silence"),silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
     }
     fun dispatch(access:String,kind:String,id:String){
         if(!id.matches(Regex("[0-9a-f-]{36}")))return
