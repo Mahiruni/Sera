@@ -83,6 +83,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var restartPendingGeneration by remember(conversation){mutableIntStateOf(0)}
     var restartPendingSdp by remember(conversation){mutableStateOf<String?>(null)}
     var restartAttemptAt by remember(conversation){mutableLongStateOf(0L)}
+    var networkChanged by remember(conversation){mutableStateOf(false)}
     var showHistory by remember(conversation){mutableStateOf(false)}
     var minimized by remember(conversation){mutableStateOf(false)}
     var cancelRequested by remember(conversation){mutableStateOf(false)}
@@ -94,7 +95,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
     fun payload()=JSONObject().put("p_conversation",conversation)
     fun closePeer(){peerGeneration++;val previous=rtc;rtc=null;previous?.close()}
-    fun cleanup(){closePeer();SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;recoverySince=0;lastAnswer=null;restartApplied=0;restartPendingGeneration=0;restartPendingSdp=null;restartAttemptAt=0;row=null;minimized=false;cancelRequested=false}
+    fun cleanup(){closePeer();SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;recoverySince=0;lastAnswer=null;restartApplied=0;restartPendingGeneration=0;restartPendingSdp=null;restartAttemptAt=0;networkChanged=false;row=null;minimized=false;cancelRequested=false}
     suspend fun end(action:String,message:String="",target:CallRow?=null){
         val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};if(call!=null||phase.isNotBlank())finishSummary(when(action){"decline"->"Call declined";"fail"->"Connection lost";else->if(started>0)"Call ended" else "Call cancelled"},call,message);cleanup()
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
@@ -138,8 +139,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             if(restartSignal(call,"offer",restartPendingGeneration,restartPendingSdp)!=null)restartPendingSdp=null
             return
         }
-        if(recovering&&recoverySince>0L&&now-recoverySince>=3000L&&now-restartAttemptAt>=8000L&&call.restartGeneration<3&&call.restartGeneration==restartApplied&&!call.restartRequested){
-            restartAttemptAt=now;restartSignal(call,"request")
+        if((networkChanged&&started>0L||recovering&&recoverySince>0L&&now-recoverySince>=3000L)&&now-restartAttemptAt>=8000L&&call.restartGeneration<3&&call.restartGeneration==restartApplied&&!call.restartRequested){
+            restartAttemptAt=now;val result=restartSignal(call,"request");if(result?.restartRequested==true)networkChanged=false
         }
     }
     fun peer(c:JSONObject):SeraNativeRtc{
@@ -207,10 +208,25 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                     }
                 }catch(e:CancellationException){throw e}catch(_:Exception){if(!busy&&row!=null){if(failureSince==0L)failureSince=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-failureSince>=45000L)end("fail","Call signaling lost. Try again.")}}}
             }
-            delay(1500)
+            delay(if(row!=null)1500 else 4000)
         }
     }
-    LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"),if(j.isNull("connected_seconds"))null else j.optLong("connected_seconds"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
+    LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"),if(j.isNull("connected_seconds"))null else j.optLong("connected_seconds"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(20000)}}}
+    DisposableEffect(row?.id,row?.state){
+        val manager=context.getSystemService(android.net.ConnectivityManager::class.java)
+        var registered=false
+        var lastNetwork=manager?.activeNetwork
+        val callback=object:android.net.ConnectivityManager.NetworkCallback(){
+            override fun onAvailable(network:android.net.Network){
+                scope.launch{
+                    if(lastNetwork!=null&&lastNetwork!=network&&row?.state=="accepted")networkChanged=true
+                    lastNetwork=network
+                }
+            }
+        }
+        if(row?.state=="accepted"&&manager!=null)registered=runCatching{manager.registerDefaultNetworkCallback(callback);true}.getOrDefault(false)
+        onDispose{if(registered)runCatching{manager?.unregisterNetworkCallback(callback)}}
+    }
     LaunchedEffect(row?.id,row?.state,started){
         val id=row?.id?:return@LaunchedEffect
         if(row?.state!="accepted"||started<=0L)return@LaunchedEffect
