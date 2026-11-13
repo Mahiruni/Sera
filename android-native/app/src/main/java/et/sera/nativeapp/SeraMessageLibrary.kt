@@ -1,6 +1,15 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -46,9 +55,20 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
   value=emptyList()
   while(true){val result=withContext(Dispatchers.IO){libraryPage(token,thread,"pin")};if(result.first!=null)value=result.first.orEmpty();delay(15000)}
  }
- Column(Modifier.fillMaxWidth()){
-  pins.firstOrNull()?.let{entry->TextButton(onClick={onOpen("pin")},modifier=Modifier.fillMaxWidth()){Column(Modifier.fillMaxWidth()){Text(if(pins.size==1)"Pinned message" else "${pins.size}${if(pins.size==30)"+" else ""} pinned messages",color=accent,style=MaterialTheme.typography.labelMedium);Text(entry.body,maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurface)}}}
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){TextButton(onClick={onOpen("star")}){Text("Starred messages")};TextButton(onClick={onOpen("search")}){Text("Search history")}}
+ Column(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+  pins.firstOrNull()?.let{entry->
+   Surface(color=MaterialTheme.colorScheme.primary.copy(alpha=.08f),shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth().clickable{onOpen("pin")}){
+    Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+     Icon(Icons.Outlined.PushPin,null,tint=accent,modifier=Modifier.size(20.dp))
+     Column(Modifier.weight(1f)){Text(if(pins.size==1)"Pinned message" else "${pins.size}${if(pins.size==30)"+" else ""} pinned messages",color=accent,style=MaterialTheme.typography.labelMedium);Text(entry.body,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodySmall)}
+     Icon(Icons.Outlined.ChevronRight,"View pinned messages",tint=accent)
+    }
+   }
+  }
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically){
+   TextButton(onClick={onOpen("star")}){Icon(Icons.Outlined.StarBorder,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Starred")}
+   TextButton(onClick={onOpen("search")}){Icon(Icons.Outlined.Search,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Search")}
+  }
  }
 }
 @Composable internal fun SeraMessageLibraryDialog(token:String,thread:String?,userId:String,mode:String,onDismiss:()->Unit,onJump:(SeraLibraryEntry)->Unit){
@@ -72,21 +92,26 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
   val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,query.trim(),sender=sender,from=from,until=until)}
   rows=r.first.orEmpty();more=rows.size==30;error=r.second;loading=false
  }
- AlertDialog(onDismissRequest=onDismiss,title={Text(when(mode){"star"->"Starred messages";"pin"->"Pinned messages";else->"Search conversation"})},text={
-  Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+ Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.surface){
+  Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+   Row(Modifier.fillMaxWidth().heightIn(min=56.dp),verticalAlignment=Alignment.CenterVertically){
+    IconButton(onClick=onDismiss){Icon(Icons.Outlined.ArrowBack,"Back")}
+    Column(Modifier.weight(1f)){Text(when(mode){"star"->"Starred messages";"pin"->"Pinned messages";else->"Search conversation"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(when(mode){"star"->"Private to you";"pin"->"Shared with participants";else->"Entire conversation history"},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+   }
    if(mode=="search"){
-    OutlinedTextField(query,{query=it.take(120)},label={Text("Search entire history")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    OutlinedTextField(query,{query=it.take(120)},label={Text("Find a message")},leadingIcon={Icon(Icons.Outlined.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Outlined.Close,"Clear search")}},singleLine=true,shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth())
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("all" to "Everyone","you" to "You","contact" to "Contact").forEach{(key,label)->FilterChip(selected=sender==key,onClick={sender=key},label={Text(label)})}}
     Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(from,{from=it.take(10)},label={Text("From date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f));OutlinedTextField(until,{until=it.take(10)},label={Text("To date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f))}
    }
    if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
    if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
    if(!loading&&rows.isEmpty()&&error.isBlank())Text(if(mode=="search"&&query.isBlank())"Enter a word or phrase." else "No messages found.")
-   LazyColumn(Modifier.heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-    items(rows,key={it.id}){entry->Surface(shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surfaceVariant){Column(Modifier.fillMaxWidth().padding(10.dp)){
+   LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
+    items(rows,key={it.id}){entry->Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth().clickable{onJump(entry)}){Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
      Text(if(entry.sender==userId)"You" else "Contact",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
      Text(seraHighlightedMessage(entry.body,if(mode=="search")query.trim()else "",MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.onPrimaryContainer),style=MaterialTheme.typography.bodyMedium)
-     Text(entry.at.take(16).replace("T"," ")+(if(entry.edited)" · Edited" else ""),style=MaterialTheme.typography.labelSmall)
+     Text(runCatching{Instant.parse(entry.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))}.getOrDefault(entry.at.take(16))+(if(entry.edited)" · Edited" else ""),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
      TextButton(onClick={onJump(entry)}){Text("Go to message")}
     }}}
     if(more)item{TextButton(enabled=!loading,onClick={
@@ -94,8 +119,10 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
      loading=true;scope.launch{val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,q.trim(),cursor,who,start,end)};if(query==q&&generation==g&&sender==who&&from==start&&until==end){if(r.first!=null){rows=(rows+r.first.orEmpty()).distinctBy{it.id};more=r.first?.size==30}else error=r.second;loading=false}}
     }){Text("Load more")}}
    }
+   if(error.isNotBlank())TextButton(onClick={generation++}){Text("Retry")}
   }
- },confirmButton={TextButton(onClick=onDismiss){Text("Done")}},dismissButton={if(error.isNotBlank())TextButton(onClick={generation++}){Text("Refresh")}})
+  }
+ }
 }
 @Composable internal fun SeraEditMessageDialog(token:String,message:NativeMessage,onDismiss:()->Unit,onSaved:()->Unit){
  var body by remember(message.id){mutableStateOf(message.body)}
@@ -125,8 +152,8 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
   starred=flags?.first;pinned=flags?.second
  }}
  fun change(rpc:String,payload:JSONObject){scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,rpc,payload)};if(r.first!=null){onChanged();onClose()}else{onError(r.second);onClose()}}}
- DropdownMenuItem(text={Text(if(starred==true)"Remove star" else "Star message")},enabled=starred!=null,onClick={change("sera_set_message_star",JSONObject().put("p_message",message.id).put("p_star",starred!=true))})
- DropdownMenuItem(text={Text(if(pinned==true)"Unpin message" else "Pin for everyone")},enabled=pinned!=null,onClick={change("sera_set_message_pin",JSONObject().put("p_conversation",thread).put("p_message",message.id).put("p_pin",pinned!=true))})
+ DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.StarBorder,null)},text={Text(if(starred==true)"Remove star" else "Star message")},enabled=starred!=null,onClick={change("sera_set_message_star",JSONObject().put("p_message",message.id).put("p_star",starred!=true))})
+ DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.PushPin,null)},text={Text(if(pinned==true)"Unpin message" else "Pin for everyone")},enabled=pinned!=null,onClick={change("sera_set_message_pin",JSONObject().put("p_conversation",thread).put("p_message",message.id).put("p_pin",pinned!=true))})
 }
 
 internal fun seraHighlightedMessage(body:String,query:String,background:Color,foreground:Color):AnnotatedString=buildAnnotatedString{

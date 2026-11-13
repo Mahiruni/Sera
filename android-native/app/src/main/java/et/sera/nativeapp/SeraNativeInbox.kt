@@ -330,6 +330,8 @@ private class InboxThreadState {
     var libraryMode by mutableStateOf<String?>(null)
     var libraryRevision by mutableIntStateOf(0)
     var jumpMessageId by mutableStateOf<String?>(null)
+    var highlightedId by mutableStateOf<String?>(null)
+    val reactionBusy=mutableSetOf<String>()
     var suppressImeAnchor by mutableStateOf(false)
 }
 
@@ -462,7 +464,7 @@ private class InboxController(
 
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{latest->messages=latest;thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}};error=r.second}}}
-    fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
+    fun react(m:NativeMessage,emoji:String){reaction=null;if(!thread.reactionBusy.add(m.id))return;scope.launch{try{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}finally{thread.reactionBusy.remove(m.id)}}}
 
     @Composable
     fun PresenceAndScroll() {
@@ -487,8 +489,15 @@ private class InboxController(
         }
     }
 
+    fun openQuotedMessage(id:String){
+        val c=selected?:return
+        if(!SeraMessageAlerts.validId(id))return
+        messageSearch="";showSearch=false;thread.suppressImeAnchor=true
+        if(messages.any{it.id==id})thread.jumpMessageId=id else global.historicalTarget=c.id to id
+    }
     @Composable
     fun JumpToMessage() {
+        LaunchedEffect(thread.highlightedId){if(thread.highlightedId!=null){delay(1800);thread.highlightedId=null}}
         LaunchedEffect(selected?.id,thread.jumpMessageId,thread.detailsOpen){
             val id=thread.jumpMessageId?:return@LaunchedEffect
             if(thread.detailsOpen)return@LaunchedEffect
@@ -498,6 +507,7 @@ private class InboxController(
                 withFrameNanos{}
                 val offset=if(mergeAcknowledgedText(messages,thread.textAcknowledged).size>=historyLimit&&historyLimit<1000)1 else 0
                 messageListState.scrollToItem(index+offset)
+                thread.highlightedId=id
                 thread.initialScrollComplete=true
             }else error="This message is no longer available."
             thread.jumpMessageId=null
@@ -769,7 +779,7 @@ private class InboxController(
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()})
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId)
                 key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
                 }
             }
