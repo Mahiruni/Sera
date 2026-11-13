@@ -116,13 +116,14 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 val post = posts[index]
                 if (post != null) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
-                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(if(savedOnly)20.dp else 0.dp),
+                        border = if(savedOnly)androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant) else null,
+                        color = if(savedOnly)MaterialTheme.colorScheme.surface else Color.Transparent,
                         modifier = Modifier.fillMaxWidth().animateContentSize()
                     ) {
-                        Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                        Column(Modifier.padding(horizontal = if(savedOnly)12.dp else 2.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if(!savedOnly && index>0) HorizontalDivider(thickness=.7.dp,color=MaterialTheme.colorScheme.outlineVariant.copy(alpha=.75f))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
                                     Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
@@ -156,6 +157,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 }
                                 SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ posts.refresh() }
                             }
+                            if(!savedOnly) HorizontalDivider(thickness=.5.dp,color=MaterialTheme.colorScheme.outlineVariant.copy(alpha=.40f))
                             // A composer may store the same copy in title and body.
                             // Never render identical content twice in a feed card.
                             val title = (if(post.repostOf!=null)post.originalTitle.orEmpty() else post.title).trim()
