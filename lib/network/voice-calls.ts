@@ -5,7 +5,7 @@ import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/cal
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
-export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null};
+export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null;caller_restart_ready?:boolean;callee_restart_ready?:boolean;restart_requested?:boolean;restart_generation?:number;restart_offer?:string|null;restart_answer?:string|null};
 export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">&{connected_seconds?:number|null};
 export type CallConfig={enabled:boolean;iceServers?:RTCIceServer[]};
 async function dbFor(conversation:string){
@@ -37,4 +37,11 @@ export async function getCallHistory(conversation:string):Promise<CallHistoryEnt
 export async function confirmCallMedia(conversation:string,id:string):Promise<boolean>{
  const db=await dbFor(conversation);if(!validMessageId(id))return false;
  const {data,error}=await db.rpc("sera_call_confirm_media",{p_conversation:conversation,p_id:id});return !error&&data===true;
+}
+
+export async function restartCallMedia(conversation:string,id:string,action:"ready"|"request"|"offer"|"answer",generation=0,sdp?:string):Promise<CallSession|null>{
+ const db=await dbFor(conversation);
+ if(!validMessageId(id)||!["ready","request","offer","answer"].includes(action)||!Number.isInteger(generation)||generation<0||generation>3||(sdp!=null&&(typeof sdp!=="string"||sdp.length>65536)))return null;
+ const {data,error}=await db.rpc("sera_call_restart",{p_conversation:conversation,p_id:id,p_action:action,p_generation:generation,p_sdp:sdp??null});
+ if(error)throw Error("Call recovery signaling unavailable.");return data;
 }
