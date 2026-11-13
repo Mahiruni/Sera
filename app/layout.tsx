@@ -51,8 +51,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const user = await currentUser();
-  const member=user? (await memberCards([user.id])).get(user.id):undefined;
-  const ownProfile=user?.email_confirmed_at?await (await serverClient()).from("profiles").select("full_name,headline").eq("id",user.id).maybeSingle():null;
+  const [members,ownProfile]=await Promise.all([
+    user?memberCards([user.id]):null,
+    user?.email_confirmed_at?(async()=> (await serverClient()).from("profiles").select("full_name,headline").eq("id",user.id).maybeSingle())():null,
+  ]);
+  const member=user?members?.get(user.id):undefined;
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
