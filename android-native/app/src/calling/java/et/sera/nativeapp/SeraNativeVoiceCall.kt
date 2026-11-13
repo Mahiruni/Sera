@@ -203,9 +203,9 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                         if(old==null){summary=null;silenced=false;minimized=false}
                         row=next
                         if(next.state=="accepted"&&next.caller==userId&&next.answer!=null&&lastAnswer!=next.answer){rtc?.remoteAnswer(next.answer);lastAnswer=next.answer;if(started==0L){phase="Connecting…";if(recoverySince==0L)recoverySince=SystemClock.elapsedRealtime()}}
-                        if(next.state=="accepted")recoverMedia(next)
+                        if(next.state=="accepted")try{recoverMedia(next)}catch(_:kotlinx.coroutines.TimeoutCancellationException){/* Keep the fixed recovery deadline; do not cancel status polling. */}
                     }
-                }catch(e:CancellationException){throw e}catch(_:Exception){if(!busy&&row!=null){if(failureSince==0L)failureSince=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-failureSince>=30000L)end("fail","Call signaling lost. Try again.")}}}
+                }catch(e:CancellationException){throw e}catch(_:Exception){if(!busy&&row!=null){if(failureSince==0L)failureSince=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-failureSince>=45000L)end("fail","Call signaling lost. Try again.")}}}
             }
             delay(1500)
         }
@@ -258,6 +258,10 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         }
         lifecycle.addObserver(observer)
         onDispose{lifecycle.removeObserver(observer);preparation?.cancel();rtc?.close();SeraCallForeground.stop(context,foregroundLease)}
+    }
+    LaunchedEffect(incoming,resumed,row?.id,host?.pendingAnswerId){
+        val id=row?.id
+        if(incoming&&resumed&&id!=null&&host?.consumeAnswer(id)==true)request(true)
     }
     LaunchedEffect(incoming,resumed,row?.id){if(incoming&&resumed)row?.let{SeraPush.clearCallNotification(context,it.id)}}
     DisposableEffect(incoming,resumed,row?.id,silenced){
