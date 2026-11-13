@@ -24,3 +24,12 @@ export function readSpeechLink(stats:Iterable<VoiceStat>):{link:SpeechLink;remot
  const selected=values.find(s=>s.type==="transport")?.selectedCandidatePairId,pair=values.find(s=>s.id===selected&&s.type==="candidate-pair");
  return {link:{loss:remote?.fractionLost,rttSeconds:remote?.roundTripTime??pair?.currentRoundTripTime,outgoingBps:pair?.availableOutgoingBitrate},remoteTimestamp:remote?.timestamp};
 }
+
+/** A small receive-side buffering hint; the browser remains responsible for actual playout. */
+export function speechJitterTargetMs(jitterSeconds:number|undefined):number|undefined{
+ if(typeof jitterSeconds!=="number"||!Number.isFinite(jitterSeconds)||jitterSeconds<0)return undefined;
+ return Math.min(120,Math.max(40,Math.round(jitterSeconds*2000/20)*20));
+}
+export function speechQualityWarning(loss:number|undefined,jitterSeconds:number|undefined,rttSeconds:number|undefined):boolean{
+ return (typeof loss==="number"&&Number.isFinite(loss)&&loss>=.08&&loss<=1)||(typeof jitterSeconds==="number"&&Number.isFinite(jitterSeconds)&&jitterSeconds>=.06)||(typeof rttSeconds==="number"&&Number.isFinite(rttSeconds)&&rttSeconds>=.8);
+}
