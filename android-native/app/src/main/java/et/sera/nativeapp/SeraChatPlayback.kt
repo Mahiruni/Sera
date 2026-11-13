@@ -29,6 +29,8 @@ internal class SeraChatPlayback(private val context:Context){
     var loading by mutableStateOf(false);private set
     var duration by mutableIntStateOf(0);private set
     var position by mutableIntStateOf(0);private set
+    var speed by mutableFloatStateOf(1f);private set
+    fun cycleSpeed(){speed=when(speed){1f->1.5f;1.5f->2f;else->1f};if(playing)runCatching{player?.let{it.playbackParams=it.playbackParams.setSpeed(speed)}}}
     private var player:MediaPlayer?=null
     private var temporary:File?=null
     private var generation=0
@@ -41,7 +43,7 @@ internal class SeraChatPlayback(private val context:Context){
         val request=AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).setAudioAttributes(attributes).setOnAudioFocusChangeListener{if(it<0)pause()}.build()
         if(manager.requestAudioFocus(request)!=AudioManager.AUDIOFOCUS_REQUEST_GRANTED)return false
         focus=request
-        return runCatching{p.start();playing=true;true}.getOrElse{abandon();false}
+        return runCatching{p.start();runCatching{p.playbackParams=p.playbackParams.setSpeed(speed)};playing=true;true}.getOrElse{abandon();false}
     }
     fun pause(){runCatching{player?.pause()};playing=false;abandon()}
     fun stop(){generation++;runCatching{player?.release()};player=null;temporary?.delete();temporary=null;abandon();activeId=null;playing=false;loading=false;position=0;duration=0}
@@ -81,5 +83,6 @@ internal fun SeraChatVoicePlayer(playback:SeraChatPlayback,id:String,durationHin
             Slider(value=position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={playback.seek(it.toInt())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=active&&playback.duration>0&&!playback.loading,modifier=Modifier.fillMaxWidth().height(24.dp),colors=SliderDefaults.colors(thumbColor=foreground,activeTrackColor=foreground,inactiveTrackColor=foreground.copy(alpha=.25f),disabledThumbColor=foreground.copy(alpha=.5f),disabledInactiveTrackColor=foreground.copy(alpha=.25f)))
             Text(if(active)voiceTime(position)+" / "+voiceTime(duration) else voiceTime(duration),color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         }
+        if(active)TextButton(onClick={playback.cycleSpeed()},contentPadding=PaddingValues(0.dp),modifier=Modifier.width(40.dp)){Text(if(playback.speed==1f)"1×" else if(playback.speed==1.5f)"1.5×" else "2×",color=foreground,fontSize=11.sp)}
     }
 }

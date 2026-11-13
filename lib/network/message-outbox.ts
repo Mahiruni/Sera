@@ -1,15 +1,15 @@
 /** Encrypted, account-scoped browser outbox. IndexedDB is optional; the UI keeps
  * a failed message in memory when browser storage is unavailable. */
-import type {AttachmentMeta} from "@/lib/network/message-contract";
+import type {AttachmentMeta,MessageView} from "@/lib/network/message-contract";
 export type OutboxPhoto={id:string;meta:AttachmentMeta;file:File};
 export type OutboxMessage={clientId:string;conversation:string;body:string;replyTo:string|null;replyLabel:string|null;createdAt:string;attachment:AttachmentMeta|null;file:File|null;album?:OutboxPhoto[]};
 type Stored={id:string;scope:string;iv:ArrayBuffer;data:ArrayBuffer;fileIv?:ArrayBuffer;fileData?:ArrayBuffer;albumFiles?:{iv:ArrayBuffer;data:ArrayBuffer}[]};
 let database:Promise<IDBDatabase>|undefined;
 function db(){
   if(!database)database=new Promise((resolve,reject)=>{
-    const r=indexedDB.open("sera-private-outbox-v1",1);
-    r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore("keys");const s=d.createObjectStore("messages",{keyPath:"id"});s.createIndex("scope","scope");};
-    r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error("Outbox storage blocked"));
+    const r=indexedDB.open("sera-private-outbox-v1",2);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains("keys"))d.createObjectStore("keys");if(!d.objectStoreNames.contains("messages")){const s=d.createObjectStore("messages",{keyPath:"id"});s.createIndex("scope","scope");}if(!d.objectStoreNames.contains("snapshots"))d.createObjectStore("snapshots");};
+    r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();database=undefined;};resolve(r.result);};r.onerror=()=>{database=undefined;reject(r.error);};r.onblocked=()=>reject(new Error("Outbox storage blocked"));
   });
   return database;
 }
@@ -48,4 +48,49 @@ export async function readOutbox(user:string,conversation:string):Promise<Outbox
 }
 export async function removeOutbox(user:string,conversation:string,clientId:string){
   const d=await db();await request(d.transaction("messages","readwrite").objectStore("messages").delete(scope(user,conversation)+":"+clientId));
+}
+
+/** Private draft text, scoped to account and conversation. No plaintext fallback. */
+const draftWrites=new Map<string,Promise<void>>();
+export function saveChatDraft(user:string,conversation:string,body:string){
+  const id=scope(user,conversation)+":draft";
+  const task=(draftWrites.get(id)||Promise.resolve()).catch(()=>{}).then(async()=>{
+    const d=await db();
+    if(!body){await request(d.transaction("snapshots","readwrite").objectStore("snapshots").delete(id));return;}
+    const k=await key(user),encrypted=await encrypt(k,new TextEncoder().encode(body.slice(0,4000)).buffer);
+    await request(d.transaction("snapshots","readwrite").objectStore("snapshots").put({...encrypted,at:Date.now()},id));
+  });
+  draftWrites.set(id,task);void task.finally(()=>{if(draftWrites.get(id)===task)draftWrites.delete(id);}).catch(()=>{});
+  return task;
+}
+export async function readChatDraft(user:string,conversation:string):Promise<string>{
+  const id=scope(user,conversation)+":draft";await draftWrites.get(id)?.catch(()=>{});
+  const d=await db(),row=await request(d.transaction("snapshots","readonly").objectStore("snapshots").get(id)) as {iv:ArrayBuffer;data:ArrayBuffer;at:number}|undefined;
+  if(!row||Date.now()-row.at>30*86400000)return "";
+  const k=await key(user);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:row.iv},k,row.data)).slice(0,4000);
+}
+
+/** Cache only recent authorized message metadata and text; no attachment bytes or session credentials. */
+export async function saveChatHistory(user:string,conversation:string,messages:MessageView[]){
+ const d=await db(),k=await key(user),id=scope(user,conversation)+":history";
+ const rows=messages.slice(-60).map(m=>m.unsent?{...m,body:"Message unsent",files:[],reactions:[]}:m);
+ const raw=new TextEncoder().encode(JSON.stringify(rows));if(raw.byteLength>600000)return;
+ const encrypted=await encrypt(k,raw.buffer);
+ await request(d.transaction("snapshots","readwrite").objectStore("snapshots").put({...encrypted,at:Date.now()},id));
+ const keys=await request(d.transaction("snapshots","readonly").objectStore("snapshots").getAllKeys());
+ const history=keys.filter(x=>typeof x==="string"&&x.startsWith(user+":")&&x.endsWith(":history")&&x!==id);
+ for(const old of history.slice(0,Math.max(0,history.length-7)))await request(d.transaction("snapshots","readwrite").objectStore("snapshots").delete(old));
+}
+export async function readChatHistory(user:string,conversation:string):Promise<MessageView[]>{
+ const d=await db(),id=scope(user,conversation)+":history";
+ const row=await request(d.transaction("snapshots","readonly").objectStore("snapshots").get(id)) as {iv:ArrayBuffer;data:ArrayBuffer;at:number}|undefined;
+ if(!row)return [];
+ if(Date.now()-row.at>600000||Date.now()<row.at){await request(d.transaction("snapshots","readwrite").objectStore("snapshots").delete(id));return [];}
+ const k=await key(user),raw=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:row.iv},k,row.data)));
+ return Array.isArray(raw)?raw.slice(-60):[];
+}
+export async function clearChatHistory(user:string){
+ const d=await db(),keys=await request(d.transaction("snapshots","readonly").objectStore("snapshots").getAllKeys());
+ for(const key of keys)if(typeof key==="string"&&key.startsWith(user+":")&&key.endsWith(":history"))await request(d.transaction("snapshots","readwrite").objectStore("snapshots").delete(key));
 }

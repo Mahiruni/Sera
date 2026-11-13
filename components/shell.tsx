@@ -163,7 +163,7 @@ export function Shell({
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
           {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
-          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button ref={profileTrigger} className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} aria-controls="sera-profile-popover" onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={32}/></button>{profileOpen&&<div id="sera-profile-popover" className="sera-profile-popover" aria-label="Account actions"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={44}/><div><strong>{profileName}{identityVerified&&<IdentityBadge/>}</strong>{profileHeadline&&<small>{profileHeadline}</small>}</div></div><Link href={profileHref} onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings?edit=1" onClick={()=>setProfileOpen(false)}><Pencil size={19}/> Edit profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings & privacy</Link><SignOutControl/></div>}</div>}
+          {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button ref={profileTrigger} className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} aria-controls="sera-profile-popover" onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={32}/></button>{profileOpen&&<div id="sera-profile-popover" className="sera-profile-popover" aria-label="Account actions"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={44}/><div><strong>{profileName}{identityVerified&&<IdentityBadge/>}</strong>{profileHeadline&&<small>{profileHeadline}</small>}</div></div><Link href={profileHref} onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings?edit=1" onClick={()=>setProfileOpen(false)}><Pencil size={19}/> Edit profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings & privacy</Link><SignOutControl userId={profileId}/></div>}</div>}
         </div>
       </header>
       <dialog
@@ -269,7 +269,7 @@ export function Shell({
               );
             })}
           </nav>
-          {authenticated&&open&&<SignOutControl/>}
+          {authenticated&&open&&<SignOutControl userId={profileId}/>}
           {!authenticated&&<div className="drawer-actions">
             <Link
               className="role-switch"
@@ -335,4 +335,4 @@ export function Shell({
   );
 }
 
-function SignOutControl(){const [confirm,setConfirm]=useState(false);return confirm?<form className="sera-signout-confirm" action={signOut}><p>Sign out of SERA?</p><div><button type="button" onClick={()=>setConfirm(false)}>Cancel</button><button type="submit" className="sera-signout-danger">Sign out</button></div></form>:<button type="button" className="sera-signout-control" onClick={()=>setConfirm(true)}><LogOut size={19}/> Sign out</button>;}
+function SignOutControl({userId}:{userId:string}){const [confirm,setConfirm]=useState(false);return confirm?<form className="sera-signout-confirm" action={async()=>{if(userId)await import("@/lib/network/message-outbox").then(m=>m.clearChatHistory(userId)).catch(()=>{});await signOut();}}><p>Sign out of SERA?</p><div><button type="button" onClick={()=>setConfirm(false)}>Cancel</button><button type="submit" className="sera-signout-danger">Sign out</button></div></form>:<button type="button" className="sera-signout-control" onClick={()=>setConfirm(true)}><LogOut size={19}/> Sign out</button>;}
