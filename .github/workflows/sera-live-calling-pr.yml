@@ -1,0 +1,16 @@
+name: SERA Live Calling PR Verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android-native/app/src/calling/**'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraVoiceExperience.kt'
+      - 'android-native/app/src/androidTest/java/et/sera/nativeapp/SeraVoiceExperienceTest.kt'
+      - '.github/workflows/sera-live-calling-pr.yml'
+permissions:
+  contents: read
+jobs:
+  live-calling:
+    uses: ./.github/workflows/messaging-native-visual.yml
+    with:
+      live_calling: true
