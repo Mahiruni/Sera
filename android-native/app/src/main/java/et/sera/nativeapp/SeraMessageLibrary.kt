@@ -72,7 +72,6 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically){
    TextButton(onClick=onScheduled){Text("Scheduled")}
    TextButton(onClick={onOpen("star")}){Icon(Icons.Outlined.StarBorder,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Starred")}
-   TextButton(onClick={onOpen("search")}){Icon(Icons.Outlined.Search,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Search")}
   }
  }
 }
