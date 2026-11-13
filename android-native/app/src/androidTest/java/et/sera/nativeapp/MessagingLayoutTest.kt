@@ -55,7 +55,10 @@ class MessagingLayoutTest {
         val long=compose.onNodeWithTag("long").fetchSemanticsNode().boundsInRoot.width
         assertTrue("Short bubbles must not expand to the same width as long bubbles", short < long * .65f)
         compose.onNodeWithContentDescription("Sent").assertExists()
-        compose.onNodeWithContentDescription("Read").assertExists()
+        // Read messages no longer display delivery ticks; the thread renders one Seen label.
+        compose.onNodeWithContentDescription("Read").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Delivered").assertDoesNotExist()
+        compose.onNodeWithText("21:16").assertExists()
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val dir=File(context.filesDir,"messaging-qa").apply{mkdirs()}
         File(dir,"compact-bubbles.png").outputStream().use{compose.onNodeWithTag("thread").captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
