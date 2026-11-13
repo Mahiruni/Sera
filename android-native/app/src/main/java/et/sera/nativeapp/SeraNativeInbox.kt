@@ -151,11 +151,6 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
     val (raw, error) = inboxRequest(token,
         "rpc/sera_inbox_v2","POST",JSONObject().put("p_limit",100))
     if (raw == null) return null to error
-    val parsed=parseNativeMessageRows(raw)
-    if(parsed.first!=null&&ids==null)runCatching{cache?.write(owner,conversationId,raw)}
-    return parsed
-}
-private fun parseNativeMessageRows(raw:String):Pair<List<NativeMessage>?,String>{
     return try {
         val rows = JSONArray(raw)
         val peers = (0 until rows.length()).map { rows.getJSONObject(it) }
