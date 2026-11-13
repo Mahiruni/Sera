@@ -306,36 +306,10 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
 
 
     var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
-    val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            val conversationId = selected?.id
-            checkingFile = true
-            scope.launch {
-                val result = withContext(Dispatchers.IO) { runCatching { selectChatFile(context,uri) } }
-                if (selected?.id == conversationId) result.onSuccess { attachment=it; error="" }.onFailure { error=it.message ?: "Could not read file." }
-                checkingFile=false
-            }
-        }
-    }
-    val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()){uri->
-        if(uri!=null){val conversationId=selected?.id;checkingFile=true;scope.launch{val result=withContext(Dispatchers.IO){runCatching{selectChatFile(context,uri)}};if(selected?.id==conversationId)result.onSuccess{attachment=it;error=""}.onFailure{error=it.message?:"Could not read photo."};checkingFile=false}}
-    }
-    var cameraPath by androidx.compose.runtime.saveable.rememberSaveable{mutableStateOf<String?>(null)}
-    var cameraConversation by androidx.compose.runtime.saveable.rememberSaveable{mutableStateOf<String?>(null)}
-    val cameraPicker=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
-        val path=cameraPath;val conversationId=cameraConversation;cameraPath=null;cameraConversation=null
-        if(path!=null){val file=java.io.File(path);if(ok){checkingFile=true;scope.launch{val result=withContext(Dispatchers.IO){runCatching{try{prepareCapturedChatPhoto(file)}finally{file.delete()}}};if(selected?.id==conversationId)result.onSuccess{attachment=it;error=""}.onFailure{error=it.message?:"Could not prepare photo."};checkingFile=false}}else file.delete()}
-    }
-    fun capturePhoto(){
-        val dir=java.io.File(context.cacheDir,"chat_capture").apply{mkdirs()}
-        val file=java.io.File.createTempFile("sera-photo-",".jpg",dir)
-        val uri=androidx.core.content.FileProvider.getUriForFile(context,context.packageName+".chatfiles",file)
-        cameraPath=file.absolutePath;cameraConversation=selected?.id
-        try{cameraPicker.launch(uri)}catch(e:Exception){file.delete();cameraPath=null;cameraConversation=null;throw e}
-    }
+    SeraNativeAttachmentPicker(conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
+        onChecking={checkingFile=it},onSelected={attachment=it;error=""},onError={error=it})
     LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
     mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
-    if(attachmentStudio&&selected!=null) SeraAttachmentStudio(onDismiss={attachmentStudio=false},onChoose={kind->attachmentStudio=false;runCatching{when(kind){SeraAttachmentKind.PHOTO->photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly));SeraAttachmentKind.CAMERA->capturePhoto();SeraAttachmentKind.DOCUMENT->attachmentPicker.launch(arrayOf("application/pdf"));SeraAttachmentKind.AUDIO->attachmentPicker.launch(arrayOf("audio/mp4","audio/webm","audio/ogg","audio/mpeg"))}}.onFailure{error="No compatible app is available."}})
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
         if(userId.isBlank())return@LaunchedEffect
