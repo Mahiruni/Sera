@@ -70,8 +70,7 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
     connection.ontrack=e=>{if(audio.current){audio.current.srcObject=e.streams[0]??new MediaStream([e.track]);void audio.current.play().catch(()=>setAudioBlocked(true));}};
     connection.onconnectionstatechange=()=>{if(pc.current!==connection)return;const state=connection.connectionState;
       if(state==="connected"){if(cancelRequested.current)return;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;if(!started.current)started.current=performance.now();setPhase("Connected");}
-      else if(state==="disconnected"||state==="connecting"){if(cancelRequested.current)return;if(current.current?.state==="accepted"){setPhase(state==="disconnected"?"Reconnecting…":"Connecting…");if(!failTimer.current)failTimer.current=setTimeout(()=>{if(pc.current===connection&&connection.connectionState!=="connected")void terminate("fail","Could not establish the call.");},45000);}}
-      else if(state==="failed"&&!operation.current)void terminate("fail","Call connection failed. Try another network.");};
+      else if(state==="disconnected"||state==="connecting"||state==="failed"){if(cancelRequested.current)return;if(current.current?.state==="accepted"){setPhase(started.current?"Reconnecting…":"Connecting…");if(!failTimer.current)failTimer.current=setTimeout(()=>{if(pc.current===connection&&connection.connectionState!=="connected")void terminate("fail",started.current?"Call connection lost. Try again.":"Could not establish the call.");},45000);}}};
     return connection;
   }
   async function prepareWithFallback(offer?:string,expiresAt?:string){
