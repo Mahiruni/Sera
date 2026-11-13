@@ -68,7 +68,7 @@ class SeraActiveCallService:Service(){
         return START_NOT_STICKY
     }
     private fun notification(id:String):Notification{
-        val open=PendingIntent.getActivity(this,812,Intent(this,MainActivity::class.java).setAction("sera.call.OPEN").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val open=PendingIntent.getActivity(this,812,Intent(this,MainActivity::class.java).setAction("sera.call.OPEN").putExtra("sera_kind","voice_call_active").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val end=PendingIntent.getService(this,813,Intent(this,SeraActiveCallService::class.java).setAction("sera.call.END").putExtra("lease",id),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.sym_call_outgoing)
             .setContentTitle("SERA voice call").setContentText("Tap to return to your call")
