@@ -98,7 +98,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 internal data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="",val pinned:Boolean=false,val archived:Boolean=false,val markedUnread:Boolean=false,val mutedUntil:String?=null)
-internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList())
+internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList(),val privateReadAt:String="")
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -177,7 +177,7 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
 
 private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit")
+        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit")
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
@@ -185,7 +185,7 @@ private fun loadNativeMessages(token: String, conversationId: String, limit:Int=
             val item = rows.getJSONObject(i)
             val attachments = item.optJSONArray("professional_message_attachments") ?: JSONArray()
             val files = (0 until attachments.length()).map{attachments.getJSONObject(it)}.sortedBy{it.optInt("position")}.map { a -> NativeChatFile(a.optString("file_name"),a.optString("mime_type"),a.optString("storage_path"),a.optInt("byte_size"),a.optInt("duration_ms").takeIf{it>0}) }
-            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files,item.optString("reply_to_id").takeUnless{it=="null"}.orEmpty(),item.optBoolean("is_forwarded"),!item.isNull("unsent_at"),item.optString("client_message_id"),(item.optJSONArray("professional_message_reactions")?:JSONArray()).let{rs->(0 until rs.length()).map{rs.getJSONObject(it)}.filter{!it.isNull("emoji")}.map{it.optString("member_id") to it.optString("emoji")}})
+            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files,item.optString("reply_to_id").takeUnless{it=="null"}.orEmpty(),item.optBoolean("is_forwarded"),!item.isNull("unsent_at"),item.optString("client_message_id"),(item.optJSONArray("professional_message_reactions")?:JSONArray()).let{rs->(0 until rs.length()).map{rs.getJSONObject(it)}.filter{!it.isNull("emoji")}.map{it.optString("member_id") to it.optString("emoji")}},privateReadAt=item.optJSONObject("sera_private_message_reads")?.optString("read_at")?:item.optJSONArray("sera_private_message_reads")?.optJSONObject(0)?.optString("read_at").orEmpty())
         }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
 }
@@ -586,7 +586,7 @@ private class InboxController(
                         if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){if(SeraMessageAlerts.enabled(context,userId)&&SeraMessageAlerts.mutedUntil(context,userId,conversation.id)<=System.currentTimeMillis())chime();SeraUnreadRefresh.changed()}
                         messages = latest
                     thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
-                        val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
+                        val unread = latest.filter { isUnreadIncoming(it,userId) }
                         val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
                         if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
                     }
@@ -605,7 +605,7 @@ private class InboxController(
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
                     .collectLatest{(visible,latest)->
                         delay(600)
-                        val ids=latest.filter{(it.id in visible||messageTimelineKey(it) in visible)&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
+                        val ids=latest.filter{(it.id in visible||messageTimelineKey(it) in visible)&&isUnreadIncoming(it,userId)&&it.id !in seen}.map{it.id}.take(100)
                         if(ids.isNotEmpty()){val r=withContext(Dispatchers.IO){chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",c.id).put("p_ids",JSONArray(ids)).put("p_read",true))};if(r.first!=null){seen.addAll(ids);SeraUnreadRefresh.changed()}}
                     }
             }

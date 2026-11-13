@@ -9,7 +9,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-internal fun isUnreadIncoming(m:NativeMessage,user:String)=m.senderId!=user&&!m.unsent&&(m.readAt.isBlank()||m.readAt=="null")
+internal fun isUnreadIncoming(m:NativeMessage,user:String)=m.senderId!=user&&!m.unsent&&(m.readAt.isBlank()||m.readAt=="null")&&(m.privateReadAt.isBlank()||m.privateReadAt=="null")
 
 internal fun unreadTimelineIndex(messages:List<NativeMessage>,calls:List<SeraCallEvent>,boundary:String?,limit:Int):Int?{
     if(boundary==null)return null
