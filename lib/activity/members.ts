@@ -1,4 +1,5 @@
 import "server-only";
+import {cache} from "react";
 import { serverClient } from "@/lib/supabase/server";
 import { ASSET_BUCKET } from "@/lib/account/assets";
 
@@ -38,3 +39,6 @@ export async function memberCards(ids: string[]) {
   }
   return cards;
 }
+
+// Request-scoped only: never share member identities between requests/accounts.
+export const memberCard=cache(async(id:string)=>(await memberCards([id])).get(id));
