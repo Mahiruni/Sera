@@ -19,6 +19,14 @@ internal object SeraMessageAlerts {
     private val uuid=Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     fun validId(id:String)=uuid.matches(id)
     private var visible:Pair<String,String>?=null
+    private val sounded=LinkedHashSet<String>()
+    @Synchronized fun playIncomingOnce(context:Context,owner:String,thread:String,id:String){
+        if(!foreground||!enabled(context,owner)||mutedUntil(context,owner,thread)>System.currentTimeMillis())return
+        if(!context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",true))return
+        if(!sounded.add(owner+":"+id))return
+        while(sounded.size>256)sounded.remove(sounded.first())
+        android.os.Handler(android.os.Looper.getMainLooper()).post{if(foreground)SeraNotificationSounds.playIncoming(context.applicationContext)}
+    }
     @Volatile private var foreground=false
     var banner by androidx.compose.runtime.mutableStateOf<SeraMessageBannerEvent?>(null)
         private set
@@ -44,7 +52,7 @@ internal object SeraMessageAlerts {
     }
     @Synchronized private fun isVisible(owner:String,thread:String)=visible==(owner to thread)
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
-    @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")}.forEach{editor.remove(it)};editor.apply()}
+    @Synchronized fun clearAccount(context:Context){visible=null;sounded.clear();dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")}.forEach{editor.remove(it)};editor.apply()}
     fun clearThreadAlert(context:Context,owner:String,thread:String){manager(context).cancel(tag(owner,thread),1);prefs(context).edit().remove("count:$owner:$thread").apply()}
     @Synchronized fun receive(context:Context,data:Map<String,String>,preview:SeraNotificationPreview?=null){
         val owner=data["recipient_id"]?:return
@@ -60,7 +68,7 @@ internal object SeraMessageAlerts {
         store.edit().putString(key,JSONArray((seen+id).takeLast(256)).toString()).apply()
         SeraUnreadRefresh.changed()
         if(!enabled(context,owner)||mutedUntil(context,owner,thread)>System.currentTimeMillis())return
-        if(foreground){if(kind!="message"||visible!=(owner to thread))showBanner(context,SeraMessageBannerEvent(owner,thread,id,kind,preview));return}
+        if(foreground){playIncomingOnce(context,owner,thread,id);if(kind!="message"||visible!=(owner to thread))showBanner(context,SeraMessageBannerEvent(owner,thread,id,kind,preview));return}
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         val notificationTag=tag(owner,thread)
         val countKey="count:$owner:$thread"
@@ -80,7 +88,7 @@ internal object SeraMessageAlerts {
         val builder=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
             .setSmallIcon(R.drawable.ic_sera_notification).setColor(ContextCompat.getColor(context,R.color.sera_teal)).setContentTitle(title).setContentText(body)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public)
-            .setNumber(count).setOnlyAlertOnce(true).setAutoCancel(true).setContentIntent(pi)
+            .setNumber(count).setOnlyAlertOnce(false).setAutoCancel(true).setContentIntent(pi)
             .addAction(android.R.drawable.ic_menu_view,"Open conversation",pi)
         if(kind=="message")SeraNotificationActions.addActions(context,builder,owner,thread,id)
         manager(context).notify(notificationTag,1,builder.build())
