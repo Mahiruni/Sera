@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'app/sera-messaging-excellence.css'
+      - 'app/sera-messaging-surfaces.css'
       - 'components/network/sera-message-workspace.tsx'
       - 'components/network/sera-voice-recorder.tsx'
       - 'tests/e2e/messaging-*'
