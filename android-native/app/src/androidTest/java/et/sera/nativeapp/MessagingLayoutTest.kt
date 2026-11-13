@@ -26,24 +26,25 @@ class MessagingLayoutTest {
 
     @Test fun shortMessagesStayCompactAndReceiptsRemainAccessible() {
         compose.setContent {
-            MaterialTheme {
-                Column(Modifier.fillMaxSize().background(Color(0xFF111D21)).padding(12.dp).testTag("thread"),verticalArrangement=Arrangement.spacedBy(5.dp)){
+            val p=seraChatPalette(true)
+            MaterialTheme(colorScheme=seraChatScheme(androidx.compose.material3.darkColorScheme(),p,true),typography=seraChatTypography(androidx.compose.material3.Typography())) {
+                Column(Modifier.fillMaxSize().background(p.canvas).padding(12.dp).testTag("thread"),verticalArrangement=Arrangement.spacedBy(5.dp)){
                     Text("Messages",fontSize=22.sp,color=Color.White)
                     Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterEnd){
-                        SeraCompactMessageBubble(true,Color(0xFF087478),Modifier.widthIn(max=260.dp).testTag("short")){
-                            Text("hi",fontSize=14.sp,color=Color.White)
+                        SeraCompactMessageBubble(true,p.outgoing,Modifier.widthIn(max=260.dp).testTag("short")){
+                            SeraRichMessageText("hi",p.onOutgoing,p.outgoingLink)
                             SeraCompactReceipt("21:15",true,false,false,Color.White.copy(alpha=.8f))
                         }
                     }
                     Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterEnd){
-                        SeraCompactMessageBubble(true,Color(0xFF087478),Modifier.widthIn(max=260.dp).testTag("long")){
-                            Text("A longer professional message that wraps naturally without filling the entire conversation width.",fontSize=14.sp,color=Color.White)
+                        SeraCompactMessageBubble(true,p.outgoing,Modifier.widthIn(max=260.dp).testTag("long")){
+                            SeraRichMessageText("A longer professional message that wraps naturally without filling the entire conversation width.",p.onOutgoing,p.outgoingLink)
                             SeraCompactReceipt("21:16",true,true,true,Color.White.copy(alpha=.8f))
                         }
                     }
                     Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterStart){
-                        SeraCompactMessageBubble(false,Color(0xFF26383D),Modifier.widthIn(max=260.dp).testTag("incoming")){
-                            Text("Sounds good!",fontSize=14.sp,color=Color.White)
+                        SeraCompactMessageBubble(false,p.incoming,Modifier.widthIn(max=260.dp).testTag("incoming")){
+                            SeraRichMessageText("Sounds good!",p.ink,p.accent)
                             SeraCompactReceipt("21:17",false,false,false,Color.White.copy(alpha=.8f))
                         }
                     }

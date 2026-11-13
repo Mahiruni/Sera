@@ -128,7 +128,7 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                             }
                         }
                     }
-                    Row(Modifier.fillMaxWidth().then(if(selectionMode)Modifier.background(if(selected)palette.selectionelse Color.Transparent).clickable(enabled=!message.unsent,onClick=onSelect)else Modifier), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
+                    Row(Modifier.fillMaxWidth().then(if(selectionMode)Modifier.background(if(selected)palette.selection else Color.Transparent).clickable(enabled=!message.unsent,onClick=onSelect)else Modifier), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
                         if(selectionMode)Checkbox(checked=selected,onCheckedChange={onSelect()},enabled=!message.unsent,modifier=Modifier.align(Alignment.CenterVertically))
                         Box {
                             if(kotlin.math.abs(swipe)>4f)Box(Modifier.align(if(own)Alignment.CenterEnd else Alignment.CenterStart).size(36.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.Reply,null,tint=accent.copy(alpha=(kotlin.math.abs(swipe)/swipeThreshold).coerceIn(.25f,1f)),modifier=Modifier.size(20.dp))}

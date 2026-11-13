@@ -23,6 +23,8 @@ class SeraChatDesignTest {
    assertTrue(contrast(p.outgoingLink,p.outgoingQuote)>=4.5f)
    assertTrue(contrast(p.ink,p.quote)>=4.5f)
    assertTrue(contrast(p.muted,p.surface)>=4.5f)
+   assertTrue(contrast(p.accent,p.selection)>=4.5f)
+   assertTrue(contrast(p.accent,p.quote)>=4.5f)
   }
  }
  @Test fun messageTypeScaleKeepsReadableLineHeight(){

@@ -24,7 +24,7 @@ internal fun seraChatPalette(dark:Boolean)=if(dark) SeraChatPalette(
     Color(0xFF17292E),Color(0xFF214346)
 ) else SeraChatPalette(
     Color(0xFFF5F9F8),Color(0xFFFFFFFF),Color(0xFFFFFFFF),Color(0xFF09696E),
-    Color(0xFF183538),Color(0xFF526A6D),Color(0xFF087E83),Color(0xFFDCE8E6),
+    Color(0xFF183538),Color(0xFF526A6D),Color(0xFF066D72),Color(0xFFDCE8E6),
     Color(0xFFEFF5F4),Color(0xFFE0F0ED)
 )
 @Composable internal fun seraChatColors()=seraChatPalette(isSystemInDarkTheme())
