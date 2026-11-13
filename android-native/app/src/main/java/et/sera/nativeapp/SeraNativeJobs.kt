@@ -79,6 +79,7 @@ private fun fetchOpenJobs(token: String): Pair<List<NativeJob>?, String> {
 @Composable
 fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
     var search by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<NativeJob>>(emptyList()) }
     var selected by remember { mutableStateOf<NativeJob?>(null) }
@@ -210,7 +211,7 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
                 FilledTonalButton(onClick={contacting=true;contactError="";scope.launch{val (id,e)=withContext(Dispatchers.IO){startCompanyJobChat(token,job.id)};contacting=false;if(id!=null){selected=null;companyChat=id}else contactError=e}},enabled=!contacting && userId.isNotBlank(),modifier=Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)){Text(if(contacting)"Opening conversation…" else "Message company") }
                 Button(
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sera.hisabtech.com/jobs/" + Uri.encode(job.id))))
+                        selected=null;linkHandler.openUri("https://sera.hisabtech.com/jobs/" + Uri.encode(job.id))
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF087E83))
