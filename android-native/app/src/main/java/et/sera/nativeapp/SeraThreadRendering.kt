@@ -121,6 +121,7 @@ import java.net.URL
             val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp*.76f).coerceIn(120.dp,340.dp)
             val scrollScope=rememberCoroutineScope()
             val showNew by remember(messageListState){derivedStateOf{val layout=messageListState.layoutInfo;layout.totalItemsCount>0&&layout.visibleItemsInfo.lastOrNull()?.index?.let{it<layout.totalItemsCount-2}==true}}
+            val latestSeenId=remember(messages,userId){seraLatestSeenMessageId(messages,userId)}
             Box(modifier){
             LazyColumn(Modifier.fillMaxSize(), state = messageListState, verticalArrangement = Arrangement.spacedBy(7.dp,Alignment.Bottom),
                 contentPadding = PaddingValues(vertical = 12.dp)) {
@@ -138,6 +139,9 @@ import java.net.URL
                     val nextMessage=next?.message
                     val showPeerAvatar=message!=null&&message.senderId!=userId&&!message.unsent&&(nextMessage==null||nextMessage.senderId!=message.senderId||nextMessage.unsent||date!=runCatching{java.time.Instant.parse(nextMessage.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull())
                     if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={onMenu(if(it)message.id else null)},onReply={onReply(message)},onReact={onReact(message)},onForward={onForward(message)},onCopy={onCopy(message)},onUnsend={onUnsend(message)},onReaction={onReaction(message,it)},onImage=onImage,onError=onError,conversationId=conversationId,onLibraryChanged=onLibraryChanged,onQuote=onQuote,highlighted=message.id==highlightedId,selectionMode=selectedIds.isNotEmpty(),selected=message.id in selectedIds,onSelect={onSelectMessage(message.id)},peerPhoto=peerPhoto,showPeerAvatar=showPeerAvatar,reservePeerAvatar=true,onMeetingResponse=onMeetingResponse)
+                    if(message!=null&&message.id==latestSeenId&&messageSearch.isBlank()&&selectedIds.isEmpty()){
+                        Text("Seen",modifier=Modifier.align(Alignment.End).padding(end=8.dp,top=3.dp).testTag("sera_seen_"+message.id),style=MaterialTheme.typography.labelSmall,color=seraChatColors().read,fontWeight=FontWeight.Medium)
+                    }
                     }
                 }
                 items(pendingTexts.filter{messageSearch.isBlank()||it.body.contains(messageSearch,true)},key={"client-"+userId+"-"+it.id}){p->
@@ -148,3 +152,6 @@ import java.net.URL
             if(showNew&&messageSearch.isBlank())FilledTonalButton(onClick={scrollScope.launch{val n=messageListState.layoutInfo.totalItemsCount;if(n>0)messageListState.animateScrollToItem(n-1)}},modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp)){Text(if(messages.any{isUnreadIncoming(it,userId)})"New messages ↓" else "Latest messages ↓")}
             }
 }
+
+/** Latest actual outgoing read receipt; private recipient-only receipts are never surfaced. */
+internal fun seraLatestSeenMessageId(messages:List<NativeMessage>,userId:String):String? = messages.asSequence().filter{it.senderId==userId&&!it.unsent&&it.readAt.isNotBlank()&&it.readAt!="null"}.maxByOrNull{runCatching{java.time.Instant.parse(it.createdAt).toEpochMilli()}.getOrDefault(0L)}?.id
