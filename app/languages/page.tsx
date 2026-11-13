@@ -4,8 +4,8 @@ import { pageMetadata } from "@/lib/seo";
 import { Breadcrumbs } from "@/components/public-site";
 export const metadata = pageMetadata(
   "/languages",
-  "Language Availability — Seven Language Preferences",
-  "Check English, Amharic, Afaan Oromo, Tigrinya, Arabic, Afar and Somali availability on Sera.et.",
+  "Language Availability — English, Amharic and Afaan Oromo",
+  "Check English, Amharic and Afaan Oromo availability on Sera.",
 );
 export default function Page() {
   return (
@@ -13,10 +13,7 @@ export default function Page() {
       <Breadcrumbs items={[{ name: "Languages", path: "/languages" }]} />
       <h1>Your language, with an honest availability status.</h1>
       <p className="subtext">
-        English and Amharic are available in the app. New Amharic public content
-        awaits native editorial review. Five additional languages can be
-        selected as preferences; complete translations are not yet published.
-        Untranslated app content remains explicitly English.
+        Sera supports English, Amharic and Afaan Oromo. Core interface translations are being expanded; some newer screens still use English.
       </p>
       <div className="locale-grid">
         {locales.map((locale) => (
@@ -38,9 +35,7 @@ export default function Page() {
         ))}
       </div>
       <p className="small-note">
-        Arabic has a right-to-left availability page. No incomplete translation
-        is included in the search sitemap or advertised as a finished localized
-        version.
+        Only these three languages are offered. Translation quality and coverage are reviewed before localized content is advertised as complete.
       </p>
     </div>
   );

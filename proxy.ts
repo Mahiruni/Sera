@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const language = path === "/am" ? "am" : path === "/ar" ? "ar" : "en";
+  const choice = request.cookies.get("sera-language")?.value;
+  const language = path === "/am" ? "am" : path === "/om" ? "om" : path === "/en" ? "en" : choice === "am" || choice === "om" ? choice : "en";
   const headers = new Headers(request.headers);
   headers.set("x-sera-language", language);
   let response = NextResponse.next({ request: { headers } });

@@ -33,30 +33,8 @@ export function LanguageSelector({
           const next = e.target.value as LocaleCode;
           setLang(next);
           onNavigate?.();
-          if (
-            [
-              "/",
-              "/am",
-              "/en",
-              "/om",
-              "/ti",
-              "/ar",
-              "/aa",
-              "/so",
-              "/education",
-              "/institutions",
-              "/opportunities",
-              "/languages",
-              "/about",
-              "/help",
-              "/contact",
-              "/privacy",
-              "/terms",
-              "/how-it-works",
-            ].includes(pathname) ||
-            pathname.startsWith("/guides")
-          )
-            router.push(next === "en" ? "/" : `/${next}`);
+          if (["/","/am","/en","/om"].includes(pathname)) router.push(next === "en" ? "/" : `/${next}`);
+          else router.refresh();
         }}
       >
         {locales.map((item) => (
@@ -80,8 +58,7 @@ export function TranslationNotice() {
   if (current.status === "available") return null;
   return (
     <div className="translation-notice" lang="en" dir="ltr">
-      {current.name} is selected. Full translation is in progress; app content
-      is currently shown in English.{" "}
+      {current.name} is selected. Core interface translation is available; some newer screens and public content still use English.{" "}
       <Link href={`/${locale}`}>View language status</Link>
     </div>
   );

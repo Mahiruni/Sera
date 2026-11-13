@@ -56,26 +56,8 @@ export const isLocale = (value: unknown): value is LocaleCode =>
 export const contentLanguage = (locale: LocaleCode): "en" | "am" =>
   locale === "am" ? "am" : "en";
 export function pageLanguage(path: string, preference: LocaleCode): LocaleCode {
-  if (path === "/ar") return "en";
   if (path === "/am") return "am";
-  if (
-    [
-      "/",
-      "/about",
-      "/how-it-works",
-      "/help",
-      "/contact",
-      "/privacy",
-      "/terms",
-      "/opportunities",
-      "/education",
-      "/institutions",
-      "/guides",
-      "/languages",
-    ].includes(path) ||
-    path.startsWith("/guides/") ||
-    locales.some((l) => path === `/${l.code}`)
-  )
-    return "en";
-  return contentLanguage(preference);
+  if (path === "/om") return "om";
+  if (path === "/en") return "en";
+  return isLocale(preference) ? preference : "en";
 }

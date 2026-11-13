@@ -33,6 +33,7 @@ const serverSnapshot: Snapshot = {
   storageError: false,
 };
 const amSnapshot: Snapshot = { ...serverSnapshot, lang: "am", locale: "am" };
+const omSnapshot: Snapshot = { ...serverSnapshot, locale: "om" };
 let snapshot = serverSnapshot;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -49,7 +50,8 @@ function readStorage() {
       if (isState(value)) state = value;
       else storageError = true;
     }
-    const choice = localStorage.getItem("sera-language");
+    const cookieChoice = document.cookie.match(/(?:^|; )sera-language=([^;]+)/)?.[1];
+    const choice = localStorage.getItem("sera-language") ?? cookieChoice;
     if (isLocale(choice)) {
       locale = choice;
       lang = contentLanguage(choice);
@@ -86,6 +88,7 @@ function persist() {
   try {
     localStorage.setItem("sera-next-v1", JSON.stringify(snapshot.state));
     localStorage.setItem("sera-language", snapshot.locale);
+    document.cookie = `sera-language=${snapshot.locale}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
   } catch {
     snapshot = { ...snapshot, storageError: true };
   }
@@ -121,14 +124,14 @@ export function Provider({
 }) {
   const pathname = usePathname();
   const value = useSyncExternalStore(subscribe, getSnapshot, () =>
-    initialLocale === "am" ? amSnapshot : serverSnapshot,
+    initialLocale === "am" ? amSnapshot : initialLocale === "om" ? omSnapshot : serverSnapshot,
   );
   const [notice, notify] = useState("");
   const htmlLanguage = pageLanguage(pathname, value.locale);
   const lang: Lang = htmlLanguage === "am" ? "am" : "en";
   useEffect(() => {
     document.documentElement.lang = htmlLanguage;
-    document.documentElement.dir = htmlLanguage === "ar" ? "rtl" : "ltr";
+    document.documentElement.dir = "ltr";
   }, [htmlLanguage]);
   useEffect(() => {
     if (!notice) return;
@@ -142,7 +145,7 @@ export function Provider({
         lang,
         setState,
         setLang,
-        t: (k) => translate(lang, k),
+        t: (k) => translate(htmlLanguage, k),
         notice,
         notify,
       }}

@@ -59,11 +59,11 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
-    requestLanguage === "am" ? "am" : requestLanguage === "ar" ? "ar" : "en";
+    requestLanguage === "am" ? "am" : requestLanguage === "om" ? "om" : "en";
   return (
     <html
       lang={language}
-      dir={language === "ar" ? "rtl" : "ltr"}
+      dir="ltr"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
