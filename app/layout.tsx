@@ -3,7 +3,7 @@ import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Provider } from "@/components/store";
-import { memberCards } from "@/lib/activity/members";
+import { memberCard } from "@/lib/activity/members";
 import { currentUser,serverClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/shell";
 import { WebsiteData } from "@/components/public-site";
@@ -51,11 +51,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const user = await currentUser();
-  const [members,ownProfile]=await Promise.all([
-    user?memberCards([user.id]):null,
+  const [member,ownProfile]=await Promise.all([
+    user?memberCard(user.id):null,
     user?.email_confirmed_at?(async()=> (await serverClient()).from("profiles").select("full_name,headline").eq("id",user.id).maybeSingle())():null,
   ]);
-  const member=user?members?.get(user.id):undefined;
   const requestHeaders = await headers();
   const requestLanguage = requestHeaders.get("x-sera-language");
   const language =
