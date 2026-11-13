@@ -30,7 +30,7 @@ internal fun SeraPendingTextBubble(p:NativeQueuedText,online:Boolean,outgoing:Co
     val status=when{failed->"Not sent";!online->"Waiting for connection";else->"Sending"}
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){
         SeraCompactMessageBubble(true,outgoing,Modifier.widthIn(max=maxWidth)){
-            Text(p.body,color=Color.White,fontSize=14.sp,lineHeight=20.sp)
+            SeraRichMessageText(p.body,color=Color.White,linkColor=Color(0xFFB5FFF4),interactive=false)
             Row(Modifier.align(Alignment.End),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
                 val time=runCatching{java.time.Instant.parse(p.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("")
                 Text(time,color=Color.White.copy(alpha=.8f),fontSize=10.sp)
