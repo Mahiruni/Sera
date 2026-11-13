@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { useSera } from "./store";
 import { LanguageSelector, TranslationNotice } from "./language-selector";
-import { Brand } from "./ui";
+import { Brand, SeraBrandMark } from "./ui";
 import { SiteFooter } from "./footer";
 import { navigationGroups, memberNavigationGroups, navIsActive, feedAutoHideEnabled, nextFeedChrome } from "@/lib/navigation";
 import type { Key } from "@/lib/i18n";
@@ -146,7 +146,7 @@ export function Shell({
       <a href="#main-content" className="skip-link">
         {t("skipContent")}
       </a>
-      <header className="site-header sera-app-header" lang={lang} dir="ltr">
+      <header className={`site-header sera-app-header sera-web-header${verified&&privateWorkspace?" is-member":""}`} lang={lang} dir="ltr">
         <button
           ref={trigger}
           type="button"
@@ -158,7 +158,8 @@ export function Shell({
         >
           <Menu size={24}/>
         </button>
-        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="Sera home">Sera</Link>
+        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="Sera home"><SeraBrandMark/><span>Sera</span></Link>
+        {verified&&privateWorkspace&&<nav className="sera-web-desktop-nav" aria-label={t("navigation")}>{[{href:"/feed",label:lang==="am"?"መነሻ":lang==="om"?"Mana":"Home",Icon:Home},{href:"/connections",label:lang==="am"?"ግንኙነቶች":lang==="om"?"Walqunnamtii":"Network",Icon:UsersRound},{href:"/discover",label:lang==="am"?"ፈልግ":lang==="om"?"Barbaadi":"Discover",Icon:Compass},{href:"/jobs",label:lang==="am"?"ሥራዎች":lang==="om"?"Hojii":"Jobs",Icon:BriefcaseBusiness}].map(({href,label,Icon})=><Link key={href} href={href} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={20}/><span>{label}</span></Link>)}</nav>}
         <div className="header-account-controls">
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
