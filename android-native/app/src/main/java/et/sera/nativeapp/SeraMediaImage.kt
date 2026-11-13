@@ -1,7 +1,6 @@
 package et.sera.nativeapp
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -13,20 +12,30 @@ import coil3.network.httpHeaders
 import coil3.request.CachePolicy
 import coil3.size.Size
 
-/** Coil 3 image loading with bounded decode size and cache-friendly requests. */
+/** Bounded decode, adaptive authenticated previews, original fallback. */
 @Composable
-fun SeraMediaImage(url: String, description: String, widthPx: Int, heightPx: Int, modifier: Modifier = Modifier, scale: ContentScale = ContentScale.Crop, accessToken:String?=null) {
-    val context = LocalContext.current
-    val request=remember(context,url,widthPx,heightPx,accessToken){ImageRequest.Builder(context)
-            .data(url)
-            .size(Size(widthPx, heightPx))
-            .crossfade(true)
-            .apply { if(accessToken!=null && url.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/")){ httpHeaders(NetworkHeaders.Builder().set("Authorization","Bearer $accessToken").set("apikey",BuildConfig.SUPABASE_ANON_KEY).build());diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED) } }
-            .build()}
-    AsyncImage(
-        model = request,
-        contentDescription = description,
-        contentScale = scale,
-        modifier = modifier
-    )
+fun SeraMediaImage(url: String, description: String, widthPx: Int, heightPx: Int, modifier: Modifier = Modifier, scale: ContentScale = ContentScale.Crop, accessToken:String?=null, previewUrl:String?=null) {
+    val context=LocalContext.current
+    var fallback by remember(url,previewUrl,accessToken){mutableStateOf(false)}
+    val preview=remember(context,previewUrl,accessToken){
+        if(accessToken==null||previewUrl==null||!Regex("https://sera[.]hisabtech[.]com/api/post-media/[0-9a-fA-F-]{36}").matches(previewUrl))null
+        else {
+            val cm=context.getSystemService(android.net.ConnectivityManager::class.java)
+            val kbps=runCatching{cm.getNetworkCapabilities(cm.activeNetwork)?.linkDownstreamBandwidthKbps?:0}.getOrDefault(0)
+            val metered=runCatching{cm.isActiveNetworkMetered}.getOrDefault(true)
+            val w=if(kbps in 1..1000)480 else if(metered)800 else 1200
+            previewUrl+"?w="+w
+        }
+    }
+    val selectedUrl=if(fallback)url else preview?:url
+    val request=remember(context,selectedUrl,widthPx,heightPx,accessToken){ImageRequest.Builder(context)
+        .data(selectedUrl).size(Size(widthPx,heightPx)).crossfade(true)
+        .apply {
+            if(accessToken!=null && (selectedUrl==preview||selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/"))){
+                httpHeaders(NetworkHeaders.Builder().set("Authorization","Bearer $accessToken").set("apikey",BuildConfig.SUPABASE_ANON_KEY).build())
+                diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED)
+            }
+        }.build()}
+    AsyncImage(model=request,contentDescription=description,contentScale=scale,modifier=modifier,
+        onError={if(preview!=null&&selectedUrl==preview)fallback=true})
 }
