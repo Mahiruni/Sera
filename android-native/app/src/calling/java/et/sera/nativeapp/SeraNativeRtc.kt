@@ -111,9 +111,15 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false)}
     private suspend fun gather():String{
         val deadline=android.os.SystemClock.elapsedRealtime()+25000L
-        while(pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){delay(100)}
+        while(!closed&&pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){
+            // Non-trickle signaling can proceed as soon as a valid relay candidate exists.
+            val current=pc.localDescription?.description.orEmpty()
+            if(current.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})break
+            delay(100)
+        }
+        if(closed)throw kotlinx.coroutines.CancellationException("Call closed")
         val sdp=pc.localDescription?.description?:error("Call connection unavailable.")
-        if(!sdp.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})error("No secure call relay found. Check your network and try again.")
+        if(!sdp.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})throw SeraRelayUnavailable()
         return sdp
     }
     suspend fun audioSample():SeraAudioSample?=kotlinx.coroutines.withTimeoutOrNull(2500){
