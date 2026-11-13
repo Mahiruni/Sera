@@ -1,0 +1,132 @@
+name: SERA Android Calling Pilot
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sera-native-calling-pilot.yml'
+  workflow_dispatch:
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Reserve CI compiler heap
+        shell: bash
+        run: |
+          total_gib=$(awk '/MemTotal/ {print int($2/1048576)}' /proc/meminfo)
+          heap=$((total_gib - 4))
+          if (( heap > 12 )); then heap=12; fi
+          if (( heap < 2 )); then echo '::error::Insufficient build memory'; exit 1; fi
+          sed -i "s/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx${heap}g -Dfile.encoding=UTF-8/" android-native/gradle.properties
+          echo "CI build memory: ${total_gib} GiB host, ${heap} GiB Gradle heap"
+      - name: Resolve version and validate release secrets
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SERA_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SERA_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
+          SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION_CODE=90
+          VERSION_NAME=1.0.88-pilot
+          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && (( VERSION_CODE >= 2 )) || { echo "::error::Invalid version_code"; exit 1; }
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+-pilot$ ]] || { echo "::error::Invalid version_name"; exit 1; }
+          for key in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD SUPABASE_ANON_KEY; do
+            [[ -n "${!key}" ]] || { echo "::error::Missing release secret: $key"; exit 1; }
+          done
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+      - name: Validate seven-language Android resources
+        run: python3 android-native/scripts/check_locales.py
+      - name: Verify original SERA signature logo is identical in all native assets
+        run: python3 android-native/scripts/check_signature_mark.py
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Build signed production APK
+        shell: bash
+        working-directory: android-native
+        env:
+          SERA_RELEASE_KEYSTORE_BASE64: ${{ secrets.SERA_RELEASE_KEYSTORE_BASE64 }}
+          SERA_RELEASE_STORE_PASSWORD: ${{ secrets.SERA_RELEASE_STORE_PASSWORD }}
+          SERA_RELEASE_KEY_ALIAS: ${{ secrets.SERA_RELEASE_KEY_ALIAS }}
+          SERA_RELEASE_KEY_PASSWORD: ${{ secrets.SERA_RELEASE_KEY_PASSWORD }}
+          SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+          SERA_FIREBASE_CLIENT_JSON: ${{ secrets.SERA_FIREBASE_CLIENT_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE="$(mktemp --suffix=.jks)"
+          trap 'rm -f "$KEYSTORE"' EXIT
+          printf '%s' "$SERA_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          export SERA_RELEASE_KEYSTORE="$KEYSTORE"
+          # Separate lint and packaging JVM lifetimes so R8 never shares a heap
+          # with a live lint analysis. Neither quality gate is disabled.
+          args=(--no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=true "-PSERA_VERSION_CODE=$VERSION_CODE" "-PSERA_VERSION_NAME=$VERSION_NAME" "-PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co" "-PSERA_SUPABASE_ANON_KEY=$SERA_SUPABASE_ANON_KEY")
+          gradle :app:lintVitalRelease "${args[@]}"
+          gradle :app:assembleRelease "${args[@]}"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          sha256sum "$APK" > "$APK.sha256"
+      - name: Verify native WebRTC library is present
+        run: |
+          APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          python3 - "$APK" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as apk:
+              assert any(n.startswith("lib/arm64-v8a/") and "webrtc" in n.lower() and n.endswith(".so") for n in apk.namelist()), "Missing arm64 WebRTC transport"
+          PY
+      - name: Verify update compatibility with previous signed APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          old="$(mktemp -d)"
+          trap 'rm -rf "$old"' EXIT
+          gh release download android-v1.0.87 --pattern 'SERA-1.0.87.apk' --dir "$old"
+          APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          SIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          old_cert="$("$SIGNER" verify --print-certs "$old/SERA-1.0.87.apk" | grep 'certificate SHA-256 digest:' | sort)"
+          new_cert="$("$SIGNER" verify --print-certs "$APK" | grep 'certificate SHA-256 digest:' | sort)"
+          [[ -n "$old_cert" && "$old_cert" == "$new_cert" ]] || { echo "::error::APK signing certificate mismatch"; exit 1; }
+          old_package="$("$AAPT" dump badging "$old/SERA-1.0.87.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          new_package="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          old_code="$("$AAPT" dump badging "$old/SERA-1.0.87.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
+          new_code="$("$AAPT" dump badging "$APK" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
+          [[ "$old_package" == "et.sera.nativeapp" && "$new_package" == "$old_package" && "$old_code" =~ ^[0-9]+$ && "$new_code" =~ ^[0-9]+$ ]] || { echo "::error::APK package metadata mismatch"; exit 1; }
+          (( new_code > old_code )) || { echo "::error::APK version code must increase"; exit 1; }
+          echo "Verified same application ID and signing certificate; versionCode $old_code → $new_code"
+      - name: Prepare private pilot artifact
+        run: |
+          set -euo pipefail
+          APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          mkdir -p pilot-artifact
+          cp "$APK" "pilot-artifact/SERA-1.0.88-pilot.apk"
+          cd pilot-artifact
+          sha256sum SERA-1.0.88-pilot.apk > SERA-1.0.88-pilot.apk.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SERA-calling-pilot-signed
+          path: pilot-artifact/
+          if-no-files-found: error
+          retention-days: 30
