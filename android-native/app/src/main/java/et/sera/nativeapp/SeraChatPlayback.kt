@@ -79,7 +79,7 @@ internal fun SeraChatVoicePlayer(playback:SeraChatPlayback,id:String,durationHin
         Column(Modifier.weight(1f)){
             if(label!="Voice message")Text(label,color=foreground,fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
             Slider(value=position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={playback.seek(it.toInt())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=active&&playback.duration>0&&!playback.loading,modifier=Modifier.fillMaxWidth().height(24.dp),colors=SliderDefaults.colors(thumbColor=foreground,activeTrackColor=foreground,inactiveTrackColor=foreground.copy(alpha=.25f),disabledThumbColor=foreground.copy(alpha=.5f),disabledInactiveTrackColor=foreground.copy(alpha=.25f)))
-            Text(if(active)voiceTime(position)+" / "+voiceTime(duration) else voiceTime(duration),color=foreground.copy(alpha=.82f),fontSize=10.sp)
+            Text(if(active)voiceTime(position)+" / "+voiceTime(duration) else voiceTime(duration),color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         }
     }
 }

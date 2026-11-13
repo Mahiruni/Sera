@@ -77,11 +77,11 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
                     }
                     SeraLiveWaveform(levels,accent,Modifier.fillMaxWidth().height(24.dp))
                 }
-                FilledIconButton(onClick={finish(true)},modifier=Modifier.size(48.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color(0xFF08747A),contentColor=Color.White)){Icon(Icons.Outlined.Stop,"Finish recording")}
+                FilledIconButton(onClick={finish(true)},modifier=Modifier.size(48.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=seraChatColors().button,contentColor=seraChatColors().onButton)){Icon(Icons.Outlined.Stop,"Finish recording")}
             }
         }
     }
-    else FilledIconButton(colors=IconButtonDefaults.filledIconButtonColors(containerColor=accent,contentColor=Color(0xFF10383B)),enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Mic,"Record voice message",tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF10383B)else Color.White)}
+    else FilledIconButton(colors=IconButtonDefaults.filledIconButtonColors(containerColor=seraChatColors().button,contentColor=seraChatColors().onButton),enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Mic,"Record voice message",tint=seraChatColors().onButton)}
 }
 
 internal fun seraVoiceLevel(amplitude:Int):Float = kotlin.math.sqrt((amplitude.coerceIn(0,32767)/32767f)).coerceIn(0f,1f)

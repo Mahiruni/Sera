@@ -3,6 +3,10 @@ on:
   push:
     branches: [main]
     paths:
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraChatDesign.kt'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeMessageRow.kt'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraMessageLibrary.kt'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraChatVoice.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraCompactMessageBubble.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeInbox.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeComposer.kt'
@@ -16,6 +20,11 @@ on:
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraChatPlayback.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/MainActivity.kt'
       - 'android-native/app/src/androidTest/**'
+      - '.github/workflows/messaging-native-visual.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android-native/**'
       - '.github/workflows/messaging-native-visual.yml'
   workflow_dispatch:
   workflow_call:

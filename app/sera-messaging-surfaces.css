@@ -161,8 +161,8 @@ html[data-sera-theme=dark] .sera-chat-page {
   .sera-chat-page .sera-chat-scroll { padding-inline: 12px; }
   .sera-chat-page .sera-chat-bubble { max-width: calc(100% - 86px); font-size: 15px; padding: 10px 13px 8px; }
   .sera-chat-page .sera-chat-compose-row { gap: 4px; }
-  .sera-chat-page .sera-chat-compose-row > .sera-chat-icon { width: 40px; min-width: 40px; height: 48px; }
-  .sera-chat-page .sera-chat-message-actions .sera-chat-icon { min-width: 40px; width: 40px; height: 44px; }
+  .sera-chat-page .sera-chat-compose-row > .sera-chat-icon { width: 44px; min-width: 44px; height: 48px; }
+  .sera-chat-page .sera-chat-message-actions .sera-chat-icon { min-width: 44px; width: 44px; height: 44px; }
   .sera-chat-page .sera-chat-composer { padding-inline: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
