@@ -3,6 +3,10 @@ package et.sera.nativeapp
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,29 +42,46 @@ internal fun seraConversationSharedItems(messages:List<NativeMessage>):List<Sera
                 if(valid)SeraSharedItem(m.id,m.senderId,m.createdAt,link=link)else null
             }.toList()
     }
-private fun sharedCategory(item:SeraSharedItem):String = when {
+internal fun sharedCategory(item:SeraSharedItem):String = when {
     item.link!=null -> "Links"
     item.file?.mime?.startsWith("audio/")==true -> "Voice"
     item.file?.mime?.startsWith("image/")==true || item.file?.mime?.startsWith("video/")==true -> "Media"
     else -> "Files"
+}
+internal fun seraFilterSharedItems(items:List<SeraSharedItem>,category:String,query:String,sender:String,userId:String):List<SeraSharedItem>{
+    val term=query.trim()
+    return items.filter{item->
+        sharedCategory(item)==category &&
+        (sender=="All" || (sender=="You"&&item.senderId==userId) || (sender=="Contact"&&item.senderId!=userId)) &&
+        (term.isBlank() || listOfNotNull(item.file?.name,item.link).any{it.contains(term,ignoreCase=true)})
+    }
 }
 @Composable internal fun SeraConversationDetails(
     conversation:NativeConversation,token:String,userId:String,peerActivity:String?,
     messages:List<NativeMessage>,historyLimit:Int,loading:Boolean,
     playback:SeraChatPlayback,ink:Color,soft:Color,muted:Color,accent:Color,
     onBack:()->Unit,onLoadEarlier:()->Unit,onChanged:()->Unit,onImage:(NativeChatFile)->Unit,
-    onSearch:()->Unit
+    onSearch:()->Unit,onJumpToMessage:(String)->Unit
 ){
     val context=LocalContext.current
     val uriHandler=LocalUriHandler.current
     val scope=rememberCoroutineScope()
+    val focus=LocalFocusManager.current
+    val keyboard=LocalSoftwareKeyboardController.current
+    var query by remember(conversation.id){mutableStateOf("")}
+    var sender by remember(conversation.id){mutableStateOf("All")}
+    val headline by produceState("",token,conversation.peerId){
+        value=if(!SeraMessageAlerts.validId(conversation.peerId)) "" else withContext(Dispatchers.IO){
+            runCatching{searchRows(token,"post_authors",mapOf("id" to "eq."+conversation.peerId,"select" to "headline,location","limit" to "1")).optJSONObject(0)?.let{row->listOf("headline","location").map{row.optString(it).takeUnless{v->v=="null"}.orEmpty()}.filter{it.isNotBlank()}.joinToString(" · ")}.orEmpty()}.getOrDefault("")
+        }
+    }
     var category by remember(conversation.id){mutableStateOf("Media")}
     var error by remember(conversation.id){mutableStateOf("")}
     var opening by remember(conversation.id){mutableStateOf<String?>(null)}
     var selectedLink by remember(conversation.id){mutableStateOf<String?>(null)}
     val items=remember(messages){seraConversationSharedItems(messages)}
     val tabs=listOf("Media","Files","Links","Voice")
-    val filtered=remember(items,category){items.filter{sharedCategory(it)==category}}
+    val filtered=remember(items,category,query,sender,userId){seraFilterSharedItems(items,category,query,sender,userId)}
     val canLoadMore=messages.size>=historyLimit&&historyLimit<1000
     Column(Modifier.fillMaxSize()){
         Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
@@ -77,6 +98,7 @@ private fun sharedCategory(item:SeraSharedItem):String = when {
                         conversation.photo?.let{SeraMediaImage(it,"Profile photo",176,176,Modifier.fillMaxSize())}
                     }
                     Text(conversation.peerName,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold,color=ink)
+                    if(headline.isNotBlank())Text(headline,style=MaterialTheme.typography.bodyMedium,color=ink)
                     Text(peerActivity?:"SERA professional",style=MaterialTheme.typography.bodyMedium,color=muted)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         OutlinedButton(enabled=SeraMessageAlerts.validId(conversation.peerId),onClick={
@@ -92,11 +114,15 @@ private fun sharedCategory(item:SeraSharedItem):String = when {
                 ScrollableTabRow(selectedTabIndex=tabs.indexOf(category),edgePadding=0.dp,containerColor=Color.Transparent){
                     tabs.forEach{tab->Tab(selected=tab==category,onClick={category=tab},text={Text("$tab (${items.count{sharedCategory(it)==tab}})",maxLines=1)})}
                 }
-                Text("Counts reflect loaded messages.",style=MaterialTheme.typography.labelSmall,color=muted,modifier=Modifier.padding(8.dp))
+                OutlinedTextField(query,{query=it.take(120)},modifier=Modifier.fillMaxWidth().padding(horizontal=4.dp),singleLine=true,label={Text("Search shared content")},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={keyboard?.hide();focus.clearFocus()}),trailingIcon={if(query.isNotEmpty())TextButton(onClick={query=""}){Text("Clear")}})
+                Row(Modifier.fillMaxWidth().padding(horizontal=4.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                    listOf("All","You","Contact").forEach{who->FilterChip(selected=sender==who,onClick={sender=who},label={Text(who)})}
+                }
+                Text("${filtered.size} shown · ${items.size} items in loaded history",style=MaterialTheme.typography.labelSmall,color=muted,modifier=Modifier.padding(8.dp))
             }
             if(filtered.isEmpty()) item {
                 Surface(color=soft,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
-                    Text(if(loading)"Loading shared content…" else "No ${category.lowercase()} in loaded messages.",color=muted,modifier=Modifier.padding(20.dp))
+                    Text(if(loading)"Loading shared content…" else if(query.isNotBlank()||sender!="All")"No matching shared items." else "No ${category.lowercase()} in loaded messages.",color=muted,modifier=Modifier.padding(20.dp))
                 }
             }
             items(filtered){entry->
@@ -120,11 +146,15 @@ private fun sharedCategory(item:SeraSharedItem):String = when {
                             }
                         }else entry.link?.let{link->TextButton(onClick={selectedLink=link}){Icon(Icons.Outlined.Link,null);Spacer(Modifier.width(8.dp));Text(link,maxLines=3,overflow=TextOverflow.Ellipsis)}}
                         val date=runCatching{java.time.Instant.parse(entry.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))}.getOrDefault("")
-                        if(date.isNotBlank())Text(date,style=MaterialTheme.typography.labelSmall,color=muted)
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                            if(date.isNotBlank())Text(date,style=MaterialTheme.typography.labelSmall,color=muted,modifier=Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
+                            TextButton(onClick={keyboard?.hide();focus.clearFocus();onJumpToMessage(entry.messageId)}){Text("Go to message")}
+                        }
                     }
                 }
             }
             if(canLoadMore)item{OutlinedButton(onClick=onLoadEarlier,modifier=Modifier.fillMaxWidth()){Text("Load earlier shared content")}}
+            if(historyLimit>=1000&&messages.size>=1000)item{Text("Showing up to 1,000 recent messages. Older shared items are not loaded.",style=MaterialTheme.typography.bodySmall,color=muted,modifier=Modifier.padding(8.dp))}
         }
     }
     selectedLink?.let{link->AlertDialog(onDismissRequest={selectedLink=null},title={Text("Open external link?")},text={Text(link)},confirmButton={TextButton(onClick={selectedLink=null;runCatching{uriHandler.openUri(link)}.onFailure{error="Could not open link."}}){Text("Open")}},dismissButton={TextButton(onClick={selectedLink=null}){Text("Cancel")}})}
