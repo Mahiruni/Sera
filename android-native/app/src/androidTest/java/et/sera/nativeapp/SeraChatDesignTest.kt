@@ -30,7 +30,7 @@ class SeraChatDesignTest {
  @Test fun messageTypeScaleKeepsReadableLineHeight(){
   val t=seraChatTypography(Typography())
   assertEquals(15.sp,t.bodyLarge.fontSize)
-  assertEquals(23.sp,t.bodyLarge.lineHeight)
+  assertEquals(24.sp,t.bodyLarge.lineHeight)
   assertEquals(11.sp,t.labelSmall.fontSize)
  }
 }

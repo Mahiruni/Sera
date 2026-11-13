@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.SentimentSatisfiedAlt
@@ -62,9 +64,10 @@ internal fun SeraMessageInput(
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         val shape = RoundedCornerShape(24.dp)
+        val inputBorder by animateColorAsState(if(focused) accent else palette.border,tween(160),label="Composer focus")
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(shape).background(palette.surface)
-                .border(1.dp, if (focused) accent.copy(alpha = .75f) else palette.border, shape)
+                .border(1.dp, inputBorder, shape)
                 .padding(start = 13.dp, end = 3.dp),
             verticalAlignment = Alignment.Bottom
         ) {
@@ -120,16 +123,17 @@ internal fun SeraMessageInput(
 
 @Composable
 internal fun SeraMessageSendButton(enabled: Boolean, busy: Boolean, teal: Color, onSend: () -> Unit) {
+    val palette=seraChatColors()
     FilledIconButton(
         onClick = onSend, enabled = enabled && !busy,
         modifier = Modifier.size(48.dp).testTag("sera_message_send"),
         colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = teal, contentColor = Color.White,
-            disabledContainerColor = teal.copy(alpha = .25f), disabledContentColor = Color.White.copy(alpha = .75f)
+            containerColor = teal, contentColor = palette.onButton,
+            disabledContainerColor = palette.quote, disabledContentColor = palette.muted
         )
     ) {
         if (busy) CircularProgressIndicator(Modifier.size(20.dp).semantics { contentDescription = "Sending message" },
-            color = Color.White, strokeWidth = 2.dp)
+            color = palette.onButton, strokeWidth = 2.dp)
         else Icon(Icons.Outlined.Send, "Send message", modifier = Modifier.size(22.dp))
     }
 }

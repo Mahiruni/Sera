@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -83,16 +84,17 @@ internal fun SeraNativeComposer(
     ink:Color,soft:Color,muted:Color,accent:Color,teal:Color,playback:SeraChatPlayback,
     onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onCancelUpload:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit,onSchedule:()->Unit={}
 ){
+    val palette=seraChatColors()
     val scope=rememberCoroutineScope()
     var pdfPreview by remember(attachment){mutableStateOf(false)}
     if(pdfPreview&&attachment?.mime=="application/pdf")SeraPdfPreview(attachment,onDismiss={pdfPreview=false})
     reply?.let{m->
-        Surface(color=soft,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
+        Surface(color=palette.quote,border=BorderStroke(.5.dp,palette.border),shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.height(IntrinsicSize.Min).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Box(Modifier.width(3.dp).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(accent));Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){Text("Replying to message",style=MaterialTheme.typography.labelMedium,color=accent);Text(m.body,style=MaterialTheme.typography.bodySmall,color=ink,maxLines=2,overflow=TextOverflow.Ellipsis)};IconButton(onClick=onCancelReply){Icon(Icons.Outlined.Close,"Cancel reply",tint=muted)}}
         }
     }
     queued?.takeIf{it.file!=null||it.album.isNotEmpty()}?.let{q->
-        Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
+        Surface(color=soft,border=BorderStroke(.5.dp,seraChatColors().border),shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(10.dp)){
                 Text(q.file?.name ?: "${q.album.size} photos",maxLines=1,color=ink,fontSize=12.sp)
                 if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent)
@@ -103,7 +105,7 @@ internal fun SeraNativeComposer(
     }
     if(album.isNotEmpty())SeraAlbumPreview(album,soft,ink,muted,accent,sending,onRemovePhoto)
     attachment?.let{file->
-        Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
+        Surface(color=soft,border=BorderStroke(.5.dp,seraChatColors().border),shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                 if(file.mime=="video/mp4"){Box(Modifier.weight(1f)){SeraVideoDraftPreview(file,accent,onAudioStart={playback.pause()})}}else if(file.mime.startsWith("audio/")){
                     Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},onError)}})}
@@ -145,7 +147,7 @@ internal fun SeraNativeComposer(
 }
 
 @Composable private fun SeraAlbumPreview(album:List<NativeChatSelection>,soft:Color,ink:Color,muted:Color,accent:Color,sending:Boolean,onRemove:(Int)->Unit){
-    Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
+    Surface(color=soft,border=BorderStroke(.5.dp,seraChatColors().border),shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Text("${album.size} photos · Ready to send",color=ink,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){

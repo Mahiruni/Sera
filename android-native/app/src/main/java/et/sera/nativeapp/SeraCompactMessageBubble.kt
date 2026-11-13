@@ -24,21 +24,21 @@ internal fun SeraCompactMessageBubble(own:Boolean,color:Color,modifier:Modifier=
     Surface(
         shape=seraChatBubbleShape(own),
         color=color,modifier=modifier,
-        border=if(!own)BorderStroke(1.dp,seraChatColors().border)else null
+        border=BorderStroke(0.5.dp,if(own)seraChatColors().outgoingBorder else seraChatColors().border)
     ){
-        Column(Modifier.padding(horizontal=13.dp,vertical=9.dp),verticalArrangement=Arrangement.spacedBy(3.dp),content=content)
+        Column(Modifier.padding(horizontal=14.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(4.dp),content=content)
     }
 }
 
 @Composable
 internal fun ColumnScope.SeraCompactReceipt(time:String,own:Boolean,delivered:Boolean,read:Boolean,foreground:Color,edited:Boolean=false){
-    Row(Modifier.align(Alignment.End).padding(top=2.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){
+    Row(Modifier.align(Alignment.End).padding(top=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
         if(edited)Text("Edited ·",color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         Text(time,color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         if(own){
             val status=if(read)"Read" else if(delivered)"Delivered" else "Sent"
-            val tint by animateColorAsState(if(read)Color(0xFFB5FFF4)else foreground,tween(150),label="Receipt tint")
-            Crossfade(targetState=status,animationSpec=tween(120),modifier=Modifier.size(15.dp),label="Receipt status"){state->
+            val tint by animateColorAsState(if(read)seraChatColors().read else foreground,tween(150),label="Receipt tint")
+            Crossfade(targetState=status,animationSpec=tween(120),modifier=Modifier.size(16.dp),label="Receipt status"){state->
                 Icon(if(state=="Sent")Icons.Outlined.Check else Icons.Outlined.DoneAll,contentDescription=state,tint=tint,modifier=Modifier.fillMaxSize())
             }
         }
