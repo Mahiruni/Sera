@@ -157,7 +157,7 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                                 val read = message.readAt.isNotBlank() && message.readAt != "null"
                                 val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
                                 Row(verticalAlignment=Alignment.CenterVertically){
-                                    SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)palette.outgoingMeta else muted,edited=message.editedAt.isNotBlank()&&!message.unsent)
+                                    Column{SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)palette.outgoingMeta else muted,edited=message.editedAt.isNotBlank()&&!message.unsent)}
                                     if(!message.unsent&&!readOnly&&!selectionMode)IconButton(onClick={onMenu(false);optionsOpen=true},modifier=Modifier.size(28.dp).semantics{contentDescription="Message options"}){Icon(Icons.Outlined.MoreVert,null,Modifier.size(15.dp),tint=if(own)palette.outgoingMeta else muted)}
                                 }
                         }
