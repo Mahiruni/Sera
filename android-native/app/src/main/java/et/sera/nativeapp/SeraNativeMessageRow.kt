@@ -112,20 +112,21 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                     if(info)SeraMessageInfo(message,own,onDismiss={info=false})
                     var editOpen by remember(message.id){mutableStateOf(false)}
                     if(editOpen)SeraEditMessageDialog(token,message,onDismiss={editOpen=false},onSaved={editOpen=false;onLibraryChanged()})
+                    var optionsOpen by remember(message.id){mutableStateOf(false)}
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent&&!readOnly&&!selectionMode) Box {
-                            DropdownMenu(expanded=menuOpen,onDismissRequest={onMenu(false)}) {
-                                Row(Modifier.padding(horizontal=8.dp,vertical=5.dp).width(240.dp),horizontalArrangement=Arrangement.SpaceEvenly){listOf("👍","❤️","😂","😮","😢","🔥").forEach{emoji->TextButton(onClick={onReaction(emoji);onMenu(false)},contentPadding=PaddingValues(0.dp),modifier=Modifier.size(38.dp).semantics{contentDescription="React "+emoji}){Text(emoji,fontSize=20.sp)}}}
-                                HorizontalDivider(Modifier.padding(vertical=4.dp))
-                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Check,null)},text={Text("Select message")},onClick={onMenu(false);onSelect()})
-                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Reply,null)},text={Text("Reply")},onClick={onReply();onMenu(false)})
-                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.SentimentSatisfiedAlt,null)},text={Text("React")},onClick={onReact();onMenu(false)})
-                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Forward,null)},text={Text("Forward")},onClick={onForward();onMenu(false)})
-                                if(message.body.isNotBlank())DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.ContentCopy,null)},text={Text("Copy text")},onClick={onCopy();onMenu(false)})
-                                if(conversationId.isNotBlank())SeraMessageLibraryActions(token,conversationId,message,userId,menuOpen,onClose={onMenu(false)},onChanged=onLibraryChanged,onError=onError)
-                                if(own&&message.files.isEmpty()&&seraCanEdit(message.createdAt))DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Edit,null)},text={Text("Edit message")},onClick={editOpen=true;onMenu(false)})
-                                if(own)DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Info,null)},text={Text("Message info")},onClick={info=true;onMenu(false)})
-                                if(own)DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.DeleteOutline,null,tint=MaterialTheme.colorScheme.error)},text={Text("Unsend",color=MaterialTheme.colorScheme.error)},onClick={onUnsend();onMenu(false)})
+                            DropdownMenu(expanded=menuOpen,onDismissRequest={onMenu(false)},shape=CircleShape,containerColor=palette.canvas,tonalElevation=0.dp,shadowElevation=6.dp) {
+                                SeraEmojiReactionStrip(onReaction={emoji->onReaction(emoji);onMenu(false)})
+                            }
+                            DropdownMenu(expanded=optionsOpen,onDismissRequest={optionsOpen=false},shape=RoundedCornerShape(18.dp),containerColor=palette.canvas) {
+                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Check,null)},text={Text("Select message")},onClick={optionsOpen=false;onSelect()})
+                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Reply,null)},text={Text("Reply")},onClick={onReply();optionsOpen=false})
+                                DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Forward,null)},text={Text("Forward")},onClick={onForward();optionsOpen=false})
+                                if(message.body.isNotBlank())DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.ContentCopy,null)},text={Text("Copy text")},onClick={onCopy();optionsOpen=false})
+                                if(conversationId.isNotBlank())SeraMessageLibraryActions(token,conversationId,message,userId,optionsOpen,onClose={optionsOpen=false},onChanged=onLibraryChanged,onError=onError)
+                                if(own&&message.files.isEmpty()&&seraCanEdit(message.createdAt))DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Edit,null)},text={Text("Edit message")},onClick={editOpen=true;optionsOpen=false})
+                                if(own)DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.Info,null)},text={Text("Message info")},onClick={info=true;optionsOpen=false})
+                                if(own)DropdownMenuItem(leadingIcon={Icon(Icons.Outlined.DeleteOutline,null,tint=MaterialTheme.colorScheme.error)},text={Text("Unsend",color=MaterialTheme.colorScheme.error)},onClick={onUnsend();optionsOpen=false})
                             }
                         }
                     }
@@ -135,7 +136,7 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                             if(kotlin.math.abs(swipe)>4f)Box(Modifier.align(if(own)Alignment.CenterEnd else Alignment.CenterStart).size(36.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.Reply,null,tint=accent.copy(alpha=(kotlin.math.abs(swipe)/swipeThreshold).coerceIn(.25f,1f)),modifier=Modifier.size(20.dp))}
                             SeraCompactMessageBubble(own=own,
                             color = if(message.unsent) inboxSoft else if (own) outgoing else incoming,
-                            modifier = Modifier.widthIn(max = if(selectionMode)maxBubbleWidth*.86f else maxBubbleWidth).testTag("sera_message_"+message.id).then(if(highlight>0f)Modifier.border(2.dp,accent.copy(alpha=highlight),seraChatBubbleShape(own))else Modifier).then(if(!message.unsent&&!readOnly&&!selectionMode)Modifier.semantics{onLongClick(label="Message actions"){onMenu(true);true};customActions=listOf(CustomAccessibilityAction("Reply"){onReply();true},CustomAccessibilityAction("Quick reaction"){onReaction("❤️");true})}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent&&!readOnly&&!selectionMode)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={latestMenu(true)},onDoubleTap={haptics.performHapticFeedback(HapticFeedbackType.LongPress);latestReaction("❤️")})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragStart={armed=false},onDragCancel={swipe=0f;armed=false},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold)latestReply();swipe=0f;armed=false},onHorizontalDrag={change,amount->change.consume();swipe=seraReplyDrag(swipe,amount,own,swipeThreshold);val reached=kotlin.math.abs(swipe)>=swipeThreshold;if(reached&&!armed)haptics.performHapticFeedback(HapticFeedbackType.LongPress);armed=reached})}else Modifier)) {
+                            modifier = Modifier.widthIn(max = if(selectionMode)maxBubbleWidth*.86f else maxBubbleWidth).testTag("sera_message_"+message.id).then(if(highlight>0f)Modifier.border(2.dp,accent.copy(alpha=highlight),seraChatBubbleShape(own))else Modifier).then(if(!message.unsent&&!readOnly&&!selectionMode)Modifier.semantics{onLongClick(label="Emoji reactions"){onMenu(true);true};customActions=listOf(CustomAccessibilityAction("Reply"){onReply();true},CustomAccessibilityAction("Quick reaction"){onReaction("❤️");true},CustomAccessibilityAction("Message options"){optionsOpen=true;true})}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent&&!readOnly&&!selectionMode)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={latestMenu(true)},onDoubleTap={haptics.performHapticFeedback(HapticFeedbackType.LongPress);latestReaction("❤️")})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragStart={armed=false},onDragCancel={swipe=0f;armed=false},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold)latestReply();swipe=0f;armed=false},onHorizontalDrag={change,amount->change.consume();swipe=seraReplyDrag(swipe,amount,own,swipeThreshold);val reached=kotlin.math.abs(swipe)>=swipeThreshold;if(reached&&!armed)haptics.performHapticFeedback(HapticFeedbackType.LongPress);armed=reached})}else Modifier)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",style=seraChatMeta(MaterialTheme.typography.labelSmall),color=if(own)palette.outgoingMeta else accent)
                                 if(message.replyId.isNotBlank()&&!message.unsent){val original=originalMessage;Surface(color=if(own)palette.outgoingQuote else palette.quote,shape=RoundedCornerShape(12.dp),modifier=Modifier.padding(bottom=5.dp).testTag("sera_quote_"+message.id).then(if(!readOnly&&!selectionMode)Modifier.clickable{onQuote(message.replyId)}else Modifier)){Row(Modifier.height(IntrinsicSize.Min)){Box(Modifier.width(3.dp).fillMaxHeight().background(if(own)palette.outgoingLink else accent));Column(Modifier.padding(horizontal=10.dp,vertical=7.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(if(original?.senderId==userId)"You" else peerName,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.SemiBold,color=if(own)palette.outgoingLink else accent,maxLines=1);Text(if(original?.unsent==true)"Message unsent" else original?.body?.take(100)?:"Earlier message",style=MaterialTheme.typography.bodySmall,color=if(own)palette.onOutgoing else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}}}
                                 if(message.unsent||message.files.isEmpty()||message.body !in listOf("Attachment","Voice message"))SeraRichMessageText(if(message.unsent) "Message unsent" else message.body,color=if(message.unsent)muted else if(own)palette.onOutgoing else inboxInk,linkColor=if(own)palette.outgoingLink else accent)
@@ -155,11 +156,22 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                                 val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
                                 val read = message.readAt.isNotBlank() && message.readAt != "null"
                                 val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
-                                SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)palette.outgoingMeta else muted,edited=message.editedAt.isNotBlank()&&!message.unsent)
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    Column{SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)palette.outgoingMeta else muted,edited=message.editedAt.isNotBlank()&&!message.unsent)}
+                                    if(!message.unsent&&!readOnly&&!selectionMode)IconButton(onClick={onMenu(false);optionsOpen=true},modifier=Modifier.size(28.dp).semantics{contentDescription="Message options"}){Icon(Icons.Outlined.MoreVert,null,Modifier.size(15.dp),tint=if(own)palette.outgoingMeta else muted)}
+                                }
                         }
 
                         actions() }
                     }
+}
+
+@Composable internal fun SeraEmojiReactionStrip(onReaction:(String)->Unit){
+    Row(Modifier.padding(horizontal=6.dp).width(264.dp),horizontalArrangement=Arrangement.SpaceEvenly){
+        listOf("👍","❤️","😂","😮","😢","🔥").forEach{emoji->
+            TextButton(onClick={onReaction(emoji)},contentPadding=PaddingValues(0.dp),modifier=Modifier.size(44.dp).semantics{contentDescription="React "+emoji}){Text(emoji,fontSize=23.sp)}
+        }
+    }
 }
 
 internal fun seraReplyDrag(current:Float,delta:Float,own:Boolean,threshold:Float):Float = if(own)(current+delta).coerceIn(-threshold*1.4f,0f) else (current+delta).coerceIn(0f,threshold*1.4f)
