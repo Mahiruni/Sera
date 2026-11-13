@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -112,14 +113,16 @@ import java.net.URL
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
                 val timeline=(filteredMessages.map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.filter{messageSearch.isBlank()||"voice call".contains(messageSearch,true)}.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
                 itemsIndexed(timeline,key={_,item->item.message?.let(::messageTimelineKey)?:"call-"+item.event?.id}) { index,item ->
+                    Column(Modifier.animateItem(fadeInSpec=tween(140),placementSpec=null,fadeOutSpec=tween(100))){
                     val date=runCatching{java.time.Instant.parse(item.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
                     val previousDate=timeline.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
                     val message=item.message
                     if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={onMenu(if(it)message.id else null)},onReply={onReply(message)},onReact={onReact(message)},onForward={onForward(message)},onCopy={onCopy(message)},onUnsend={onUnsend(message)},onReaction={onReaction(message,it)},onImage=onImage,onError=onError)
+                    }
                 }
                 items(pendingTexts.filter{messageSearch.isBlank()||it.body.contains(messageSearch,true)},key={"client-"+userId+"-"+it.id}){p->
-                    SeraPendingTextBubble(p,connectionAvailable,outgoing,maxBubbleWidth,onRetry={onRetryText(p.id)})
+                    Box(Modifier.animateItem(fadeInSpec=tween(140),placementSpec=null,fadeOutSpec=null)) { SeraPendingTextBubble(p,connectionAvailable,outgoing,maxBubbleWidth,onRetry={onRetryText(p.id)}) }
                 }
             }
 

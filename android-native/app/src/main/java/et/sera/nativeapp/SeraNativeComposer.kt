@@ -130,7 +130,7 @@ internal fun SeraNativeComposer(
                 Icon(Icons.Outlined.AttachFile, "Open attachment studio", tint = if (locked || checkingFile) muted else accent)
             }
             SeraMessageInput(draft, onDraftChange, ink, soft, muted, accent,
-                readOnly = locked, modifier = Modifier.weight(1f))
+                readOnly = locked, modifier = Modifier.weight(1f), replyFocusId=reply?.id)
         }
         if (recordingVoice || (!hasContent && !locked)) {
             SeraChatVoice(enabled = !locked && !checkingFile && attachment == null && album.isEmpty(),

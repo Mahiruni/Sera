@@ -10,6 +10,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Reply
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.platform.LocalContext
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -82,10 +85,12 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val haptics=LocalHapticFeedback.current
-    val swipeThreshold=with(LocalDensity.current){64.dp.toPx()}
+    val swipeThreshold=with(LocalDensity.current){48.dp.toPx()}
                     val own = message.senderId == userId
                     var swipe by remember(message.id){mutableFloatStateOf(0f)}
-                    val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(110),label="Reply gesture")
+                    val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(if(swipe==0f)150 else 0),label="Reply gesture")
+                    var armed by remember(message.id){mutableStateOf(false)}
+                    val latestReply by rememberUpdatedState(onReply)
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent) Box {
                             DropdownMenu(expanded=menuOpen,onDismissRequest={onMenu(false)}) {
@@ -98,9 +103,11 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,verticalAlignment=Alignment.Bottom) {
-                        Box { SeraCompactMessageBubble(own=own,
+                        Box {
+                            if(kotlin.math.abs(swipe)>4f)Box(Modifier.align(if(own)Alignment.CenterEnd else Alignment.CenterStart).size(36.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.Reply,null,tint=accent.copy(alpha=(kotlin.math.abs(swipe)/swipeThreshold).coerceIn(.25f,1f)),modifier=Modifier.size(20.dp))}
+                            SeraCompactMessageBubble(own=own,
                             color = if(message.unsent) inboxSoft else if (own) outgoing else incoming,
-                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.semantics{onLongClick(label="Message actions"){onMenu(true);true}}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={onMenu(true)})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragCancel={swipe=0f},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold){onReply();haptics.performHapticFeedback(HapticFeedbackType.LongPress)};swipe=0f},onHorizontalDrag={change,amount->change.consume();swipe=if(own)(swipe+amount).coerceIn(-swipeThreshold*1.4f,0f)else(swipe+amount).coerceIn(0f,swipeThreshold*1.4f)})}else Modifier)) {
+                            modifier = Modifier.widthIn(max = maxBubbleWidth).then(if(!message.unsent)Modifier.semantics{onLongClick(label="Message actions"){onMenu(true);true};customActions=listOf(CustomAccessibilityAction("Reply"){onReply();true})}else Modifier).offset{IntOffset(swipeOffset.roundToInt(),0)}.then(if(!message.unsent)Modifier.pointerInput(message.id){detectTapGestures(onLongPress={onMenu(true)})}.pointerInput(message.id,own,swipeThreshold){detectHorizontalDragGestures(onDragStart={armed=false},onDragCancel={swipe=0f;armed=false},onDragEnd={if(kotlin.math.abs(swipe)>=swipeThreshold)latestReply();swipe=0f;armed=false},onHorizontalDrag={change,amount->change.consume();swipe=seraReplyDrag(swipe,amount,own,swipeThreshold);val reached=kotlin.math.abs(swipe)>=swipeThreshold;if(reached&&!armed)haptics.performHapticFeedback(HapticFeedbackType.LongPress);armed=reached})}else Modifier)) {
                                 if(message.forwarded&&!message.unsent)Text("Forwarded",fontSize=10.sp,color=if(own)Color.White else accent)
                                 if(message.replyId.isNotBlank()&&!message.unsent){val original=originalMessage;Surface(color=if(own)Color.Black.copy(alpha=.12f)else chatSurface,shape=RoundedCornerShape(9.dp),modifier=Modifier.padding(bottom=5.dp)){Row(Modifier.height(IntrinsicSize.Min)){Box(Modifier.width(3.dp).fillMaxHeight().background(if(own)Color(0xFFB5FFF4)else accent));Column(Modifier.padding(horizontal=8.dp,vertical=5.dp)){Text(if(original?.senderId==userId)"You" else peerName,fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=if(own)Color(0xFFB5FFF4)else accent,maxLines=1);Text(if(original?.unsent==true)"Message unsent" else original?.body?.take(100)?:"Earlier message",fontSize=12.sp,color=if(own)Color.White else inboxInk,maxLines=2,overflow=TextOverflow.Ellipsis)}}}}
                                 if(message.unsent||message.files.isEmpty()||message.body !in listOf("Attachment","Voice message"))Text(if(message.unsent) "Message unsent" else message.body,color=if(message.unsent)muted else if(own)Color.White else inboxInk,fontSize=14.sp,lineHeight=20.sp)
@@ -126,3 +133,5 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                         actions() }
                     }
 }
+
+internal fun seraReplyDrag(current:Float,delta:Float,own:Boolean,threshold:Float):Float = if(own)(current+delta).coerceIn(-threshold*1.4f,0f) else (current+delta).coerceIn(0f,threshold*1.4f)

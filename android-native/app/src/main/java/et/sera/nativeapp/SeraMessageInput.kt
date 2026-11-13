@@ -15,6 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
@@ -35,12 +38,15 @@ internal const val SERA_MESSAGE_LIMIT = 4000
 internal fun SeraMessageInput(
     draft: String, onDraftChange: (String) -> Unit,
     ink: Color, soft: Color, muted: Color, accent: Color,
-    readOnly: Boolean, modifier: Modifier = Modifier
+    readOnly: Boolean, modifier: Modifier = Modifier, replyFocusId:String?=null
 ) {
     var editor by remember { mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) }
     val value = if (editor.text == draft) editor else TextFieldValue(draft, TextRange(draft.length))
     SideEffect { if (editor.text != draft) editor = value }
     var focused by remember { mutableStateOf(false) }
+    val requester=remember{FocusRequester()}
+    val keyboard=LocalSoftwareKeyboardController.current
+    LaunchedEffect(replyFocusId){if(replyFocusId!=null&&!readOnly){requester.requestFocus();keyboard?.show()}}
     var emojiOpen by remember { mutableStateOf(false) }
     var limitReached by remember { mutableStateOf(false) }
     LaunchedEffect(readOnly) { if (readOnly) emojiOpen = false }
@@ -62,7 +68,7 @@ internal fun SeraMessageInput(
             BasicTextField(
                 value = value, onValueChange = ::update, readOnly = readOnly,
                 modifier = Modifier.weight(1f).padding(vertical = 12.dp)
-                    .onFocusChanged { focused = it.isFocused }
+                    .focusRequester(requester).onFocusChanged { focused = it.isFocused }
                     .testTag("sera_message_input")
                     .semantics { contentDescription = "Message input" },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = ink, fontSize = 15.sp, lineHeight = 21.sp),

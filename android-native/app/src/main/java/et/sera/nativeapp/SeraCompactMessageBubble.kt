@@ -1,6 +1,10 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -31,8 +35,10 @@ internal fun ColumnScope.SeraCompactReceipt(time:String,own:Boolean,delivered:Bo
         Text(time,color=foreground,fontSize=10.sp)
         if(own){
             val status=if(read)"Read" else if(delivered)"Delivered" else "Sent"
-            Icon(if(delivered||read)Icons.Outlined.DoneAll else Icons.Outlined.Check,contentDescription=status,
-                tint=if(read)Color(0xFFB5FFF4)else foreground,modifier=Modifier.size(15.dp))
+            val tint by animateColorAsState(if(read)Color(0xFFB5FFF4)else foreground,tween(150),label="Receipt tint")
+            Crossfade(targetState=status,animationSpec=tween(120),modifier=Modifier.size(15.dp),label="Receipt status"){state->
+                Icon(if(state=="Sent")Icons.Outlined.Check else Icons.Outlined.DoneAll,contentDescription=state,tint=tint,modifier=Modifier.fillMaxSize())
+            }
         }
     }
 }

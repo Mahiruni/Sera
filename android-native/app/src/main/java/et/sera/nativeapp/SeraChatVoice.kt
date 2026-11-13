@@ -35,6 +35,7 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
     var file by remember { mutableStateOf<File?>(null) }
     var started by remember { mutableLongStateOf(0L) }
     var seconds by remember { mutableIntStateOf(0) }
+    var levels by remember { mutableStateOf(List(18){0f}) }
     fun finish(keep:Boolean){
         val r=recorder?:return
         val f=file
@@ -58,13 +59,29 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
             r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);r.setAudioEncodingBitRate(64000);r.setAudioSamplingRate(44100)
             r.setOutputFile(f.absolutePath);r.setMaxDuration(120000);r.setMaxFileSize(5L*1024*1024)
             r.setOnInfoListener{_,what,_->if(what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED || what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED)finish(true)}
-            r.prepare();r.start();started=SystemClock.elapsedRealtime();seconds=0
+            r.prepare();r.start();started=SystemClock.elapsedRealtime();seconds=0;levels=List(18){0f}
         }catch(_:Exception){runCatching{recorder?.release()};recorder=null;file?.delete();file=null;onError("Microphone is unavailable.")}
     }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)start() else onError("Microphone permission is required for voice messages.")}
-    LaunchedEffect(recorder){onRecordingChange(recorder!=null);while(recorder!=null){seconds=((SystemClock.elapsedRealtime()-started)/1000).toInt().coerceIn(0,120);delay(250)}}
+    LaunchedEffect(recorder){onRecordingChange(recorder!=null);while(recorder!=null){seconds=((SystemClock.elapsedRealtime()-started)/1000).toInt().coerceIn(0,120);val level=runCatching{recorder?.maxAmplitude?:0}.getOrDefault(0);levels=levels.drop(1)+seraVoiceLevel(level);delay(100)}}
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_STOP&&recorder!=null)finish(false)};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);if(recorder!=null)finish(false)}}
-    if(recorder!=null){Surface(shape=RoundedCornerShape(24.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){Box(Modifier.size(10.dp).background(Color(0xFFD04452),CircleShape));Column(Modifier.weight(1f)){Text("Recording voice message",fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text("%d:%02d / 2:00".format(seconds/60,seconds%60),fontSize=12.sp)};IconButton(onClick={finish(false)}){Icon(Icons.Outlined.Close,"Cancel recording")};FilledIconButton(onClick={finish(true)},colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color(0xFF08747A),contentColor=Color.White)){Icon(Icons.Outlined.Stop,"Finish recording")}}}}
-    else FilledIconButton(colors=IconButtonDefaults.filledIconButtonColors(containerColor=accent,contentColor=Color(0xFF10383B)),enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Mic,"Record voice message",tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF10383B)else Color.White)}
+    if(recorder!=null){
+        Surface(shape=RoundedCornerShape(24.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth()){
+            Row(Modifier.padding(horizontal=8.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                IconButton(onClick={finish(false)},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Close,"Cancel recording")}
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
+                        Box(Modifier.size(7.dp).background(Color(0xFFD04452),CircleShape))
+                        Text("Recording · %d:%02d".format(seconds/60,seconds%60),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                    }
+                    SeraLiveWaveform(levels,accent,Modifier.fillMaxWidth().height(24.dp))
+                }
+                FilledIconButton(onClick={finish(true)},modifier=Modifier.size(48.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color(0xFF08747A),contentColor=Color.White)){Icon(Icons.Outlined.Stop,"Finish recording")}
+            }
+        }
+    }
+    else FilledIconButton(colors=IconButtonDefaults.filledIconButtonColors(containerColor=accent,contentColor=Color(0xFF10383B)),enabled=enabled,onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start() else permission.launch(Manifest.permission.RECORD_AUDIO)},modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Mic,"Record voice message",tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF10383B)else Color.White)}
 }
+
+internal fun seraVoiceLevel(amplitude:Int):Float = kotlin.math.sqrt((amplitude.coerceIn(0,32767)/32767f)).coerceIn(0f,1f)
