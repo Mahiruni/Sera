@@ -3,6 +3,7 @@ import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Provider } from "@/components/store";
+import { SeraVoiceProvider } from "@/components/network/sera-voice-call";
 import { memberCard } from "@/lib/activity/members";
 import { currentUser,serverClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/shell";
@@ -77,6 +78,7 @@ export default async function RootLayout({
       <body>
         <WebsiteData />
         <Provider initialLocale={language}>
+          <SeraVoiceProvider key={user?.email_confirmed_at?user.id:"guest"} userId={user?.email_confirmed_at?user.id:""}>
           <Shell
             profileName={member?.name||ownProfile?.data?.full_name||"SERA member"}
             profileId={user?.email_confirmed_at?user.id:""}
@@ -88,6 +90,7 @@ export default async function RootLayout({
           >
             {children}
           </Shell>
+          </SeraVoiceProvider>
         </Provider>
       </body>
     </html>
