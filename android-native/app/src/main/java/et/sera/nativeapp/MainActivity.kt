@@ -233,7 +233,7 @@ fun SeraApp(
         installerPermissionRequired = false
         updateNotice = ""
         installScope.launch {
-            val result = withContext(Dispatchers.IO) { openSeraInstaller(context, id) }
+            val result = withContext(Dispatchers.IO) { openSeraInstaller(context, id, activeRelease?.sha256.orEmpty()) }
             preparingInstaller = false
             when (result) {
                 SeraInstallResult.LAUNCHED -> {
@@ -273,7 +273,7 @@ fun SeraApp(
         }
     }
     LaunchedEffect(updateForeground,updateDownloaded,activeDownloadId,automaticAttempted,restoring,installerPermissionRequired) {
-        if (updateForeground && !restoring && updateDownloaded && !automaticAttempted) launchVerifiedInstaller()
+        if (shouldAutomaticallyOfferSeraInstall(updateForeground,restoring,updateDownloaded,automaticAttempted)) launchVerifiedInstaller()
     }
     // A receiver result can arrive while SERA is still resumed (for example an
     // installer launch failure). Poll only while an approval is outstanding.
@@ -690,7 +690,7 @@ fun SeraApp(
                     }
                 }
             }
-            if (activeDownloadId != null && !installerRequested && !preparingInstaller) {
+            if (activeDownloadId != null && !installerRequested && !preparingInstaller && WindowInsets.ime.getBottom(LocalDensity.current)==0) {
                 val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 SeraUpdateProgressPanel(highlights=activeRelease?.highlights.orEmpty(),version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={openUpdatePermission()},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 76.dp else 12.dp))
             }
