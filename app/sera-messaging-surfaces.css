@@ -209,3 +209,7 @@ html[data-sera-theme=dark] .sera-chat-page {
  .sera-chat-resize-handle:focus-visible{outline:2px solid var(--chat-accent,#087e83);outline-offset:-3px}
 }
 @media(prefers-reduced-motion:reduce){.sera-chat-page .sera-chat-wrapper-90{transition:none}}
+
+/* A single quiet hairline between conversations; leave avatars and row states intact. */
+.sera-chat-page .sera-chat-list-item{position:relative}
+.sera-chat-page .sera-chat-list-item + .sera-chat-list-item::before{content:"";position:absolute;inset-inline-start:72px;inset-inline-end:12px;top:-1px;height:1px;border-radius:999px;background:var(--chat-line);opacity:.55;pointer-events:none}
