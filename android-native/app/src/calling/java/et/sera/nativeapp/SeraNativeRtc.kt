@@ -93,7 +93,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             }
         }
     }
-    val videoEgl:EglBase?=if(videoMode)EglBase.create() else null
+    val videoEgl:EglBase?
     private var cameraSource:VideoSource?=null
     private var cameraTrack:VideoTrack?=null
     private var cameraSender:RtpSender?=null
@@ -118,6 +118,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     init {
         android.util.Log.i("SeraRtc","Initializing WebRTC")
         ensureInitialized(context)
+        videoEgl=if(videoMode)EglBase.create() else null
         factory=PeerConnectionFactory.builder().apply{videoEgl?.let{egl->setVideoEncoderFactory(DefaultVideoEncoderFactory(egl.eglBaseContext,true,true));setVideoDecoderFactory(DefaultVideoDecoderFactory(egl.eglBaseContext))}}.createPeerConnectionFactory()
         android.util.Log.i("SeraRtc","WebRTC factory ready")
         val servers=config.getJSONArray("iceServers")
