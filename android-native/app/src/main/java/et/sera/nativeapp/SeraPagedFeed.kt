@@ -108,7 +108,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
                 top = 73.dp, bottom = 92.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(if(savedOnly)10.dp else 0.dp)
         ) {
             item(key="feed-mode") { if(savedOnly)Text(stringResource(R.string.saved_posts),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text(stringResource(R.string.latest))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true},label={Text(stringResource(R.string.for_you))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
             if(!savedOnly) item(key="home-compose") { Box(Modifier.padding(top=6.dp,bottom=10.dp)){SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose)} }
