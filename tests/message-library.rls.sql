@@ -56,26 +56,26 @@ set local role authenticated;
 with i as (insert into public.professional_messages(conversation_id,sender_id,body) select thread,a,'Library advanced test' from privacy_fixture returning id) update privacy_fixture set message=i.id from i;
 select public.sera_set_message_pin(thread,message,true) from privacy_fixture;
 select public.sera_set_message_star(message,true) from privacy_fixture;
-do $ begin
+do $$ begin
  if (select count(*) from public.sera_message_library_v2((select thread from privacy_fixture),'pin'))<>2 then raise exception 'Multiple pins missing';end if;
  if not exists(select 1 from public.sera_message_library_v2(null,'star') where id=(select message from privacy_fixture)) then raise exception 'Global star missing';end if;
  if not exists(select 1 from public.sera_message_library_v2((select thread from privacy_fixture),'search','advanced','you',now()-interval '1 day',now()+interval '1 day')) then raise exception 'Search filters failed';end if;
  if exists(select 1 from public.sera_message_library_v2((select thread from privacy_fixture),'search','advanced','contact')) then raise exception 'Sender filter failed';end if;
  if not exists(select 1 from public.sera_message_context((select thread from privacy_fixture),(select message from privacy_fixture)) where id=(select second from privacy_fixture)) then raise exception 'Context missing';end if;
-end $;
+end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',b)::text,true) from privacy_fixture;
 set local role authenticated;
-do $ begin
+do $$ begin
  if exists(select 1 from public.sera_message_library_v2(null,'star')) then raise exception 'Global star leaked';end if;
  if (select count(*) from public.sera_message_library_v2((select thread from privacy_fixture),'pin'))<>2 then raise exception 'Shared pins missing';end if;
-end $;
+end $$;
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',c)::text,true) from privacy_fixture;
 set local role authenticated;
-do $ begin
+do $$ begin
  if exists(select 1 from public.sera_message_context((select thread from privacy_fixture),(select message from privacy_fixture))) then raise exception 'Outsider history leak';end if;
-end $;
+end $$;
 reset role;
 select 'PASS: message library, multiple pins, global stars, filters and history authorization' as result;
 rollback;
