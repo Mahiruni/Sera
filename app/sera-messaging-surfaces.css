@@ -209,3 +209,9 @@ html[data-sera-theme=dark] .sera-chat-page {
  .sera-chat-resize-handle:focus-visible{outline:2px solid var(--chat-accent,#087e83);outline-offset:-3px}
 }
 @media(prefers-reduced-motion:reduce){.sera-chat-page .sera-chat-wrapper-90{transition:none}}
+
+.sera-chat-inbox-group{position:relative;padding-inline-end:28px}
+.sera-chat-inbox-group+.sera-chat-inbox-group::before{content:"";position:absolute;inset-inline:72px 12px;top:0;height:1px;border-radius:999px;background:var(--chat-line);opacity:.55;pointer-events:none}
+.sera-inbox-quick-toggle{position:absolute;inset-inline-end:0;top:22px;min-width:28px;height:36px;border:0;background:transparent;color:var(--chat-muted);border-radius:12px;cursor:pointer}
+.sera-inbox-quick-actions{display:flex;justify-content:space-evenly;gap:4px;padding:4px 0 8px 58px;flex-wrap:wrap}
+.sera-inbox-quick-actions button,.sera-voice-speed{border:0;border-radius:12px;padding:8px;color:var(--chat-accent);background:var(--chat-quote);font-size:12px;cursor:pointer}
