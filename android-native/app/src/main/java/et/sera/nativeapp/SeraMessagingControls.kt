@@ -50,6 +50,7 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
+ SeraPresenceSettings(token,userId)
  if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
  }
  },confirmButton={TextButton(enabled=loaded&&!busy,onClick={

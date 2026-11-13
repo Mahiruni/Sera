@@ -25,3 +25,10 @@ export async function saveTypingVisibility(form:FormData){
  if(error)throw new Error("Could not save typing privacy.");
  revalidatePath("/settings/messaging");
 }
+
+export async function saveMessagingActivity(form:FormData){
+ const user=await currentUser();if(!user?.email_confirmed_at)return;
+ const db=await serverClient();const {error}=await db.rpc("sera_presence_heartbeat",{p_visibility:form.get("activity")==="on"?"connections":"hidden"});
+ if(error)throw new Error("Could not save activity privacy.");
+ revalidatePath("/settings/messaging");
+}

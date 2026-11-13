@@ -5,6 +5,8 @@ export function ProfessionalPresence({ member, compact = false }: { member: stri
   const [clock, setClock] = useState(() => Date.now());
   const [online, setOnline] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [sharingLoaded,setSharingLoaded]=useState(false);
+  useEffect(()=>{if(compact)return;let active=true;const poll=async()=>{try{const r=await fetch("/api/network/presence?member=self",{cache:"no-store"});if(r.ok&&active){setSharing(Boolean((await r.json()).sharing));setSharingLoaded(true);}}catch{}};void poll();const id=window.setInterval(poll,15000);return()=>{active=false;clearInterval(id);};},[compact]);
   useEffect(() => {
     let active = true;
     const poll = async () => {
@@ -25,7 +27,7 @@ export function ProfessionalPresence({ member, compact = false }: { member: stri
     if (!sharing) return;
     const heartbeat = () => {
       if (document.visibilityState !== "visible") return;
-      void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"connections"})}).catch(()=>{});
+      void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})}).catch(()=>{});
     };
     heartbeat();
     const interval=window.setInterval(heartbeat,45000);
@@ -34,5 +36,5 @@ export function ProfessionalPresence({ member, compact = false }: { member: stri
   const minutes = lastSeenAt ? Math.max(0, Math.floor((clock - new Date(lastSeenAt).getTime()) / 60000)) : null;
   const status = online ? "Online now" : minutes === null ? "Activity hidden" : minutes < 1 ? "Active just now" : minutes < 60 ? `Active ${minutes} min ago` : minutes < 1440 ? `Active ${Math.floor(minutes / 60)} hr ago` : `Active ${Math.floor(minutes / 1440)} days ago`;
   if (compact) return <span className="sera-member-activity" role="status"><span aria-hidden="true" className={online ? "sera-presence-dot is-online" : "sera-presence-dot"} />{status}</span>;
-  return <span style={{display:"inline-flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><span role="status" aria-label={online?"Online now":"Offline or hidden"} style={{fontSize:12,color:online?"#087c73":"#68838c"}}>{online?"● Online now":"Offline or hidden"}</span><button type="button" onClick={()=>{const next=!sharing;setSharing(next);if(!next)void fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:"hidden"})}).catch(()=>{});}} style={{border:"1px solid #b4d8df",borderRadius:12,padding:"5px 10px",fontSize:12}}>{sharing?"Hide my online status":"Share my online status"}</button></span>;
+  return <span style={{display:"inline-flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><span role="status" aria-label={online?"Online now":"Offline or hidden"} style={{fontSize:12,color:online?"#087c73":"#68838c"}}>{online?"● Online now":"Offline or hidden"}</span><button type="button" disabled={!sharingLoaded} onClick={async()=>{const next=!sharing;try{const r=await fetch("/api/network/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visibility:next?"connections":"hidden"})});if(r.ok)setSharing(next);}catch{}}} style={{border:"1px solid #b4d8df",borderRadius:12,padding:"5px 10px",fontSize:12}}>{sharing?"Hide my online status":"Share my online status"}</button></span>;
 }
