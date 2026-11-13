@@ -123,6 +123,7 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val context=LocalContext.current
+    val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
     val person=hit.kind=="People"
     val verified by produceState(false,token,hit.id,person){value=person&&withContext(Dispatchers.IO){hit.id in identityBadges(token,listOf(hit.id))}}
     androidx.activity.compose.BackHandler{if(thread!=null)thread=null else onBack()}
@@ -146,12 +147,12 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
             }
             if(person){
                 SeraTalentActions(token,userId,item.id,onMessage={thread=it})
-                OutlinedButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,Uri.parse("https://sera.hisabtech.com/members/"+Uri.encode(item.id))))}},modifier=Modifier.fillMaxWidth()){Text("View full professional profile")}
+                OutlinedButton(onClick={runCatching{linkHandler.openUri("https://sera.hisabtech.com/members/"+Uri.encode(item.id))}},modifier=Modifier.fillMaxWidth()){Text("View full professional profile")}
             }else{
                 Text("About the role",style=MaterialTheme.typography.titleMedium)
                 Text(item.body)
                 Button(onClick={busy=true;error="";scope.launch{val result=withContext(Dispatchers.IO){startCompanyJobChat(token,item.id)};busy=false;if(result.first!=null)thread=result.first else error=result.second}},enabled=!busy&&userId.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text(if(busy)"Opening conversation…" else "Message company")}
-                OutlinedButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,Uri.parse("https://sera.hisabtech.com/jobs/"+Uri.encode(item.id))))}},modifier=Modifier.fillMaxWidth()){Text("View full listing on SERA")}
+                OutlinedButton(onClick={runCatching{linkHandler.openUri("https://sera.hisabtech.com/jobs/"+Uri.encode(item.id))}},modifier=Modifier.fillMaxWidth()){Text("View full listing on SERA")}
             }
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         }

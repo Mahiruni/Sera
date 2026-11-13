@@ -56,14 +56,9 @@ private const val SERA_PRODUCTION_ORIGIN = "https://sera.hisabtech.com"
  * The SERA website hosts legal information and social OAuth.
  * Account registration is handled by the native Supabase Auth flow.
  */
-private fun openSeraSite(context: Context, path: String) {
+private fun openSeraSite(handler: androidx.compose.ui.platform.UriHandler, path: String) {
     val normalized = path.trimStart('/')
-    val uri = Uri.parse("$SERA_PRODUCTION_ORIGIN/$normalized")
-    try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
-    } catch (_: Exception) {
-        Toast.makeText(context, "No browser found. Visit sera.hisabtech.com", Toast.LENGTH_LONG).show()
-    }
+    handler.openUri("$SERA_PRODUCTION_ORIGIN/$normalized")
 }
 
 @Composable
@@ -132,6 +127,7 @@ private fun SeraSocialFirstSignIn(
     onTogglePassword: () -> Unit
 ) {
     val context = LocalContext.current
+    val linkHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var pending by remember { mutableStateOf(nativeOAuthPending(context)) }
     var googleBusy by remember { mutableStateOf(false) }
     val googleScope = rememberCoroutineScope()
@@ -268,8 +264,8 @@ private fun SeraSocialFirstSignIn(
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = { openSeraSite(context, "privacy") }) { Text("Privacy", fontSize = 12.sp, color = entryTeal) }
-                TextButton(onClick = { openSeraSite(context, "terms") }) { Text("Terms", fontSize = 12.sp, color = entryTeal) }
+                TextButton(onClick = { openSeraSite(linkHandler, "privacy") }) { Text("Privacy", fontSize = 12.sp, color = entryTeal) }
+                TextButton(onClick = { openSeraSite(linkHandler, "terms") }) { Text("Terms", fontSize = 12.sp, color = entryTeal) }
             }
         }
     }
@@ -288,6 +284,7 @@ fun SeraGuestEntry(
     onAuthenticated: (String, String) -> Unit
 ) {
     val context = LocalContext.current
+    val linkHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var oauthError by remember { mutableStateOf("") }
     var entryPage by rememberSaveable { mutableStateOf("signin") }
     var showPassword by remember { mutableStateOf(false) }
@@ -353,7 +350,7 @@ fun SeraGuestEntry(
                     TextButton(onClick = { entryPage = "signin" }, modifier = Modifier.fillMaxWidth()) {
                         Text("Sign in with email to continue in the Android app", color = entryTeal, textAlign = TextAlign.Center)
                     }
-                    TextButton(onClick = { openSeraSite(context, "") }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { openSeraSite(linkHandler, "") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Explore SERA before joining", color = entryInk)
                     }
                 } else if (entryPage == "recover") {

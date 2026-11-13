@@ -61,6 +61,7 @@ private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="
  var loading by remember(id,token){mutableStateOf(true)}
  var retry by remember(id,token){mutableIntStateOf(0)}
  val context=LocalContext.current
+ val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
  androidx.activity.compose.BackHandler(onBack=onBack)
  LaunchedEffect(id,token,retry){loading=true;detail=null;detail=withContext(Dispatchers.IO){loadTalentPortfolio(token,id)};loading=false}
  Column(modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -86,7 +87,7 @@ private fun JSONObject.portfolioText(key:String)=optString(key).takeUnless{it=="
       Text(entry.portfolioText("description"))
       if(entry.portfolioText("kind")=="project")SeraProjectGallery(token,entry.portfolioText("id"))
       val url=entry.portfolioText("external_url")
-      if(url.startsWith("https://"))TextButton(onClick={runCatching{context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}}){Text("View project or credential")}
+      if(url.startsWith("https://"))TextButton(onClick={runCatching{linkHandler.openUri(url)}}){Text("View project or credential")}
      }}
     }
    }
