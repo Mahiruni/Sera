@@ -130,8 +130,9 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
 }
 
 /** Derived only from received audio RTP counters; no guessed quality claims. */
-internal data class SeraAudioSample(val received:Long,val lost:Long)
+internal data class SeraAudioSample(val received:Long,val lost:Long,val jitterSeconds:Double?=null,val rttSeconds:Double?=null)
 internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample):String? {
+    if(current.jitterSeconds?.let{it.isFinite()&&it>=.06}==true||current.rttSeconds?.let{it.isFinite()&&it>=.8}==true)return "Unstable connection"
     if(previous==null)return null
     val received=current.received-previous.received
     val lost=current.lost-previous.lost
