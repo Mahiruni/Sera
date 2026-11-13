@@ -15,8 +15,8 @@ import kotlin.coroutines.resumeWithException
 
 internal data class SeraAudioRoute(val id:Int,val label:String)
 
-/** Voice only. TURN relay is mandatory; no direct exposure of peer IP addresses. */
-internal class SeraNativeRtc(private val context:Context,config:JSONObject,private val manageAudioFocus:Boolean=true,private val onState:(String)->Unit){
+/** Voice and optional video. TURN relay is mandatory; no direct exposure of peer IP addresses. */
+internal class SeraNativeRtc(private val context:Context,config:JSONObject,private val manageAudioFocus:Boolean=true,private val videoMode:Boolean=false,private val onRemoteVideo:(VideoTrack)->Unit={},private val onState:(String)->Unit){
     private val manager=context.getSystemService(AudioManager::class.java)
     private val previousMode=manager.mode
     private val previousSpeaker=manager.isSpeakerphoneOn
@@ -93,6 +93,20 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             }
         }
     }
+    val videoEgl:EglBase?=if(videoMode)EglBase.create() else null
+    private var cameraSource:VideoSource?=null
+    private var cameraTrack:VideoTrack?=null
+    private var cameraSender:RtpSender?=null
+    private var cameraCapturer:CameraVideoCapturer?=null
+    private var textureHelper:SurfaceTextureHelper?=null
+    private var captureRunning=false
+    private var cameraRequested=false
+    private var videoCap=SeraVideoLevel.STANDARD
+    private var videoSaver=false
+    private val videoAdaptation=SeraVideoAdaptation()
+    private var appliedVideo:SeraVideoLevel?=null
+    val videoLevel get()=videoAdaptation.level
+    val localCameraTrack get()=cameraTrack
     private val factory:PeerConnectionFactory
     private val source:AudioSource
     private val track:AudioTrack
@@ -104,7 +118,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     init {
         android.util.Log.i("SeraRtc","Initializing WebRTC")
         ensureInitialized(context)
-        factory=PeerConnectionFactory.builder().createPeerConnectionFactory()
+        factory=PeerConnectionFactory.builder().apply{videoEgl?.let{egl->setVideoEncoderFactory(DefaultVideoEncoderFactory(egl.eglBaseContext,true,true));setVideoDecoderFactory(DefaultVideoDecoderFactory(egl.eglBaseContext))}}.createPeerConnectionFactory()
         android.util.Log.i("SeraRtc","WebRTC factory ready")
         val servers=config.getJSONArray("iceServers")
         val ice=(0 until servers.length()).map{val s=servers.getJSONObject(it);PeerConnection.IceServer.builder(s.getString("urls")).setUsername(s.getString("username")).setPassword(s.getString("credential")).createIceServer()}
@@ -120,7 +134,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             override fun onRemoveStream(stream:MediaStream){}
             override fun onDataChannel(channel:DataChannel){}
             override fun onRenegotiationNeeded(){}
-            override fun onAddTrack(receiver:RtpReceiver,streams:Array<out MediaStream>){}
+            override fun onAddTrack(receiver:RtpReceiver,streams:Array<out MediaStream>){if(videoMode)(receiver.track() as? VideoTrack)?.let(onRemoteVideo)}
             override fun onConnectionChange(state:PeerConnection.PeerConnectionState){onState(when(state){PeerConnection.PeerConnectionState.CONNECTED->"connected";PeerConnection.PeerConnectionState.CONNECTING->"connecting";PeerConnection.PeerConnectionState.DISCONNECTED->"disconnected";PeerConnection.PeerConnectionState.FAILED->"failed";else->"new"})}
         }
         pc=factory.createPeerConnection(rtc,observer)?:error("Voice connection could not initialize.")
@@ -132,6 +146,11 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         })
         track=factory.createAudioTrack("sera-voice",source)
         sender=pc.addTrack(track,listOf("sera-audio"))?:error("Voice track unavailable.")
+        if(videoMode){
+            val v=factory.createVideoSource(false);cameraSource=v
+            val t=factory.createVideoTrack("sera-camera",v);t.setEnabled(false);cameraTrack=t
+            cameraSender=pc.addTrack(t,listOf("sera-audio"))?:error("Camera track unavailable.")
+        }
         if(manageAudioFocus){manager.mode=AudioManager.MODE_IN_COMMUNICATION;manager.requestAudioFocus(focusRequest)}
         android.util.Log.i("SeraRtc","Audio track ready")
     }
@@ -235,10 +254,52 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         if(!closed){
             val fresh=stats.remoteTimestamp!=null&&stats.remoteTimestamp!=lastRemoteReport
             if(fresh)lastRemoteReport=stats.remoteTimestamp
-            speech.update(if(fresh)stats.link else stats.link.copy(loss=null))
+            val link=if(fresh)stats.link else stats.link.copy(loss=null)
+            speech.update(link)
             applySpeechProfile()
+            if(videoMode)applyVideo(videoAdaptation.update(videoCap,link,videoSaver))
         }
         return stats.sample
+    }
+    fun setVideoQuality(cap:String,saver:Boolean){videoCap=seraVideoCap(cap);videoSaver=saver}
+    /** Explicit camera consent is required. Disable capture when backgrounded. */
+    fun camera(enabled:Boolean):Boolean{
+        if(closed||!videoMode)return false
+        cameraRequested=enabled
+        if(!enabled){cameraTrack?.setEnabled(false);stopCamera();return true}
+        if(androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED){cameraRequested=false;return false}
+        return try{
+            if(cameraCapturer==null){
+                val enumerator:CameraEnumerator=if(Camera2Enumerator.isSupported(context))Camera2Enumerator(context)else Camera1Enumerator(false)
+                val device=enumerator.deviceNames.firstOrNull{enumerator.isFrontFacing(it)}?:enumerator.deviceNames.firstOrNull()?:error("No camera")
+                val capturer=enumerator.createCapturer(device,null)?:error("Camera unavailable")
+                val helper=SurfaceTextureHelper.create("SeraCamera",checkNotNull(videoEgl).eglBaseContext)
+                cameraCapturer=capturer;textureHelper=helper
+                capturer.initialize(helper,context.applicationContext,checkNotNull(cameraSource).capturerObserver)
+            }
+            val level=videoAdaptation.level
+            if(level!=SeraVideoLevel.PAUSED){
+                if(!captureRunning){cameraCapturer?.startCapture(level.width,level.height,level.fps);captureRunning=true}
+                cameraTrack?.setEnabled(true);applyVideo(level)
+            }
+            true
+        }catch(_:Exception){cameraRequested=false;stopCamera();false}
+    }
+    private fun stopCamera(){if(captureRunning){runCatching{cameraCapturer?.stopCapture()};captureRunning=false}}
+    private fun applyVideo(level:SeraVideoLevel){
+        if(!videoMode||closed||!cameraRequested)return
+        val t=cameraTrack?:return
+        if(level==SeraVideoLevel.PAUSED){t.setEnabled(false);stopCamera()}
+        else{
+            if(!captureRunning){runCatching{cameraCapturer?.startCapture(level.width,level.height,level.fps);captureRunning=cameraCapturer!=null}}
+            else if(appliedVideo!=level)runCatching{cameraCapturer?.changeCaptureFormat(level.width,level.height,level.fps)}
+            cameraSource?.adaptOutputFormat(level.width,level.height,level.fps)
+            t.setEnabled(captureRunning)
+        }
+        if(appliedVideo!=level){
+            val s=cameraSender?:return
+            runCatching{val p=s.parameters;p.encodings.forEach{it.active=level!=SeraVideoLevel.PAUSED;it.maxBitrateBps=maxOf(1000,level.bitrate);if(level!=SeraVideoLevel.PAUSED)it.maxFramerate=level.fps};if(s.setParameters(p))appliedVideo=level}
+        }
     }
     fun mute(value:Boolean){if(!closed)track.setEnabled(!value)}
     fun speaker(value:Boolean){
@@ -273,9 +334,13 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     }
     fun close(){
         if(closed)return;closed=true
+        cameraRequested=false;stopCamera();runCatching{cameraTrack?.setEnabled(false)}
+        runCatching{cameraCapturer?.dispose()};runCatching{textureHelper?.dispose()}
         runCatching{track.setEnabled(false)}
         runCatching{pc.close();pc.dispose()}
+        runCatching{cameraTrack?.dispose();cameraSource?.dispose()}
         runCatching{track.dispose();source.dispose();factory.dispose()}
+        runCatching{videoEgl?.release()}
         if(manageAudioFocus)runCatching{manager.abandonAudioFocusRequest(focusRequest);if(Build.VERSION.SDK_INT>=31)manager.clearCommunicationDevice()else @Suppress("DEPRECATION") run{manager.isSpeakerphoneOn=previousSpeaker};manager.mode=previousMode}
     }
 }
