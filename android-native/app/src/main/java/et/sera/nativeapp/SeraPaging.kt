@@ -30,6 +30,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
                 prevKey = if (page == 0) null else page - 1,
                 nextKey = if (posts.size < 20) null else page + 1
             )
+        } catch (cancelled:kotlinx.coroutines.CancellationException) { throw cancelled
         } catch (error: Exception) {
             LoadResult.Error(error)
         }

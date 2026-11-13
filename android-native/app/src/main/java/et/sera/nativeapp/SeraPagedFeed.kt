@@ -78,11 +78,11 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var lastReselect by remember{mutableIntStateOf(homeReselect)}
     LaunchedEffect(homeReselect){if(homeReselect!=lastReselect){lastReselect=homeReselect;if(!savedOnly){if(listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0)posts.refresh() else listState.animateScrollToItem(0)}}}
     var newHead by remember(token,personalized,savedOnly){mutableStateOf<String?>(null)}
-    val displayedHead=posts.itemSnapshotList.items.firstOrNull()?.id
+    val displayedHead=posts.itemSnapshotList.items.firstOrNull()?.let{SeraFeedHead(it.id,it.publishedAt)}
     val currentHead by rememberUpdatedState(displayedHead)
-    LaunchedEffect(displayedHead){if(displayedHead==newHead)newHead=null}
+    LaunchedEffect(displayedHead){if(displayedHead?.id==newHead)newHead=null}
     val freshnessLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle){if(!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;if(result.second.isBlank()&&remote!=null&&remote!=currentHead)newHead=remote else if(remote==currentHead)newHead=null}};kotlinx.coroutines.delay(seraFeedProbeInterval(activeCall))}}}
+    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle){if(!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null&&current!=null){newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraFeedProbeInterval(activeCall))}}}
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle

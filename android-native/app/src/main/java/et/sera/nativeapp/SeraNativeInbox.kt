@@ -81,6 +81,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -381,6 +383,9 @@ private class InboxSelectionState(initialThread: String?, initialPeer: String, i
 }
 
 private class InboxThreadState {
+    val syncMutex=Mutex()
+    var manualSyncJob:kotlinx.coroutines.Job?=null
+    var manualSyncRequested=false
     var callEvents by mutableStateOf<List<SeraCallEvent>>(emptyList())
     var peerActivity by mutableStateOf<String?>(null)
     var attachment by mutableStateOf<NativeChatSelection?>(null)
@@ -551,7 +556,44 @@ private class InboxController(
         set(value) { thread.attachmentStudio = value }
 
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
-    fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{latest->messages=latest;thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}};error=r.second}}}
+    fun reload(){
+        val c=selected?:return
+        thread.manualSyncRequested=true
+        if(thread.manualSyncJob?.isActive==true)return
+        thread.manualSyncJob=scope.launch{
+            val cache=runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()
+            while(thread.manualSyncRequested&&selected?.id==c.id&&connectionAvailable){
+                thread.manualSyncRequested=false
+                syncMessages(c,cache)
+            }
+        }
+    }
+
+    /** One serialized reconciliation path for realtime, manual mutations and reconnect. */
+    private suspend fun syncMessages(conversation:NativeConversation,cache:SeraMessageHistoryCache?){
+        thread.syncMutex.withLock {
+            if(selected?.id!=conversation.id||!connectionAvailable)return@withLock
+            val result=withContext(Dispatchers.IO){loadNativeMessages(token,conversation.id,historyLimit,cache=cache,owner=userId)}
+            if(selected?.id!=conversation.id)return@withLock
+            result.first?.let{latest->
+                if(!thread.initialMessagesLoaded||thread.cachedHistory){
+                    thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id
+                    thread.initialMessagesLoaded=true
+                }
+                if(!thread.cachedHistory&&messages.isNotEmpty()&&latest.lastOrNull()?.id!=messages.lastOrNull()?.id&&latest.lastOrNull()?.senderId!=userId){
+                    latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)}
+                    SeraUnreadRefresh.changed()
+                }
+                thread.cachedHistory=false
+                if(messages!=latest)messages=latest
+                val serverIds=latest.mapTo(hashSetOf()){it.id}
+                thread.textAcknowledged=thread.textAcknowledged.filterNot{it.id in serverIds}
+                val undelivered=latest.filter{isUnreadIncoming(it,userId)&&(it.deliveredAt.isBlank()||it.deliveredAt=="null")}
+                if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
+            }
+            if(selected?.id==conversation.id)error=result.second
+        }
+    }
     fun react(m:NativeMessage,emoji:String){reaction=null;if(!thread.reactionBusy.add(m.id))return;scope.launch{try{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}finally{thread.reactionBusy.remove(m.id)}}}
 
     @Composable
@@ -750,9 +792,10 @@ private class InboxController(
     fun ConversationPolling() {
         val unreadRevision=SeraUnreadRefresh.revision
         val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
-        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision) {
+        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision,connectionAvailable) {
             if(userId.isBlank())return@LaunchedEffect
             if(conversations.isEmpty()){val saved=withContext(Dispatchers.IO){runCatching{cache?.readInbox(userId).orEmpty()}.getOrDefault(emptyList())};if(saved.isNotEmpty()){conversations=saved;loading=false}}
+            if(!connectionAvailable){loading=false;return@LaunchedEffect}
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
                     val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
@@ -769,27 +812,15 @@ private class InboxController(
     fun MessagePolling() {
         val recoveryRevision=SeraPushRecovery.revision
         val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
-        LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision) {
+        LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision,connectionAvailable) {
             val conversation = selected ?: return@LaunchedEffect
             if(!thread.initialMessagesLoaded&&messages.isEmpty()){
                 val cached=withContext(Dispatchers.IO){runCatching{cache?.read(userId,conversation.id)?.let{parseNativeMessageRows(it).first}}.getOrNull()}
                 if(!cached.isNullOrEmpty()){messages=cached;thread.cachedHistory=true;thread.initialMessagesLoaded=true}
             }
+            if(!connectionAvailable)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-                SeraRealtime(token, conversation.id).run {
-                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit,cache=cache,owner=userId) }
-                    result.first?.let { latest ->
-                        if(!thread.initialMessagesLoaded||thread.cachedHistory){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
-                        if(!thread.cachedHistory&&messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
-                        thread.cachedHistory=false
-                        messages = latest
-                    thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
-                        val unread = latest.filter { isUnreadIncoming(it,userId) }
-                        val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
-                        if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
-                    }
-                    error = result.second
-                }
+                SeraRealtime(token,conversation.id).run { syncMessages(conversation,cache) }
             }
         }
     }

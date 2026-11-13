@@ -235,8 +235,16 @@ fun loadSeraCurrentAvatar(token: String, userId: String): String? {
 }
 
 /** Minimal authenticated/RLS-filtered latest-feed probe: no post bodies or media. */
-internal fun seraLatestFeedHead(token:String):Pair<String?,String>{
-    val result=request(token,"posts?select=id&status=eq.published&order=published_at.desc,id.desc&limit=1")
+internal data class SeraFeedHead(val id:String,val publishedAt:String)
+internal fun seraLatestFeedHead(token:String):Pair<SeraFeedHead?,String>{
+    val result=request(token,"posts?select=id,published_at&status=eq.published&order=published_at.desc,id.desc&limit=1")
     val body=result.first?:return null to result.second
-    return runCatching{JSONArray(body).optJSONObject(0)?.optString("id")?.takeIf{it.isNotBlank()} to ""}.getOrElse{null to "Unable to check feed freshness."}
+    return runCatching{JSONArray(body).optJSONObject(0)?.let{row->row.optString("id").takeIf{it.isNotBlank()}?.let{SeraFeedHead(it,row.optString("published_at"))}} to ""}.getOrElse{null to "Unable to check feed freshness."}
+}
+
+internal fun seraFeedHeadIsNewer(remote:SeraFeedHead,baseline:SeraFeedHead):Boolean {
+    if(remote.id==baseline.id)return false
+    val a=runCatching{java.time.Instant.parse(remote.publishedAt)}.getOrNull()?:return false
+    val b=runCatching{java.time.Instant.parse(baseline.publishedAt)}.getOrNull()?:return false
+    return a>b||(a==b&&remote.id>baseline.id)
 }

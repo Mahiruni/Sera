@@ -43,7 +43,7 @@ internal class SeraRealtime(private val token: String, private val conversationI
                         val data = runCatching { JSONObject(text) }.getOrNull() ?: return
                         when(data.optString("event")) {
                             "postgres_changes" -> signals.trySend(Unit)
-                            "phx_reply" -> if(data.optString("topic")==topic&&data.optJSONObject("payload")?.optString("status")=="ok"){joined.set(true);signals.trySend(Unit)}
+                            "phx_reply" -> if(data.optString("topic")==topic){if(data.optJSONObject("payload")?.optString("status")=="ok"){joined.set(true);signals.trySend(Unit)}else{disconnected.set(true);webSocket.cancel();signals.trySend(Unit)}}
                             "phx_error", "phx_close" -> { disconnected.set(true); webSocket.cancel(); signals.trySend(Unit) }
                         }
                     }
@@ -54,8 +54,13 @@ internal class SeraRealtime(private val token: String, private val conversationI
                 try {
                     onSync()
                     while (isActive && !disconnected.get()) {
-                        withTimeoutOrNull(seraMessageFallbackInterval(joined.get())) { signals.receive() }
-                        if(!disconnected.get()){delay(180);onSync()}
+                        val signal=withTimeoutOrNull(seraMessageFallbackInterval(joined.get())) { signals.receive() }
+                        if(!disconnected.get()){
+                            delay(180)
+                            while(signals.tryReceive().isSuccess){}
+                            onSync()
+                            if(signal==null&&!joined.get()){disconnected.set(true);socket?.cancel()}
+                        }
                     }
                 } finally { heartbeat.cancel(); socket?.cancel() }
                 if(joined.get())attempt=0

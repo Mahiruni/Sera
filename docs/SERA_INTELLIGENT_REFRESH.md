@@ -6,3 +6,5 @@
 - Next: account-scoped feed session cache, new-post probe, Home reselect behavior, full per-page state retention, incremental reconciliation and real-device weak-network tests. No claim of complete offline support or all-screen refresh parity.
 
 Phase 2: account-scoped in-memory Paging cache and retained Home/Saved list state, Home reselect and a foreground RLS-filtered latest-post probe (no media). The new-post chip does not insert or reorder feed rows. Probes stop during active calls. Persistent feed cache across process death, ranked-feed freshness, full page-level state retention and incremental API sync remain future work.
+
+Phase 3: manual and real-time native message reconciliation share one per-thread mutex and coalesced manual reload; offline polling pauses and resumes on connectivity changes. Freshness probes compare actual post ordering instead of treating deletion of an old feed head as a new post. Paging cancellation is propagated. These are code-level improvements; real-device and full release verification remain required.
