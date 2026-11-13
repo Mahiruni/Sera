@@ -248,6 +248,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     }
     val controller = InboxController(global, selection, thread, token, userId, context, savedDrafts, lifecycle, messageListState, scope, playback, outbox, onThreadExit)
     controller.PresenceAndScroll()
+    controller.KeyboardScroll()
     controller.ConnectionAndPlayback()
     controller.TransferEffects()
     controller.TextEffects()
@@ -446,6 +447,8 @@ private class InboxController(
     @Composable
     fun PresenceAndScroll() {
         LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
+        val ime = WindowInsets.ime
+        val density = LocalDensity.current
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
         LaunchedEffect(selected?.id, tail,thread.initialMessagesLoaded) {
             val id = selected?.id ?: return@LaunchedEffect
@@ -457,10 +460,42 @@ private class InboxController(
             if(changedConversation||last!=lastMessageId&&(nearBottom||thread.textQueue.isNotEmpty())){
                 withFrameNanos{}
                 val count=messageListState.layoutInfo.totalItemsCount
-                if(count>0){val target=if(changedConversation)unreadTimelineIndex(messages,callEvents,thread.unreadBoundary,historyLimit) else null;messageListState.scrollToItem((target?:count-1).coerceIn(0,count-1))}
+                if(count>0){val target=if(changedConversation&&(ime.getBottom(density)==0||showSearch))unreadTimelineIndex(messages,callEvents,thread.unreadBoundary,historyLimit) else null;messageListState.scrollToItem((target?:count-1).coerceIn(0,count-1))}
             }
             lastVisibleConversation = id
             lastMessageId = last
+        }
+    }
+
+    // IME resize changes the LazyColumn viewport without changing the message
+    // tail. Re-anchor after layout, including the final keyboard animation frame.
+    // Observe geometry, not scroll position: browsing history does not retrigger it.
+    @Composable
+    fun KeyboardScroll() {
+        val ime = WindowInsets.ime
+        val density = LocalDensity.current
+        LaunchedEffect(selected?.id, showSearch, density, ime) {
+            if(selected==null||showSearch)return@LaunchedEffect
+            var previousIme = 0
+            var previousHeight = 0
+            var previousCount = 0
+            snapshotFlow {
+                val layout = messageListState.layoutInfo
+                Triple(ime.getBottom(density), layout.viewportSize.height, layout.totalItemsCount)
+            }.collectLatest { (bottom, height, count) ->
+                val shouldAnchor = bottom>0 && count>0 &&
+                    (bottom!=previousIme || height!=previousHeight || previousCount==0)
+                previousIme=bottom
+                previousHeight=height
+                previousCount=count
+                if(shouldAnchor){
+                    // Wait for the resized list to be measured before scrolling.
+                    withFrameNanos{}
+                    val latestCount=messageListState.layoutInfo.totalItemsCount
+                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch)
+                        messageListState.scrollToItem(latestCount-1)
+                }
+            }
         }
     }
 
