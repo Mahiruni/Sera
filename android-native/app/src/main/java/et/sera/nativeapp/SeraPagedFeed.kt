@@ -60,7 +60,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val topCallback by rememberUpdatedState(onAtTop)
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
-    var personalized by remember(token){mutableStateOf(true)}
+    var personalized by remember(token){mutableStateOf(false)}
     val stream = remember(token, refreshKey,personalized,savedOnly) { pagedSeraPosts(token,personalized,savedOnly) }
     val posts = stream.collectAsLazyPagingItems()
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
@@ -101,7 +101,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")});FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")})} }
+            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")});FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")})} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
             items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->
