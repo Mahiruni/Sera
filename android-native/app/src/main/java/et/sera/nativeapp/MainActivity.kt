@@ -365,7 +365,7 @@ fun SeraApp(
     fun navigateTo(destination: String) {
         if (destination == tab) return
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        tabHistory.add(tab)
+        if(tab!="Inbox") tabHistory.add(tab)
         if (tabHistory.size > 12) tabHistory.removeAt(0)
         inboxThreadOpen = false
         tab = destination
@@ -387,6 +387,7 @@ fun SeraApp(
     var openCompanyInbox by remember { mutableStateOf(false) }
     var callThread by remember(authenticatedUserId){mutableStateOf<String?>(null)}
     var callPeer by remember(authenticatedUserId){mutableStateOf("")}
+    fun closeInbox(){callThread=null;callPeer="";openCompanyInbox=false;inboxThreadOpen=false;tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home"}
     LaunchedEffect(pushKind,accessToken,authenticatedUserId){
         val kind=pushKind?:return@LaunchedEffect
         val token=accessToken?:return@LaunchedEffect
@@ -473,7 +474,7 @@ fun SeraApp(
             } },
             confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
-    BackHandler(enabled = accessToken != null && !(tab=="Inbox"&&inboxThreadOpen) && (tab != "Home" || tabHistory.isNotEmpty())) { tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
+    BackHandler(enabled = accessToken != null && !(tab=="Inbox"&&inboxThreadOpen) && (tab != "Home" || tabHistory.isNotEmpty())) { if(tab=="Inbox")closeInbox() else tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = teal, onPrimary = Color.White,
@@ -525,16 +526,16 @@ fun SeraApp(
                     }
                 )
             } else {
-                val inboxBackground=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF111D21) else Color(0xFFF9FCFC)
-                BoxWithConstraints(Modifier.fillMaxSize().then(if(tab=="Inbox")Modifier.background(inboxBackground)else Modifier).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     val expanded = maxWidth >= 700.dp
                     val standaloneThread = tab=="Inbox"
+                    val baseTab = if(standaloneThread)tabHistory.lastOrNull{it!="Inbox"}?:"Home" else tab
                     val darkSystem = androidx.compose.foundation.isSystemInDarkTheme()
                     val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
                     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                    val chromeVisible = remember(tab) { mutableStateOf(true) }
+                    val chromeVisible = remember(baseTab) { mutableStateOf(true) }
                     SideEffect {
                         (context as? android.app.Activity)?.let { activity ->
                             WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply{isAppearanceLightStatusBars=if(standaloneThread)!darkSystem else true;isAppearanceLightNavigationBars=if(standaloneThread)!darkSystem else expanded || !chromeVisible.value || keyboardOpen}
@@ -545,7 +546,7 @@ fun SeraApp(
                     val chromeDensity=LocalDensity.current
                     val hideTravel=with(chromeDensity){28.dp.toPx()}
                     val revealTravel=with(chromeDensity){18.dp.toPx()}
-                    val scrollObserver = remember(tab,hideTravel,revealTravel) {
+                    val scrollObserver = remember(baseTab,hideTravel,revealTravel) {
                         object : NestedScrollConnection {
                             var travel = 0f
                             override fun onPostScroll(
@@ -553,7 +554,7 @@ fun SeraApp(
                                 available: Offset,
                                 source: NestedScrollSource
                             ): Offset {
-                                if (tab != "Home" || source != NestedScrollSource.UserInput) return Offset.Zero
+                                if (baseTab != "Home" || source != NestedScrollSource.UserInput) return Offset.Zero
                                 val delta = consumed.y
                                 if (delta == 0f) {
                                     if (available.y > 5f) chromeVisible.value = true
@@ -605,11 +606,12 @@ fun SeraApp(
                             )
                         }
                     ) {
+                        Box(Modifier.fillMaxSize()) {
                         Row(Modifier.fillMaxSize()) {
-                            if (expanded && !standaloneThread) NavigationRail {
+                            if (expanded) NavigationRail {
                                 sections.forEach { item ->
                                     NavigationRailItem(
-                                        selected = tab == item, onClick = { navigateTo(item) },
+                                        selected = baseTab == item, onClick = { navigateTo(item) },
                                         icon = { Text(sectionSymbol(item), fontSize = 20.sp) },
                                         label = { Text(sectionLabel(item)) }
                                     )
@@ -624,7 +626,7 @@ fun SeraApp(
                                 val pageModifier = Modifier.fillMaxSize()
                                     .padding(top = 60.dp, bottom = bottomInset + if (expanded) 0.dp else 60.dp)
                                 Crossfade(
-                                    targetState = tab,
+                                    targetState = baseTab,
                                     animationSpec = spring(
                                         stiffness = Spring.StiffnessMediumLow,
                                         dampingRatio = Spring.DampingRatioNoBouncy
@@ -656,9 +658,6 @@ fun SeraApp(
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
-                                        "Inbox" -> key(authenticatedUserId,callThread) { SeraNativeInbox(
-                                            accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },initialThread=callThread,initialPeer=callPeer,initialName="SERA member",onThreadExit=if(callThread!=null){{callThread=null;callPeer="";inboxThreadOpen=false}}else null,onThreadVisibility={inboxThreadOpen=it},onInboxExit={callThread=null;callPeer="";tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home";inboxThreadOpen=false}
-                                        ) }
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                                                 .padding(start = 20.dp, end = 20.dp,
@@ -672,12 +671,12 @@ fun SeraApp(
                                         }
                                     }
                                 }
-                                if(!standaloneThread) SeraChromeOverlays(
+                                SeraChromeOverlays(
                                     notificationCount=unreadActivity.first,
                                     inboxCount=unreadActivity.second,
-                                    visible = (tab != "Home" || chromeVisible.value) && !keyboardOpen,
+                                    visible = (baseTab != "Home" || chromeVisible.value) && (!keyboardOpen || standaloneThread),
                                     expanded = expanded,
-                                    selected = tab,
+                                    selected = baseTab,
                                     sections = sections,
                                     canCompose = authenticatedUserId.isNotBlank(),
                                     profileAvatarUrl = profileAvatarUrl,
@@ -689,6 +688,19 @@ fun SeraApp(
                                     onNavigate = ::navigateTo
                                 )
                             }
+                        }
+                        // Keep the source destination composed in the same slot: its
+                        // feed position, filters and content survive the inbox overlay.
+                        if(standaloneThread) key(authenticatedUserId,callThread) {
+                            SeraNativeInbox(
+                                accessToken ?: "", authenticatedUserId, Modifier.fillMaxSize(),
+                                openCompanyInbox, {openCompanyInbox=false},
+                                initialThread=callThread,initialPeer=callPeer,initialName="SERA member",
+                                onThreadExit=if(callThread!=null){{callThread=null;callPeer="";inboxThreadOpen=false}}else null,
+                                onThreadVisibility={inboxThreadOpen=it},onInboxExit={closeInbox()},
+                                overlayOnPage=true
+                            )
+                        }
                         }
                     }
                 }
