@@ -6,7 +6,7 @@ import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
 export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null};
-export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">;
+export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">&{connected_seconds?:number|null};
 export type CallConfig={enabled:boolean;iceServers?:RTCIceServer[]};
 async function dbFor(conversation:string){
   if(!validMessageId(conversation))throw new Error("Invalid conversation.");
@@ -32,4 +32,9 @@ export async function changeCall(conversation:string,id:string,action:"accept"|"
 }
 export async function getCallHistory(conversation:string):Promise<CallHistoryEntry[]>{
   const db=await dbFor(conversation);const {data,error}=await db.rpc("sera_call_history",{p_conversation:conversation});return !error&&Array.isArray(data)?data:[];
+}
+
+export async function confirmCallMedia(conversation:string,id:string):Promise<boolean>{
+ const db=await dbFor(conversation);if(!validMessageId(id))return false;
+ const {data,error}=await db.rpc("sera_call_confirm_media",{p_conversation:conversation,p_id:id});return !error&&data===true;
 }
