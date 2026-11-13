@@ -23,6 +23,20 @@ class PremiumMessageUiTest {
   compose.setContent{MaterialTheme{SeraThreadHeaderDivider()}}
   compose.onNodeWithTag("sera_thread_header_divider").assertExists().assertHeightIsEqualTo(1.dp)
  }
+ @Test fun readReceiptRemovesDeliveryTicks(){
+  var delivered by mutableStateOf(false)
+  var read by mutableStateOf(false)
+  compose.setContent{MaterialTheme{Column{SeraCompactReceipt("21:30",true,delivered,read,Color.DarkGray)}}}
+  compose.onNodeWithContentDescription("Sent").assertExists()
+  compose.runOnIdle{delivered=true}
+  compose.waitForIdle()
+  compose.onNodeWithContentDescription("Delivered").assertExists()
+  compose.runOnIdle{read=true}
+  compose.waitForIdle()
+  compose.onNodeWithContentDescription("Delivered").assertDoesNotExist()
+  compose.onNodeWithContentDescription("Read").assertDoesNotExist()
+  compose.onNodeWithText("21:30").assertExists()
+ }
  @Test fun seenUsesLatestPublicOutgoingReadReceiptOnly(){
   val first=NativeMessage("first","me","First","2026-11-13T10:03:00Z","2026-11-13T10:00:00Z","",emptyList())
   val newest=first.copy(id="newest",createdAt="2026-11-13T10:01:00Z")
