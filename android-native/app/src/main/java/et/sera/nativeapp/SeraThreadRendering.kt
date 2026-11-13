@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -79,7 +80,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 
-@Composable internal fun SeraThreadHeader(conversation:NativeConversation,fallbackPhoto:String?,token:String,userId:String,peerTyping:Boolean,peerActivity:String?,sound:Boolean,inboxInk:Color,inboxSoft:Color,muted:Color,accent:Color,inboxTeal:Color,onBack:()->Unit,onSearch:()->Unit,onSound:()->Unit,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
+@Composable internal fun SeraThreadHeader(conversation:NativeConversation,fallbackPhoto:String?,token:String,userId:String,peerTyping:Boolean,peerActivity:String?,sound:Boolean,inboxInk:Color,inboxSoft:Color,muted:Color,accent:Color,inboxTeal:Color,onBack:()->Unit,onSearch:()->Unit,onSound:()->Unit,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit,onDetails:()->Unit={}){
             Row(
                 modifier = Modifier.fillMaxWidth().height(60.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -90,8 +91,8 @@ import java.net.URL
                     Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to conversations",
                         tint = inboxInk)
                 }
-                Box(Modifier.size(42.dp).clip(CircleShape).background(inboxSoft),contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp);(conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}}
-                Column(Modifier.weight(1f)) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft).clickable(onClick=onDetails).semantics{contentDescription="Open conversation details"},contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp);(conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}}
+                Column(Modifier.weight(1f).clickable(onClick=onDetails).padding(vertical=4.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
                         Text(conversation.peerName, modifier=Modifier.weight(1f,fill=false),fontWeight=FontWeight.SemiBold,fontSize=17.sp,color=inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
                         if(peerActivity=="Active now")SeraOnlineDot(Modifier.semantics{this.contentDescription="Active now"})
