@@ -15,6 +15,10 @@ import org.junit.Test
 
 class PremiumMessageUiTest {
  @get:Rule val compose=createComposeRule()
+ @Test fun inboxConversationDividerIsThinAndPresent(){
+  compose.setContent{MaterialTheme{SeraInboxConversationDivider()}}
+  compose.onNodeWithTag("sera_inbox_conversation_divider").assertExists().assertHeightIsEqualTo(1.dp)
+ }
  @Test fun chatHeaderDividerIsThinAndPresent(){
   compose.setContent{MaterialTheme{SeraThreadHeaderDivider()}}
   compose.onNodeWithTag("sera_thread_header_divider").assertExists().assertHeightIsEqualTo(1.dp)
