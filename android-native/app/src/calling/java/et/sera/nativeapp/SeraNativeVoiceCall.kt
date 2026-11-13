@@ -188,7 +188,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var permissionPending by remember{mutableStateOf(false)}
     val micPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){permissionPending=false;if(it)begin(permissionAccept)else error="Microphone permission is required for voice calling."}
     fun request(accept:Boolean){permissionAccept=accept;if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){error="Enable SERA notifications in Android settings before starting a call.";return};if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)begin(accept)else {permissionPending=true;micPermission.launch(Manifest.permission.RECORD_AUDIO)}}
-    LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull()}
+    LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull();if(config?.optBoolean("enabled")!=true)host?.completeDiscovery(host.pendingIncomingId)}
     val enabled=config?.optBoolean("enabled")==true
     LaunchedEffect(enabled,token,conversation,lifecycle){
         if(!enabled)return@LaunchedEffect
@@ -196,7 +196,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         while(true){
             if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)||SeraCallForeground.owns(foregroundLease)){
                 if(!busy){try{
-                    val old=row;val next=parseCall(callRequest(token,"sera_call_status",payload().put("p_id",old?.id?:JSONObject.NULL)));if(busy||row?.id!=old?.id){delay(1500);continue};failureSince=0L
+                    val old=row;val discoveryId=host?.pendingIncomingId;val next=parseCall(callRequest(token,"sera_call_status",payload().put("p_id",old?.id?:discoveryId?:JSONObject.NULL)));if(busy||row?.id!=old?.id){delay(1500);continue};failureSince=0L
                     if(next==null){if(old!=null){finishSummary("Call unavailable",old);cleanup()}}
                     else if(!next.live){if(old!=null){finishSummary(when(next.state){"missed"->if(old.callee==userId)"Missed call" else "No answer";"declined"->"Call declined";"failed"->"Connection lost";else->if(started>0)"Call ended" else "Call cancelled"},old);cleanup()}}
                     else if(next.state=="accepted"&&rtc==null){if(old!=null){cleanup();error="Call answered on another device."}}
@@ -206,6 +206,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                         if(next.state=="accepted"&&next.caller==userId&&next.answer!=null&&lastAnswer!=next.answer){rtc?.remoteAnswer(next.answer);lastAnswer=next.answer;if(started==0L){phase="Connecting…";if(recoverySince==0L)recoverySince=SystemClock.elapsedRealtime()}}
                         if(next.state=="accepted")try{recoverMedia(next)}catch(_:kotlinx.coroutines.TimeoutCancellationException){/* Keep the fixed recovery deadline; do not cancel status polling. */}
                     }
+                    host?.completeDiscovery(discoveryId)
                 }catch(e:CancellationException){throw e}catch(_:Exception){if(!busy&&row!=null){if(failureSince==0L)failureSince=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-failureSince>=45000L)end("fail","Call signaling lost. Try again.")}}}
             }
             delay(if(row!=null)1500 else 4000)
@@ -295,7 +296,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     }
     val active=row!=null||phase.isNotBlank()
     if(host!=null){
-        SideEffect{host.report(conversation,active||busy||permissionPending||summary!=null,enabled)}
+        val discoveryPending=host.pendingIncomingId!=null
+        SideEffect{host.report(conversation,active||busy||permissionPending||summary!=null||discoveryPending,enabled)}
         var seenStart by remember{mutableIntStateOf(host.callRequest)}
         var seenReturn by remember{mutableIntStateOf(host.returnRequest)}
         var seenHistory by remember{mutableIntStateOf(host.historyRequest)}
