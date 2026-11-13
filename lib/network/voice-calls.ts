@@ -1,6 +1,6 @@
 "use server";
 import { after } from "next/server";
-import { sendIncomingCallPush } from "@/lib/network/call-push";
+import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
@@ -26,7 +26,8 @@ export async function startCall(conversation:string,id:string,offer:string):Prom
 }
 export async function changeCall(conversation:string,id:string,action:"accept"|"decline"|"end"|"fail",answer?:string):Promise<CallSession>{
   const db=await dbFor(conversation);if(!validMessageId(id)||!["accept","decline","end","fail"].includes(action)||(answer!=null&&(typeof answer!=="string"||answer.length>65536)))throw new Error("Invalid call.");
-  const {data,error}=await db.rpc("sera_call_transition",{p_conversation:conversation,p_id:id,p_action:action,p_answer:answer??null});if(error||!data)throw new Error("Call could not be updated.");return data;
+  const {data,error}=await db.rpc("sera_call_transition",{p_conversation:conversation,p_id:id,p_action:action,p_answer:answer??null});if(error||!data)throw new Error("Call could not be updated.");
+  after(async()=>{try{await dismissIncomingCallPush(db,id);}catch{console.error("Call dismissal push failed");}});return data;
 }
 export async function getCallHistory(conversation:string):Promise<CallHistoryEntry[]>{
   const db=await dbFor(conversation);const {data,error}=await db.rpc("sera_call_history",{p_conversation:conversation});return !error&&Array.isArray(data)?data:[];

@@ -68,7 +68,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     fun cleanup(){rtc?.close();rtc=null;phase="";muted=false;speaker=false;started=0;seconds=0;lastAnswer=null;row=null}
     suspend fun end(action:String,message:String=""){
         val call=row;call?.let{SeraPush.clearCallNotification(context,it.id)};cleanup();if(message.isNotBlank())error=message
-        if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action))}.onFailure{error="Call closed locally. Remote status will expire."}
+        if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
     }
     fun peer():SeraNativeRtc{
         onAudioStart()
@@ -83,7 +83,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             val fresh=callRequest(token,"sera_call_config",payload())?.let{JSONObject(it)}?:error("Calling is unavailable.")
             if(!fresh.optBoolean("enabled"))error("Calling is unavailable.")
             config=fresh;val p=peer()
-            if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(started==0L)phase="Connecting…"}
+            if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
             else{val offer=p.offer();val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;phase="Ringing…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
         }catch(e:CancellationException){cleanup();throw e}catch(e:Exception){if(accept)end("fail",e.message?:"Call unavailable.")else{cleanup();error=e.message?:"Call unavailable."}}finally{busy=false}}
     }

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendIncomingCallPush } from "@/lib/network/call-push";
+import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
 import { after } from "next/server";
 import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
 export const runtime = "nodejs";
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
  const {data:{user}}=await db.auth.getUser(bearer.slice(7));
  if(!user?.email_confirmed_at)return new Response(null,{status:401});
  const body=await request.json().catch(()=>null);
- if(!body||typeof body.id!=="string"||!uuid.test(body.id)||!["message","company_message","voice_call"].includes(body.kind))return new Response(null,{status:400});
+ if(!body||typeof body.id!=="string"||!uuid.test(body.id)||!["message","company_message","voice_call","voice_call_dismiss"].includes(body.kind))return new Response(null,{status:400});
  if(body.kind==="voice_call"){await sendIncomingCallPush(db,body.id);return new Response(null,{status:202});}
+ if(body.kind==="voice_call_dismiss"){await dismissIncomingCallPush(db,body.id);return new Response(null,{status:202});}
  const company=body.kind==="company_message";
  const {data:message}=await db.from(company?"company_job_messages":"professional_messages").select(company?"id,sender_id,thread_id,created_at":"id,sender_id,conversation_id,created_at").eq("id",body.id).eq("sender_id",user.id).maybeSingle();
  if(!message||Date.now()-new Date(message.created_at).getTime()>10*60*1000)return new Response(null,{status:404});

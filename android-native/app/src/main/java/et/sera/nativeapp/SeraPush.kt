@@ -99,10 +99,21 @@ internal object SeraPush {
         context.getSystemService(NotificationManager::class.java).notify(id,n)
     }
     fun clearCallNotification(context:Context,id:String){if(callUuid.matches(id))context.getSystemService(NotificationManager::class.java).cancel("sera-call:"+id,1)}
-    fun notifyCall(context:Context,data:Map<String,String>){
+    private fun callAlerts(context:Context)=context.getSharedPreferences("sera_call_alerts",Context.MODE_PRIVATE)
+    @Synchronized fun dismissCallAlert(context:Context,data:Map<String,String>){
+        val id=data["call_id"]?:return
+        if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=data["recipient_id"])return
+        val now=System.currentTimeMillis()
+        val store=callAlerts(context);val editor=store.edit()
+        store.all.forEach{(key,value)->if(value !is Long||value<now)editor.remove(key)}
+        editor.putLong(id,now+90000).apply()
+        clearCallNotification(context,id)
+    }
+    @Synchronized fun notifyCall(context:Context,data:Map<String,String>){
         val id=data["call_id"]?:return
         val recipient=data["recipient_id"]?:return
         if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return
+        if(callAlerts(context).getLong(id,0)>System.currentTimeMillis())return
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         val remaining=runCatching{java.time.Instant.parse(data["expires_at"]).toEpochMilli()-System.currentTimeMillis()}.getOrDefault(0)
         if(remaining<=0)return
@@ -129,6 +140,7 @@ internal object SeraPush {
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
+        if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }

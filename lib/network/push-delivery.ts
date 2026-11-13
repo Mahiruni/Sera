@@ -13,7 +13,7 @@ export async function notifyProfessionalDevices(recipientId: string, notificatio
     .select("token,platform").eq("user_id", recipientId).eq("enabled", true).limit(100);
   if (error || !data?.length) return;
   const android = data.filter(row => row.platform === "android").map(row => row.token as string);
-  const web = data.filter(row => row.platform !== "android").map(row => row.token as string);
+  const web = data.filter(row => notification.kind !== "voice_call_dismiss" && row.platform !== "android").map(row => row.token as string);
   const results = await Promise.all([android.length ? sendProfessionalPush(android,notification,true) : null, web.length ? sendProfessionalPush(web,notification) : null]);
   const invalidTokens = results.flatMap(result => result?.invalidTokens ?? []);
   if (invalidTokens.length) {
