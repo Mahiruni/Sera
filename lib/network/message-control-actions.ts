@@ -39,3 +39,10 @@ export async function saveReadReceiptVisibility(form:FormData){
  if(error)throw new Error("Could not save read receipt privacy.");
  revalidatePath("/settings/messaging");
 }
+
+export async function saveNotificationPreviews(form:FormData){
+ const user=await currentUser();if(!user?.email_confirmed_at)return;
+ const db=await serverClient();const {error}=await db.rpc("sera_set_notification_previews",{p_enabled:form.get("previews")==="on"});
+ if(error)throw new Error("Could not save notification previews.");
+ revalidatePath("/settings/messaging");
+}
