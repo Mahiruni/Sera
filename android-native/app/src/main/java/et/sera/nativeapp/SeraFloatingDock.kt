@@ -51,7 +51,8 @@ internal fun SeraFloatingDock(
     sections: List<String>,
     onNavigate: (String) -> Unit,
     canCompose: Boolean = true,
-    profileAvatarUrl: String? = null
+    profileAvatarUrl: String? = null,
+    inboxCount: Int = 0
 ) {
     Surface(
         color = Color.Transparent,
@@ -95,6 +96,10 @@ internal fun SeraFloatingDock(
                             widthPx = 96, heightPx = 96,
                             modifier = Modifier.size(26.dp).clip(CircleShape)
                         )
+                    } else if(section == "Inbox") {
+                        BadgedBox(badge={if(inboxCount>0)Badge(containerColor=dockActive,contentColor=Color(0xFF173438)){Text(if(inboxCount>99)"99+" else inboxCount.toString(),fontSize=10.sp,fontWeight=FontWeight.Bold)}}){
+                            Icon(dockIcon(section),contentDescription=if(inboxCount>0)"Messages, $inboxCount unread" else "Messages",tint=tint,modifier=Modifier.size(24.dp).graphicsLayer{scaleX=scale;scaleY=scale})
+                        }
                     } else {
                         Icon(dockIcon(section), contentDescription = if(section=="Search")"Discover" else section, tint = tint,
                             modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale })
