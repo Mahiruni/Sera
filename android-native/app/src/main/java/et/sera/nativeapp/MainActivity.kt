@@ -643,7 +643,9 @@ fun SeraApp(
                                                 }
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
-                                            onAtTop={chromeVisible.value=true},savedOnly=tab=="Saved"
+                                            onAtTop={chromeVisible.value=true},savedOnly=currentTab=="Saved",
+                                            composerName=identity.lineSequence().firstOrNull().orEmpty(),composerAvatar=profileAvatarUrl,
+                                            canCompose=authenticatedUserId.isNotBlank(),onCompose={showComposer=true}
                                         )
                                         "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
@@ -748,8 +750,8 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraFloatingDock(
             selected = selected,
-            sections = listOf("Home", "Network", "Create", "Jobs", "Profile"),
-            onNavigate = { if (it == "Create") onCompose() else onNavigate(it) },
+            sections = listOf("Home", "Network", "Search", "Jobs", "Profile"),
+            onNavigate = onNavigate,
             canCompose = canCompose,
             profileAvatarUrl = profileAvatarUrl
         )
