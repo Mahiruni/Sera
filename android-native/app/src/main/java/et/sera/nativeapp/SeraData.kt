@@ -233,3 +233,10 @@ fun loadSeraCurrentAvatar(token: String, userId: String): String? {
         } finally { connection.disconnect() }
     } catch (_: Exception) { null }
 }
+
+/** Minimal authenticated/RLS-filtered latest-feed probe: no post bodies or media. */
+internal fun seraLatestFeedHead(token:String):Pair<String?,String>{
+    val result=request(token,"posts?select=id&status=eq.published&order=published_at.desc,id.desc&limit=1")
+    val body=result.first?:return null to result.second
+    return runCatching{JSONArray(body).optJSONObject(0)?.optString("id")?.takeIf{it.isNotBlank()} to ""}.getOrElse{null to "Unable to check feed freshness."}
+}

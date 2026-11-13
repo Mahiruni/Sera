@@ -362,9 +362,15 @@ fun SeraApp(
     var authenticatedUserId by remember { mutableStateOf("") }
     var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
     val globalVoice=remember(authenticatedUserId){SeraGlobalCallState()}
+    val feedSession=remember(accessToken,authenticatedUserId){accessToken?.takeIf{authenticatedUserId.isNotBlank()}?.let{SeraFeedSession(it)}}
+    DisposableEffect(feedSession){onDispose{feedSession?.close()}}
+    val homeFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
+    val savedFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
+    var homeReselect by remember(authenticatedUserId){mutableIntStateOf(0)}
+    var homePersonalized by remember(authenticatedUserId){mutableStateOf(false)}
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
-        if (destination == tab) return
+        if (destination == tab) {if(destination=="Home")homeReselect++;return}
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         if(tab!="Inbox") tabHistory.add(tab)
         if (tabHistory.size > 12) tabHistory.removeAt(0)
@@ -646,7 +652,7 @@ fun SeraApp(
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
                                             onAtTop={chromeVisible.value=true},savedOnly=currentTab=="Saved",
                                             composerName=identity.lineSequence().firstOrNull().orEmpty(),composerAvatar=profileAvatarUrl,
-                                            canCompose=authenticatedUserId.isNotBlank(),onCompose={kind->composerInitialKind=kind;showComposer=true}
+                                            canCompose=authenticatedUserId.isNotBlank(),onCompose={kind->composerInitialKind=kind;showComposer=true},session=feedSession,retainedListState=if(currentTab=="Saved")savedFeedState else homeFeedState,homeReselect=homeReselect,activeCall=globalVoice.pinned,retainedPersonalized=if(currentTab=="Saved")false else homePersonalized,onPersonalized={if(currentTab=="Home")homePersonalized=it}
                                         )
                                         "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}

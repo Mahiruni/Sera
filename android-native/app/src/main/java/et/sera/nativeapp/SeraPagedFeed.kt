@@ -60,18 +60,29 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={}) {
+internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={},session:SeraFeedSession?=null,retainedListState:androidx.compose.foundation.lazy.LazyListState?=null,homeReselect:Int=0,activeCall:Boolean=false,retainedPersonalized:Boolean=false,onPersonalized:(Boolean)->Unit={}) {
     val context = LocalContext.current
     val feedInk=MaterialTheme.colorScheme.onSurface
     val feedMuted=MaterialTheme.colorScheme.onSurfaceVariant
     val feedTeal=MaterialTheme.colorScheme.primary
-    val listState=rememberLazyListState()
+    val localListState=rememberLazyListState()
+    val listState=retainedListState?:localListState
     val topCallback by rememberUpdatedState(onAtTop)
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
-    var personalized by remember(token){mutableStateOf(false)}
-    val stream = remember(token, refreshKey,personalized,savedOnly) { pagedSeraPosts(token,personalized,savedOnly) }
+    var personalized by remember(token){mutableStateOf(retainedPersonalized)}
+    val stream = remember(token,session,personalized,savedOnly) { session?.stream(personalized,savedOnly)?:pagedSeraPosts(token,personalized,savedOnly) }
     val posts = stream.collectAsLazyPagingItems()
+    var previousRevision by remember(token,personalized,savedOnly){mutableIntStateOf(refreshKey)}
+    LaunchedEffect(refreshKey,session,personalized,savedOnly){val changed=session?.changed(personalized,savedOnly,refreshKey)?: (previousRevision!=refreshKey);previousRevision=refreshKey;if(changed)posts.refresh()}
+    var lastReselect by remember{mutableIntStateOf(homeReselect)}
+    LaunchedEffect(homeReselect){if(homeReselect!=lastReselect){lastReselect=homeReselect;if(!savedOnly){if(listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0)posts.refresh() else listState.animateScrollToItem(0)}}}
+    var newHead by remember(token,personalized,savedOnly){mutableStateOf<String?>(null)}
+    val displayedHead=posts.itemSnapshotList.items.firstOrNull()?.id
+    val currentHead by rememberUpdatedState(displayedHead)
+    LaunchedEffect(displayedHead){if(displayedHead==newHead)newHead=null}
+    val freshnessLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle){if(!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;if(result.second.isBlank()&&remote!=null&&remote!=currentHead)newHead=remote else if(remote==currentHead)newHead=null}};kotlinx.coroutines.delay(seraFeedProbeInterval(activeCall))}}}
     val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -100,9 +111,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     PullToRefreshBox(
         isRefreshing = posts.loadState.refresh is LoadState.Loading,
-        onRefresh = { reactionOverrides.clear(); repostOverrides.clear(); saveOverrides.clear(); posts.refresh() },
+        onRefresh = { if(posts.loadState.refresh !is LoadState.Loading)posts.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
+        Box(Modifier.fillMaxSize()){
         LazyColumn(
             state=listState,
             modifier = Modifier.fillMaxSize(),
@@ -110,7 +122,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(if(savedOnly)10.dp else 0.dp)
         ) {
-            item(key="feed-mode") { if(savedOnly)Text(stringResource(R.string.saved_posts),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text(stringResource(R.string.latest))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true},label={Text(stringResource(R.string.for_you))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
+            item(key="feed-mode") { if(savedOnly)Text(stringResource(R.string.saved_posts),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false;onPersonalized(false)},label={Text(stringResource(R.string.latest))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true;onPersonalized(true)},label={Text(stringResource(R.string.for_you))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
             if(!savedOnly) item(key="home-compose") { Box(Modifier.padding(top=6.dp,bottom=10.dp)){SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose)} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
@@ -227,6 +239,10 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             if (posts.loadState.refresh is LoadState.NotLoading && posts.itemCount == 0) item {
                 Text(stringResource(R.string.feed_empty))
             }
+        }
+        if(newHead!=null&&!savedOnly&&!personalized&&posts.loadState.refresh !is LoadState.Loading){
+            FilledTonalButton(onClick={scope.launch{listState.scrollToItem(0);posts.refresh()}},modifier=Modifier.align(Alignment.TopCenter).padding(top=72.dp).testTag("sera_new_posts")){Text(stringResource(R.string.new_feed_posts))}
+        }
         }
     }
     if(reactionError.isNotBlank()) {

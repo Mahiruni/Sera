@@ -4,6 +4,8 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -38,3 +40,16 @@ fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=f
     config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, maxSize = 120, enablePlaceholders = false),
     pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly) }
 ).flow
+
+/** In-memory account/token-scoped feed generations; cancellation drops all cached pages. */
+internal class SeraFeedSession(private val token:String){
+    private val scope=kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+Dispatchers.Main.immediate)
+    private val streams=mutableMapOf<Pair<Boolean,Boolean>,kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<SeraPost>>>()
+    private val revisions=mutableMapOf<Pair<Boolean,Boolean>,Int>()
+    fun stream(personalized:Boolean,saved:Boolean)=streams.getOrPut(personalized to saved){pagedSeraPosts(token,personalized,saved).cachedIn(scope)}
+    fun changed(personalized:Boolean,saved:Boolean,revision:Int):Boolean {
+        val previous=revisions.put(personalized to saved,revision)
+        return previous!=null&&previous!=revision
+    }
+    fun close(){scope.cancel();streams.clear();revisions.clear()}
+}
