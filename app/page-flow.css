@@ -493,3 +493,11 @@ html[data-sera-theme=dark] .sera-main .sera-editorial-feed.sera-network.network-
  .sera-main .sera-editorial-feed.sera-network.network-app .social-post-list>.social-card{padding:12px 2px 8px!important}
  .sera-main .sera-editorial-feed .sera-feed-compose-trigger strong{font-size:14px}
 }
+
+/* Static lightweight placeholders: no expensive shimmer on slow devices. */
+.sera-feed-loading .social-card{min-height:110px}
+.sera-feed-skeleton-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.sera-feed-skeleton-head span:first-child{width:46px;height:46px;border-radius:50%;background:var(--sera-border,#dce8e5);opacity:.65}
+.sera-feed-skeleton-head span:last-child,.sera-feed-skeleton-line{display:block;height:10px;width:65%;border-radius:6px;background:var(--sera-border,#dce8e5);opacity:.65}
+.sera-feed-skeleton-line{margin:12px 0;width:92%}
+.sera-feed-skeleton-line.short{width:58%}
