@@ -217,3 +217,5 @@ html[data-sera-theme=dark] .sera-chat-page {
 .sera-inbox-quick-actions button,.sera-voice-speed{border:0;border-radius:12px;padding:8px;color:var(--chat-accent);background:var(--chat-quote);font-size:12px;cursor:pointer}
 
 .sera-meeting-card{display:grid;gap:7px;padding:5px;min-width:160px}.sera-meeting-card small{font-size:11px;color:var(--chat-muted)}.sera-meeting-card strong{font-size:16px}.sera-meeting-card span{font-size:12px}.sera-meeting-card>div{display:flex;gap:5px;flex-wrap:wrap}.sera-meeting-card button,.sera-chat-jump-latest{border:0;border-radius:14px;background:var(--chat-accent);color:var(--chat-surface);padding:8px 12px;font-size:12px;cursor:pointer}.sera-chat-jump-latest{position:absolute;bottom:90px;right:16px;z-index:8;display:flex;align-items:center;gap:5px}
+
+.sera-voice-live-wave{display:flex;align-items:center;gap:2px;height:24px}.sera-voice-live-wave i{width:3px;min-width:2px;border-radius:4px;background:var(--chat-accent);transition:height .1s linear}@media(prefers-reduced-motion:reduce){.sera-voice-live-wave i{transition:none}}
