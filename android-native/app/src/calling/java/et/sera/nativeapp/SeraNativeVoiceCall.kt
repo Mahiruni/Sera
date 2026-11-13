@@ -27,8 +27,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
@@ -325,14 +327,21 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val primary=colors.onSurface
         val secondary=colors.onSurfaceVariant
         val teal=colors.primary
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).clip(androidx.compose.foundation.shape.RectangleShape)){
+            // The cached contact photo becomes an atmospheric, decorative layer only.
+            // Native blur is supported from Android 12; older devices keep the gradient.
+            if(!photo.isNullOrBlank() && android.os.Build.VERSION.SDK_INT>=31){
+                SeraMediaImage(photo,"",224,224,Modifier.matchParentSize().blur(42.dp).graphicsLayer{scaleX=1.18f;scaleY=1.18f;alpha=.55f})
+                Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.70f),bg.copy(alpha=.55f),bg.copy(alpha=.85f)))))
+            }
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                 if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,voiceText("Minimize call"),tint=primary)}else Spacer(Modifier.size(48.dp))
                 Text("Sera Voice",color=teal,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.size(48.dp))
             }
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                SeraVoiceAvatar(name,photo,teal,!cancelRequested&&(incoming||active))
+                SeraVoiceAvatar(name,photo,teal,seraVoiceSignalActive(cancelRequested,started,incoming,phase))
                 Spacer(Modifier.height(20.dp))
                 Text(name,color=primary,fontSize=27.sp,fontWeight=FontWeight.SemiBold,maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
@@ -370,6 +379,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                     }
                 }
                 Text(voiceText("Sera · Voice call"),color=secondary,fontSize=11.sp)
+            }
             }
         }
     }

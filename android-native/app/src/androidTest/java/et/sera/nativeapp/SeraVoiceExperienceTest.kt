@@ -35,6 +35,15 @@ class SeraVoiceExperienceTest {
         compose.onNodeWithText("Missed call").assertExists()
         compose.onNodeWithText("No answer").assertDoesNotExist()
     }
+    @Test fun callSignalStopsAfterMediaConnectsAndDuringRecovery(){
+        assertEquals(true,seraVoiceSignalActive(false,0,false,"Calling…"))
+        assertEquals(true,seraVoiceSignalActive(false,0,true,""))
+        assertEquals(false,seraVoiceSignalActive(false,0,false,"Connecting…"))
+        assertEquals(false,seraVoiceSignalActive(false,0,true,"Connected"))
+        assertEquals(false,seraVoiceSignalActive(false,500,false,"Reconnecting…"))
+        assertEquals(false,seraVoiceSignalActive(false,500,false,"Calling…"))
+        assertEquals(false,seraVoiceSignalActive(true,0,false,"Calling…"))
+    }
     @Test fun durationDoesNotCountNegativeTimeAndSupportsHours(){
         assertEquals("00:00",seraCallDuration(-1))
         assertEquals("00:59",seraCallDuration(59))

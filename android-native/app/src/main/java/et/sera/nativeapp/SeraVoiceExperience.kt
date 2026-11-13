@@ -39,36 +39,26 @@ internal fun seraCallDuration(seconds:Long):String {
 }
 internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?,val incoming:Boolean,val endedAt:Long=System.currentTimeMillis(),val detail:String="")
 
-/** A gentle double heartbeat, drawn in a fixed footprint so the name and controls never jump. */
+/** Signal rings only while waiting for an answer; the photo never scales. */
+internal fun seraVoiceSignalActive(cancelRequested:Boolean,started:Long,incoming:Boolean,phase:String):Boolean =
+    !cancelRequested && started==0L && phase!="Connected" && (incoming || phase=="Calling…")
+
 @Composable internal fun SeraVoiceAvatar(name:String,photo:String?,accent:Color,pulsing:Boolean,modifier:Modifier=Modifier){
     val colors=MaterialTheme.colorScheme
     val animate=pulsing&&ValueAnimator.areAnimatorsEnabled()
-    val beat=if(animate){
-        val transition=rememberInfiniteTransition(label="voice heartbeat")
-        transition.animateFloat(
-            initialValue=0f,targetValue=0f,
-            animationSpec=infiniteRepeatable(keyframes{
-                durationMillis=1500
-                0f at 0 using FastOutSlowInEasing
-                1f at 190 using FastOutSlowInEasing
-                .12f at 360 using FastOutSlowInEasing
-                .65f at 520 using FastOutSlowInEasing
-                0f at 780
-                0f at 1500
-            },RepeatMode.Restart),label="double heartbeat"
-        )
-    }else rememberUpdatedState(0f)
-    // Reserve the largest pulse size; the photo stays circular and centred.
     Box(modifier.size(176.dp).testTag("sera_voice_avatar_footprint"),contentAlignment=Alignment.Center){
-        Box(Modifier.size(156.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.10f*v;scaleY=scaleX;alpha=.65f+.35f*v
-        }.border(1.dp,accent.copy(alpha=.55f),CircleShape))
-        Box(Modifier.size(136.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.075f*v;scaleY=scaleX
-        }.background(accent.copy(alpha=.07f),CircleShape).border(1.dp,accent.copy(alpha=.40f),CircleShape))
-        Box(Modifier.size(112.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.06f*v;scaleY=scaleX
-        }.clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
+        if(animate){
+            val transition=rememberInfiniteTransition(label="voice signal")
+            val progress by transition.animateFloat(0f,1f,animationSpec=infiniteRepeatable(tween(2700,easing=LinearEasing),RepeatMode.Restart),label="signal ripple")
+            repeat(3){ index ->
+                Box(Modifier.size(116.dp).graphicsLayer{
+                    val wave=(progress+index/3f)%1f
+                    scaleX=1f+.49f*wave;scaleY=scaleX
+                    alpha=.55f*(1f-wave)*(1f-wave)
+                }.border(1.dp,accent,CircleShape))
+            }
+        }
+        Box(Modifier.size(112.dp).clip(CircleShape).background(colors.primaryContainer).border(1.dp,accent.copy(alpha=.22f),CircleShape),contentAlignment=Alignment.Center){
             Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
             if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
         }
