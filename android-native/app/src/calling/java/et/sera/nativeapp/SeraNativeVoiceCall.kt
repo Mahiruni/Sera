@@ -262,7 +262,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 Spacer(Modifier.size(48.dp))
             }
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                SeraVoiceAvatar(name,photo,teal,incoming||phase=="Calling…"||busy)
+                SeraVoiceAvatar(name,photo,teal,!cancelRequested&&(incoming||active))
                 Spacer(Modifier.height(20.dp))
                 Text(name,color=primary,fontSize=27.sp,fontWeight=FontWeight.SemiBold,maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
