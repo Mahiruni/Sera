@@ -37,6 +37,13 @@ jobs:
           docker inspect -f '{{.State.Running}}' sera-test-turn | grep true
       - name: Verify two-way audio packets through actual relay
         run: node tests/voice-turn-transport.mjs
+      - name: Verify decoded voice under bandwidth restriction, latency and packet loss
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo tc qdisc replace dev lo root netem delay 45ms 15ms loss 2% rate 384kbit limit 1000
+          trap 'sudo tc qdisc del dev lo root || true' EXIT
+          SERA_TEST_WEAK_NETWORK=1 node tests/voice-turn-transport.mjs
       - name: Stop test relay
         if: always()
         run: docker rm -f sera-test-turn || true
