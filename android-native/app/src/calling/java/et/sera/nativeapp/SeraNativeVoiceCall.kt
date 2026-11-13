@@ -309,7 +309,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     DisposableEffect(lifecycle,conversation){
         val observer=androidx.lifecycle.LifecycleEventObserver{_,event->
             if(event==Lifecycle.Event.ON_RESUME)resumed=true
-            if(event==Lifecycle.Event.ON_PAUSE)resumed=false
+            if(event==Lifecycle.Event.ON_PAUSE){resumed=false;if(cameraOn||cameraWanted){cameraWanted=false;rtc?.camera(false);cameraOn=false}}
             if(event==Lifecycle.Event.ON_STOP){
                 val current=latestRow
                 if(current!=null&&current.state=="ringing"&&current.callee==userId&&latestPhase.isBlank()){
@@ -359,7 +359,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val premium=videoAccess?.optBoolean("premium")==true;val ready=videoAccess?.optBoolean("peer_ready")==true
         AlertDialog(onDismissRequest={videoPicker=false},title={Text(voiceText("Video quality"))},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text(voiceText("Video adapts to your network. Voice always comes first."))
-            if(!ready)Text(voiceText("Recipient must open Sera Web to receive video calls."))
+            if(!ready)Text(voiceText("Recipient must open Sera to receive video calls."))
             listOf("standard" to "Standard · 480p","hd" to "HD · 720p","super_hd" to "Super HD · 1080p").forEach{(q,label)->
                 OutlinedButton(onClick={request(false,true,true,q)},enabled=ready&&(q=="standard"||premium),modifier=Modifier.fillMaxWidth()){
                     Icon(if(q!="standard"&&!premium)Icons.Outlined.Lock else Icons.Outlined.Videocam,null);Spacer(Modifier.width(8.dp));Text(label+" · "+voiceText(if(q=="standard")"Free" else "Premium"))
