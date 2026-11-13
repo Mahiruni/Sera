@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useLayoutEffect,useRef,useState,type ReactNode} from "react";
+import {createContext,useContext,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type ReactNode} from "react";
 import {Phone,PhoneOff,Mic,MicOff,X,ChevronDown,History,Maximize2} from "lucide-react";
 import {createPortal} from "react-dom";
 import {useSera} from "@/components/store";
@@ -30,7 +30,33 @@ function gather(pc:RTCPeerConnection,budgetMs:number,signal:AbortSignal,complete
     pc.addEventListener("icegatheringstatechange",check);pc.addEventListener("icecandidate",check);signal.addEventListener("abort",abort,{once:true});check();
   });
 }
-export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conversation:string;userId:string;name:string;photo?:string|null;onHistory:(events:CallHistoryEntry[])=>void}){
+type VoiceEntry={conversation:string;userId:string;name:string;photo?:string|null;onHistory:(events:CallHistoryEntry[])=>void};
+type VoiceTarget=VoiceEntry&{node:HTMLElement};
+type VoiceHostState={selected:VoiceTarget|null;target:VoiceTarget|null;pinned:boolean};
+const VoiceHost=createContext<{register:(target:VoiceTarget)=>void;unregister:(node:HTMLElement)=>void}|null>(null);
+/** Root-layout host survives client navigation; only the chat-header controls are portaled. */
+export function SeraVoiceProvider({userId,children}:{userId:string;children:ReactNode}){
+ const [state,setState]=useState<VoiceHostState>({selected:null,target:null,pinned:false});
+ const register=useCallback((target:VoiceTarget)=>setState(s=>({...s,selected:target,target:s.pinned?s.target:target})),[]);
+ const unregister=useCallback((node:HTMLElement)=>setState(s=>s.selected?.node!==node?s:{...s,selected:null,target:s.pinned?s.target:null}),[]);
+ const report=useCallback((id:string,pinned:boolean)=>setState(s=>s.target?.conversation!==id||s.pinned===pinned?s:{...s,pinned,target:pinned?s.target:s.selected}),[]);
+ const stateRef=useRef(state);stateRef.current=state;
+ const history=useCallback((events:CallHistoryEntry[])=>{const s=stateRef.current;if(s.selected?.conversation===s.target?.conversation)s.selected?.onHistory(events);},[]);
+ const api=useMemo(()=>({register,unregister}),[register,unregister]);
+ const target=state.target;
+ const selected=state.selected?.conversation===target?.conversation?state.selected:null;
+ return <VoiceHost.Provider value={api}>{children}{userId&&target?.userId===userId&&<VoiceEngine key={userId+":"+target.conversation} {...target} onHistory={history} controlRoot={selected?.node??null} global selected={Boolean(selected)} report={report}/>}</VoiceHost.Provider>;
+}
+export function SeraVoiceCall(props:VoiceEntry){
+ const host=useContext(VoiceHost),node=useRef<HTMLSpanElement>(null),historyRef=useRef(props.onHistory);
+ historyRef.current=props.onHistory;
+ useLayoutEffect(()=>{if(!host||!node.current)return;const element=node.current;
+  host.register({...props,node:element,onHistory:events=>historyRef.current(events)});
+  return()=>host.unregister(element);
+ },[host,props.conversation,props.userId,props.name,props.photo]);
+ return host?<span ref={node} style={{display:"contents"}}/>:<VoiceEngine {...props}/>;
+}
+function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,global=false,selected=true,report}:VoiceEntry&{controlRoot?:HTMLElement|null;global?:boolean;selected?:boolean;report?:(id:string,pinned:boolean)=>void}){
   const {locale}=useSera();
   const tr=(value:string)=>voiceText(locale,value);
   const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallHistoryEntry[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false),[minimized,setMinimized]=useState(false);
@@ -154,7 +180,7 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
     throw new RelayUnavailable("No secure call relay found. Switch Wi-Fi or mobile data and try again.");
   }
   async function dial(){
-    if(busy.current||current.current)return;busy.current=true;operation.current="dial";cancelRequested.current=false;setSummary(null);setMinimized(false);setError("");setPhase("Preparing call…");
+    if(busy.current||current.current)return;report?.(conversation,true);busy.current=true;operation.current="dial";cancelRequested.current=false;setSummary(null);setMinimized(false);setError("");setPhase("Preparing call…");
     try{const peer=await prepareWithFallback();if(!mounted.current||pc.current!==peer||cancelRequested.current)throw new Error("Call cancelled.");const s=await startCall(conversation,crypto.randomUUID(),peer.localDescription!.sdp);if(!mounted.current||cancelRequested.current){void changeCall(conversation,s.id,"end").catch(()=>{});cleanup();if(mounted.current)setPhase("");return;}update(s);setPhase("Calling…");}
     catch(e){captureSummary(cancelRequested.current?"Call cancelled":e instanceof RelayUnavailable?"Unable to connect":"Call unavailable",null,cancelRequested.current?undefined:e instanceof Error?e.message:"Could not start call.");cleanup();setPhase("");}finally{busy.current=false;operation.current=null;}
   }
@@ -164,15 +190,19 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
     catch(e){await terminate(cancelRequested.current?"decline":"fail",cancelRequested.current?"":e instanceof Error?e.message:"Could not accept call.");}finally{busy.current=false;operation.current=null;}
   }
 
+  const held=Boolean(session||phase||summary);
+  useLayoutEffect(()=>{report?.(conversation,held);},[report,conversation,held]);
+  useEffect(()=>{if(!selected&&session?.state!=="ringing")setMinimized(true);},[selected,session?.state]);
   if(!config.enabled)return null;
   const incoming=session?.state==="ringing"&&session.callee===userId&&!phase;
   const duration=formatDuration(seconds);
   const active=Boolean(session||phase);
   const end=()=>{if(operation.current){cancelRequested.current=true;preparationAbort.current?.abort();stream.current?.getTracks().forEach(t=>t.stop());const peer=pc.current;pc.current=null;if(peer){peer.ontrack=null;peer.onconnectionstatechange=null;peer.close();}setPhase("Cancelling…");return;}if(cancelRequested.current&&phase==="Cancelling…")return;void terminate("end");};
-  return <><button type="button" className="sera-chat-icon" aria-label={tr(active?"Return to call":"Voice call")} title={tr(active?"Return to call":"Voice call")} onClick={()=>active?setMinimized(false):void dial()}><Phone size={21}/></button>
-  <button type="button" className="sera-chat-icon" aria-label={tr("Recent calls")} title={tr("Recent calls")} disabled={active} onClick={()=>{setHistory([]);void getCallHistory(conversation).then(events=>setHistory(previous=>previous===null?null:events)).catch(()=>{setHistory(null);setError("Call history unavailable.");});}}><History size={19}/></button>
+  const controls=<><button type="button" className="sera-chat-icon" aria-label={tr(active?"Return to call":"Voice call")} title={tr(active?"Return to call":"Voice call")} onClick={()=>active?setMinimized(false):void dial()}><Phone size={21}/></button>
+  <button type="button" className="sera-chat-icon" aria-label={tr("Recent calls")} title={tr("Recent calls")} disabled={active} onClick={()=>{setHistory([]);void getCallHistory(conversation).then(events=>setHistory(previous=>previous===null?null:events)).catch(()=>{setHistory(null);setError("Call history unavailable.");});}}><History size={19}/></button></>;
+  return <>{global?(controlRoot?createPortal(controls,controlRoot):null):controls}
   <audio ref={audio} autoPlay playsInline/>
-  {active&&typeof document!=="undefined"&&createPortal(minimized&&!incoming?<div className="sera-aura-mini" style={{zIndex:2147483000}}><button type="button" onClick={()=>setMinimized(false)}><MemberAvatar name={name} photo={photo} size={32}/><span><strong>{name}</strong><small>{phase==="Connected"?duration:tr(phase||"Calling…")}</small></span><Maximize2 size={17}/></button><button type="button" className="sera-aura-hang" aria-label={tr("End call")} onClick={end}><PhoneOff size={19}/></button></div>:<CallTopLayer label={tr(incoming?"Incoming voice call":"Voice call")} onDismiss={()=>{if(!incoming)setMinimized(true);}}><div className="sera-call-overlay sera-aura-overlay"><div className="sera-call-panel sera-aura-panel">
+  {active&&typeof document!=="undefined"&&createPortal(minimized&&!incoming?<div className="sera-aura-mini" style={{zIndex:2147483000}}><button type="button" onClick={()=>setMinimized(false)}><MemberAvatar name={name} photo={photo} size={32}/><span><strong>{name}</strong><small>{phase==="Connected"?duration:tr(phase||"Calling…")}</small></span><Maximize2 size={17}/></button>{session?.state==="accepted"&&<button type="button" aria-label={tr(muted?"Unmute":"Mute")} aria-pressed={muted} onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>{t.enabled=!next;});setMuted(next);}}>{muted?<MicOff size={18}/>:<Mic size={18}/>}</button>}<button type="button" className="sera-aura-hang" aria-label={tr("End call")} onClick={end}><PhoneOff size={19}/></button></div>:<CallTopLayer label={tr(incoming?"Incoming voice call":"Voice call")} onDismiss={()=>{if(!incoming)setMinimized(true);}}><div className="sera-call-overlay sera-aura-overlay"><div className="sera-call-panel sera-aura-panel">
     <header className="sera-aura-header">{!incoming?<button type="button" aria-label={tr("Minimize call")} onClick={()=>setMinimized(true)}><ChevronDown/></button>:<span/>}<span>Sera voice</span><span/></header>
     <div className="sera-aura-identity"><div className="sera-aura-avatar"><MemberAvatar name={name} photo={photo} size={104}/></div><h2>{name}</h2><p role="status">{tr(incoming?"Incoming voice call":phase||"Calling…")}</p>{(phase==="Connected"||seconds>0)&&<strong className="sera-aura-duration">{duration}</strong>}</div>
     {(phase==="Finding secure connection…"||phase==="Trying alternative secure connection…"||phase==="Preparing call…")&&<progress aria-label={tr("Preparing secure connection")} style={{width:"65%",accentColor:"var(--sera-teal, #087E83)"}}/>}
