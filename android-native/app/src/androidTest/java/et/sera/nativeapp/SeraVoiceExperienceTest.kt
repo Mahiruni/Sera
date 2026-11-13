@@ -16,6 +16,8 @@ class SeraVoiceExperienceTest {
     @get:Rule val compose=createComposeRule()
     @Test fun packetLossWarningRequiresMeasuredAudio(){
         assertEquals(null,seraAudioQuality(null,SeraAudioSample(100,3)))
+        assertEquals("Unstable connection",seraAudioQuality(null,SeraAudioSample(100,3,jitterSeconds=.08)))
+        assertEquals("Unstable connection",seraAudioQuality(null,SeraAudioSample(100,3,rttSeconds=.9)))
         assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(101,3)))
         assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(99,3)))
         assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(200,4)))
