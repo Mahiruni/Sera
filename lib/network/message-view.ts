@@ -9,7 +9,7 @@ export async function messageViews(db:Db,conversation:string,rows:Row[]):Promise
   const ids=rows.map(m=>m.id);
   const replyIds=[...new Set(rows.flatMap(m=>m.reply_to_id?[m.reply_to_id]:[]))];
   const [attachments,reactions,replies]=await Promise.all([
-    db.from("professional_message_attachments").select("id,message_id,file_name,mime_type,byte_size,duration_ms").in("message_id",ids),
+    db.from("professional_message_attachments").select("id,message_id,file_name,mime_type,byte_size,duration_ms,position").in("message_id",ids).order("position",{ascending:true}),
     db.from("professional_message_reactions").select("message_id,member_id,emoji").eq("conversation_id",conversation).in("message_id",ids).not("emoji","is",null),
     replyIds.length?db.from("professional_messages").select("id,sender_id,body,unsent_at").eq("conversation_id",conversation).in("id",replyIds):Promise.resolve({data:[]}),
   ]);

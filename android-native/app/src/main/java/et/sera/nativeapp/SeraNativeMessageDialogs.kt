@@ -43,6 +43,7 @@ import kotlinx.coroutines.withContext
         }
     }},confirmButton={Button(enabled=target!=null&&!busy,onClick={
         val destination=target?:return@Button
+        if(source.files.size>1){onError("Forward individual photos for now.");return@Button}
         busy=true
         scope.launch{
             try{
