@@ -28,6 +28,7 @@ internal fun SeraSignatureSheet(
     onDismissRequest: () -> Unit,
     allowPartial: Boolean = false,
     canDismiss: Boolean = true,
+    surfaceColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val latestCanDismiss by rememberUpdatedState(canDismiss)
@@ -38,7 +39,7 @@ internal fun SeraSignatureSheet(
     ModalBottomSheet(
         sheetState=sheetState,
         onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = surfaceColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
         scrimColor = Color(0x990C262D),

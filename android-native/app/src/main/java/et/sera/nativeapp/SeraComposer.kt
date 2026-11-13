@@ -12,6 +12,15 @@ import androidx.security.crypto.MasterKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.EmojiEmotions
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.TextRange
@@ -82,7 +91,6 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var audienceOpen by remember{mutableStateOf(false)}
     val audiences=linkedMapOf("public" to "Public","connections" to "Connections","followers" to "Followers","only_me" to "Only me")
     var kind by rememberSaveable(userId){mutableStateOf(restored.optString("kind","idea").takeIf{it in listOf("idea","quote","talent","project","achievement","question","photos")}?: "idea")}
-    var kindOpen by remember{mutableStateOf(false)}
     val kinds=linkedMapOf("idea" to "Idea","photos" to "Photo","quote" to "Quote","talent" to "Talent","project" to "Project","achievement" to "Achievement","question" to "Discussion")
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }
@@ -115,6 +123,14 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     fun persistDraft():Boolean=runCatching{drafts?.saveAll(userId,body,audience,fields);drafts!=null}.getOrDefault(false)
     val accent = Color(0xFF087E83)
     val ink = MaterialTheme.colorScheme.onSurface
+    val light = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val paper = if(light) Color(0xFFFFFFFF) else MaterialTheme.colorScheme.surface
+    val soft = if(light) Color(0xFFF3F8FA) else MaterialTheme.colorScheme.surfaceVariant
+    val line = if(light) Color(0xFFDCE8ED) else MaterialTheme.colorScheme.outlineVariant
+    val muted = if(light) Color(0xFF64748B) else MaterialTheme.colorScheme.onSurfaceVariant
+    val actionInk = if(light) Color(0xFF087E83) else Color(0xFF72DADB)
+    val canPublish = !publishing && (kind!="photos"||selectedImages.isNotEmpty()) &&
+        (selectedImages.isNotEmpty()||body.trim().isNotEmpty()) && (kind!="quote"||body.length in 3..600)
     fun close() {
         focus.clearFocus()
         onDismiss()
@@ -144,7 +160,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     expandedImage?.let { uri ->
         SeraMediaLightbox(url = uri.toString(), description = "Selected image preview", onDismiss = { expandedImage = null })
     }
-    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&!hasContent&&selectedImages.isEmpty()) {
+    SeraSignatureSheet(onDismissRequest = { requestClose() },canDismiss=!publishing&&!hasContent&&selectedImages.isEmpty(), surfaceColor=paper) {
         val keyboardOpen=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
         Column(
             Modifier.fillMaxWidth().heightIn(max = 720.dp)
@@ -155,11 +171,33 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text("Create a post", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, color = ink)
+                        fontWeight = FontWeight.Bold, color = ink, fontSize=24.sp)
                 }
-                IconButton(onClick = { requestClose() }) { Icon(Icons.Outlined.Close, "Close composer", tint = accent) }
+                IconButton(onClick = { requestClose() },modifier=Modifier.background(soft,CircleShape)) { Icon(Icons.Outlined.Close, "Close composer", tint = actionInk) }
             }
-            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){SeraAccountAvatar(identity,avatar,42);Column(Modifier.weight(1f)){Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.SemiBold,color=ink,modifier=Modifier.weight(1f,fill=false));if(verified)SeraIdentityBadge()};if(headline.isNotBlank())Text(headline,color=accent,style=MaterialTheme.typography.labelSmall);Box{TextButton(enabled=!publishing,onClick={audienceOpen=true},contentPadding=PaddingValues(0.dp)){Text("Audience: "+(audiences[audience]?:"Only me"))};DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}}}}}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                SeraAccountAvatar(identity,avatar,48)
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                        Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.Bold,color=ink,fontSize=17.sp,modifier=Modifier.weight(1f,fill=false))
+                        if(verified)SeraIdentityBadge()
+                    }
+                    if(headline.isNotBlank())Text(headline,color=muted,style=MaterialTheme.typography.bodySmall)
+                    Box{
+                        OutlinedButton(enabled=!publishing,onClick={audienceOpen=true},shape=RoundedCornerShape(50),border=BorderStroke(1.dp,line),
+                            colors=ButtonDefaults.outlinedButtonColors(containerColor=soft,contentColor=actionInk),
+                            contentPadding=PaddingValues(horizontal=12.dp,vertical=4.dp)){
+                            Icon(Icons.Outlined.Public,null,Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Audience: "+(audiences[audience]?:"Only me"),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                            Icon(Icons.Outlined.ExpandMore,null,Modifier.size(17.dp))
+                        }
+                        DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){
+                            audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}
+                        }
+                    }
+                }
+            }
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(vertical = 2.dp),
@@ -170,24 +208,21 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     if (it.text.length <= if(kind=="quote")600 else 10000) { editor = it; saved = false }
                 },
                 enabled=!publishing,
-                modifier = Modifier.fillMaxWidth().heightIn(min = if(keyboardOpen)80.dp else 240.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = if(keyboardOpen)80.dp else 240.dp)
+                    .background(soft,RoundedCornerShape(20.dp)).border(1.dp,line,RoundedCornerShape(20.dp)),
                 textStyle=TextStyle(color=ink,fontSize=19.sp,lineHeight=27.sp),
                 cursorBrush=SolidColor(accent),
-                decorationBox={inner->Box(Modifier.fillMaxWidth().padding(vertical=12.dp)){if(body.isEmpty())Text(stringResource(R.string.composer_placeholder),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=19.sp);inner()}},
+                decorationBox={inner->Box(Modifier.fillMaxWidth().padding(16.dp)){if(body.isEmpty())Text(stringResource(R.string.composer_placeholder),color=muted,fontSize=18.sp);inner()}},
                 singleLine=false,
                 keyboardOptions = seraMultilineKeyboard,
                 minLines = if(keyboardOpen)2 else 8,
                 maxLines=if(keyboardOpen)5 else 20
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                SeraComposerTool("Photos",Icons.Outlined.Image,actionInk,soft,line,!publishing,Modifier.weight(1f)){
                     imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, enabled=!publishing, modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp)) {
-                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(19.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Photos")
                 }
-                TextButton(onClick={emojiOpen=!emojiOpen},enabled=!publishing,modifier=Modifier.weight(1f)){Text("Emoji")}
+                SeraComposerTool("Emoji",Icons.Outlined.EmojiEmotions,actionInk,soft,line,!publishing,Modifier.weight(1f)){emojiOpen=!emojiOpen}
             }
             if(emojiOpen)LazyRow(horizontalArrangement=Arrangement.spacedBy(4.dp)){items(listOf("✨","👍","👏","💡","🎉","❤️","🚀","🤝","😊","🔥")){emoji->TextButton(onClick={val start=editor.selection.min;val end=editor.selection.max;val next=body.substring(0,start)+emoji+body.substring(end);if(next.length<=if(kind=="quote")600 else 10000)editor=TextFieldValue(next,TextRange(start+emoji.length));emojiOpen=false}){Text(emoji,fontSize=22.sp)}}}
             if (mediaError.isNotBlank()) Text(mediaError, color = MaterialTheme.colorScheme.error)
@@ -209,14 +244,30 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     }
                 }
             }
-                Box{TextButton(enabled=!publishing,onClick={kindOpen=true}){Text("Post type: "+(kinds[kind]?:"Idea"))};DropdownMenu(expanded=kindOpen,onDismissRequest={kindOpen=false}){kinds.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={kind=key;kindOpen=false;if(key=="photos"&&selectedImages.isEmpty())imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))})}}}
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Text("Post type",fontWeight=FontWeight.SemiBold,color=ink,fontSize=14.sp)
+                    LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        items(kinds.entries.toList(),key={it.key}){(key,label)->
+                            FilterChip(selected=kind==key,enabled=!publishing,onClick={
+                                kind=key
+                                if(key=="photos"&&selectedImages.isEmpty())imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },label={Text(label,fontSize=13.sp,fontWeight=FontWeight.Medium)},shape=RoundedCornerShape(50),
+                                colors=FilterChipDefaults.filterChipColors(containerColor=paper,labelColor=ink,selectedContainerColor=if(light)Color(0xFFE0F6F5) else soft,selectedLabelColor=actionInk))
+                        }
+                    }
+                }
                 if(kind=="quote")OutlinedTextField(value=quoteSource,onValueChange={quoteSource=it.take(120)},label={Text("Quote attribution (optional)")},modifier=Modifier.fillMaxWidth(),singleLine=true)
-                TextButton(onClick={detailsOpen=!detailsOpen}){Text(if(detailsOpen)"Hide post details" else "Add headline, skills or project details")}
+                OutlinedButton(onClick={detailsOpen=!detailsOpen},enabled=!publishing,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,line),contentPadding=PaddingValues(horizontal=14.dp,vertical=12.dp),colors=ButtonDefaults.outlinedButtonColors(containerColor=soft,contentColor=ink)){
+                    Icon(Icons.Outlined.EditNote,null,Modifier.size(21.dp),tint=actionInk)
+                    Spacer(Modifier.width(10.dp))
+                    Text(if(detailsOpen)"Hide post details" else "Add headline, skills or project details",modifier=Modifier.weight(1f),fontSize=13.sp)
+                    Icon(if(detailsOpen)Icons.Outlined.ExpandMore else Icons.Outlined.ChevronRight,null,Modifier.size(19.dp),tint=muted)
+                }
                 if(detailsOpen){OutlinedTextField(value=title,onValueChange={title=it.take(140)},label={Text("Headline")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=category,onValueChange={category=it.take(60)},label={Text("Category")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=location,onValueChange={location=it.take(120)},label={Text("Location")},modifier=Modifier.fillMaxWidth(),singleLine=true);OutlinedTextField(value=skills,onValueChange={skills=it.take(400)},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(value=projectUrl,onValueChange={projectUrl=it.take(500)},label={Text("Project link (https://)")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
-                Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${body.length} / ${if(kind=="quote")600 else 10000}",style=MaterialTheme.typography.labelSmall,color=muted)
                 if (selectedImages.isNotEmpty()) Text("Photos are uploaded securely.", style = MaterialTheme.typography.bodySmall, color = accent)
             }
-            HorizontalDivider(color = Color(0xFFE4EFED))
+            HorizontalDivider(color = line)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = {
                     saved = persistDraft()
@@ -224,7 +275,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     focus.clearFocus()
                 }, enabled = hasContent && !publishing,
                     modifier = Modifier.weight(1f).heightIn(min = 50.dp),
-                    shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color(0xFFD8E7E5))) { Icon(Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text(stringResource(R.string.save_draft)) }
+                    shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, line),colors=ButtonDefaults.outlinedButtonColors(contentColor=actionInk)) { Icon(Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text(stringResource(R.string.save_draft)) }
             Button(onClick = {
                 if (publishing) return@Button
                 publishing = true; publishMessage = ""
@@ -237,10 +288,10 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                     if (result.first) { published=true; runCatching { drafts?.clear(userId) }; onPublished() }
                     else publishMessage = result.second
                 }
-            }, enabled = !publishing && (kind!="photos"||selectedImages.isNotEmpty()) && (selectedImages.isNotEmpty()||body.trim().isNotEmpty()) && (kind!="quote"||body.length in 3..600),
-                modifier = Modifier.weight(1.35f).heightIn(min = 50.dp),
+            }, enabled = canPublish,
+                modifier = Modifier.weight(1.35f).heightIn(min = 50.dp).then(if(canPublish)Modifier.background(Brush.horizontalGradient(listOf(Color(0xFF08AAA9),Color(0xFF00666D))),RoundedCornerShape(24.dp)) else Modifier),
                 shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = accent)) {
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,contentColor=Color.White,disabledContainerColor=soft,disabledContentColor=muted)) {
                 Icon(Icons.Outlined.Send, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (publishing) "Publishing…" else "Post", fontWeight = FontWeight.Bold)
             }
             }
@@ -248,6 +299,18 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
 
+        }
+    }
+}
+
+@Composable
+private fun SeraComposerTool(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,tint:Color,soft:Color,line:Color,enabled:Boolean,modifier:Modifier=Modifier,onClick:()->Unit){
+    OutlinedButton(onClick=onClick,enabled=enabled,modifier=modifier.heightIn(min=64.dp),shape=RoundedCornerShape(18.dp),border=BorderStroke(1.dp,line),
+        colors=ButtonDefaults.outlinedButtonColors(containerColor=soft,contentColor=tint),
+        contentPadding=PaddingValues(8.dp)){
+        Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(4.dp)){
+            Icon(icon,null,Modifier.size(23.dp))
+            Text(label,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
         }
     }
 }
