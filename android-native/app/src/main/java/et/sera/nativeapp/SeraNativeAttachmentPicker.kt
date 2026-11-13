@@ -21,6 +21,8 @@ internal fun SeraNativeAttachmentPicker(
     onSelected:(NativeChatSelection)->Unit,onAlbum:(List<NativeChatSelection>)->Unit,onShare:(String)->Unit,onError:(String)->Unit
 ){
     var shareMode by remember(conversationId){mutableStateOf<SeraAttachmentKind?>(null)}
+    var meetingOpen by remember(conversationId){mutableStateOf(false)}
+    if(meetingOpen)SeraMeetingDialog(onDismiss={meetingOpen=false},onAdd={onShare(it);meetingOpen=false})
     shareMode?.let{kind->SeraShareDialog(kind,userId,onDismiss={shareMode=null},onAdd={onShare(it);shareMode=null})}
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
@@ -86,6 +88,7 @@ internal fun SeraNativeAttachmentPicker(
         try{
             when(kind){
                 SeraAttachmentKind.PHOTO->{pickerConversation=conversationId;photos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}
+                SeraAttachmentKind.MEETING->meetingOpen=true
                 SeraAttachmentKind.PROFESSIONAL,SeraAttachmentKind.LOCATION,SeraAttachmentKind.CONTACT->shareMode=kind
                 SeraAttachmentKind.CV->{val owner=conversationId;checkingCallback(true);scope.launch{try{val file=withContext(Dispatchers.IO){readProfileCvForChat(token,userId)};if(currentConversation==owner)selectedCallback(file)}catch(e:CancellationException){throw e}catch(e:Exception){if(currentConversation==owner)errorCallback(e.message?:"Could not load profile CV.")}finally{checkingCallback(false)}}}
                 SeraAttachmentKind.VIDEO->{pickerConversation=conversationId;documents.launch(arrayOf("video/mp4"))}

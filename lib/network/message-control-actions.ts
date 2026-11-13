@@ -46,3 +46,16 @@ export async function saveNotificationPreviews(form:FormData){
  if(error)throw new Error("Could not save notification previews.");
  revalidatePath("/settings/messaging");
 }
+
+/** Chat safety operations use existing RLS and the authenticated member identity. */
+export async function conversationSafety(conversation:string,action:"block"|"report",reason="spam",details=""){
+ const user=await currentUser();if(!user?.email_confirmed_at||!validMessageId(conversation)||!["block","report"].includes(action))return {ok:false,error:"Invalid safety request."};
+ if(!["spam","harassment","impersonation","inappropriate","other"].includes(reason)||typeof details!=="string"||details.length>1000)return {ok:false,error:"Invalid report."};
+ const db=await serverClient();
+ const {data:thread,error:accessError}=await db.from("professional_conversations").select("member_a,member_b").eq("id",conversation).or("member_a.eq."+user.id+",member_b.eq."+user.id).maybeSingle();
+ if(accessError||!thread)return {ok:false,error:"Conversation is unavailable."};
+ const target=thread.member_a===user.id?thread.member_b:thread.member_a;
+ const {error}=action==="block"?await db.from("professional_blocks").upsert({blocker_id:user.id,blocked_id:target},{onConflict:"blocker_id,blocked_id",ignoreDuplicates:true}):await db.from("professional_reports").insert({reporter_id:user.id,reported_id:target,reason,details:details.trim()});
+ if(error)return {ok:false,error:"Could not complete the safety request."};
+ revalidatePath("/network/messages");revalidatePath("/connections");return {ok:true,error:""};
+}

@@ -183,10 +183,15 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
 
-private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null): Pair<List<NativeMessage>?, String> {
+private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null,cache:SeraMessageHistoryCache?=null,owner:String=""): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
         "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}?:""))
     if (raw == null) return null to error
+    val parsed=parseNativeMessageRows(raw)
+    if(parsed.first!=null&&ids==null)runCatching{cache?.write(owner,conversationId,raw)}
+    return parsed
+}
+private fun parseNativeMessageRows(raw:String):Pair<List<NativeMessage>?,String>{
     return try {
         val rows = JSONArray(raw)
         (0 until rows.length()).map { i ->
@@ -397,6 +402,8 @@ private class InboxThreadState {
     var textAcknowledged by mutableStateOf<List<NativeMessage>>(emptyList())
     var textLoaded by mutableStateOf(false)
     var unreadBoundary by mutableStateOf<String?>(null)
+    var cachedHistory by mutableStateOf(false)
+    var safetyDialog by mutableStateOf(false)
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
@@ -703,6 +710,7 @@ private class InboxController(
             // If storage could not open, preserve the current draft and let the
             // next send surface a storage error rather than pretending it sent.
         }
+        LaunchedEffect(connectionAvailable){if(connectionAvailable)thread.textQueue=thread.textQueue.map{if(it.stage==TextSendStage.Failed)it.copy(stage=TextSendStage.Ready)else it}}
         val next=thread.textQueue.firstOrNull{it.stage==TextSendStage.Saving||it.stage==TextSendStage.Ready}?.takeIf{it.stage==TextSendStage.Ready}
         LaunchedEffect(token,selected?.id,next?.id,connectionAvailable){
             val c=selected?:return@LaunchedEffect
@@ -727,7 +735,7 @@ private class InboxController(
             onRemoveDismiss={remove=null},onReactionDismiss={reaction=null},onForwardDismiss={forwarding=null},
             onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
         SeraNativeAttachmentPicker(token=token,userId=userId,conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
-            onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."},onError={error=it})
+            onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->if(parseSeraMeeting(url)!=null&&draft.isNotBlank()){error="Finish your existing draft before adding a meeting."}else{val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."}},onError={error=it})
         LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
         mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
         // The system keyboard owns Back while visible; do not close the thread.
@@ -738,12 +746,14 @@ private class InboxController(
     @Composable
     fun ConversationPolling() {
         val unreadRevision=SeraUnreadRefresh.revision
+        val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
         LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision) {
             if(userId.isBlank())return@LaunchedEffect
+            if(conversations.isEmpty()){val saved=withContext(Dispatchers.IO){runCatching{cache?.readInbox(userId).orEmpty()}.getOrDefault(emptyList())};if(saved.isNotEmpty()){conversations=saved;loading=false}}
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
                     val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
-                    result.first?.let{rows->conversations=rows;val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
+                    result.first?.let{rows->conversations=rows;withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}};val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
                     delay(20000)
@@ -755,14 +765,20 @@ private class InboxController(
     @Composable
     fun MessagePolling() {
         val recoveryRevision=SeraPushRecovery.revision
+        val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
         LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision) {
             val conversation = selected ?: return@LaunchedEffect
+            if(!thread.initialMessagesLoaded&&messages.isEmpty()){
+                val cached=withContext(Dispatchers.IO){runCatching{cache?.read(userId,conversation.id)?.let{parseNativeMessageRows(it).first}}.getOrNull()}
+                if(!cached.isNullOrEmpty()){messages=cached;thread.cachedHistory=true;thread.initialMessagesLoaded=true}
+            }
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 SeraRealtime(token, conversation.id).run {
-                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
+                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit,cache=cache,owner=userId) }
                     result.first?.let { latest ->
-                        if(!thread.initialMessagesLoaded){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
-                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
+                        if(!thread.initialMessagesLoaded||thread.cachedHistory){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
+                        if(!thread.cachedHistory&&messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
+                        thread.cachedHistory=false
                         messages = latest
                     thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
                         val unread = latest.filter { isUnreadIncoming(it,userId) }
@@ -777,9 +793,9 @@ private class InboxController(
 
     @Composable
     fun ReadReceipts() {
-        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget){
+        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget,thread.cachedHistory){
             val c=selected?:return@LaunchedEffect
-            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null)return@LaunchedEffect
+            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null||thread.cachedHistory)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
@@ -856,7 +872,8 @@ private class InboxController(
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
-                    onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
+                    onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true},onSafety={thread.safetyDialog=true})
+                if(thread.safetyDialog)SeraConversationSafetyDialog(conversation.peerName,onDismiss={thread.safetyDialog=false},onBlock={scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_blocks","POST",JSONObject().put("blocker_id",userId).put("blocked_id",conversation.peerId))};if(result.first!=null){withContext(Dispatchers.IO){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(userId)}};thread.safetyDialog=false;messages=emptyList();conversations=conversations.filterNot{it.peerId==conversation.peerId};selected=null;refresh++;onThreadExit?.invoke()}else error=result.second}},onReport={reason,details->scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_reports","POST",JSONObject().put("reporter_id",userId).put("reported_id",conversation.peerId).put("reason",reason).put("details",details))};if(result.first!=null){thread.safetyDialog=false;android.widget.Toast.makeText(context,"Report submitted",android.widget.Toast.LENGTH_SHORT).show()}else error=result.second}})
                 SeraThreadHeaderDivider()
                 val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
                 if(thread.selectedMessages.isNotEmpty()){
@@ -870,11 +887,12 @@ private class InboxController(
                 thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                if(thread.cachedHistory)Text("Saved messages · syncing…",fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=4.dp))
                 val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)},peerPhoto=conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo)
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)},peerPhoto=conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo,onMeetingResponse={m,text->if(draft.isBlank()){reply=m;draft=text;runCatching{savedDrafts?.write(userId,conversation.id,text)}}else error="Finish your existing draft before responding."})
                 if(thread.selectedMessages.isEmpty())key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
                 }
             }

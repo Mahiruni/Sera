@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +36,10 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var file by remember { mutableStateOf<File?>(null) }
     var started by remember { mutableLongStateOf(0L) }
+    var paused by remember { mutableStateOf(false) }
+    var pausedAt by remember { mutableLongStateOf(0L) }
+    var pausedTotal by remember { mutableLongStateOf(0L) }
+    fun elapsed()=(if(paused)pausedAt else SystemClock.elapsedRealtime())-started-pausedTotal
     var seconds by remember { mutableIntStateOf(0) }
     var levels by remember { mutableStateOf(List(18){0f}) }
     fun finish(keep:Boolean){
@@ -43,7 +49,7 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
         val ok=runCatching{r.stop()}.isSuccess
         runCatching{r.release()}
         if(keep && ok && f!=null){
-            val duration=(SystemClock.elapsedRealtime()-started).toInt().coerceIn(1,120000)
+            val duration=elapsed().toInt().coerceIn(1,120000)
             val bytes=runCatching{f.readBytes()}.getOrNull()
             if(bytes!=null && bytes.size in 1..(5*1024*1024))onReady(NativeChatSelection("Voice message.m4a","audio/mp4",bytes,duration)) else onError("Recording could not be saved.")
         }else if(keep)onError("Recording was too short.")
@@ -59,11 +65,11 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
             r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);r.setAudioEncodingBitRate(64000);r.setAudioSamplingRate(44100)
             r.setOutputFile(f.absolutePath);r.setMaxDuration(120000);r.setMaxFileSize(5L*1024*1024)
             r.setOnInfoListener{_,what,_->if(what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED || what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED)finish(true)}
-            r.prepare();r.start();started=SystemClock.elapsedRealtime();seconds=0;levels=List(18){0f}
+            r.prepare();r.start();started=SystemClock.elapsedRealtime();paused=false;pausedTotal=0L;seconds=0;levels=List(18){0f}
         }catch(_:Exception){runCatching{recorder?.release()};recorder=null;file?.delete();file=null;onError("Microphone is unavailable.")}
     }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)start() else onError("Microphone permission is required for voice messages.")}
-    LaunchedEffect(recorder){onRecordingChange(recorder!=null);while(recorder!=null){seconds=((SystemClock.elapsedRealtime()-started)/1000).toInt().coerceIn(0,120);val level=runCatching{recorder?.maxAmplitude?:0}.getOrDefault(0);levels=levels.drop(1)+seraVoiceLevel(level);delay(100)}}
+    LaunchedEffect(recorder){onRecordingChange(recorder!=null);while(recorder!=null){seconds=(elapsed()/1000).toInt().coerceIn(0,120);if(!paused){val level=runCatching{recorder?.maxAmplitude?:0}.getOrDefault(0);levels=levels.drop(1)+seraVoiceLevel(level)};delay(100)}}
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_STOP&&recorder!=null)finish(false)};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);if(recorder!=null)finish(false)}}
     if(recorder!=null){
@@ -73,10 +79,11 @@ internal fun SeraChatVoice(enabled:Boolean,onReady:(NativeChatSelection)->Unit,o
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
                         Box(Modifier.size(7.dp).background(Color(0xFFD04452),CircleShape))
-                        Text("Recording · %d:%02d".format(seconds/60,seconds%60),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                        Text((if(paused)"Paused · " else "Recording · ")+"%d:%02d".format(seconds/60,seconds%60),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
                     }
                     SeraLiveWaveform(levels,accent,Modifier.fillMaxWidth().height(24.dp))
                 }
+                IconButton(onClick={runCatching{if(paused){recorder?.resume();pausedTotal+=SystemClock.elapsedRealtime()-pausedAt;paused=false}else{recorder?.pause();pausedAt=SystemClock.elapsedRealtime();paused=true}}.onFailure{onError("Could not change recording state.")}},modifier=Modifier.size(40.dp)){Icon(if(paused)Icons.Outlined.PlayArrow else Icons.Outlined.Pause,if(paused)"Resume recording" else "Pause recording")}
                 FilledIconButton(onClick={finish(true)},modifier=Modifier.size(48.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=seraChatColors().button,contentColor=seraChatColors().onButton)){Icon(Icons.Outlined.Stop,"Finish recording")}
             }
         }
