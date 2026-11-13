@@ -22,6 +22,7 @@ test("all migrations replay, canonical baseline is repeatable, and SQL authoriza
       "social-storage",
       "activity",
       "professional-network",
+      "messaging-privacy",
       "identity-verification",
       "identity-intake",
     ]) {
