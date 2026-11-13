@@ -575,7 +575,7 @@ private class InboxController(
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,messages,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
                     onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it})
-                RenderComposer(conversation, inboxInk, inboxSoft, muted, accent)
+                key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
             }
         }
     }

@@ -115,14 +115,32 @@ internal fun SeraNativeComposer(
             }
         }
     }
-    Row(Modifier.fillMaxWidth().padding(top=9.dp,bottom=8.dp),verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(4.dp)){
-        if(!recordingVoice)IconButton(onClick=onAttach,enabled=!sending&&!checkingFile&&queued==null,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.AttachFile,"Open attachment studio",tint=accent)}
-        if(!recordingVoice)BasicTextField(value=draft,onValueChange={if(it.length<=4000)onDraftChange(it)},modifier=Modifier.weight(1f).clip(CircleShape).background(soft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=MaterialTheme.typography.bodyMedium.copy(color=ink,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}})
-        if(recordingVoice||(draft.isBlank()&&attachment==null&&album.isEmpty()))SeraChatVoice(enabled=!sending&&attachment==null&&album.isEmpty()&&queued==null,onReady=onVoice,onError=onError,onRecordingChange=onRecording,accent=accent)
-        if(!recordingVoice&&(draft.isNotBlank()||attachment!=null||album.isNotEmpty()))Button(onClick=onSend,enabled=(draft.isNotBlank()||attachment!=null||album.isNotEmpty())&&!sending&&!checkingFile&&queued==null,contentPadding=PaddingValues(horizontal=14.dp),modifier=Modifier.size(46.dp),shape=CircleShape,colors=ButtonDefaults.buttonColors(containerColor=teal)){
-            if(sending)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White)else Icon(Icons.Outlined.Send,"Send message",modifier=Modifier.size(22.dp))
+    val hasContent = draft.isNotBlank() || attachment != null || album.isNotEmpty()
+    val locked = sending || queued != null
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    LaunchedEffect(recordingVoice) { if (recordingVoice) keyboard?.hide() }
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        if (!recordingVoice) {
+            IconButton(onClick = onAttach, enabled = !locked && !checkingFile,
+                modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.AttachFile, "Open attachment studio", tint = if (locked || checkingFile) muted else accent)
+            }
+            SeraMessageInput(draft, onDraftChange, ink, soft, muted, accent,
+                readOnly = locked, modifier = Modifier.weight(1f))
+        }
+        if (recordingVoice || (!hasContent && !locked)) {
+            SeraChatVoice(enabled = !locked && !checkingFile && attachment == null && album.isEmpty(),
+                onReady = onVoice, onError = onError, onRecordingChange = onRecording, accent = accent)
+        } else if (!recordingVoice) {
+            SeraMessageSendButton(enabled = hasContent && !locked && !checkingFile,
+                busy = sending, teal = teal, onSend = onSend)
         }
     }
+
 }
 
 @Composable private fun SeraAlbumPreview(album:List<NativeChatSelection>,soft:Color,ink:Color,muted:Color,accent:Color,sending:Boolean,onRemove:(Int)->Unit){

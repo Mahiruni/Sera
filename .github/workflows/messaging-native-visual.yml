@@ -5,6 +5,8 @@ on:
     paths:
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraCompactMessageBubble.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeInbox.kt'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraNativeComposer.kt'
+      - 'android-native/app/src/main/java/et/sera/nativeapp/SeraMessageInput.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/SeraChatPlayback.kt'
       - 'android-native/app/src/main/java/et/sera/nativeapp/MainActivity.kt'
       - 'android-native/app/src/androidTest/**'
