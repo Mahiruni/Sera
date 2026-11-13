@@ -53,7 +53,7 @@ export function Shell({
   verified?: boolean;
   profileName?:string;profilePhoto?:string|null;profileId?:string;profileHeadline?:string;identityVerified?:boolean;
 }) {
-  const { lang, t, state, setState, notice, storageError } = useSera();
+  const { lang, locale, t, state, setState, notice, storageError } = useSera();
   const pathname = usePathname();
   const privateWorkspace =
     authenticated &&
@@ -159,7 +159,7 @@ export function Shell({
           <Menu size={24}/>
         </button>
         <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="Sera home"><SeraBrandMark/><span>Sera</span></Link>
-        {verified&&privateWorkspace&&<nav className="sera-web-desktop-nav" aria-label={t("navigation")}>{[{href:"/feed",label:lang==="am"?"መነሻ":lang==="om"?"Mana":"Home",Icon:Home},{href:"/connections",label:lang==="am"?"ግንኙነቶች":lang==="om"?"Walqunnamtii":"Network",Icon:UsersRound},{href:"/discover",label:lang==="am"?"ፈልግ":lang==="om"?"Barbaadi":"Discover",Icon:Compass},{href:"/jobs",label:lang==="am"?"ሥራዎች":lang==="om"?"Hojii":"Jobs",Icon:BriefcaseBusiness}].map(({href,label,Icon})=><Link key={href} href={href} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={20}/><span>{label}</span></Link>)}</nav>}
+        {verified&&privateWorkspace&&<nav className="sera-web-desktop-nav" aria-label={t("navigation")}>{[{href:"/feed",label:t("home"),Icon:Home},{href:"/connections",label:t("networkMenu"),Icon:UsersRound},{href:"/discover",label:t("discover"),Icon:Compass},{href:"/jobs",label:locale==="am"?"ሥራዎች":locale==="om"?"Hojiiwwan":"Jobs",Icon:BriefcaseBusiness}].map(({href,label,Icon})=><Link key={href} href={href} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={20}/><span>{label}</span></Link>)}</nav>}
         <div className="header-account-controls">
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
@@ -317,7 +317,7 @@ export function Shell({
         <TranslationNotice />
         {children}
       </main>
-      {verified&&privateWorkspace&&!pathname.startsWith("/network/messages")&&!pathname.startsWith("/messages")&&<nav className="sera-mobile-dock" aria-label="Main navigation">{[{href:"/feed",label:"Home",Icon:Home},{href:"/connections",label:"Network",Icon:UsersRound},{href:"/discover",label:"Discover",Icon:Compass},{href:"/jobs",label:"Jobs",Icon:BriefcaseBusiness},{href:"/network/messages",label:"Messages",Icon:MessagesSquare}].map(({href,label,Icon})=><Link key={href} href={href} aria-label={label} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={23} strokeWidth={1.8}/></Link>)}</nav>}
+      {verified&&privateWorkspace&&!pathname.startsWith("/network/messages")&&!pathname.startsWith("/messages")&&<nav className="sera-mobile-dock" aria-label="Main navigation">{[{href:"/feed",label:t("home"),Icon:Home},{href:"/connections",label:t("networkMenu"),Icon:UsersRound},{href:"/discover",label:t("discover"),Icon:Compass},{href:"/jobs",label:locale==="am"?"ሥራዎች":locale==="om"?"Hojiiwwan":"Jobs",Icon:BriefcaseBusiness},{href:"/network/messages",label:t("messages"),Icon:MessagesSquare}].map(({href,label,Icon})=><Link key={href} href={href} aria-label={label} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={23} strokeWidth={1.8}/></Link>)}</nav>}
       {!privateWorkspace && <SiteFooter />}
       <div className="toast" role="status" aria-live="polite">
         {notice && (

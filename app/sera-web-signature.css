@@ -86,3 +86,48 @@
 @keyframes sera-web-signal{from{transform:scale(1);opacity:.75}to{transform:scale(1.66);opacity:0}}
 @media(prefers-reduced-motion:reduce){.sera-web-call-avatar[data-ringing=true] .sera-web-call-wave{animation:none}.sera-web-call-avatar[data-ringing=true] .sera-web-call-wave:first-child{opacity:.45}}
 @media(min-width:601px){.sera-aura-overlay .sera-web-call-panel{width:min(480px,calc(100% - 32px));min-height:min(620px,90dvh)}}
+
+/* Phase 2 — quiet, writing-first web wrappers, shared with the signed-in experience. */
+.sera-web-compose-backdrop,.sera-conversation-backdrop{background:rgb(7 23 27 / 52%);backdrop-filter:blur(5px)}
+.sera-web-compose-backdrop .sera-web-composer-dialog{width:min(100%,680px);background:var(--sera-surface)!important;border-color:var(--sera-border)!important;box-shadow:0 24px 90px rgb(0 0 0 / 22%);color:var(--sera-text)}
+.sera-web-composer-dialog .sera-compose-dialog-head{padding:12px 20px!important;border-bottom:1px solid var(--sera-border)!important}
+.sera-web-composer-dialog .sera-compose-dialog-author{padding:14px 20px 8px;min-width:0}
+.sera-web-composer-dialog .sera-compose-dialog-author>div:last-child{min-width:0}
+.sera-web-composer-dialog .sera-compose-dialog-author strong{overflow-wrap:anywhere}
+.sera-web-composer-dialog .sera-compose-dialog-content{flex:1;min-height:0;padding:8px 20px 0;overflow-y:auto;scrollbar-color:var(--sera-border) transparent}
+.sera-web-composer-dialog .sera-premium-composer form{gap:12px}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-editor{min-height:160px;border-radius:14px;background:var(--sera-surface-soft);border-color:var(--sera-border)}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-editor textarea{min-height:160px;max-height:420px;font-size:16px;line-height:1.6;padding:14px 14px 36px;color:var(--sera-text)}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-toolbar button{min-height:46px;flex-direction:row;gap:8px;border-radius:12px;background:var(--sera-surface);border-color:var(--sera-border);color:var(--sera-accent)}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-extras button{min-height:44px;border-radius:12px;background:var(--sera-surface-soft)}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-footer{position:sticky;bottom:0;z-index:2;margin:0 -2px;padding:10px 2px max(12px,env(safe-area-inset-bottom,0px));background:var(--sera-surface)!important;border-top:1px solid var(--sera-border)}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-footer button{min-height:46px;border-radius:14px}
+.sera-web-composer-dialog .sera-premium-composer .sera-premium-publish:not(:disabled){background:#087e83;box-shadow:none}
+.sera-conversation-backdrop .sera-conversation-sheet{background:var(--sera-surface)!important;color:var(--sera-text)!important;border:1px solid var(--sera-border);box-shadow:0 24px 90px rgb(0 0 0 / 22%)}
+.sera-conversation-sheet .sera-conversation-thread{border-bottom:1px solid var(--sera-border)}
+.sera-conversation-sheet .sera-conversation-context{background:var(--sera-surface-soft);color:var(--sera-text-secondary)}
+.sera-conversation-sheet .sera-conversation-composer{background:var(--sera-surface)!important;border-color:var(--sera-border)}
+.sera-conversation-sheet .sera-conversation-composer textarea{background:var(--sera-surface-soft)!important;color:var(--sera-text)!important;border-color:var(--sera-border)!important}
+@media(min-width:701px){
+ .sera-web-compose-backdrop{align-items:center;padding:20px}
+ .sera-web-compose-backdrop .sera-web-composer-dialog{height:auto;max-height:min(90dvh,820px)!important;border-radius:24px!important;margin:0}
+ .sera-web-composer-dialog .sera-signature-grip{display:none}
+ .sera-conversation-backdrop .sera-conversation-sheet{width:min(640px,calc(100% - 40px));height:min(76dvh,720px);max-height:calc(100dvh - 40px)!important;border-radius:24px}
+}
+@media(max-width:700px){
+ .sera-web-compose-backdrop .sera-web-composer-dialog{border-radius:24px 24px 0 0!important}
+ .sera-web-composer-dialog .sera-compose-dialog-content{padding-inline:14px}
+ .sera-web-composer-dialog .sera-compose-dialog-head{padding:8px 14px!important}
+ .sera-web-composer-dialog .sera-compose-dialog-author{padding:8px 14px}
+ .sera-web-composer-dialog:has(textarea:focus) .sera-premium-composer .sera-premium-editor,.sera-web-composer-dialog:has(textarea:focus) .sera-premium-composer .sera-premium-editor textarea{min-height:140px}
+ .sera-conversation-backdrop .sera-conversation-sheet{height:min(85dvh,calc(var(--sera-sheet-height,100dvh) - 8px));border-radius:24px 24px 0 0}
+ .sera-conversation-backdrop .sera-conversation-sheet:has(textarea:focus){height:calc(var(--sera-sheet-height,100dvh) - 8px)}
+}
+/* Shared page intros: compact hierarchy, no duplicate decorative headings. */
+.sera-main .sera-page-intro{margin-bottom:18px;padding-bottom:14px;gap:16px}
+.sera-main .sera-page-intro-copy{align-items:center;gap:12px}
+.sera-main .sera-page-intro h1{font-size:clamp(23px,2.5vw,32px);letter-spacing:-.04em}
+.sera-main .sera-page-intro .subtext{margin-top:5px;font-size:13px;line-height:1.55}
+.sera-main .sera-page-symbol{flex-basis:42px;height:42px;border-radius:13px;margin:0}
+.sera-main .sera-page-intro .eyebrow{display:none}
+@media(max-width:760px){.sera-main .sera-page-intro{gap:10px;margin-bottom:14px;padding-bottom:12px}.sera-main .sera-page-intro h1{font-size:24px}.sera-main .sera-page-symbol{flex-basis:38px;height:38px}.sera-main .sera-page-intro .subtext{font-size:12px}}

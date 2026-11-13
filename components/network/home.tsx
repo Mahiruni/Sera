@@ -3,12 +3,6 @@ import Link from "next/link";
 
 import {
   ArrowUpRight,
-  PenLine,
-  ImagePlus,
-  FolderKanban,
-  Quote,
-  BriefcaseBusiness,
-  UsersRound,
   Plus,
 } from "lucide-react";
 import { FeedComposer } from "@/components/social/FeedComposer";
