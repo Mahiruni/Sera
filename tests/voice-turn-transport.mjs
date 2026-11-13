@@ -84,6 +84,20 @@ try{
         return {label,aRms:rms(a0,a1),bRms:rms(b0,b1),aPackets:a1.packets-a0.packets,bPackets:b1.packets-b0.packets};
       }
       const both=await measure("both speaking",.18,.18);
+      // Actual ICE restart on the same peers and media tracks through the impaired relay.
+      const beforeRestart=a.localDescription.sdp.match(/^a=ice-ufrag:(.+)$/m)?.[1].trim();
+      const trackA=a.getSenders().find(s=>s.track?.kind==="audio").track;
+      const trackB=b.getSenders().find(s=>s.track?.kind==="audio").track;
+      await a.setLocalDescription(await a.createOffer({iceRestart:true}));await gather(a);
+      const afterRestart=a.localDescription.sdp.match(/^a=ice-ufrag:(.+)$/m)?.[1].trim();
+      if(!afterRestart||beforeRestart===afterRestart||!relayOnly(a.localDescription.sdp))throw Error("ICE restart did not rotate credentials or preserve relay-only policy.");
+      await b.setRemoteDescription(a.localDescription);await b.setLocalDescription(await b.createAnswer());await gather(b);
+      if(!relayOnly(b.localDescription.sdp))throw Error("Restart answer is not relay-only.");
+      await a.setRemoteDescription(b.localDescription);
+      const recoveryDeadline=Date.now()+20000;
+      while(Date.now()<recoveryDeadline&&(a.connectionState!=="connected"||b.connectionState!=="connected"))await sleep(250);
+      if(a.connectionState!=="connected"||b.connectionState!=="connected"||a.getSenders().find(s=>s.track?.kind==="audio").track!==trackA||b.getSenders().find(s=>s.track?.kind==="audio").track!==trackB)throw Error("ICE restart did not retain the existing media session.");
+      const afterRecovery=await measure("both speaking after ICE restart",.18,.18);
       const onlyA=await measure("A speaks",.18,0);
       const onlyB=await measure("B speaks",0,.18);
       const aReceived=received(await a.getStats())-initialA,bReceived=received(await b.getStats())-initialB;
@@ -91,10 +105,10 @@ try{
       // energy contrast. Packet counts alone can never satisfy this test.
       const audible=x=>Number.isFinite(x)&&x>.008;
       const contrast=(voice,silence)=>audible(voice)&&voice>Math.max(.004,silence)*3;
-      const results={aReceived,bReceived,both,onlyA,onlyB,payloadCapBps:12000};
+      const results={aReceived,bReceived,both,afterRecovery,onlyA,onlyB,payloadCapBps:12000,iceRestart:true};
       console.log("Decoded voice measurements",JSON.stringify(results));
       if(a.connectionState!=="connected"||b.connectionState!=="connected"||aReceived<30||bReceived<30||
-         !audible(both.aRms)||!audible(both.bRms)||!contrast(onlyB.aRms,onlyA.aRms)||!contrast(onlyA.bRms,onlyB.bRms))
+         !audible(both.aRms)||!audible(both.bRms)||!audible(afterRecovery.aRms)||!audible(afterRecovery.bRms)||!contrast(onlyB.aRms,onlyA.aRms)||!contrast(onlyA.bRms,onlyB.bRms))
          throw Error("Weak-link decoded audio verification failed: "+JSON.stringify(results));
       return {...results,relayOnly:true};
     }
