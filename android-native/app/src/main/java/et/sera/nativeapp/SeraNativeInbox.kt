@@ -235,6 +235,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     controller.PresenceAndScroll()
     controller.ConnectionAndPlayback()
     controller.TransferEffects()
+    controller.TextEffects()
     controller.Dialogs()
     controller.ConversationPolling()
     controller.MessagePolling()
@@ -289,6 +290,9 @@ private class InboxThreadState {
     var queued by mutableStateOf<NativePending?>(null)
     var retrySignal by mutableIntStateOf(0)
     var attachmentStudio by mutableStateOf(false)
+    var textQueue by mutableStateOf<List<NativeQueuedText>>(emptyList())
+    var textAcknowledged by mutableStateOf<List<NativeMessage>>(emptyList())
+    var textLoaded by mutableStateOf(false)
 }
 
 private class InboxController(
@@ -425,12 +429,13 @@ private class InboxController(
     @Composable
     fun PresenceAndScroll() {
         LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
-        LaunchedEffect(selected?.id, messages.lastOrNull()?.id) {
+        val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
+        LaunchedEffect(selected?.id, tail) {
             val id = selected?.id ?: return@LaunchedEffect
-            val last = messages.lastOrNull()?.id ?: return@LaunchedEffect
+            val last = tail ?: return@LaunchedEffect
             val changedConversation = lastVisibleConversation != id
             val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
-            if (changedConversation || (last != lastMessageId && nearBottom)) { val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
+            if (changedConversation || (last != lastMessageId && (nearBottom || thread.textQueue.isNotEmpty()))) { withFrameNanos{}; val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
             lastVisibleConversation = id
             lastMessageId = last
         }
@@ -458,6 +463,61 @@ private class InboxController(
                 if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
                 else{sendFailed=true;error=result.second}
             }finally{if(activeTransfer===transfer){activeTransfer=null;sending=false;transferProgress=-1}}
+        }
+    }
+
+    private fun persistText(conversationId:String, entry:NativeQueuedText){
+        scope.launch {
+            val result=withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO){
+                runCatching{check(outbox!=null);outbox.saveText(userId,conversationId,entry)}
+            }
+            thread.textQueue=thread.textQueue.map{if(it.id==entry.id)it.copy(stage=if(result.isSuccess)TextSendStage.Ready else TextSendStage.StorageFailed) else it}
+            if(result.isSuccess && selected?.id==conversationId && draft.isEmpty())runCatching{savedDrafts?.clear(userId,conversationId)}
+        }
+    }
+    private fun enqueueText(conversationId:String,body:String){
+        val entry=NativeQueuedText(UUID.randomUUID().toString(),body,reply?.id,java.time.Instant.now().toString(),TextSendStage.Saving)
+        if(thread.textQueue.size>=100){error="Too many pending messages. Retry or reconnect.";return}
+        thread.textQueue=thread.textQueue+entry
+        draft="";reply=null;error="";typingPulse++
+        persistText(conversationId,entry)
+    }
+    private fun retryText(id:String){
+        val c=selected?:return
+        val p=thread.textQueue.firstOrNull{it.id==id}
+        if(p==null){if(queued?.clientId==id)retrySignal++;return}
+        if(p.stage==TextSendStage.StorageFailed){
+            thread.textQueue=thread.textQueue.map{if(it.id==id)it.copy(stage=TextSendStage.Saving)else it}
+            persistText(c.id,p)
+        }else if(p.stage==TextSendStage.Failed){
+            thread.textQueue=thread.textQueue.map{if(it.id==id)it.copy(stage=TextSendStage.Ready)else it}
+        }
+    }
+    @Composable
+    fun TextEffects(){
+        LaunchedEffect(token,userId,selected?.id){
+            val c=selected?:return@LaunchedEffect
+            val loaded=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.loadTexts(userId,c.id)}}
+            thread.textQueue=loaded.getOrDefault(emptyList())
+            thread.textLoaded=true
+            // If storage could not open, preserve the current draft and let the
+            // next send surface a storage error rather than pretending it sent.
+        }
+        val next=thread.textQueue.firstOrNull{it.stage==TextSendStage.Ready}
+        LaunchedEffect(token,selected?.id,next?.id,connectionAvailable){
+            val c=selected?:return@LaunchedEffect
+            val p=next?:return@LaunchedEffect
+            if(!connectionAvailable)return@LaunchedEffect
+            val result=withContext(Dispatchers.IO){sendNativeMessageV2(token,userId,c.id,p.id,p.body,null,p.replyId)}
+            val id=result.first
+            if(id!=null){
+                // Server ID is authoritative; retain a compact acknowledged echo
+                // until realtime/polling provides the actual server row.
+                thread.textAcknowledged=(thread.textAcknowledged+p.acknowledged(id,userId)).takeLast(100)
+                thread.textQueue=thread.textQueue.filterNot{it.id==p.id}
+                withContext(kotlinx.coroutines.NonCancellable+Dispatchers.IO){runCatching{outbox?.removeText(userId,c.id,p.id)}}
+                if(selected?.id==c.id){chime();reload()}
+            }else thread.textQueue=thread.textQueue.map{if(it.id==p.id)it.copy(stage=TextSendStage.Failed)else it}
         }
     }
 
@@ -499,6 +559,7 @@ private class InboxController(
                     result.first?.let { latest ->
                         if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId)chime()
                         messages = latest
+                    thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
                         val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
                         val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
                         if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
@@ -573,8 +634,11 @@ private class InboxController(
                 if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-                SeraThreadTimeline(Modifier.weight(1f),messageListState,messages,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it})
+                val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
+                val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
+                val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
+                SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)})
                 key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
             }
         }
@@ -583,7 +647,7 @@ private class InboxController(
     @Composable
     fun RenderComposer(conversation: NativeConversation, inboxInk: Color, inboxSoft: Color, muted: Color, accent: Color) {
         val haptics = LocalHapticFeedback.current
-        SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
+        SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile||!thread.textLoaded,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
             onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
             onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
             onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},
@@ -594,6 +658,7 @@ private class InboxController(
                 val body = draft.trim()
                 val file=attachment
                 if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null) return@SeraNativeComposer
+                if(file==null&&album.isEmpty()){enqueueText(conversation.id,body);return@SeraNativeComposer}
                 sending = true
                 scope.launch {
                     val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file,album)

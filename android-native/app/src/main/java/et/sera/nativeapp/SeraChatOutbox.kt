@@ -41,6 +41,29 @@ internal class NativeChatOutbox(private val context:Context){
         val album=if(photos!=null){require(photos.length() in 2..4&&file==null);(0 until photos.length()).map{loadFile(albumItemId(id,it),photos.getJSONObject(it))}}else emptyList()
         return NativePending(id,j.optString("body"),j.optString("reply").takeUnless{it=="null"||it.isBlank()},file,album,j.optBoolean("paused"))
     }
+    // Text queue is separate from the single large-file transfer slot.
+    private fun textKey(user:String,thread:String) = "text:$user:$thread"
+    @Synchronized fun loadTexts(user:String,thread:String):List<NativeQueuedText>{
+        val rows=org.json.JSONArray(prefs.getString(textKey(user,thread),"[]") ?: "[]")
+        return (0 until rows.length()).map { i ->
+            val row=rows.getJSONObject(i)
+            NativeQueuedText(row.getString("id"),row.getString("body"),row.optString("reply").takeUnless{it.isBlank()||it=="null"},row.getString("at"),TextSendStage.Ready)
+        }
+    }
+    @Synchronized fun saveText(user:String,thread:String,p:NativeQueuedText){
+        val rows=loadTexts(user,thread)
+        if(rows.any{it.id==p.id})return
+        require(rows.size<100){"Too many pending messages."}
+        writeTexts(user,thread,rows+p)
+    }
+    @Synchronized fun removeText(user:String,thread:String,id:String){
+        writeTexts(user,thread,loadTexts(user,thread).filterNot{it.id==id})
+    }
+    private fun writeTexts(user:String,thread:String,rows:List<NativeQueuedText>){
+        val json=org.json.JSONArray()
+        rows.forEach{p->json.put(JSONObject().put("id",p.id).put("body",p.body).put("reply",p.replyId?:JSONObject.NULL).put("at",p.createdAt))}
+        check(prefs.edit().putString(textKey(user,thread),json.toString()).commit())
+    }
     fun setPaused(user:String,thread:String,id:String,paused:Boolean){
         val raw=prefs.getString(key(user,thread),null)?:error("Pending message unavailable.")
         val j=JSONObject(raw);check(j.optString("id")==id);j.put("paused",paused);check(prefs.edit().putString(key(user,thread),j.toString()).commit())

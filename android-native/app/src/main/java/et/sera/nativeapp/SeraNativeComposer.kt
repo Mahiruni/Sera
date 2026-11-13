@@ -91,13 +91,13 @@ internal fun SeraNativeComposer(
             Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp,color=ink);IconButton(onClick=onCancelReply){Icon(Icons.Outlined.Close,"Cancel reply",tint=muted)}}
         }
     }
-    queued?.let{q->
+    queued?.takeIf{it.file!=null||it.album.isNotEmpty()}?.let{q->
         Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(10.dp)){
-                Text(q.body.ifBlank{q.file?.name?:if(q.album.isNotEmpty())"${q.album.size} photos" else "Attachment"},maxLines=2,color=ink)
+                Text(q.file?.name ?: "${q.album.size} photos",maxLines=1,color=ink,fontSize=12.sp)
                 if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent)
                 Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(q.paused)"Upload paused · retry" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=accent)
-                Row{if(sending&&!q.paused&&transferProgress in 0..99)TextButton(onClick=onCancelUpload){Text("Cancel upload")};TextButton(onClick=onRetry,enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick=onEditQueued,enabled=!sending){Text("Edit message")}}
+                if(sending&&!q.paused&&transferProgress in 0..99)TextButton(onClick=onCancelUpload){Text("Cancel upload")} else if(!sending&&(q.paused||sendFailed||!connectionAvailable))Row{TextButton(onClick=onRetry,enabled=connectionAvailable){Text("Retry")};TextButton(onClick=onEditQueued){Text("Edit message")}}
             }
         }
     }
