@@ -4,6 +4,7 @@ import {Phone,PhoneOff,Mic,MicOff,X,ChevronDown,History,Maximize2} from "lucide-
 import {createPortal} from "react-dom";
 import {useSera} from "@/components/store";
 import {voiceText} from "@/lib/network/voice-i18n";
+import {SpeechAdaptation,speechProfiles,readSpeechLink} from "@/lib/network/voice-network-policy";
 import {secureRelayAttempts} from "@/lib/network/relay-recovery";
 import {MemberAvatar} from "@/components/activity/avatar";
 import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,confirmCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
@@ -57,11 +58,33 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((performance.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
   useEffect(()=>{if(session?.state!=="accepted"||!pc.current||pc.current.connectionState==="connected"||failTimer.current)return;const peer=pc.current,id=session.id;failTimer.current=setTimeout(()=>{if(pc.current===peer&&current.current?.id===id&&peer.connectionState!=="connected")void terminate("fail",started.current?"Call connection lost. Try again.":"Could not establish the call.");},45000);},[session?.id,session?.state,phase,terminate]);
   useEffect(()=>{if(session?.state!=="accepted"||!started.current)return;const id=session.id;let stopped=false,confirmed=false,inFlight=false;const report=async()=>{if(stopped||confirmed||inFlight||pc.current?.connectionState!=="connected")return;inFlight=true;try{confirmed=await confirmCallMedia(conversation,id);}catch{}finally{inFlight=false;}};void report();const timer=setInterval(()=>void report(),4000);return()=>{stopped=true;clearInterval(timer);};},[conversation,session?.id,session?.state,phase]);
+  useEffect(()=>{
+    if(session?.state!=="accepted"||!pc.current)return;
+    const peer=pc.current,adaptation=new SpeechAdaptation();let stopped=false,inFlight=false,applied:number|undefined,lastReport:number|undefined;
+    const adjust=async()=>{
+      if(stopped||inFlight||pc.current!==peer||peer.connectionState!=="connected")return;
+      inFlight=true;
+      try{
+        const stats=await peer.getStats();if(stopped||pc.current!==peer)return;
+        const {link,remoteTimestamp}=readSpeechLink(stats.values());
+        const fresh=remoteTimestamp!==undefined&&remoteTimestamp!==lastReport;
+        if(fresh)lastReport=remoteTimestamp;
+        const bitrate=speechProfiles[adaptation.update(fresh?link:{...link,loss:undefined})];
+        if(applied!==bitrate){
+          const sender=peer.getSenders().find(s=>s.track?.kind==="audio");
+          if(sender){const params=sender.getParameters();if(params.encodings.length){params.encodings.forEach(e=>{e.maxBitrate=bitrate;});await sender.setParameters(params);applied=bitrate;}}
+        }
+      }catch{/* Preserve the engine's default adaptation if stats or sender controls are unsupported. */}
+      finally{inFlight=false;}
+    };
+    void adjust();const timer=setInterval(()=>void adjust(),4000);
+    return()=>{stopped=true;clearInterval(timer);};
+  },[session?.id,session?.state]);
   async function prepareMedia(){
     const fresh=await getCallConfig(conversation,true);if(!fresh.enabled||!fresh.iceServers?.length)throw new Error("Secure calling access unavailable. Try again later.");
     if(!mounted.current||cancelRequested.current)throw abortError();
     if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection)throw new Error("This browser does not support voice calling.");
-    let local:MediaStream;try{local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});}catch(e){if(e instanceof DOMException&&e.name==="NotAllowedError")throw new Error("Allow microphone access in your browser to call.");throw e;}
+    let local:MediaStream;try{local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:{ideal:1}},video:false});}catch(e){if(e instanceof DOMException&&e.name==="NotAllowedError")throw new Error("Allow microphone access in your browser to call.");throw e;}
     if(!mounted.current||cancelRequested.current){local.getTracks().forEach(t=>t.stop());throw new Error("Conversation closed.");}
     stream.current=local;return {local,servers:fresh.iceServers};
   }
