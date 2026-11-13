@@ -187,7 +187,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=speechDescription(description(true));set(offer,true);applySpeechProfile();pc.localDescription?.description?:offer.description}
     suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
     suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);applySpeechProfile();gather()}
-    suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false);appliedBitrate=null;applySpeechProfile()}
+    suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false);appliedBitrate=null;applySpeechProfile();appliedVideo=null;if(videoMode)applyVideo(videoAdaptation.level)}
     private suspend fun connectedThroughRelay():Boolean=kotlinx.coroutines.withTimeoutOrNull(2000){
         suspendCancellableCoroutine<Boolean>{c->
             if(closed){c.resume(false);return@suspendCancellableCoroutine}
@@ -299,7 +299,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         }
         if(appliedVideo!=level){
             val s=cameraSender?:return
-            runCatching{val p=s.parameters;p.encodings.forEach{it.active=level!=SeraVideoLevel.PAUSED;it.maxBitrateBps=maxOf(1000,level.bitrate);if(level!=SeraVideoLevel.PAUSED)it.maxFramerate=level.fps};if(s.setParameters(p))appliedVideo=level}
+            runCatching{val p=s.parameters;if(p.encodings.isEmpty())return@runCatching;p.encodings.forEach{it.active=level!=SeraVideoLevel.PAUSED;it.maxBitrateBps=maxOf(1000,level.bitrate);if(level!=SeraVideoLevel.PAUSED)it.maxFramerate=level.fps};if(s.setParameters(p))appliedVideo=level}
         }
     }
     fun mute(value:Boolean){if(!closed)track.setEnabled(!value)}
