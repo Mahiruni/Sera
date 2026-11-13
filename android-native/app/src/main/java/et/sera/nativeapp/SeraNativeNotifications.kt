@@ -97,7 +97,7 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
   lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){val result=withContext(Dispatchers.IO){loadNotifications(token,userId,tab,page)};if(result.rows!=null){rows=result.rows;people=result.people;jobs=result.jobs;enabled=result.enabled};error=result.error;loading=false;delay(20000)}}
  }
  val unread=rememberSeraUnreadActivity(token,userId,"Notifications").first
- if(sounds){SeraSoundSettings(modifier){sounds=false};return}
+ if(sounds){SeraSoundSettings(modifier,userId){sounds=false};return}
  selectedJob?.let{hit->SearchResultDetail(token,userId,hit,modifier){selectedJob=null;refresh++};return}
  val groups=groupNativeNotifications(rows.take(30))
  Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){

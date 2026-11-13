@@ -65,8 +65,9 @@ internal object SeraNotificationSounds {
     }
 }
 
-@Composable internal fun SeraSoundSettings(modifier:Modifier=Modifier,onBack:()->Unit){
+@Composable internal fun SeraSoundSettings(modifier:Modifier=Modifier,userId:String="",onBack:()->Unit){
     val context=LocalContext.current
+    var messagesEnabled by remember(userId){mutableStateOf(SeraMessageAlerts.enabled(context,userId))}
     var mode by remember{mutableStateOf(SeraNotificationSounds.mode(context))}
     var social by remember{mutableStateOf(SeraNotificationSounds.socialSound(context))}
     var player by remember{mutableStateOf<MediaPlayer?>(null)}
@@ -77,6 +78,7 @@ internal object SeraNotificationSounds {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         TextButton(onClick={stop();onBack()}){Text("Back")}
         Text("Notification sounds",style=MaterialTheme.typography.headlineSmall)
+        if(userId.isNotBlank())Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Message notifications");Text("Private alerts on this device",style=MaterialTheme.typography.bodySmall)};Switch(checked=messagesEnabled,onCheckedChange={messagesEnabled=it;SeraMessageAlerts.setEnabled(context,userId,it)})}
         Text("Choose how SERA sounds on this device. Android notification permissions and channel settings remain in control.")
         listOf("system" to "Android default","signature" to "SERA Signature","silent" to "Silent").forEach{(value,label)->
             ElevatedCard(onClick={mode=value;SeraNotificationSounds.setMode(context,value)},modifier=Modifier.fillMaxWidth()){

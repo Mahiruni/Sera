@@ -100,8 +100,12 @@ import java.net.URL
                 }
                 SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory)
                 IconButton(onClick=onSearch,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
+                val context=LocalContext.current
+                var mutedUntil by remember(userId,conversation.id){mutableLongStateOf(SeraMessageAlerts.mutedUntil(context,userId,conversation.id))}
+                var muteDialog by remember(conversation.id){mutableStateOf(false)}
                 var threadMenu by remember{mutableStateOf(false)}
-                Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false})}}
+                Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false});DropdownMenuItem(text={Text(if(mutedUntil>System.currentTimeMillis())"Unmute notifications" else "Mute notifications")},onClick={threadMenu=false;if(mutedUntil>System.currentTimeMillis()){mutedUntil=0;SeraMessageAlerts.mute(context,userId,conversation.id,0)}else muteDialog=true})}}
+                if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text("Cancel")}})
             }
 
 }

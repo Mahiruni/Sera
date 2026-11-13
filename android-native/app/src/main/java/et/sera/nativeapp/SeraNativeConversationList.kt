@@ -78,6 +78,7 @@ import java.net.URL
 
 
 @Composable internal fun SeraNativeConversationList(conversations:List<NativeConversation>,search:String,loading:Boolean,error:String,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,inboxTeal:Color,onInboxExit:(()->Unit)?,onCompany:()->Unit,onSearch:(String)->Unit,onRetry:()->Unit,onSelect:(NativeConversation)->Unit){
+    var unreadOnly by remember{mutableStateOf(false)}
     Column(Modifier.fillMaxSize()){
             Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
                 if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
@@ -89,12 +90,13 @@ import java.net.URL
                 BasicTextField(value=search,onValueChange=onSearch,singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
                 if(search.isNotEmpty())IconButton(onClick={onSearch("")},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Text("All messages",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=muted,modifier=Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("$unreadTotal unread",fontSize=12.sp,color=accent)}
+            Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!unreadOnly,onClick={unreadOnly=false},label={Text("All")});FilterChip(selected=unreadOnly,onClick={unreadOnly=true},label={Text("Unread")});Spacer(Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("${if(unreadTotal>99) "99+" else unreadTotal} unread",fontSize=12.sp,color=accent)}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick=onRetry){Text("Retry")}}
             if (!loading && conversations.isEmpty() && error.isBlank())
                 Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
-            val filtered = conversations.filter { it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true) }.sortedByDescending{it.lastAt}
+            val filtered = conversations.filter { (!unreadOnly||it.unread>0)&&(it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true)) }.sortedByDescending{it.lastAt}
+            if(unreadOnly&&filtered.isEmpty()&&!loading&&search.isBlank())Text("You’re all caught up.",modifier=Modifier.padding(16.dp),color=muted)
             if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
             LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
                 items(filtered, key = { it.id }) { conversation ->

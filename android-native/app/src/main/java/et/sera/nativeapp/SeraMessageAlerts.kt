@@ -11,12 +11,30 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Account-bound metadata only. Never store notification message bodies. */
 internal object SeraMessageAlerts {
     private val uuid=Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     fun validId(id:String)=uuid.matches(id)
     private var visible:Pair<String,String>?=null
+    @Volatile private var foreground=false
+    var banner by androidx.compose.runtime.mutableStateOf<SeraMessageBannerEvent?>(null)
+        private set
+    fun setForeground(value:Boolean){foreground=value;if(!value)banner=null}
+    fun dismissBanner(){banner=null}
+    fun enabled(context:Context,owner:String)=prefs(context).getBoolean("enabled:$owner",true)
+    fun setEnabled(context:Context,owner:String,value:Boolean){prefs(context).edit().putBoolean("enabled:$owner",value).apply();if(!value){dismissBanner();manager(context).activeNotifications.filter{it.tag?.startsWith("sera-message:$owner:")==true}.forEach{manager(context).cancel(it.tag,it.id)}}}
+    fun mutedUntil(context:Context,owner:String,thread:String)=prefs(context).getLong("mute:$owner:$thread",0)
+    fun mute(context:Context,owner:String,thread:String,until:Long){prefs(context).edit().putLong("mute:$owner:$thread",until).apply();if(until>System.currentTimeMillis()){manager(context).cancel(tag(owner,thread),1);if(banner?.thread==thread)dismissBanner()}}
+    private fun showBanner(context:Context,event:SeraMessageBannerEvent){
+        android.os.Handler(android.os.Looper.getMainLooper()).post{
+            if(foreground&&SeraPush.owner(context)==event.owner&&enabled(context,event.owner)&&mutedUntil(context,event.owner,event.thread)<=System.currentTimeMillis()){
+                banner=event
+            }
+        }
+    }
     private fun prefs(c:Context)=c.getSharedPreferences("sera_message_alerts",Context.MODE_PRIVATE)
     private fun manager(c:Context)=c.getSystemService(NotificationManager::class.java)
     private fun tag(owner:String,thread:String)="sera-message:$owner:$thread"
@@ -25,7 +43,7 @@ internal object SeraMessageAlerts {
         if(thread!=null){manager(context).cancel(tag(owner,thread),1);prefs(context).edit().remove("count:$owner:$thread").apply()}
     }
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
-    @Synchronized fun clearAccount(context:Context){visible=null;prefs(context).edit().clear().apply()}
+    @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();prefs(context).edit().clear().apply()}
     @Synchronized fun receive(context:Context,data:Map<String,String>){
         val owner=data["recipient_id"]?:return
         val thread=data["conversation_id"]?:return
@@ -39,7 +57,8 @@ internal object SeraMessageAlerts {
         if(id in seen)return
         store.edit().putString(key,JSONArray((seen+id).takeLast(256)).toString()).apply()
         SeraUnreadRefresh.changed()
-        if(kind=="message"&&visible==(owner to thread))return
+        if(!enabled(context,owner)||mutedUntil(context,owner,thread)>System.currentTimeMillis())return
+        if(foreground){if(kind!="message"||visible!=(owner to thread))showBanner(context,SeraMessageBannerEvent(owner,thread,id,kind));return}
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         val notificationTag=tag(owner,thread)
         val countKey="count:$owner:$thread"

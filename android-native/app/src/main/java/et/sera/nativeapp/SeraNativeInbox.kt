@@ -549,7 +549,8 @@ private class InboxController(
 
     @Composable
     fun ConversationPolling() {
-        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
+        val unreadRevision=SeraUnreadRefresh.revision
+        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision) {
             if(userId.isBlank())return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
@@ -590,7 +591,7 @@ private class InboxController(
             val c=selected?:return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
-                snapshotFlow{messageListState.layoutInfo.visibleItemsInfo.map{it.key.toString()} to messages}
+                snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
                     .collectLatest{(visible,latest)->
                         delay(600)
                         val ids=latest.filter{(it.id in visible||messageTimelineKey(it) in visible)&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
@@ -612,13 +613,24 @@ private class InboxController(
                 }
             }
         }
-        LaunchedEffect(token, selected?.id, typingPulse) {
-            val conversation = selected ?: return@LaunchedEffect
-            if (typingPulse == 0) return@LaunchedEffect
-            delay(350)
-            withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",draft.isNotBlank())) }
-            delay(4000)
-            withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",false)) }
+        LaunchedEffect(token,selected?.id,lifecycle) {
+            val conversation=selected?:return@LaunchedEffect
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+                var lastPulse=typingPulse
+                var lastEdit=0L
+                var announced=false
+                var lastSent=0L
+                while(true){
+                    val now=android.os.SystemClock.elapsedRealtime()
+                    if(lastPulse!=typingPulse){lastPulse=typingPulse;lastEdit=now}
+                    val active=draft.isNotBlank()&&lastEdit>0&&now-lastEdit<4000
+                    if(active!=announced||(active&&now-lastSent>=4000)){
+                        val result=withContext(Dispatchers.IO){inboxRequest(token,"rpc/sera_set_typing","POST",JSONObject().put("p_conversation",conversation.id).put("p_typing",active))}
+                        if(result.first!=null){announced=active;lastSent=now}
+                    }
+                    delay(750)
+                }
+            }
         }
     }
 

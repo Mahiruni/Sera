@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
                     onInitialDestinationReady = { destinationReady = true },
                     pushKind = pushKind.value, onPushConsumed = { pushKind.value = null }
                 )
+                if(!introVisible) SeraForegroundMessageBanner(Modifier.align(Alignment.TopCenter), onOpen={ pushKind.value=it })
                 if (introVisible) SeraSignatureIntro(
                     destinationReady = destinationReady,
                     onWhiteFrame = {
@@ -108,6 +109,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    override fun onResume(){super.onResume();SeraMessageAlerts.setForeground(true)}
+    override fun onPause(){SeraMessageAlerts.setForeground(false);super.onPause()}
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
