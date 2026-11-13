@@ -12,18 +12,17 @@ type FeedPromise=ReturnType<typeof loadSocialFeed>;
 type SidebarPromise=ReturnType<typeof loadNetworkSidebars>;
 
 async function FeedResults({result,userId,page,href}:{result:FeedPromise;userId:string;page:number;href:string}){
-  try{
-    const feed=await result;
-    return <><PostList posts={feed.posts} userId={userId}/><SocialPagination page={page} hasMore={feed.hasMore} href={href}/></>;
-  }catch{
-    return <div className="social-empty" role="alert"><h2>Unable to load your feed</h2><p>Check your connection, then refresh to try again.</p><a href={href}>Retry</a></div>;
-  }
+  const feed=await result.catch(()=>null);
+  if(!feed)return <div className="social-empty" role="alert"><h2>Unable to load your feed</h2><p>Check your connection, then refresh to try again.</p><a href={href}>Retry</a></div>;
+  return <><PostList posts={feed.posts} userId={userId}/><SocialPagination page={page} hasMore={feed.hasMore} href={href}/></>;
 }
 async function People({result}:{result:SidebarPromise}){
-  try{const data=await result;return <NetworkPeopleStrip people={data.people}/>;}catch{return <NetworkPeopleStrip people={[]}/>;}
+  const data=await result.catch(()=>null);
+  return <NetworkPeopleStrip people={data?.people||[]}/>;
 }
 async function RightRail({result}:{result:SidebarPromise}){
-  try{return <NetworkRightRail {...await result}/>;}catch{return <NetworkRightRail people={[]} jobs={[]} peopleError jobsError/>;}
+  const data=await result.catch(()=>null);
+  return data?<NetworkRightRail {...data}/>:<NetworkRightRail people={[]} jobs={[]} peopleError jobsError/>;
 }
 function FeedSkeleton(){
   return <div aria-label="Loading posts" aria-busy="true" className="social-post-list sera-feed-loading">
