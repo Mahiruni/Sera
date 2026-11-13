@@ -393,6 +393,7 @@ fun SeraApp(
         val kind=pushKind?:return@LaunchedEffect
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isBlank())return@LaunchedEffect
+        if(kind=="voice_call_active"){globalVoice.restore();onPushConsumed();return@LaunchedEffect}
         if(kind.startsWith("message:")){
             val parts=kind.split(":")
             val thread=parts.getOrNull(1)
