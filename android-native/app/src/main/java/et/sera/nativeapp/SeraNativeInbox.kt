@@ -151,6 +151,11 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
     val (raw, error) = inboxRequest(token,
         "rpc/sera_inbox_v2","POST",JSONObject().put("p_limit",100))
     if (raw == null) return null to error
+    val parsed=parseNativeMessageRows(raw)
+    if(parsed.first!=null&&ids==null)runCatching{cache?.write(owner,conversationId,raw)}
+    return parsed
+}
+private fun parseNativeMessageRows(raw:String):Pair<List<NativeMessage>?,String>{
     return try {
         val rows = JSONArray(raw)
         val peers = (0 until rows.length()).map { rows.getJSONObject(it) }
@@ -183,7 +188,7 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
 
-private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null): Pair<List<NativeMessage>?, String> {
+private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null,cache:SeraMessageHistoryCache?=null,owner:String=""): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
         "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}?:""))
     if (raw == null) return null to error
@@ -397,6 +402,7 @@ private class InboxThreadState {
     var textAcknowledged by mutableStateOf<List<NativeMessage>>(emptyList())
     var textLoaded by mutableStateOf(false)
     var unreadBoundary by mutableStateOf<String?>(null)
+    var cachedHistory by mutableStateOf(false)
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
@@ -755,14 +761,20 @@ private class InboxController(
     @Composable
     fun MessagePolling() {
         val recoveryRevision=SeraPushRecovery.revision
+        val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
         LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision) {
             val conversation = selected ?: return@LaunchedEffect
+            if(!thread.initialMessagesLoaded&&messages.isEmpty()){
+                val cached=withContext(Dispatchers.IO){runCatching{cache?.read(userId,conversation.id)?.let{parseNativeMessageRows(it).first}}.getOrNull()}
+                if(!cached.isNullOrEmpty()){messages=cached;thread.cachedHistory=true;thread.initialMessagesLoaded=true}
+            }
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 SeraRealtime(token, conversation.id).run {
-                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
+                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit,cache=cache,owner=userId) }
                     result.first?.let { latest ->
-                        if(!thread.initialMessagesLoaded){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
-                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
+                        if(!thread.initialMessagesLoaded||thread.cachedHistory){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
+                        if(!thread.cachedHistory&&messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
+                        thread.cachedHistory=false
                         messages = latest
                     thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
                         val unread = latest.filter { isUnreadIncoming(it,userId) }
@@ -777,9 +789,9 @@ private class InboxController(
 
     @Composable
     fun ReadReceipts() {
-        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget){
+        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget,thread.cachedHistory){
             val c=selected?:return@LaunchedEffect
-            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null)return@LaunchedEffect
+            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null||thread.cachedHistory)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
@@ -870,6 +882,7 @@ private class InboxController(
                 thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                if(thread.cachedHistory)Text("Saved messages · syncing…",fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=4.dp))
                 val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
