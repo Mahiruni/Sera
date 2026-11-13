@@ -75,6 +75,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var routeLabel by remember(conversation){mutableStateOf("Audio") }
     var started by remember(conversation){mutableLongStateOf(0L)}
     var seconds by remember(conversation){mutableLongStateOf(0L)}
+    var quality by remember(conversation){mutableStateOf<String?>(null)}
     var lastAnswer by remember(conversation){mutableStateOf<String?>(null)}
     var showHistory by remember(conversation){mutableStateOf(false)}
     var minimized by remember(conversation){mutableStateOf(false)}
@@ -84,7 +85,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var silenced by remember(conversation){mutableStateOf(false)}
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
     fun payload()=JSONObject().put("p_conversation",conversation)
-    fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
+    fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
     suspend fun end(action:String,message:String="",target:CallRow?=null){
         val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};if(call!=null||phase.isNotBlank())finishSummary(when(action){"decline"->"Call declined";"fail"->"Connection lost";else->if(started>0)"Call ended" else "Call cancelled"},call,message);cleanup()
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
@@ -136,6 +137,17 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     }
     LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
+    LaunchedEffect(phase,row?.id){
+        quality=null
+        if(phase!="Connected")return@LaunchedEffect
+        var previous:SeraAudioSample?=null
+        while(true){
+            val sample=try{rtc?.audioSample()}catch(e:CancellationException){throw e}catch(_:Exception){null}
+            quality=sample?.let{seraAudioQuality(previous,it)}
+            previous=sample
+            delay(4000)
+        }
+    }
     LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(45000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()
     var resumed by remember(lifecycle){mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}
@@ -211,6 +223,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 }
                 if(started>0){Spacer(Modifier.height(10.dp));Text(seraCallDuration(seconds),color=primary,fontSize=28.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Medium,modifier=Modifier.testTag("sera_voice_timer"))}
                 if(muted){Spacer(Modifier.height(8.dp));Text("Microphone muted",color=teal,fontSize=12.sp)}
+                quality?.let{Spacer(Modifier.height(8.dp));Text(it,color=colors.error,fontSize=12.sp)}
             }
             Column(Modifier.fillMaxWidth().padding(bottom=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(incoming){
