@@ -4,9 +4,10 @@ import { after } from "next/server";
 import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
 import { memberCard } from "@/lib/activity/members";
 import { currentUser, serverClient } from "@/lib/supabase/server";
+import type { VideoQuality } from "@/lib/network/video-policy";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
-export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null;caller_restart_ready?:boolean;callee_restart_ready?:boolean;restart_requested?:boolean;restart_generation?:number;restart_offer?:string|null;restart_answer?:string|null};
+export type CallSession={media_mode?:"voice"|"video";caller_video_quality?:VideoQuality;callee_video_quality?:VideoQuality;id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null;caller_restart_ready?:boolean;callee_restart_ready?:boolean;restart_requested?:boolean;restart_generation?:number;restart_offer?:string|null;restart_answer?:string|null};
 export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">&{connected_seconds?:number|null};
 export type CallConfig={enabled:boolean;iceServers?:RTCIceServer[]};
 async function dbFor(conversation:string){
@@ -19,7 +20,7 @@ export async function getCallConfig(conversation:string,issue=false):Promise<Cal
 }
 export async function getCallStatus(conversation:string,id:string|null):Promise<CallSession|null>{
   const db=await dbFor(conversation);if(id&&!validMessageId(id))throw new Error("Invalid call.");
-  const {data,error}=await db.rpc("sera_call_status",{p_conversation:conversation,p_id:id});if(error)throw new Error("Call status unavailable.");return data;
+  const {data,error}=await db.rpc("sera_call_media_status",{p_conversation:conversation,p_id:id,p_video:true});if(error)throw new Error("Call status unavailable.");return data;
 }
 export async function startCall(conversation:string,id:string,offer:string):Promise<CallSession>{
   const db=await dbFor(conversation);if(!validMessageId(id)||typeof offer!=="string"||offer.length>65536)throw new Error("Invalid call.");
@@ -51,8 +52,28 @@ export type PendingIncomingCall={id:string;conversation:string;name:string;photo
 export async function getPendingIncomingCall():Promise<PendingIncomingCall|null>{
  const user=await currentUser();if(!user?.email_confirmed_at)return null;
  const db=await serverClient();
- const {data,error}=await db.rpc("sera_call_pending_incoming");
+ const {data,error}=await db.rpc("sera_call_media_pending_incoming");
  if(error||!data||!validMessageId(data.id)||!validMessageId(data.conversation_id)||!validMessageId(data.caller)||!Number.isFinite(Date.parse(data.expires_at))||Date.parse(data.expires_at)<=Date.now())return null;
  const card=await memberCard(data.caller);
  return {id:data.id,conversation:data.conversation_id,name:card?.name||"Sera member",photo:card?.photo??null,expiresAt:data.expires_at};
+}
+
+export type VideoAccess={enabled:boolean;premium:boolean;peer_ready:boolean};
+export async function getVideoAccess(conversation:string):Promise<VideoAccess>{
+ try{const db=await dbFor(conversation);const {data,error}=await db.rpc("sera_call_video_access",{p_conversation:conversation});return !error&&data?data:{enabled:false,premium:false,peer_ready:false};}catch{return {enabled:false,premium:false,peer_ready:false};}
+}
+export async function markVideoReady():Promise<boolean>{
+ const user=await currentUser();if(!user?.email_confirmed_at)return false;
+ const db=await serverClient();const {data,error}=await db.rpc("sera_call_video_ready");return !error&&data===true;
+}
+export async function startVideoCall(conversation:string,id:string,offer:string,quality:VideoQuality):Promise<CallSession>{
+ const db=await dbFor(conversation);
+ if(!validMessageId(id)||typeof offer!=="string"||offer.length>65536||!["standard","hd","super_hd"].includes(quality))throw Error("Invalid video call.");
+ const {data,error}=await db.rpc("sera_call_start_video",{p_conversation:conversation,p_id:id,p_offer:offer,p_quality:quality});
+ if(error||!data)throw Error("Video unavailable. Check recipient availability or subscription.");
+ return data;
+}
+export async function setVideoQuality(conversation:string,id:string,quality:VideoQuality):Promise<CallSession|null>{
+ const db=await dbFor(conversation);if(!validMessageId(id)||!["standard","hd","super_hd"].includes(quality))return null;
+ const {data,error}=await db.rpc("sera_call_video_quality",{p_conversation:conversation,p_id:id,p_quality:quality});return error?null:data;
 }
