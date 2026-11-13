@@ -7,7 +7,7 @@ import {voiceText} from "@/lib/network/voice-i18n";
 import {SpeechAdaptation,speechProfiles,readSpeechLink} from "@/lib/network/voice-network-policy";
 import {secureRelayAttempts} from "@/lib/network/relay-recovery";
 import {MemberAvatar} from "@/components/activity/avatar";
-import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,confirmCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
+import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,confirmCallMedia,restartCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
 
 type VoiceSummary={title:string;duration:number|null;direction:"Incoming"|"Outgoing";endedAt:number;detail?:string};
 const formatDuration=(seconds:number)=>{const s=Math.max(0,Math.floor(seconds));const mm=String(Math.floor(s/60)%60).padStart(2,"0"),ss=String(s%60).padStart(2,"0");return s>=3600?`${Math.floor(s/3600)}:${mm}:${ss}`:`${mm}:${ss}`;};
@@ -21,10 +21,10 @@ function CallTopLayer({children,label,onDismiss}:{children:ReactNode;label:strin
 }
 class RelayUnavailable extends Error {}
 function abortError(){return new DOMException("Call cancelled.","AbortError");}
-function gather(pc:RTCPeerConnection,budgetMs:number,signal:AbortSignal):Promise<void>{
+function gather(pc:RTCPeerConnection,budgetMs:number,signal:AbortSignal,complete=false):Promise<void>{
   return new Promise((resolve,reject)=>{
     const done=(error?:Error)=>{clearTimeout(timer);pc.removeEventListener("icegatheringstatechange",check);pc.removeEventListener("icecandidate",check);signal.removeEventListener("abort",abort);error?reject(error):resolve();};
-    const check=()=>{if(signal.aborted)done(abortError());else if(hasRelay(pc))done();else if(pc.iceGatheringState==="complete")done(new RelayUnavailable("No secure relay connection."));};
+    const check=()=>{if(signal.aborted)done(abortError());else if(hasRelay(pc)&&(!complete||pc.iceGatheringState==="complete"))done();else if(pc.iceGatheringState==="complete")done(new RelayUnavailable("No secure relay connection."));};
     const abort=()=>done(abortError());
     const timer=setTimeout(()=>done(hasRelay(pc)?undefined:new RelayUnavailable("Secure relay timed out.")),budgetMs);
     pc.addEventListener("icegatheringstatechange",check);pc.addEventListener("icecandidate",check);signal.addEventListener("abort",abort,{once:true});check();
@@ -36,13 +36,41 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
   const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallHistoryEntry[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false),[minimized,setMinimized]=useState(false);
   const [summary,setSummary]=useState<VoiceSummary|null>(null);
   const preparationAbort=useRef<AbortController|null>(null);
+  const restart=useRef({applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0});
+  const restartAbort=useRef<AbortController|null>(null);
   const cancelRequested=useRef(false),operation=useRef<"dial"|"accept"|null>(null),polling=useRef(false);
   const pc=useRef<RTCPeerConnection|null>(null),stream=useRef<MediaStream|null>(null),audio=useRef<HTMLAudioElement>(null),current=useRef<CallSession|null>(null),busy=useRef(false),mounted=useRef(true),started=useRef(0),lastRemote=useRef(""),failTimer=useRef<ReturnType<typeof setTimeout>|null>(null),pollErrors=useRef(0),missingSince=useRef(0);
   const update=useCallback((s:CallSession|null)=>{current.current=s;if(mounted.current)setSession(s);},[]);
-  const cleanup=useCallback(()=>{preparationAbort.current?.abort();preparationAbort.current=null;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;pollErrors.current=0;missingSince.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);setMinimized(false);}},[]);
+  const cleanup=useCallback(()=>{restartAbort.current?.abort();restartAbort.current=null;restart.current={applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0};preparationAbort.current?.abort();preparationAbort.current=null;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;pollErrors.current=0;missingSince.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);setMinimized(false);}},[]);
   const captureSummary=useCallback((title:string,s:CallSession|null,detail?:string)=>{if(mounted.current)setSummary({title,duration:started.current?Math.floor((performance.now()-started.current)/1000):null,direction:s?.callee===userId?"Incoming":"Outgoing",endedAt:Date.now(),detail});},[userId]);
   const terminate=useCallback(async(action:"end"|"decline"|"fail",message="")=>{const s=current.current;captureSummary(action==="decline"?"Call declined":action==="fail"?"Connection lost":started.current?"Call ended":"Call cancelled",s,message);cleanup();update(null);setPhase("");if(s&&live(s)){try{await changeCall(conversation,s.id,action);}catch{if(mounted.current)setError(message||"Call closed locally. Remote status will expire.");}}},[captureSummary,cleanup,conversation,update]);
   useEffect(()=>{mounted.current=true;void getCallConfig(conversation).then(c=>{if(mounted.current)setConfig(c);});return()=>{mounted.current=false;const s=current.current;cleanup();if(s&&live(s))void changeCall(conversation,s.id,"end").catch(()=>{});};},[conversation,cleanup]);
+  async function recoverMedia(call:CallSession){
+    const peer=pc.current;if(!peer||call.state!=="accepted")return;
+    const caller=call.caller===userId,generation=call.restart_generation??0,r=restart.current;
+    if(caller&&!lastRemote.current)return;
+    const signal=(action:"ready"|"request"|"offer"|"answer",rev=generation,sdp?:string)=>restartCallMedia(conversation,call.id,action,rev,sdp);
+    if(!(caller?call.caller_restart_ready:call.callee_restart_ready)){await signal("ready");return;}
+    if(!call.caller_restart_ready||!call.callee_restart_ready)return;
+    const stillCurrent=()=>pc.current===peer&&current.current?.id===call.id&&mounted.current;
+    if(r.pendingSdp){const result=await signal(caller?"offer":"answer",r.pendingGeneration,r.pendingSdp);if(result&&stillCurrent()){r.pendingSdp="";if(!caller)r.applied=r.pendingGeneration;}return;}
+    if(caller&&generation>r.applied&&call.restart_answer){await peer.setRemoteDescription({type:"answer",sdp:call.restart_answer});if(stillCurrent())r.applied=generation;return;}
+    async function prepare(offer?:string){
+      const controller=new AbortController();restartAbort.current=controller;
+      try{
+        if(offer)await peer.setRemoteDescription({type:"offer",sdp:offer});
+        const previous=peer.localDescription?.sdp?.match(/^a=ice-ufrag:(.+)$/m)?.[1].trim();
+        const desc=offer?await peer.createAnswer():await peer.createOffer({iceRestart:true});
+        if(!offer){const next=desc.sdp?.match(/^a=ice-ufrag:(.+)$/m)?.[1].trim();if(!next||next===previous)throw Error("ICE credentials did not rotate.");}
+        if(!stillCurrent())throw abortError();await peer.setLocalDescription(desc);await gather(peer,12000,controller.signal,true);
+        if(!stillCurrent())throw abortError();return peer.localDescription!.sdp;
+      }finally{if(restartAbort.current===controller)restartAbort.current=null;}
+    }
+    if(!caller&&generation>r.applied&&call.restart_offer&&!call.restart_answer){r.pendingGeneration=generation;r.pendingSdp=await prepare(call.restart_offer);const result=await signal("answer",generation,r.pendingSdp);if(result&&stillCurrent()){r.applied=generation;r.pendingSdp="";}return;}
+    const now=performance.now();if(peer.connectionState==="connected")r.unhealthySince=0;else if(!r.unhealthySince)r.unhealthySince=now;
+    if(caller&&call.restart_requested&&generation<3&&generation===r.applied&&peer.signalingState==="stable"){r.attemptAt=now;r.pendingGeneration=generation+1;r.pendingSdp=await prepare();if(await signal("offer",r.pendingGeneration,r.pendingSdp))r.pendingSdp="";return;}
+    if(r.unhealthySince&&now-r.unhealthySince>=3000&&now-r.attemptAt>=8000&&generation<3&&generation===r.applied&&!call.restart_requested){r.attemptAt=now;await signal("request");}
+  }
   useEffect(()=>{if(!config.enabled)return;let stopped=false;const poll=async()=>{if(stopped||busy.current||polling.current)return;polling.current=true;try{
     const prior=current.current;const s=await getCallStatus(conversation,prior?.id??null);if(stopped||busy.current||prior!==current.current)return;pollErrors.current=0;
     if(!s){if(prior){if(!missingSince.current)missingSince.current=Date.now();if(Date.now()-missingSince.current>=15000){cleanup();update(null);setPhase("");setError("Call is no longer available.");}}return;}missingSince.current=0;
@@ -52,7 +80,8 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
     if(!prior){setMinimized(false);setHistory(null);setError("");setSummary(null);}
     update(s);
     if(s.state==="accepted"&&s.caller===userId&&s.answer&&pc.current&&lastRemote.current!==s.answer){await pc.current.setRemoteDescription({type:"answer",sdp:s.answer});lastRemote.current=s.answer;if(mounted.current&&!started.current)setPhase("Connecting…");}
-  }catch{if(!busy.current&&current.current){if(!pollErrors.current)pollErrors.current=Date.now();if(Date.now()-pollErrors.current>=30000){await terminate("fail","Call signaling connection lost. Try again.");}}}finally{polling.current=false;}};
+    if(s.state==="accepted")await recoverMedia(s);
+  }catch{if(!busy.current&&current.current){if(!pollErrors.current)pollErrors.current=Date.now();if(Date.now()-pollErrors.current>=45000){await terminate("fail","Call signaling connection lost. Try again.");}}}finally{polling.current=false;}};
   void poll();const timer=setInterval(()=>void poll(),1500);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,userId,cleanup,update,terminate,captureSummary]);
   useEffect(()=>{if(!config.enabled)return;let stopped=false;const refresh=()=>void getCallHistory(conversation).then(events=>{if(!stopped)onHistory(events);}).catch(()=>{});refresh();const timer=setInterval(refresh,10000);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,onHistory]);
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((performance.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
