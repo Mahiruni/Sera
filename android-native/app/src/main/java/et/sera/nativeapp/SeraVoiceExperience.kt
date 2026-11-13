@@ -76,3 +76,23 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
         OutlinedButton(onClick=onDone,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text("Back to messages")}
     }
 }
+
+/** In-flow strip, not an overlay: all page and keyboard layouts retain their own space. */
+@Composable internal fun SeraOngoingCallStrip(name:String,photo:String?,status:String,muted:Boolean,onRestore:()->Unit,onMute:()->Unit,onEnd:()->Unit,canMute:Boolean){
+    val c=MaterialTheme.colorScheme
+    Surface(color=c.primaryContainer,modifier=Modifier.fillMaxWidth().testTag("sera_ongoing_call")){
+        Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
+            TextButton(onClick=onRestore,modifier=Modifier.weight(1f),contentPadding=PaddingValues(horizontal=4.dp,vertical=2.dp)){
+                Box(Modifier.size(36.dp).clip(CircleShape).background(c.surface),contentAlignment=Alignment.Center){
+                    Text(name.take(1).uppercase(),color=c.onSurface)
+                    if(!photo.isNullOrBlank())SeraMediaImage(photo,"Profile photo",72,72,Modifier.fillMaxSize())
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)){Text(name,color=c.onPrimaryContainer,maxLines=1,fontWeight=FontWeight.SemiBold);Text(status,color=c.onPrimaryContainer,fontSize=12.sp,maxLines=1)}
+                Icon(Icons.Outlined.KeyboardArrowUp,"Return to call",tint=c.onPrimaryContainer)
+            }
+            IconButton(onClick=onMute,enabled=canMute,modifier=Modifier.size(48.dp)){Icon(if(muted)Icons.Outlined.MicOff else Icons.Outlined.Mic,if(muted)"Unmute" else "Mute",tint=c.onPrimaryContainer)}
+            IconButton(onClick=onEnd,modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.CallEnd,"End call",tint=Color(0xFFC5374B))}
+        }
+    }
+}
