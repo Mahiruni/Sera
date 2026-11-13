@@ -190,7 +190,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 SeraMediaImage(
                                     url = url,
                                     description = stringResource(R.string.post_image),
-                                    widthPx = 1080, heightPx = 720, accessToken=token,
+                                    widthPx = 1080, heightPx = 720, accessToken=token,previewUrl=post.imagePreviewUrl,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 340.dp)
                                         .clip(RoundedCornerShape(14.dp))
                                         .clickable { expandedImage = url }
