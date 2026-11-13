@@ -11,7 +11,7 @@ export type ChatMime = keyof typeof CHAT_MIME_EXT;
 export type AttachmentMeta = { name:string; mime:ChatMime; size:number; durationMs?:number|null };
 export type ChatFile = AttachmentMeta & { id:string; url:string };
 export type MessageView = {
-  id:string; senderId:string; body:string; createdAt:string; readAt:string|null; deliveredAt:string|null;
+  id:string; senderId:string; body:string; createdAt:string; readAt:string|null; deliveredAt:string|null; privateReadAt?:string|null;
   clientId:string|null; forwarded:boolean; unsent:boolean;
   reply:{id:string;senderId:string;body:string;unsent:boolean}|null;
   files:ChatFile[]; reactions:{memberId:string;emoji:string}[];

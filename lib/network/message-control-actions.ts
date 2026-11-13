@@ -32,3 +32,10 @@ export async function saveMessagingActivity(form:FormData){
  if(error)throw new Error("Could not save activity privacy.");
  revalidatePath("/settings/messaging");
 }
+
+export async function saveReadReceiptVisibility(form:FormData){
+ const user=await currentUser();if(!user?.email_confirmed_at)return;
+ const db=await serverClient();const {error}=await db.rpc("sera_set_read_receipt_visibility",{p_visible:form.get("receipts")==="on"});
+ if(error)throw new Error("Could not save read receipt privacy.");
+ revalidatePath("/settings/messaging");
+}

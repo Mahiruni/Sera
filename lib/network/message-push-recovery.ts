@@ -36,6 +36,9 @@ async function processJob(db:Db,j:Job):Promise<void>{
    const peer=first===j.recipient_id?second:second===j.recipient_id?first:null;
    if(!m||!peer||m.sender_id!==peer||m[company?"thread_id":"conversation_id"]!==j.conversation_id||(!company&&(m.read_at||m.unsent_at)))outcome="skipped";
    else{
+    const privateRead=company?{data:null,error:null}:await db.from("sera_private_message_reads").select("message_id").eq("message_id",j.event_id).eq("recipient_id",j.recipient_id).maybeSingle();
+    if(privateRead.error)throw new Error("Private read lookup failed");
+    if(privateRead.data){outcome="skipped";}else{
     const block=await db.from("professional_blocks").select("blocker_id").or("and(blocker_id.eq."+peer+",blocked_id.eq."+j.recipient_id+"),and(blocker_id.eq."+j.recipient_id+",blocked_id.eq."+peer+")").limit(1);
     if(block.error)throw new Error("Block lookup failed");
     if(block.data?.length)outcome="skipped";
@@ -54,6 +57,7 @@ async function processJob(db:Db,j:Job):Promise<void>{
      }
     }
    }
+    }
   }
  }catch{ /* Leave the job eligible for bounded retry. Never log private content or tokens. */ }
  const {error}=await db.rpc("sera_finish_message_push",{p_event:j.event_id,p_kind:j.kind,p_device:j.device_id,p_lease:j.lease_id,p_result:outcome});

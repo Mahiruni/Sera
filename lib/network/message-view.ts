@@ -8,11 +8,13 @@ export async function messageViews(db:Db,conversation:string,rows:Row[]):Promise
   if(!rows.length)return [];
   const ids=rows.map(m=>m.id);
   const replyIds=[...new Set(rows.flatMap(m=>m.reply_to_id?[m.reply_to_id]:[]))];
-  const [attachments,reactions,replies]=await Promise.all([
+  const [attachments,reactions,replies,privateReads]=await Promise.all([
     db.from("professional_message_attachments").select("id,message_id,file_name,mime_type,byte_size,duration_ms,position").in("message_id",ids).order("position",{ascending:true}),
     db.from("professional_message_reactions").select("message_id,member_id,emoji").eq("conversation_id",conversation).in("message_id",ids).not("emoji","is",null),
     replyIds.length?db.from("professional_messages").select("id,sender_id,body,unsent_at").eq("conversation_id",conversation).in("id",replyIds):Promise.resolve({data:[]}),
+    db.from("sera_private_message_reads").select("message_id,read_at").in("message_id",ids),
   ]);
+  const privateReadMap=new Map((privateReads.data??[]).map(r=>[r.message_id,r.read_at]));
   const fileMap=new Map<string,ChatFile[]>();
   for(const a of attachments.data??[]){
     if(!isChatMime(a.mime_type))continue;
@@ -29,7 +31,7 @@ export async function messageViews(db:Db,conversation:string,rows:Row[]):Promise
   for(const r of replies.data??[])replyMap.set(r.id,{id:r.id,senderId:r.sender_id,body:r.unsent_at?"Message unsent":r.body,unsent:Boolean(r.unsent_at)});
   return rows.map(m=>({
     id:m.id,senderId:m.sender_id,body:m.unsent_at?"Message unsent":m.body,createdAt:m.created_at,
-    readAt:m.read_at,deliveredAt:m.delivered_at,clientId:m.client_message_id,forwarded:m.is_forwarded,unsent:Boolean(m.unsent_at),
+    readAt:m.read_at,privateReadAt:privateReadMap.get(m.id)??null,deliveredAt:m.delivered_at,clientId:m.client_message_id,forwarded:m.is_forwarded,unsent:Boolean(m.unsent_at),
     reply:m.reply_to_id?replyMap.get(m.reply_to_id)??{id:m.reply_to_id,senderId:"",body:"Message unavailable",unsent:true}:null,
     files:m.unsent_at?[]:fileMap.get(m.id)??[],reactions:m.unsent_at?[]:reactionMap.get(m.id)??[],
   }));
