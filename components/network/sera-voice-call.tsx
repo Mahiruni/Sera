@@ -24,7 +24,7 @@ function abortError(){return new DOMException("Call cancelled.","AbortError");}
 function gather(pc:RTCPeerConnection,budgetMs:number,signal:AbortSignal,complete=false):Promise<void>{
   return new Promise((resolve,reject)=>{
     const done=(error?:Error)=>{clearTimeout(timer);pc.removeEventListener("icegatheringstatechange",check);pc.removeEventListener("icecandidate",check);signal.removeEventListener("abort",abort);error?reject(error):resolve();};
-    const check=()=>{if(signal.aborted)done(abortError());else if(hasRelay(pc)&&(!complete||pc.iceGatheringState==="complete"))done();else if(pc.iceGatheringState==="complete")done(new RelayUnavailable("No secure relay connection."));};
+    const check=()=>{if(signal.aborted)done(abortError());else if(hasRelay(pc)&&(!complete||pc.iceGatheringState==="complete"))done();else if(pc.iceGatheringState==="complete"&&!complete)done(new RelayUnavailable("No secure relay connection."));};
     const abort=()=>done(abortError());
     const timer=setTimeout(()=>done(hasRelay(pc)?undefined:new RelayUnavailable("Secure relay timed out.")),budgetMs);
     pc.addEventListener("icegatheringstatechange",check);pc.addEventListener("icecandidate",check);signal.addEventListener("abort",abort,{once:true});check();
