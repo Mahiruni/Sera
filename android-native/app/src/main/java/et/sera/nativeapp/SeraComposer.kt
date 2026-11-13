@@ -175,28 +175,19 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
                 }
                 IconButton(onClick = { requestClose() },modifier=Modifier.background(soft,CircleShape)) { Icon(Icons.Outlined.Close, "Close composer", tint = actionInk) }
             }
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(if(keyboardOpen)8.dp else 12.dp)){
                 SeraAccountAvatar(identity,avatar,if(keyboardOpen)32 else 48)
-                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(if(keyboardOpen)0.dp else 4.dp)){
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
-                        Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.Bold,color=ink,fontSize=if(keyboardOpen)14.sp else 17.sp,modifier=Modifier.weight(1f,fill=false))
+                        Text(identity.ifBlank{"Your profile"},fontWeight=FontWeight.Bold,color=ink,fontSize=if(keyboardOpen)14.sp else 17.sp,modifier=Modifier.weight(1f,fill=false),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         if(verified)SeraIdentityBadge()
                     }
-                    if(headline.isNotBlank()&&!keyboardOpen)Text(headline,color=muted,style=MaterialTheme.typography.bodySmall)
-                    Box{
-                        OutlinedButton(enabled=!publishing,onClick={audienceOpen=true},shape=RoundedCornerShape(50),border=BorderStroke(1.dp,line),
-                            colors=ButtonDefaults.outlinedButtonColors(containerColor=soft,contentColor=actionInk),
-                            contentPadding=PaddingValues(horizontal=if(keyboardOpen)8.dp else 12.dp,vertical=if(keyboardOpen)0.dp else 4.dp)){
-                            Icon(Icons.Outlined.Public,null,Modifier.size(17.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Audience: "+(audiences[audience]?:"Only me"),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-                            Icon(Icons.Outlined.ExpandMore,null,Modifier.size(17.dp))
-                        }
-                        DropdownMenu(expanded=audienceOpen,onDismissRequest={audienceOpen=false}){
-                            audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={audience=key;audienceOpen=false})}
-                        }
+                    if(!keyboardOpen){
+                        if(headline.isNotBlank())Text(headline,color=muted,style=MaterialTheme.typography.bodySmall)
+                        SeraComposerAudience(audiences,audience,audienceOpen,{audienceOpen=it},{audience=it},!publishing,soft,line,actionInk,false)
                     }
                 }
+                if(keyboardOpen)SeraComposerAudience(audiences,audience,audienceOpen,{audienceOpen=it},{audience=it},!publishing,soft,line,actionInk,true)
             }
             Column(
                 Modifier.weight(1f, fill = keyboardOpen).verticalScroll(rememberScrollState())
@@ -299,6 +290,23 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
             if (publishMessage.isNotBlank()) Text(publishMessage, color = MaterialTheme.colorScheme.error)
             if (saved) Text(stringResource(R.string.draft_saved), color = MaterialTheme.colorScheme.primary)
 
+        }
+    }
+}
+
+@Composable
+private fun SeraComposerAudience(audiences:Map<String,String>,audience:String,open:Boolean,onOpen:(Boolean)->Unit,onSelect:(String)->Unit,enabled:Boolean,soft:Color,line:Color,tint:Color,compact:Boolean){
+    Box{
+        OutlinedButton(enabled=enabled,onClick={onOpen(true)},shape=RoundedCornerShape(50),border=BorderStroke(1.dp,line),
+            colors=ButtonDefaults.outlinedButtonColors(containerColor=soft,contentColor=tint),
+            contentPadding=PaddingValues(horizontal=if(compact)8.dp else 12.dp,vertical=if(compact)0.dp else 4.dp)){
+            Icon(Icons.Outlined.Public,null,Modifier.size(17.dp))
+            Spacer(Modifier.width(5.dp))
+            Text((if(compact)"" else "Audience: ")+(audiences[audience]?:"Only me"),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+            Icon(Icons.Outlined.ExpandMore,null,Modifier.size(17.dp))
+        }
+        DropdownMenu(expanded=open,onDismissRequest={onOpen(false)}){
+            audiences.forEach{(key,label)->DropdownMenuItem(text={Text(label)},onClick={onSelect(key);onOpen(false)})}
         }
     }
 }
