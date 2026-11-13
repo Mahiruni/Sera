@@ -53,6 +53,12 @@ function DeliverySync({userId,threads}:{userId:string;threads:ThreadPreview[]}){
 }
 export function MessageWorkspace({userId,threads,selected,messages,hasMore,search,loadError,candidates}:{userId:string;threads:ThreadPreview[];selected:ThreadPreview|null;messages:MessageView[];hasMore:boolean;search:string;loadError:string;candidates:Candidate[]}){
   const workspace=useRef<HTMLDivElement>(null);
+  const [sheetFraction,setSheetFraction]=useState(.9);
+  const [sheetDragging,setSheetDragging]=useState(false);
+  const sheetDrag=useRef<{id:number;y:number;start:number;current:number;moved:boolean}|null>(null);
+  const sheetPosition=useRef(.9);
+  const resizeSheet=(value:number)=>{sheetPosition.current=value;setSheetFraction(value);workspace.current?.style.setProperty("--sera-chat-sheet-fraction",String(value));};
+  const finishSheetDrag=(id:number,cancelled=false)=>{const drag=sheetDrag.current;if(!drag||drag.id!==id)return;sheetDrag.current=null;setSheetDragging(false);resizeSheet(cancelled?drag.start:drag.moved?[.6,.9,1].reduce((best,next)=>Math.abs(next-drag.current)<Math.abs(best-drag.current)?next:best,.9):drag.start);};
   useEffect(()=>{
     const el=workspace.current;if(!el)return;
     const sync=()=>{
@@ -78,7 +84,8 @@ export function MessageWorkspace({userId,threads,selected,messages,hasMore,searc
   const [filter,setFilter]=useState<"all"|"unread"|"archived">("all");
   const filtered=threads.filter(t=>(filter==="archived"?t.archived:!t.archived&&(filter!=="unread"||t.unread>0||t.markedUnread))&&(t.name.toLowerCase().includes(query.trim().toLowerCase())||(t.lastBody??"").toLowerCase().includes(query.trim().toLowerCase()))).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));
 
-  return <div ref={workspace} className={"sera-chat-workspace sera-chat-wrapper-90"+(selected?" has-thread":"")}>
+  return <div ref={workspace} className={"sera-chat-workspace sera-chat-wrapper-90"+(selected?" has-thread":"")} data-dragging={sheetDragging}>
+    <button type="button" className="sera-chat-resize-handle" aria-label="Resize messages" aria-expanded={sheetFraction>=.95} onPointerDown={e=>{if(!e.isPrimary||e.button!==0)return;sheetDrag.current={id:e.pointerId,y:e.clientY,start:sheetPosition.current,current:sheetPosition.current,moved:false};e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{const drag=sheetDrag.current;if(!drag||drag.id!==e.pointerId)return;const delta=e.clientY-drag.y;if(!drag.moved&&Math.abs(delta)<5)return;drag.moved=true;setSheetDragging(true);drag.current=Math.max(.6,Math.min(1,drag.start-delta/(window.visualViewport?.height||window.innerHeight)));resizeSheet(drag.current);}} onPointerUp={e=>{const drag=sheetDrag.current;const moved=drag?.moved;finishSheetDrag(e.pointerId);if(!moved&&drag)resizeSheet(sheetPosition.current>=.95?.9:1);}} onPointerCancel={e=>finishSheetDrag(e.pointerId,true)} onLostPointerCapture={e=>finishSheetDrag(e.pointerId,true)} onClick={e=>{if(e.detail===0)resizeSheet(sheetPosition.current>=.95?.9:1);}} onKeyDown={e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();const anchors=[.6,.9,1];const next=e.key==="ArrowUp"?anchors.find(v=>v>sheetPosition.current+.005):[...anchors].reverse().find(v=>v<sheetPosition.current-.005);if(next!==undefined)resizeSheet(next);}}}><span/></button>
     <InboxRefresh/><DeliverySync userId={userId} threads={threads}/>
     <aside className="sera-chat-sidebar" aria-label="Conversations">
       <div className="sera-chat-inbox-head"><div className="sera-chat-inbox-title"><Link href="/feed" className="sera-chat-icon sera-chat-inbox-back" aria-label="Back to feed"><ArrowLeft size={23}/></Link><h1>Messages</h1></div><details className="sera-chat-new"><summary className="sera-chat-icon" aria-label="New conversation"><Plus size={22}/></summary><div className="sera-chat-new-panel"><h3>New conversation</h3>{candidates.length?candidates.map(c=><form key={c.id} action={openProfessionalConversation}><input type="hidden" name="recipient" value={c.id}/><MemberAvatar name={c.name} photo={c.photo}/><span>{c.name}</span><button type="submit" className="sera-chat-icon" aria-label={"Message "+c.name}><MessageCircle size={19}/></button></form>):<p>Connect with a professional to start a conversation.</p>}<Link href="/connections">Discover connections</Link></div></details></div>

@@ -21,6 +21,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.animateFloatAsState
@@ -237,24 +244,60 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     }
 }
 
-/** Single layout boundary for the inbox, conversation, and conversation details. */
-internal fun seraMessagingHeightFraction(keyboardVisible:Boolean):Float = if(keyboardVisible)1f else .90f
+/** Keep keyboard expansion separate from the user's chosen sheet position. */
+internal fun seraMessagingHeightFraction(keyboardVisible:Boolean,restingFraction:Float=.90f):Float = if(keyboardVisible)1f else restingFraction.coerceIn(.60f,1f)
+
+internal fun seraMessagingDragFraction(current:Float,deltaPx:Float,availablePx:Float):Float =
+    if(availablePx<=0f)current else (current-deltaPx/availablePx).coerceIn(.60f,1f)
+
+internal fun seraMessagingSnapFraction(current:Float,velocityPx:Float,flingThresholdPx:Float):Float {
+    val anchors=listOf(.60f,.90f,1f)
+    return when {
+        velocityPx < -flingThresholdPx -> anchors.firstOrNull{it>current+.005f}?:1f
+        velocityPx > flingThresholdPx -> anchors.lastOrNull{it<current-.005f}?:.60f
+        else -> anchors.minByOrNull{kotlin.math.abs(it-current)}?:.90f
+    }
+}
 
 @Composable
 internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,content:@Composable ()->Unit) {
-    val keyboardVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
-    val fraction=seraMessagingHeightFraction(keyboardVisible)
-    // Apply system insets once, outside the fraction, so the composer stays
-    // above the keyboard and the bottom navigation/gesture area.
-    Box(modifier.fillMaxSize().background(palette.quote).navigationBarsPadding().imePadding()){
+    val density=LocalDensity.current
+    val keyboardVisible=WindowInsets.ime.getBottom(density)>0
+    var restingFraction by rememberSaveable{mutableStateOf(.90f)}
+    var dragFraction by remember{mutableStateOf(.90f)}
+    var dragging by remember{mutableStateOf(false)}
+    val target=seraMessagingHeightFraction(keyboardVisible,if(dragging)dragFraction else restingFraction)
+    val animatedFraction by animateFloatAsState(target,tween(if(dragging||keyboardVisible)0 else 210),label="messaging sheet height")
+    LaunchedEffect(keyboardVisible){if(keyboardVisible)dragging=false}
+    BoxWithConstraints(modifier.fillMaxSize().background(palette.quote).navigationBarsPadding().imePadding()){
+        val availablePx=with(density){maxHeight.toPx()}
+        val flingThreshold=with(density){420.dp.toPx()}
+        val dragState=rememberDraggableState{delta->
+            if(!keyboardVisible)dragFraction=seraMessagingDragFraction(dragFraction,delta,availablePx)
+        }
         Surface(
-            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(fraction),
+            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(animatedFraction),
             shape=RoundedCornerShape(topStart=if(keyboardVisible)0.dp else 28.dp,topEnd=if(keyboardVisible)0.dp else 28.dp),
             color=palette.canvas,
             tonalElevation=0.dp,
             shadowElevation=if(keyboardVisible)0.dp else 5.dp
         ){
-            Box(Modifier.fillMaxSize()) { content() }
+            Column(Modifier.fillMaxSize()){
+                if(!keyboardVisible)Box(
+                    Modifier.fillMaxWidth().height(44.dp)
+                        .semantics{contentDescription="Resize messages";stateDescription=when{restingFraction<.8f->"Compact";restingFraction<.95f->"Default";else->"Expanded"}}
+                        .draggable(
+                            state=dragState,orientation=Orientation.Vertical,
+                            onDragStarted={dragFraction=animatedFraction;dragging=true},
+                            onDragStopped={velocity->restingFraction=seraMessagingSnapFraction(dragFraction,velocity,flingThreshold);dragging=false}
+                        )
+                        .clickable{restingFraction=if(restingFraction>=.95f).90f else 1f},
+                    contentAlignment=Alignment.Center
+                ){
+                    Box(Modifier.size(width=38.dp,height=5.dp).clip(CircleShape).background(palette.muted.copy(alpha=.55f)))
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()){content()}
+            }
         }
     }
 }
