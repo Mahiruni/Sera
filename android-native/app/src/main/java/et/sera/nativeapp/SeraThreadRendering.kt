@@ -109,7 +109,7 @@ import java.net.URL
                     }
                     Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", style=MaterialTheme.typography.bodySmall, color = if(peerTyping||peerActivity=="Active now")accent else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory)
+                SeraConversationCallEntry(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory)
                 IconButton(onClick=onSearch,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
                 val context=LocalContext.current
                 var mutedUntil by remember(userId,conversation.id){mutableLongStateOf(SeraMessageAlerts.mutedUntil(context,userId,conversation.id))}
