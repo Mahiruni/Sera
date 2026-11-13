@@ -3,9 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+val splitRelease = providers.gradleProperty("SERA_SPLIT_RELEASE").map { it.toBooleanStrict() }.orElse(false).get()
 val pilotArm64 = providers.gradleProperty("SERA_PILOT_ARM64").map { it.toBooleanStrict() }.orElse(false).get()
 val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
-    .map { it.toBooleanStrict() }.orElse(false).get()
+    .map { it.toBooleanStrict() }.orElse(true).get()
 
 android {
     sourceSets.getByName("main").java.srcDir(if (includeLiveCalling) "src/calling/java" else "src/lightweight/java")
@@ -59,7 +60,11 @@ android {
             }
         }
     }
-    if (pilotArm64) packaging { jniLibs { useLegacyPackaging = true } }
+    if (includeLiveCalling) packaging { jniLibs { useLegacyPackaging = true } }
+    if (splitRelease) {
+        require(includeLiveCalling && !pilotArm64)
+        splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a", "x86", "x86_64"); isUniversalApk = true } }
+    }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

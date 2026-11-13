@@ -22,17 +22,14 @@ internal data class SeraRelease(val versionCode: Int, val versionName: String, v
 /** Accept only published APK assets from the official SERA GitHub repository. */
 internal data class SeraUpdateCheck(val release:SeraRelease?=null,val successful:Boolean=false)
 
-internal suspend fun checkSeraUpdateResult(accessToken:String?=null): SeraUpdateCheck = withContext(Dispatchers.IO) {
-    val eligibleDevice=Build.SUPPORTED_ABIS.contains("arm64-v8a")
-    val pilot=if(eligibleDevice&&!accessToken.isNullOrBlank()) fetchSeraUpdate("https://sera.hisabtech.com/api/native/updates/pilot",accessToken) else SeraUpdateCheck()
-    if(pilot.successful) return@withContext pilot
-    fetchSeraUpdate("https://sera.hisabtech.com/api/native/updates",null)
+internal suspend fun checkSeraUpdateResult(): SeraUpdateCheck = withContext(Dispatchers.IO) {
+    fetchSeraUpdate(Build.SUPPORTED_ABIS.firstOrNull { it in setOf("arm64-v8a","armeabi-v7a","x86_64","x86") })
 }
 
-private fun fetchSeraUpdate(endpoint:String,accessToken:String?): SeraUpdateCheck {
+private fun fetchSeraUpdate(abi:String?): SeraUpdateCheck {
     return try {
-        val connection = URL(endpoint).openConnection() as HttpURLConnection
-        if(accessToken!=null){connection.setRequestProperty("Authorization","Bearer $accessToken");connection.setRequestProperty("X-Sera-ABI","arm64-v8a")}
+        val connection = URL("https://sera.hisabtech.com/api/native/updates").openConnection() as HttpURLConnection
+        if(abi!=null) connection.setRequestProperty("X-Sera-ABI",abi)
         connection.connectTimeout = 8000
         connection.readTimeout = 8000
         connection.instanceFollowRedirects = false
@@ -47,11 +44,12 @@ private fun fetchSeraUpdate(endpoint:String,accessToken:String?): SeraUpdateChec
             val firstParty = parsed.host == "sera.hisabtech.com" &&
                 parsed.path == "/downloads/sera-android.apk" && parsed.query == "version=$name"
             val officialRelease = parsed.host == "github.com" &&
-                parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
+                (parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk" ||
+                 (abi!=null && parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name-$abi.apk"))
             if (!name.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) ||
                 !sha256.matches(Regex("[0-9a-f]{64}")) ||
                 code <= 0 || parsed.protocol != "https" ||
-                parsed.userInfo != null || !(firstParty || officialRelease))
+                parsed.userInfo != null || (officialRelease && parsed.query != null) || !(firstParty || officialRelease))
                 return SeraUpdateCheck()
             if (code <= BuildConfig.VERSION_CODE) return SeraUpdateCheck(successful=true)
             // Eliminate the extra first-party redirect for new clients.
