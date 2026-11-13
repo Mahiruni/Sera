@@ -24,4 +24,15 @@ class ConversationDetailsTest {
         val items=seraConversationSharedItems(listOf(message("m","javascript:alert(1) https://user:pass@example.com https://example.com.")))
         assertEquals(listOf("https://example.com"),items.mapNotNull{it.link})
     }
+    @Test fun filtersRespectSenderCategoryAndCaseInsensitiveSearch() {
+        val pdf=NativeChatFile("Resume.PDF","application/pdf","private/resume.pdf",100)
+        val photo=NativeChatFile("photo.jpg","image/jpeg","private/photo.jpg",100)
+        val own=message("own","https://example.com",listOf(pdf))
+        val peer=message("peer","https://example.org",listOf(photo,pdf)).copy(senderId="other")
+        val items=seraConversationSharedItems(listOf(own,peer))
+        assertEquals(listOf("own"),seraFilterSharedItems(items,"Files","resume","You","sender").map{it.messageId})
+        assertEquals(listOf("peer"),seraFilterSharedItems(items,"Files","PDF","Contact","sender").map{it.messageId})
+        assertEquals(listOf("peer"),seraFilterSharedItems(items,"Media","","All","sender").map{it.messageId})
+        assertTrue(seraFilterSharedItems(items,"Links","missing","All","sender").isEmpty())
+    }
 }
