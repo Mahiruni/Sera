@@ -18,12 +18,13 @@ import java.io.File
 @Composable
 internal fun SeraNativeAttachmentPicker(
     conversationId:String?,open:Boolean,onDismiss:()->Unit,onChecking:(Boolean)->Unit,
-    onSelected:(NativeChatSelection)->Unit,onError:(String)->Unit
+    onSelected:(NativeChatSelection)->Unit,onAlbum:(List<NativeChatSelection>)->Unit,onError:(String)->Unit
 ){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val currentConversation by rememberUpdatedState(conversationId)
     val selectedCallback by rememberUpdatedState(onSelected)
+    val albumCallback by rememberUpdatedState(onAlbum)
     val errorCallback by rememberUpdatedState(onError)
     val checkingCallback by rememberUpdatedState(onChecking)
     var cameraPath by rememberSaveable{mutableStateOf<String?>(null)}
@@ -45,8 +46,19 @@ internal fun SeraNativeAttachmentPicker(
     val documents=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
         val owner=pickerConversation;pickerConversation=null;readSelection(uri,owner)
     }
-    val photos=rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()){uri->
-        val owner=pickerConversation;pickerConversation=null;readSelection(uri,owner)
+    val photos=rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(4)){uris->
+        val owner=pickerConversation;pickerConversation=null
+        if(uris.isNotEmpty()&&owner!=null&&owner==currentConversation){
+            checkingCallback(true)
+            scope.launch{
+                try{
+                    require(uris.size<=4){"Select up to four photos."}
+                    val selected=withContext(Dispatchers.IO){uris.map{selectChatFile(context,it).also{f->require(f.mime.startsWith("image/")){"Choose supported photos."}}}}
+                    if(currentConversation==owner){if(selected.size==1)selectedCallback(selected.first())else albumCallback(selected)}
+                }catch(e:CancellationException){throw e}catch(e:Exception){if(currentConversation==owner)errorCallback(e.message?:"Could not prepare photos.")}
+                finally{checkingCallback(false)}
+            }
+        }
     }
     val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
         val path=cameraPath;val owner=cameraConversation

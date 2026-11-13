@@ -40,7 +40,7 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO }
                 IconButton(onClick=onDismiss){Icon(Icons.Outlined.Close,"Close attachment studio",tint=muted)}
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                AttachmentTile("Photos", "Choose an image",Icons.Outlined.PhotoLibrary,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.PHOTO)}
+                AttachmentTile("Photos", "Up to 4 images",Icons.Outlined.PhotoLibrary,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.PHOTO)}
                 AttachmentTile("Camera","Take a photo",Icons.Outlined.CameraAlt,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.CAMERA)}
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){

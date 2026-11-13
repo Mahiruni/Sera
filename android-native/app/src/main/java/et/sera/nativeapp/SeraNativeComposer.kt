@@ -79,9 +79,9 @@ import java.net.URL
 
 @Composable
 internal fun SeraNativeComposer(
-    draft:String,attachment:NativeChatSelection?,reply:NativeMessage?,queued:NativePending?,sending:Boolean,checkingFile:Boolean,connectionAvailable:Boolean,sendFailed:Boolean,transferProgress:Int,recordingVoice:Boolean,
+    draft:String,attachment:NativeChatSelection?,album:List<NativeChatSelection>,reply:NativeMessage?,queued:NativePending?,sending:Boolean,checkingFile:Boolean,connectionAvailable:Boolean,sendFailed:Boolean,transferProgress:Int,recordingVoice:Boolean,
     ink:Color,soft:Color,muted:Color,accent:Color,teal:Color,playback:SeraChatPlayback,
-    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onCancelReply:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
+    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
 ){
     val scope=rememberCoroutineScope()
     reply?.let{m->
@@ -92,13 +92,14 @@ internal fun SeraNativeComposer(
     queued?.let{q->
         Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(10.dp)){
-                Text(q.body.ifBlank{q.file?.name?:"Attachment"},maxLines=2,color=ink)
+                Text(q.body.ifBlank{q.file?.name?:if(q.album.isNotEmpty())"${q.album.size} photos" else "Attachment"},maxLines=2,color=ink)
                 if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent)
                 Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=accent)
                 Row{TextButton(onClick=onRetry,enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick=onEditQueued,enabled=!sending){Text("Edit message")}}
             }
         }
     }
+    if(album.isNotEmpty())SeraAlbumPreview(album,soft,ink,muted,accent,sending,onRemovePhoto)
     attachment?.let{file->
         Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
@@ -115,9 +116,20 @@ internal fun SeraNativeComposer(
     Row(Modifier.fillMaxWidth().padding(top=9.dp,bottom=8.dp),verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(4.dp)){
         if(!recordingVoice)IconButton(onClick=onAttach,enabled=!sending&&!checkingFile&&queued==null,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.AttachFile,"Open attachment studio",tint=accent)}
         if(!recordingVoice)BasicTextField(value=draft,onValueChange={if(it.length<=4000)onDraftChange(it)},modifier=Modifier.weight(1f).clip(CircleShape).background(soft).heightIn(min=46.dp).padding(horizontal=14.dp,vertical=12.dp),textStyle=MaterialTheme.typography.bodyMedium.copy(color=ink,fontSize=14.sp,lineHeight=20.sp),cursorBrush=SolidColor(accent),maxLines=5,decorationBox={inner->Box{if(draft.isEmpty())Text("Message…",fontSize=14.sp,color=muted);inner()}})
-        if(recordingVoice||(draft.isBlank()&&attachment==null))SeraChatVoice(enabled=!sending&&attachment==null&&queued==null,onReady=onVoice,onError=onError,onRecordingChange=onRecording,accent=accent)
-        if(!recordingVoice&&(draft.isNotBlank()||attachment!=null))Button(onClick=onSend,enabled=(draft.isNotBlank()||attachment!=null)&&!sending&&!checkingFile&&queued==null,contentPadding=PaddingValues(horizontal=14.dp),modifier=Modifier.size(46.dp),shape=CircleShape,colors=ButtonDefaults.buttonColors(containerColor=teal)){
+        if(recordingVoice||(draft.isBlank()&&attachment==null&&album.isEmpty()))SeraChatVoice(enabled=!sending&&attachment==null&&album.isEmpty()&&queued==null,onReady=onVoice,onError=onError,onRecordingChange=onRecording,accent=accent)
+        if(!recordingVoice&&(draft.isNotBlank()||attachment!=null||album.isNotEmpty()))Button(onClick=onSend,enabled=(draft.isNotBlank()||attachment!=null||album.isNotEmpty())&&!sending&&!checkingFile&&queued==null,contentPadding=PaddingValues(horizontal=14.dp),modifier=Modifier.size(46.dp),shape=CircleShape,colors=ButtonDefaults.buttonColors(containerColor=teal)){
             if(sending)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White)else Icon(Icons.Outlined.Send,"Send message",modifier=Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable private fun SeraAlbumPreview(album:List<NativeChatSelection>,soft:Color,ink:Color,muted:Color,accent:Color,sending:Boolean,onRemove:(Int)->Unit){
+    Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
+        Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+            Text("${album.size} photos · Ready to send",color=ink,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                itemsIndexed(album){index,file->Column(horizontalAlignment=Alignment.CenterHorizontally){SeraAttachmentThumbnail(file,accent);IconButton(onClick={onRemove(index)},enabled=!sending,modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.Close,"Remove photo ${index+1}",tint=muted)}}}
+            }
         }
     }
 }

@@ -255,6 +255,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     }
     val scope = rememberCoroutineScope()
     var attachment by remember(selected?.id) { mutableStateOf<NativeChatSelection?>(null) }
+    var album by remember(selected?.id){mutableStateOf<List<NativeChatSelection>>(emptyList())}
     var checkingFile by remember { mutableStateOf(false) }
     var transferProgress by remember(selected?.id){mutableIntStateOf(-1)}
     var mediaViewer by remember(selected?.id){mutableStateOf<NativeChatFile?>(null)}
@@ -275,7 +276,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     var queued by remember(selected?.id){mutableStateOf<NativePending?>(null)}
     var retrySignal by remember(selected?.id){mutableIntStateOf(0)}
     var connectionAvailable by remember{mutableStateOf(true)}
-    LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;reply=null}}
+    LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;album=emptyList();reply=null}}
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
     LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
@@ -285,9 +286,10 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
         val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
         if(!connectionAvailable)return@LaunchedEffect
-        sending=true;transferProgress=if(p.file!=null)0 else -1
+        sending=true;transferProgress=if(p.file!=null||p.album.isNotEmpty())0 else -1
         try{
-            val result=withContext(Dispatchers.IO){sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}})}
+            val progress:(Int)->Unit={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}}
+            val result=withContext(Dispatchers.IO){if(p.album.isNotEmpty())sendNativePhotoAlbum(token,userId,c.id,p,progress)else sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress=progress)}
             if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
             else{sendFailed=true;error=result.second}
         }finally{sending=false;transferProgress=-1}
@@ -299,7 +301,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
 
     var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
     SeraNativeAttachmentPicker(conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
-        onChecking={checkingFile=it},onSelected={attachment=it;error=""},onError={error=it})
+        onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onError={error=it})
     LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
     mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
     BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
@@ -414,24 +416,24 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
                     if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=conversation.peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={menu=if(it)message.id else null},onReply={reply=message},onReact={reaction=message},onForward={forwarding=message;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(message.body))},onUnsend={remove=message},onReaction={react(message,it)},onImage={mediaViewer=it},onError={error=it})
                 }
             }
-            SeraNativeComposer(draft=draft,attachment=attachment,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
+            SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
                 onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
                 onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
-                onRemoveAttachment={attachment=null},onCancelReply={reply=null},onRetry={retrySignal++},
-                onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;sendFailed=false}},
-                onVoice={attachment=it;error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
+                onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onRetry={retrySignal++},
+                onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;album=q.album;sendFailed=false}},
+                onVoice={attachment=it;album=emptyList();error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
                 onSend={
 
                     val body = draft.trim()
                     val file=attachment
-                    if ((body.isBlank() && file == null) || sending || checkingFile || queued!=null) return@SeraNativeComposer
+                    if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null) return@SeraNativeComposer
                     sending = true
                     scope.launch {
-                        val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file)
+                        val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file,album)
                         val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.save(userId,conversation.id,p)}}
                         if(saved.isSuccess){
                             runCatching{savedDrafts?.clear(userId,conversation.id)}
-                            if(selected?.id==conversation.id){draft="";attachment=null;reply=null;queued=p;sendFailed=false;error=""}
+                            if(selected?.id==conversation.id){draft="";attachment=null;album=emptyList();reply=null;queued=p;sendFailed=false;error=""}
                         }else error="Secure message storage is unavailable. Your draft was retained."
                         sending = false
                     }

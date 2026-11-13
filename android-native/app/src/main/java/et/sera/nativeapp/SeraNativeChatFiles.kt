@@ -135,3 +135,30 @@ internal fun prepareCapturedChatPhoto(file:File):NativeChatSelection{
     val bitmap=android.graphics.BitmapFactory.decodeFile(file.absolutePath,android.graphics.BitmapFactory.Options().apply{inSampleSize=sample})?:error("Could not decode photo.")
     try{val stream=java.io.ByteArrayOutputStream();check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,88,stream));val bytes=stream.toByteArray();require(bytes.size in 1..CHAT_LIMIT){"Photo exceeds 5 MB."};return NativeChatSelection("Photo-${System.currentTimeMillis()}.jpg","image/jpeg",bytes)}finally{bitmap.recycle()}
 }
+
+/** Stable per-item paths make retries idempotent without replacing uploaded objects. */
+internal fun albumItemId(clientId:String,index:Int):String=UUID.nameUUIDFromBytes(("sera-photo:"+clientId+":"+index).toByteArray(Charsets.UTF_8)).toString()
+internal fun sendNativePhotoAlbum(token:String,userId:String,conversation:String,p:NativePending,onProgress:(Int)->Unit):Pair<String?,String>{
+    return try{
+        require(p.album.size in 2..4 && p.file==null)
+        val total=p.album.sumOf{it.bytes.size.toLong()};var transferred=0L
+        val meta=org.json.JSONArray()
+        p.album.forEachIndexed{index,file->
+            require(file.mime in setOf("image/jpeg","image/png","image/webp")&&file.bytes.size in 1..CHAT_LIMIT)
+            val ext=when(file.mime){"image/png"->"png";"image/webp"->"webp";else->"jpg"}
+            val path="$userId/$conversation/${albumItemId(p.clientId,index)}.$ext"
+            val c=chatConnection(token,"/storage/v1/object/professional-message-files/"+path,"POST")
+            try{
+                c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size)
+                c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){val n=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,n);offset+=n;onProgress(((transferred+offset)*100/total).toInt().coerceAtMost(99))}}
+                if(c.responseCode !in 200..299){val previous=readChatFile(token,NativeChatFile(file.name,file.mime,path,file.bytes.size));check(previous.contentEquals(file.bytes)){"Uploaded photo did not match."}}
+            }finally{c.disconnect()}
+            transferred+=file.bytes.size
+            meta.put(JSONObject().put("path",path).put("name",file.name).put("mime",file.mime).put("size",file.bytes.size))
+        }
+        onProgress(100)
+        val r=chatRpc(token,"sera_send_photo_album",JSONObject().put("p_conversation",conversation).put("p_client_id",p.clientId).put("p_body",p.body).put("p_reply_to",p.replyId?:JSONObject.NULL).put("p_files",meta))
+        val id=r.first?.trim()?.trim('"')
+        if(id!=null&&id.matches(Regex("[0-9a-f-]{36}"))){runCatching{SeraPush.dispatch(token,"message",id)};id to ""}else null to r.second.ifBlank{"Album not sent. Retry."}
+    }catch(_:Exception){null to "Photo album transfer interrupted. Retry to send all photos."}
+}
