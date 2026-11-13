@@ -219,11 +219,11 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelPreparation()}else scope.launch{end("end")}},canMute=row?.state=="accepted")
     }
     if(!enabled&&summary==null&&!active)return
-    if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,if(active)"Return to call" else "Voice call",tint=if(active)accent else ink)}
+    if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,voiceText(if(active)"Return to call" else "Voice call"),tint=if(active)accent else ink)}
     if(host==null&&minimized&&active){
-        TextButton(onClick={minimized=false}){Text(if(started>0)seraCallDuration(seconds) else "Return to call",color=accent,maxLines=1)}
+        TextButton(onClick={minimized=false}){Text(if(started>0)seraCallDuration(seconds) else voiceText("Return to call"),color=accent,maxLines=1)}
     }
-    if(host==null&&!active)IconButton(onClick={showHistory=true;scope.launch{fetchHistory()}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
+    if(host==null&&!active)IconButton(onClick={showHistory=true;scope.launch{fetchHistory()}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}
     if(showHistory)Dialog(onDismissRequest={showHistory=false},properties=DialogProperties(usePlatformDefaultWidth=false)){
         Surface(Modifier.fillMaxWidth().padding(16.dp),shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surface){
             SeraVoiceHistoryContent(name,photo,history,userId,historyLoading,onCall={showHistory=false;request(false)},onClose={showHistory=false})
@@ -239,7 +239,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val teal=colors.primary
         Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,"Minimize call",tint=primary)}else Spacer(Modifier.size(48.dp))
+                if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,voiceText("Minimize call"),tint=primary)}else Spacer(Modifier.size(48.dp))
                 Text("Sera Voice",color=teal,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.size(48.dp))
             }
@@ -249,16 +249,16 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 Text(name,color=primary,fontSize=27.sp,fontWeight=FontWeight.SemiBold,maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
                 AnimatedContent(targetState=if(incoming)"Incoming voice call" else phase.ifBlank{"Calling…"},label="call status"){status->
-                    Text(status,color=if(status=="Reconnecting…")colors.error else secondary,fontSize=15.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                    Text(voiceText(status),color=if(status=="Reconnecting…")colors.error else secondary,fontSize=15.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 }
-                if(busy&&!cancelRequested){Spacer(Modifier.height(18.dp));LinearProgressIndicator(Modifier.fillMaxWidth(.65f));Spacer(Modifier.height(8.dp));Text("Secure voice connection",color=secondary,fontSize=12.sp)}
+                if(busy&&!cancelRequested){Spacer(Modifier.height(18.dp));LinearProgressIndicator(Modifier.fillMaxWidth(.65f));Spacer(Modifier.height(8.dp));Text(voiceText("Secure voice connection"),color=secondary,fontSize=12.sp)}
                 if(started>0){Spacer(Modifier.height(10.dp));Text(seraCallDuration(seconds),color=primary,fontSize=28.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Medium,modifier=Modifier.testTag("sera_voice_timer"))}
-                if(muted){Spacer(Modifier.height(8.dp));Text("Microphone muted",color=teal,fontSize=12.sp)}
-                quality?.let{Spacer(Modifier.height(8.dp));Text(it,color=colors.error,fontSize=12.sp)}
+                if(muted){Spacer(Modifier.height(8.dp));Text(voiceText("Microphone muted"),color=teal,fontSize=12.sp)}
+                quality?.let{Spacer(Modifier.height(8.dp));Text(voiceText(it),color=colors.error,fontSize=12.sp)}
             }
             Column(Modifier.fillMaxWidth().padding(bottom=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(incoming){
-                    TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){Icon(Icons.Outlined.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(if(silenced)"Ringtone silenced" else "Silence ringtone")}
+                    TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){Icon(Icons.Outlined.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(voiceText(if(silenced)"Ringtone silenced" else "Silence ringtone"))}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
                         SeraVoiceControl(Icons.Outlined.CallEnd,"Decline",destructive=true){scope.launch{end("decline")}}
                         SeraVoiceControl(Icons.Outlined.Call,"Answer",accept=true){request(true)}
@@ -270,8 +270,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                             Box{
                                 SeraVoiceControl(Icons.Outlined.VolumeUp,routeLabel,active=speaker){routes=runCatching{rtc?.routes().orEmpty()}.getOrDefault(emptyList());routeMenu=true}
                                 DropdownMenu(expanded=routeMenu,onDismissRequest={routeMenu=false}){
-                                    routes.forEach{route->DropdownMenuItem(text={Text(route.label)},onClick={routeMenu=false;if(rtc?.selectRoute(route.id)==true){routeLabel=route.label;speaker=route.label=="Speaker"}else error="This audio device is no longer available."})}
-                                    if(routes.isEmpty())DropdownMenuItem(text={Text("No audio routes available")},onClick={routeMenu=false})
+                                    routes.forEach{route->DropdownMenuItem(text={Text(voiceText(route.label))},onClick={routeMenu=false;if(rtc?.selectRoute(route.id)==true){routeLabel=route.label;speaker=route.label=="Speaker"}else error="This audio device is no longer available."})}
+                                    if(routes.isEmpty())DropdownMenuItem(text={Text(voiceText("No audio routes available"))},onClick={routeMenu=false})
                                 }
                             }
                             SeraVoiceControl(Icons.Outlined.ChatBubbleOutline,"Messages"){minimized=true}
@@ -281,7 +281,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                         if(busy){cancelPreparation()}else scope.launch{end("end")}
                     }
                 }
-                Text("Sera · Voice call",color=secondary,fontSize=11.sp)
+                Text(voiceText("Sera · Voice call"),color=secondary,fontSize=11.sp)
             }
         }
     }
@@ -292,7 +292,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
         }
     }
-    if(error.isNotBlank())AlertDialog(onDismissRequest={error=""},title={Text("Voice call")},text={Text(error)},confirmButton={TextButton(onClick={error=""}){Text("OK")}})
+    if(error.isNotBlank())AlertDialog(onDismissRequest={error=""},title={Text(voiceText("Voice call"))},text={Text(voiceText(error))},confirmButton={TextButton(onClick={error=""}){Text(voiceText("OK"))}})
 }
 private suspend fun managedCallConfig(token:String,conversation:String,issue:Boolean):JSONObject?=withContext(Dispatchers.IO){
  val c=(java.net.URL("https://sera.hisabtech.com/api/native/call-config").openConnection() as java.net.HttpURLConnection).apply{requestMethod="POST";doOutput=true;instanceFollowRedirects=false;connectTimeout=10000;readTimeout=15000;setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}
