@@ -94,10 +94,10 @@ import java.net.URL
                 Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft).clickable(onClick=onDetails).semantics{contentDescription="Open conversation details"},contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp);(conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}}
                 Column(Modifier.weight(1f).clickable(onClick=onDetails).padding(vertical=4.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
-                        Text(conversation.peerName, modifier=Modifier.weight(1f,fill=false),fontWeight=FontWeight.SemiBold,fontSize=17.sp,color=inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Text(conversation.peerName, modifier=Modifier.weight(1f,fill=false),style=MaterialTheme.typography.titleMedium,color=inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
                         if(peerActivity=="Active now")SeraOnlineDot(Modifier.semantics{this.contentDescription="Active now"})
                     }
-                    Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", fontSize = 12.sp, color = if(peerTyping||peerActivity=="Active now")accent else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", style=MaterialTheme.typography.bodySmall, color = if(peerTyping||peerActivity=="Active now")accent else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 SeraNativeVoiceCallButton(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory)
                 IconButton(onClick=onSearch,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
@@ -114,7 +114,7 @@ import java.net.URL
             val scrollScope=rememberCoroutineScope()
             val showNew by remember(messageListState,messages,userId){derivedStateOf{val layout=messageListState.layoutInfo;layout.totalItemsCount>0&&layout.visibleItemsInfo.lastOrNull()?.index?.let{it<layout.totalItemsCount-2}==true&&messages.any{isUnreadIncoming(it,userId)}}}
             Box(modifier){
-            LazyColumn(Modifier.fillMaxSize(), state = messageListState, verticalArrangement = Arrangement.spacedBy(5.dp,Alignment.Bottom),
+            LazyColumn(Modifier.fillMaxSize(), state = messageListState, verticalArrangement = Arrangement.spacedBy(7.dp,Alignment.Bottom),
                 contentPadding = PaddingValues(vertical = 12.dp)) {
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick=onLoadEarlier){Text("Load earlier messages")}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}

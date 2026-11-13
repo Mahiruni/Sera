@@ -87,8 +87,8 @@ internal fun SeraNativeComposer(
     var pdfPreview by remember(attachment){mutableStateOf(false)}
     if(pdfPreview&&attachment?.mime=="application/pdf")SeraPdfPreview(attachment,onDismiss={pdfPreview=false})
     reply?.let{m->
-        Surface(color=soft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){
-            Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp,color=ink);IconButton(onClick=onCancelReply){Icon(Icons.Outlined.Close,"Cancel reply",tint=muted)}}
+        Surface(color=soft,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){
+            Row(Modifier.height(IntrinsicSize.Min).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Box(Modifier.width(3.dp).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(accent));Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){Text("Replying to message",style=MaterialTheme.typography.labelMedium,color=accent);Text(m.body,style=MaterialTheme.typography.bodySmall,color=ink,maxLines=2,overflow=TextOverflow.Ellipsis)};IconButton(onClick=onCancelReply){Icon(Icons.Outlined.Close,"Cancel reply",tint=muted)}}
         }
     }
     queued?.takeIf{it.file!=null||it.album.isNotEmpty()}?.let{q->
@@ -121,7 +121,7 @@ internal fun SeraNativeComposer(
     LaunchedEffect(recordingVoice) { if (recordingVoice) keyboard?.hide() }
     if(draft.isNotBlank()&&attachment==null&&album.isEmpty()&&reply==null&&!locked&&!checkingFile&&!recordingVoice)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){TextButton(onClick=onSchedule,enabled=connectionAvailable,contentPadding=PaddingValues(horizontal=12.dp,vertical=0.dp)){Text("Schedule send",fontSize=12.sp,color=accent)}}
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {

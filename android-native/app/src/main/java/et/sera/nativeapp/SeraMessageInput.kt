@@ -42,6 +42,7 @@ internal fun SeraMessageInput(
     ink: Color, soft: Color, muted: Color, accent: Color,
     readOnly: Boolean, modifier: Modifier = Modifier, replyFocusId:String?=null
 ) {
+    val palette=seraChatColors()
     var editor by remember { mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) }
     val value = if (editor.text == draft) editor else TextFieldValue(draft, TextRange(draft.length))
     SideEffect { if (editor.text != draft) editor = value }
@@ -62,8 +63,8 @@ internal fun SeraMessageInput(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         val shape = RoundedCornerShape(24.dp)
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(shape).background(soft)
-                .border(1.dp, if (focused) accent.copy(alpha = .55f) else Color.Transparent, shape)
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(shape).background(palette.surface)
+                .border(1.dp, if (focused) accent.copy(alpha = .75f) else palette.border, shape)
                 .padding(start = 13.dp, end = 3.dp),
             verticalAlignment = Alignment.Bottom
         ) {
@@ -73,13 +74,13 @@ internal fun SeraMessageInput(
                     .focusRequester(requester).onFocusChanged { focused = it.isFocused }
                     .testTag("sera_message_input")
                     .semantics { contentDescription = "Message input" },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = ink, fontSize = 15.sp, lineHeight = 21.sp),
+                textStyle = seraChatBody(MaterialTheme.typography.bodyLarge).copy(color = ink),
                 cursorBrush = SolidColor(accent), singleLine = false, minLines = 1, maxLines = 5,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences,
                     autoCorrectEnabled = true, keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
                 decorationBox = { inner ->
                     Box(Modifier.fillMaxWidth()) {
-                        if (value.text.isEmpty()) Text("Message…", color = muted, fontSize = 15.sp, lineHeight = 21.sp)
+                        if (value.text.isEmpty()) Text("Message…", color = muted, style = seraChatBody(MaterialTheme.typography.bodyLarge))
                         inner()
                     }
                 }
