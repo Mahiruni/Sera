@@ -328,6 +328,8 @@ private class InboxThreadState {
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
     var libraryMode by mutableStateOf<String?>(null)
+    var scheduledOpen by mutableStateOf(false)
+    var scheduleDraft by mutableStateOf<String?>(null)
     var libraryRevision by mutableIntStateOf(0)
     var jumpMessageId by mutableStateOf<String?>(null)
     var highlightedId by mutableStateOf<String?>(null)
@@ -771,7 +773,8 @@ private class InboxController(
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
-                SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it})
+                SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it},onScheduled={thread.scheduledOpen=true})
+                if(thread.scheduledOpen)SeraScheduledMessagesScreen(token,conversation.id,conversation.peerName,thread.scheduleDraft,onDismiss={thread.scheduledOpen=false;thread.scheduleDraft=null},onCreated={body->if(thread.scheduleDraft!=null&&draft==body){draft="";runCatching{savedDrafts?.clear(userId,conversation.id)}};thread.scheduleDraft=null})
                 thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
@@ -795,6 +798,7 @@ private class InboxController(
             onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},
             onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;album=q.album;sendFailed=false}},
             onVoice={attachment=it;album=emptyList();error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
+            onSchedule={thread.scheduleDraft=draft;thread.scheduledOpen=true},
             onSend={
     
                 val body = draft.trim()

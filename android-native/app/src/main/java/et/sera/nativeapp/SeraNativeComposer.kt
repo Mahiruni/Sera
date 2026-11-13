@@ -81,7 +81,7 @@ import java.net.URL
 internal fun SeraNativeComposer(
     draft:String,attachment:NativeChatSelection?,album:List<NativeChatSelection>,reply:NativeMessage?,queued:NativePending?,sending:Boolean,checkingFile:Boolean,connectionAvailable:Boolean,sendFailed:Boolean,transferProgress:Int,recordingVoice:Boolean,
     ink:Color,soft:Color,muted:Color,accent:Color,teal:Color,playback:SeraChatPlayback,
-    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onCancelUpload:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
+    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onCancelUpload:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit,onSchedule:()->Unit={}
 ){
     val scope=rememberCoroutineScope()
     var pdfPreview by remember(attachment){mutableStateOf(false)}
@@ -119,6 +119,7 @@ internal fun SeraNativeComposer(
     val locked = sending || queued != null
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     LaunchedEffect(recordingVoice) { if (recordingVoice) keyboard?.hide() }
+    if(draft.isNotBlank()&&attachment==null&&album.isEmpty()&&reply==null&&!locked&&!checkingFile&&!recordingVoice)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){TextButton(onClick=onSchedule,enabled=connectionAvailable,contentPadding=PaddingValues(horizontal=12.dp,vertical=0.dp)){Text("Schedule send",fontSize=12.sp,color=accent)}}
     Row(
         Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.Bottom,

@@ -51,7 +51,7 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
  if(raw==null)return null to error
  return runCatching{val rows=JSONArray(raw);(0 until rows.length()).map{val x=rows.getJSONObject(it);SeraLibraryEntry(x.getString("id"),x.getString("sender_id"),x.optString("body"),x.getString("created_at"),!x.isNull("edited_at"),x.getString("conversation_id"))} to ""}.getOrElse{null to "Could not load messages."}
 }
-@Composable internal fun SeraMessageLibraryBar(token:String,thread:String,revision:Int,accent:Color,onOpen:(String)->Unit){
+@Composable internal fun SeraMessageLibraryBar(token:String,thread:String,revision:Int,accent:Color,onOpen:(String)->Unit,onScheduled:()->Unit={}){
  val pins by produceState<List<SeraLibraryEntry>>(emptyList(),token,thread,revision){
   value=emptyList()
   while(true){val result=withContext(Dispatchers.IO){libraryPage(token,thread,"pin")};if(result.first!=null)value=result.first.orEmpty();delay(15000)}
@@ -67,6 +67,7 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
    }
   }
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically){
+   TextButton(onClick=onScheduled){Text("Scheduled")}
    TextButton(onClick={onOpen("star")}){Icon(Icons.Outlined.StarBorder,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Starred")}
    TextButton(onClick={onOpen("search")}){Icon(Icons.Outlined.Search,null,Modifier.size(17.dp));Spacer(Modifier.width(5.dp));Text("Search")}
   }
