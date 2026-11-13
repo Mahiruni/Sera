@@ -102,6 +102,9 @@ do $$ begin
  end;
 end $$;
 reset role;
+-- Register a real storage metadata fixture before attaching it; production rejects dangling paths.
+insert into storage.objects(bucket_id,name,owner_id,metadata)
+select 'professional-message-files',a::text || '/' || thread::text || '/test.pdf',a::text,jsonb_build_object('size',1024,'mimetype','application/pdf') from network_fixture;
 select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;
 set local role authenticated;
 insert into public.professional_message_attachments(message_id,owner_id,storage_path,file_name,mime_type,byte_size)
