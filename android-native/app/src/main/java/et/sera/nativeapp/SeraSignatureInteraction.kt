@@ -66,7 +66,7 @@ internal fun SeraReactionGlyph(
     tint: Color? = null
 ) {
     val ink by animateColorAsState(
-        targetValue = tint ?: if (active) (if(kind==SeraReactionKind.REPOST)SeraPurple else Color(0xFF087E83)) else Color(0xFF687F83),
+        targetValue = tint ?: if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = spring(), label = "SERA reaction color"
     )
     val paths = remember(kind) {
@@ -82,7 +82,7 @@ internal fun SeraReactionGlyph(
     Canvas(modifier.size(22.dp)) {
         val factor = size.minDimension / 24f
         withTransform({ scale(factor, factor, pivot = Offset.Zero) }) {
-            val stroke = Stroke(width = 1.65f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            val stroke = Stroke(width = 1.8f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             paths.forEachIndexed { index, path ->
                 if ((kind == SeraReactionKind.LIKE || kind == SeraReactionKind.SAVE) && active && index == 0) drawPath(path, ink)
                 else drawPath(path, ink, style = stroke)

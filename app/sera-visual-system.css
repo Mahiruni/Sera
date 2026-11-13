@@ -56,3 +56,11 @@ html[data-sera-theme="dark"] {
   @supports(backdrop-filter:blur(8px)){.sera-mobile-dock{background:var(--sera-dock-glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}}
 }
 @media(prefers-reduced-motion:reduce){.sera-mobile-dock,.site-header.sera-app-header{transition:none!important}}
+
+/* Signature icon system: same optical stroke as native footer and actions.
+   Limit to UI SVGs; never recolor logos, uploaded media or illustrations. */
+:where(.sera-main,.site-header,.sera-mobile-dock,.footer-dock,.drawer,dialog,.sera-compose-dialog,.sera-conversation-sheet) :is(svg.lucide,svg.sera-signature-glyph){
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;
+}
+:where(.sera-main,.site-header,.sera-mobile-dock,.footer-dock,.drawer,dialog) :is(button,a):focus-visible{outline-color:var(--sera-focus)}
+.sera-main .sera-signature-glyph[data-kind]{stroke-width:1.8}
