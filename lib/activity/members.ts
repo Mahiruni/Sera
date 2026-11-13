@@ -9,11 +9,12 @@ export async function memberCards(ids: string[]) {
   if (!unique.length) return cards;
   const db = await serverClient();
   for (let offset = 0; offset < unique.length; offset += 200) {
-    const {data:badges}=await db.rpc("sera_identity_badges",{p_ids:unique.slice(offset,offset+200)});
+    const batch=unique.slice(offset,offset+200);
+    const [{data:badges},{data}]=await Promise.all([
+      db.rpc("sera_identity_badges",{p_ids:batch}),
+      db.rpc("member_cards",{ids:batch}),
+    ]);
     const verified=new Set((badges??[]).map((r:{id:string})=>r.id));
-    const { data } = await db.rpc("member_cards", {
-      ids: unique.slice(offset, offset + 200),
-    });
     const rows = (data ?? []) as {
       id: string;
       full_name: string;
