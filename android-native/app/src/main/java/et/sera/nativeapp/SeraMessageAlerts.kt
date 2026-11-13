@@ -46,7 +46,7 @@ internal object SeraMessageAlerts {
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
     @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")}.forEach{editor.remove(it)};editor.apply()}
     fun clearThreadAlert(context:Context,owner:String,thread:String){manager(context).cancel(tag(owner,thread),1);prefs(context).edit().remove("count:$owner:$thread").apply()}
-    @Synchronized fun receive(context:Context,data:Map<String,String>){
+    @Synchronized fun receive(context:Context,data:Map<String,String>,preview:SeraNotificationPreview?=null){
         val owner=data["recipient_id"]?:return
         val thread=data["conversation_id"]?:return
         val id=data["message_id"]?:return
@@ -60,7 +60,7 @@ internal object SeraMessageAlerts {
         store.edit().putString(key,JSONArray((seen+id).takeLast(256)).toString()).apply()
         SeraUnreadRefresh.changed()
         if(!enabled(context,owner)||mutedUntil(context,owner,thread)>System.currentTimeMillis())return
-        if(foreground){if(kind!="message"||visible!=(owner to thread))showBanner(context,SeraMessageBannerEvent(owner,thread,id,kind));return}
+        if(foreground){if(kind!="message"||visible!=(owner to thread))showBanner(context,SeraMessageBannerEvent(owner,thread,id,kind,preview));return}
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         val notificationTag=tag(owner,thread)
         val countKey="count:$owner:$thread"
@@ -74,8 +74,8 @@ internal object SeraMessageAlerts {
             putExtra("sera_kind",if(kind=="message")"message:$thread:$owner" else "company_message")
         }
         val pi=PendingIntent.getActivity(context,1,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val title=if(kind=="company_message")"New company message" else "New SERA message"
-        val body=if(count==1)"You have a new private message." else "$count new private messages"
+        val title=preview?.title?:if(kind=="company_message")"New company message" else "New SERA message"
+        val body=if(count==1)preview?.body?:"You have a new private message." else "$count new private messages"
         val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("SERA.et").setContentText("New private activity").build()
         val builder=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
             .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body)

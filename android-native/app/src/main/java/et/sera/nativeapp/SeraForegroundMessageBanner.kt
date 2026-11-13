@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-internal data class SeraMessageBannerEvent(val owner:String,val thread:String,val id:String,val kind:String){
+internal data class SeraMessageBannerEvent(val owner:String,val thread:String,val id:String,val kind:String,val preview:SeraNotificationPreview?=null){
     fun destination()=if(kind=="message")"message:$thread:$owner" else "company_message"
 }
 
@@ -29,7 +29,7 @@ internal data class SeraMessageBannerEvent(val owner:String,val thread:String,va
             Row(Modifier.fillMaxWidth().padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                 Surface(shape=RoundedCornerShape(14.dp),color=Color(0xFF087E83)){Icon(Icons.Outlined.Message,null,Modifier.padding(12.dp),tint=Color.White)}
                 TextButton(onClick={SeraMessageAlerts.dismissBanner();onOpen(event.destination())},modifier=Modifier.weight(1f)){
-                    Column(Modifier.fillMaxWidth()){Text("New SERA message",color=MaterialTheme.colorScheme.onSurface);Text("Open your private conversation",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                    Column(Modifier.fillMaxWidth()){Text(event.preview?.title?:"New SERA message",color=MaterialTheme.colorScheme.onSurface,maxLines=1);Text(event.preview?.body?:"Open your private conversation",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)}
                 }
                 IconButton(onClick={SeraMessageAlerts.dismissBanner()}){Icon(Icons.Outlined.Close,"Dismiss message notification")}
             }

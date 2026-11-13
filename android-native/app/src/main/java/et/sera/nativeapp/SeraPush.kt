@@ -161,7 +161,7 @@ class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
-        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){SeraMessageAlerts.receive(this,message.data);return}
+        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token)}
