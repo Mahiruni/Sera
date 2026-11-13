@@ -15,6 +15,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -55,7 +58,7 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:()->Unit={}) {
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={}) {
     val context = LocalContext.current
     val feedInk=MaterialTheme.colorScheme.onSurface
     val feedMuted=MaterialTheme.colorScheme.onSurfaceVariant
@@ -367,16 +370,28 @@ private fun postTimeLabel(value: String): String = runCatching {
 }
 
 @Composable
-private fun SeraHomeComposeCard(name:String,avatar:String?,enabled:Boolean,onCompose:()->Unit){
+private fun SeraHomeComposeCard(name:String,avatar:String?,enabled:Boolean,onCompose:(String?)->Unit){
     val colors=MaterialTheme.colorScheme
-    Surface(shape=RoundedCornerShape(20.dp),color=colors.surface,border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant),modifier=Modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onCompose)){
-        Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-            SeraAccountAvatar(name.ifBlank{"SERA member"},avatar,44)
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-                Text("Share something valuable",fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=colors.onSurface)
-                Text("Ideas, projects, achievements…",fontSize=12.sp,color=colors.onSurfaceVariant)
+    Surface(shape=RoundedCornerShape(20.dp),color=colors.surface,border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant),modifier=Modifier.fillMaxWidth()){
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled=enabled){onCompose(null)}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                SeraAccountAvatar(name.ifBlank{"SERA member"},avatar,44)
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                    Text("Share something valuable",fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=colors.onSurface)
+                    Text("Ideas, projects, achievements…",fontSize=12.sp,color=colors.onSurfaceVariant)
+                }
+                Surface(shape=RoundedCornerShape(12.dp),color=colors.primaryContainer){Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.EditNote,"Create post",tint=colors.onPrimaryContainer)}}
             }
-            Surface(shape=RoundedCornerShape(12.dp),color=colors.primaryContainer){Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.EditNote,"Create post",tint=colors.onPrimaryContainer)}}
+            HorizontalDivider(color=colors.outlineVariant)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                listOf(Triple("Photo","photos",Icons.Outlined.Image),Triple("Project","project",Icons.Outlined.WorkOutline),Triple("Thought","quote",Icons.Outlined.FormatQuote)).forEach{(label,kind,icon)->
+                    TextButton(onClick={onCompose(kind)},enabled=enabled,modifier=Modifier.weight(1f),contentPadding=PaddingValues(horizontal=3.dp,vertical=8.dp)){
+                        Icon(icon,null,Modifier.size(19.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(label,fontSize=12.sp,maxLines=1)
+                    }
+                }
+            }
         }
     }
 }
