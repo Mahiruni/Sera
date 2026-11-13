@@ -2,6 +2,8 @@ package et.sera.nativeapp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -46,14 +48,14 @@ internal fun SeraMessageInput(
     var focused by remember { mutableStateOf(false) }
     val requester=remember{FocusRequester()}
     val keyboard=LocalSoftwareKeyboardController.current
-    LaunchedEffect(replyFocusId){if(replyFocusId!=null&&!readOnly){requester.requestFocus();keyboard?.show()}}
+    LaunchedEffect(replyFocusId, readOnly){if(replyFocusId!=null&&!readOnly){requester.requestFocus();keyboard?.show()}}
     var emojiOpen by remember { mutableStateOf(false) }
     var limitReached by remember { mutableStateOf(false) }
     LaunchedEffect(readOnly) { if (readOnly) emojiOpen = false }
     LaunchedEffect(draft) { if (draft.length < SERA_MESSAGE_LIMIT) limitReached = false }
     fun update(next: TextFieldValue) {
         if (readOnly) return
-        if (next.text.length > SERA_MESSAGE_LIMIT) { limitReached = true; return }
+        if (next.text.length > SERA_MESSAGE_LIMIT && next.text.length > editor.text.length) { limitReached = true; return }
         editor = next
         if (next.text != draft) onDraftChange(next.text)
     }
@@ -82,20 +84,27 @@ internal fun SeraMessageInput(
                     }
                 }
             )
-            Box {
-                IconButton(onClick = { emojiOpen = true }, enabled = !readOnly, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Outlined.SentimentSatisfiedAlt, "Insert emoji", tint = muted, modifier = Modifier.size(21.dp))
-                }
-                DropdownMenu(expanded = emojiOpen, onDismissRequest = { emojiOpen = false }) {
-                    listOf("😊", "👍", "❤️", "👏", "🔥", "✨").forEach { emoji ->
-                        DropdownMenuItem(text = { Text(emoji, fontSize = 23.sp) }, onClick = {
-                            val current = value
-                            val start = current.selection.min
-                            val end = current.selection.max
-                            val next = current.text.replaceRange(start, end, emoji)
-                            update(TextFieldValue(next, TextRange(start + emoji.length)))
-                            emojiOpen = false
-                        })
+            IconButton(onClick = { emojiOpen = !emojiOpen }, enabled = !readOnly, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.SentimentSatisfiedAlt, if(emojiOpen) "Close emoji picker" else "Insert emoji",
+                    tint = if(emojiOpen) accent else muted, modifier = Modifier.size(21.dp))
+            }
+        }
+        // Keep the picker in the composer instead of a focusable window. The
+        // system IME retains its session, selection and composing text.
+        if(emojiOpen && !readOnly){
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                listOf("😊", "👍", "❤️", "👏", "🔥", "✨").forEach { emoji ->
+                    TextButton(onClick = {
+                        val current = value
+                        val start = current.selection.min
+                        val end = current.selection.max
+                        val next = current.text.replaceRange(start, end, emoji)
+                        update(TextFieldValue(next, TextRange(start + emoji.length)))
+                        emojiOpen = false
+                    }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+                        Text(emoji, fontSize = 23.sp)
                     }
                 }
             }
