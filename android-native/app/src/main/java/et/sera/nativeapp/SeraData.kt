@@ -4,6 +4,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 
 data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false)
 
@@ -67,67 +69,43 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             .filter { it.isNotBlank() }.distinct()
         // Resolve visible profile names and avatars through the live member_cards RPC.
         // The old post_authors relation does not exist in the hosted schema.
-        val badges=identityBadges(token,authors)
-        val names = mutableMapOf<String, String>()
-        val avatars = mutableMapOf<String, String>()
+        // Independent enrichment requests share one network round instead of a waterfall.
+        val names = mutableMapOf<String,String>()
+        val avatars = mutableMapOf<String,String>()
         val headlines = mutableMapOf<String,String>()
-        val profileRows = spaceRows(spaceCall(token,"sera_feed_headlines",JSONObject().put("p_ids",JSONArray(authors))).first)
-        profileRows.forEach { headlines[it.optString("id")]=it.optString("headline").takeUnless{v->v=="null"}.orEmpty() }
-        if (authors.isNotEmpty()) {
-            try {
-                val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/rpc/member_cards").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 15000; readTimeout = 15000; doOutput = true
-                    setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
-                    setRequestProperty("Authorization", "Bearer $token")
-                    setRequestProperty("Content-Type", "application/json")
-                }
-                connection.outputStream.use { it.write(JSONObject().put("ids", JSONArray(authors)).toString().toByteArray()) }
-                if (connection.responseCode in 200..299) {
-                    val rows = JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
-                    for (i in 0 until rows.length()) {
-                        val row = rows.getJSONObject(i)
-                        val id = row.optString("id")
-                        val name = row.optString("full_name")
-                        if (id.isNotBlank() && name.isNotBlank() && name != "null") names[id] = name
-                        val avatarPath = row.optString("avatar_path")
-                        if (id.isNotBlank() && avatarPath.isNotBlank() && avatarPath != "null") {
-                            signedPostImage(token, avatarPath, "sera-account-private")?.let { avatars[id] = it }
-                        }
-                    }
-                }
-                connection.disconnect()
-            } catch (_: Exception) { /* Fallback for temporarily unavailable profiles. */ }
-        }
         val likedIds = mutableSetOf<String>()
-        val idsForLikes = posts.map { it.id }.filter { it.isNotBlank() }.joinToString(",")
-        if (idsForLikes.isNotBlank()) {
-            val likes = request(token, "post_likes?select=post_id&post_id=in.($idsForLikes)")
-            likes.first?.let { json ->
-                val rows = JSONArray(json)
-                for (i in 0 until rows.length()) likedIds.add(rows.getJSONObject(i).optString("post_id"))
-            }
-        }
-        val savedIds=mutableSetOf<String>()
-        if(idsForLikes.isNotBlank()){request(token,"post_saves?select=post_id&post_id=in.($idsForLikes)").first?.let{json->val rows=JSONArray(json);for(i in 0 until rows.length())savedIds.add(rows.getJSONObject(i).optString("post_id"))}}
-        val images = mutableMapOf<String, String>()
-        val ids = (posts.map { it.id } + sourceIds).distinct().filter { it.isNotBlank() }.joinToString(",")
-        if (ids.isNotBlank()) {
-            val media = request(token, "post_images?select=post_id,path&post_id=in.($ids)&order=sort_order.asc")
-            media.first?.let { json ->
-                val rows = JSONArray(json)
-                for (i in 0 until rows.length()) {
-                    val row = rows.getJSONObject(i)
-                    val postId = row.optString("post_id")
-                    if (!images.containsKey(postId)) {
-                        val path=row.optString("path")
-                        if(path.isNotBlank()) images[postId]=authenticatedPostMedia(path)
-                    }
-                }
-            }
-        }
+        val savedIds = mutableSetOf<String>()
+        val images = mutableMapOf<String,String>()
+        val idsForLikes = posts.joinToString(","){it.id}
+        val ids = (posts.map{it.id}+sourceIds).distinct().joinToString(",")
         val stateIds=posts.map{it.repostOf?:it.id}.distinct()
-        val repostStates=spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}
+        val badgesAndStates = kotlinx.coroutines.runBlocking {
+            val badges = async(Dispatchers.IO){identityBadges(token,authors)}
+            val heads = async(Dispatchers.IO){spaceRows(spaceCall(token,"sera_feed_headlines",JSONObject().put("p_ids",JSONArray(authors))).first)}
+            val people = async(Dispatchers.IO){
+                val rows=spaceRows(spaceCall(token,"member_cards",JSONObject().put("ids",JSONArray(authors))).first)
+                val paths=rows.mapNotNull{it.optString("avatar_path").takeIf{p->p.isNotBlank()&&p!="null"}}.distinct()
+                val signed=signedFeedAvatars(token,paths)
+                rows to signed
+            }
+            val likes = async(Dispatchers.IO){request(token,"post_likes?select=post_id&post_id=in.($idsForLikes)").first}
+            val saves = async(Dispatchers.IO){request(token,"post_saves?select=post_id&post_id=in.($idsForLikes)").first}
+            val media = async(Dispatchers.IO){request(token,"post_images?select=post_id,path&post_id=in.($ids)&order=sort_order.asc").first}
+            val states = async(Dispatchers.IO){spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}}
+            heads.await().forEach{headlines[it.optString("id")]=it.optString("headline").takeUnless{v->v=="null"}.orEmpty()}
+            val (rows,signed)=people.await()
+            rows.forEach{row->
+                val id=row.optString("id");val name=row.optString("full_name")
+                if(id.isNotBlank()&&name.isNotBlank()&&name!="null")names[id]=name
+                signed[row.optString("avatar_path")]?.let{avatars[id]=it}
+            }
+            likes.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())likedIds.add(r.getJSONObject(i).optString("post_id"))}
+            saves.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())savedIds.add(r.getJSONObject(i).optString("post_id"))}
+            media.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length()){val row=r.getJSONObject(i);val id=row.optString("post_id");val path=row.optString("path");if(path.isNotBlank()&&!images.containsKey(id))images[id]=authenticatedPostMedia(path)}}
+            badges.await() to states.await()
+        }
+        val badges=badgesAndStates.first
+        val repostStates=badgesAndStates.second
         posts.map { post ->
             post.copy(author = names[post.authorId] ?: "SERA member",
                 headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),identityVerified=post.authorId in badges,
@@ -135,6 +113,23 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } }, originalTime=sourceRows[post.repostOf]?.optString("published_at"), originalTitle=sourceRows[post.repostOf]?.optString("title"), originalBody=sourceRows[post.repostOf]?.optString("body"), originalAvatar=avatars[sourceAuthors[post.repostOf]],originalAuthorId=sourceAuthors[post.repostOf],repostCount=repostStates[post.repostOf?:post.id]?.optInt("repost_count")?:0,reposted=repostStates[post.repostOf?:post.id]?.optBoolean("reposted")?:false)
         } to ""
     } catch (e: Exception) { null to "Unable to read the feed response." }
+}
+
+/** Batch private avatar signing under the caller's own storage policies. */
+private fun signedFeedAvatars(token:String,paths:List<String>):Map<String,String>{
+    if(paths.isEmpty())return emptyMap()
+    var connection:HttpURLConnection?=null
+    return try{
+        val base=BuildConfig.SUPABASE_URL.trimEnd('/')
+        connection=(URL(base+"/storage/v1/object/sign/sera-account-private").openConnection() as HttpURLConnection).apply{
+            requestMethod="POST";connectTimeout=10000;readTimeout=10000;doOutput=true
+            setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY);setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")
+        }
+        connection.outputStream.use{it.write(JSONObject().put("paths",JSONArray(paths)).put("expiresIn",300).toString().toByteArray())}
+        if(connection.responseCode !in 200..299)return emptyMap()
+        val rows=JSONArray(connection.inputStream.bufferedReader().use{it.readText()})
+        buildMap{for(i in 0 until rows.length()){val row=rows.getJSONObject(i);val path=row.optString("path");val signed=row.optString("signedURL").ifBlank{row.optString("signedUrl")};if(path.isNotBlank()&&signed.isNotBlank()&&signed!="null")put(path,if(signed.startsWith("https://"))signed else base+"/storage/v1/"+signed.trimStart('/'))}}
+    }catch(_:Exception){emptyMap()}finally{connection?.disconnect()}
 }
 
 internal fun signedPostImage(token: String, path: String, bucket: String = "sera-post-media"): String? {
