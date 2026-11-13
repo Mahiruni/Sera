@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 internal fun SeraNativeVoiceCallButton(
     token: String, userId: String, conversation: String, name: String, photo: String?,
     ink: Color, accent: Color, onAudioStart: () -> Unit,
-    onHistory: (List<SeraCallEvent>) -> Unit = {}
+    onHistory: (List<SeraCallEvent>) -> Unit = {}, host: SeraGlobalCallState? = null
 ) {
     var showAvailability by remember(conversation) { mutableStateOf(false) }
     IconButton(onClick = { showAvailability = true }, modifier = Modifier.size(44.dp)) {
