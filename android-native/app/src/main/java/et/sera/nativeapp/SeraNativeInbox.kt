@@ -403,6 +403,7 @@ private class InboxThreadState {
     var textLoaded by mutableStateOf(false)
     var unreadBoundary by mutableStateOf<String?>(null)
     var cachedHistory by mutableStateOf(false)
+    var safetyDialog by mutableStateOf(false)
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
@@ -709,6 +710,7 @@ private class InboxController(
             // If storage could not open, preserve the current draft and let the
             // next send surface a storage error rather than pretending it sent.
         }
+        LaunchedEffect(connectionAvailable){if(connectionAvailable)thread.textQueue=thread.textQueue.map{if(it.stage==TextSendStage.Failed)it.copy(stage=TextSendStage.Ready)else it}}
         val next=thread.textQueue.firstOrNull{it.stage==TextSendStage.Saving||it.stage==TextSendStage.Ready}?.takeIf{it.stage==TextSendStage.Ready}
         LaunchedEffect(token,selected?.id,next?.id,connectionAvailable){
             val c=selected?:return@LaunchedEffect
@@ -868,7 +870,8 @@ private class InboxController(
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
-                    onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
+                    onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true},onSafety={thread.safetyDialog=true})
+                if(thread.safetyDialog)SeraConversationSafetyDialog(conversation.peerName,onDismiss={thread.safetyDialog=false},onBlock={scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_blocks","POST",JSONObject().put("blocker_id",userId).put("blocked_id",conversation.peerId))};if(result.first!=null){withContext(Dispatchers.IO){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(userId)}};thread.safetyDialog=false;messages=emptyList();conversations=conversations.filterNot{it.peerId==conversation.peerId};selected=null;refresh++;onThreadExit?.invoke()}else error=result.second}},onReport={reason,details->scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_reports","POST",JSONObject().put("reporter_id",userId).put("reported_id",conversation.peerId).put("reason",reason).put("details",details))};if(result.first!=null){thread.safetyDialog=false;android.widget.Toast.makeText(context,"Report submitted",android.widget.Toast.LENGTH_SHORT).show()}else error=result.second}})
                 SeraThreadHeaderDivider()
                 val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
                 if(thread.selectedMessages.isNotEmpty()){
