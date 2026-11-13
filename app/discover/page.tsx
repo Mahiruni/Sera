@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
+import { ThemeToggle } from "@/components/network/theme-toggle";
 import {
   UsersRound,
   PenLine,
@@ -20,7 +21,6 @@ import {
   type UniversalDiscoveryKind,
 } from "@/lib/network/model";
 import {
-  NetworkToolbar,
   MemberPreview,
   OpportunityPreview,
 } from "@/components/network/shared";
@@ -58,15 +58,12 @@ export default async function Discover({
   const filters = categoryFilters(kind,searchFilters(params));
   if (kind === "all") {
     return (
-      <div className="sera-network network-app">
-        <NetworkToolbar query={query} discover />
-        <section className="network-universal-heading">
-          <h1>Search SERA</h1>
-          <p>Find people, opportunities and ideas in one place.</p>
-        </section>
+      <div className="sera-network network-app sera-web-discover">
+        <PageIntro icon={Compass} title="Discover" description="Find people, opportunities and ideas in one place."><ThemeToggle/></PageIntro>
         <UniversalSearchBox key={user.id+query} query={query} userId={user.id} prominent />
 
         <DiscoverTabs kind={kind} query={query} filters={filters} />
+      <nav className="sera-web-discover-links" aria-label="Explore more"><Link href="/opportunities">Opportunities</Link><Link href="/events">Events</Link><Link href="/collaboration">Collab</Link><Link href="/talent">Talent</Link><Link href="/communities">Communities</Link></nav>
         <SearchFilterPanel kind={kind} query={query} filters={filters} />
         <UniversalSearchResults query={query} filters={filters} />
       </div>
@@ -93,15 +90,8 @@ export default async function Discover({
     ).values(),
   ];
   return (
-    <div className="sera-network network-app">
-      <NetworkToolbar query={query} discover />
-      <PageIntro icon={Compass} title="Discover your next connection."
-        description="People, ideas, projects and opportunities worth exploring." />
-      <Link className="network-button" href="/opportunities">Collaboration opportunities <ArrowRight size={17}/></Link>
-      <Link className="network-button" href="/events">Professional events <ArrowRight size={17}/></Link>
-      <Link className="network-button" href="/collaboration">Collaboration spaces <UsersRound size={17}/></Link>
-      <Link className="network-button" href="/talent">Discover portfolio talent <FolderKanban size={17}/></Link>
-      <Link className="network-button" href="/communities">Explore professional communities <UsersRound size={17}/></Link>
+    <div className="sera-network network-app sera-web-discover">
+      <PageIntro icon={Compass} title="Discover" description="People, projects and opportunities worth exploring."><ThemeToggle/></PageIntro>
       <form
         action="/discover"
         className="network-search network-discover-search"

@@ -65,15 +65,15 @@ export default async function Page({
     page: String(page + 1),
   });
   return (
-    <div className="container page live-market">
-      <PageIntro icon={BriefcaseBusiness} title="Find your next chapter."
-        description="Explore employer-posted roles and introduce yourself with confidence.">
+    <div className="container page live-market sera-web-jobs">
+      <PageIntro icon={BriefcaseBusiness} title="Jobs"
+        description="Find opportunities that match your skills and ambitions.">
         <Link className="button" href="/employer/post">
           <Plus size={16} /> Post a job
         </Link>
       </PageIntro>
       <MarketNav />
-      <form className="panel live-search">
+      <form className="panel live-search sera-web-job-search">
         <label>
           Job title
           <input

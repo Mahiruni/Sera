@@ -71,6 +71,11 @@ export function Shell({
       "/network/messages",
       "/notifications",
       "/connections",
+      "/collaboration",
+      "/communities",
+      "/events",
+      "/opportunities",
+      "/talent",
       "/workspace",
       "/profile",
       "/jobs",
@@ -161,7 +166,7 @@ export function Shell({
         <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="Sera home"><SeraBrandMark/><span>Sera</span></Link>
         {verified&&privateWorkspace&&<nav className="sera-web-desktop-nav" aria-label={t("navigation")}>{[{href:"/feed",label:t("home"),Icon:Home},{href:"/connections",label:t("networkMenu"),Icon:UsersRound},{href:"/discover",label:t("discover"),Icon:Compass},{href:"/jobs",label:locale==="am"?"ሥራዎች":locale==="om"?"Hojiiwwan":"Jobs",Icon:BriefcaseBusiness}].map(({href,label,Icon})=><Link key={href} href={href} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={20}/><span>{label}</span></Link>)}</nav>}
         <div className="header-account-controls">
-          <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
+          <Link className="header-control" href={authenticated?"/discover":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}
           {verified?<InboxBadge/>:<Link className="header-control" href="/network/messages" aria-label="Inbox" title="Inbox"><Mail size={22}/></Link>}
           {authenticated&&<div className="sera-profile-menu" ref={profileMenu}><button ref={profileTrigger} className="header-control sera-profile-trigger" aria-label="Profile menu" aria-expanded={profileOpen} aria-controls="sera-profile-popover" onClick={()=>setProfileOpen(v=>!v)}><MemberAvatar name={profileName} photo={profilePhoto} size={32}/></button>{profileOpen&&<div id="sera-profile-popover" className="sera-profile-popover" aria-label="Account actions"><div className="sera-profile-popover-name"><MemberAvatar name={profileName} photo={profilePhoto} size={44}/><div><strong>{profileName}{identityVerified&&<IdentityBadge/>}</strong>{profileHeadline&&<small>{profileHeadline}</small>}</div></div><Link href={profileHref} onClick={()=>setProfileOpen(false)}><UserRound size={19}/> View profile</Link><Link href="/settings?edit=1" onClick={()=>setProfileOpen(false)}><Pencil size={19}/> Edit profile</Link><Link href="/settings" onClick={()=>setProfileOpen(false)}><Settings size={19}/> Settings & privacy</Link><SignOutControl userId={profileId}/></div>}</div>}
