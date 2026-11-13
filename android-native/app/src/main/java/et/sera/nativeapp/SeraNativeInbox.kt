@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -233,7 +234,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     val selection = remember(initialThread) { InboxSelectionState(initialThread, initialPeer, initialName, savedDrafts, userId) }
     val thread = remember(selection.selected?.id) { InboxThreadState() }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    val messageListState = rememberLazyListState()
+    val messageListState = key(selection.selected?.id) { rememberLazyListState() }
     val scope = rememberCoroutineScope()
     val playback = remember(context, selection.selected?.id) { SeraChatPlayback(context.applicationContext) }
     val outbox=remember(context){runCatching{NativeChatOutbox(context)}.getOrNull()}
@@ -311,6 +312,7 @@ private class InboxThreadState {
     var textLoaded by mutableStateOf(false)
     var unreadBoundary by mutableStateOf<String?>(null)
     var initialMessagesLoaded by mutableStateOf(false)
+    var initialScrollComplete by mutableStateOf(false)
 }
 
 private class InboxController(
@@ -454,13 +456,13 @@ private class InboxController(
             val id = selected?.id ?: return@LaunchedEffect
             val last = tail ?: return@LaunchedEffect
             if(!thread.initialMessagesLoaded)return@LaunchedEffect
-            val changedConversation = lastVisibleConversation != id
+            val changedConversation = !thread.initialScrollComplete
             val layout=messageListState.layoutInfo
             val nearBottom=layout.visibleItemsInfo.lastOrNull()?.index?.let{it>=layout.totalItemsCount-3}?:true
             if(changedConversation||last!=lastMessageId&&(nearBottom||thread.textQueue.isNotEmpty())){
                 withFrameNanos{}
                 val count=messageListState.layoutInfo.totalItemsCount
-                if(count>0){val target=if(changedConversation&&(ime.getBottom(density)==0||showSearch))unreadTimelineIndex(messages,callEvents,thread.unreadBoundary,historyLimit) else null;messageListState.scrollToItem((target?:count-1).coerceIn(0,count-1))}
+                if(count>0){val target=if(changedConversation&&(ime.getBottom(density)==0||showSearch))unreadTimelineIndex(messages,callEvents,thread.unreadBoundary,historyLimit) else null;messageListState.scrollToItem((target?:count-1).coerceIn(0,count-1));thread.initialScrollComplete=true}
             }
             lastVisibleConversation = id
             lastMessageId = last
@@ -492,8 +494,16 @@ private class InboxController(
                     // Wait for the resized list to be measured before scrolling.
                     withFrameNanos{}
                     val latestCount=messageListState.layoutInfo.totalItemsCount
-                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch)
+                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch && messageListState.canScrollForward){
                         messageListState.scrollToItem(latestCount-1)
+                        // A very tall last bubble may still extend below the viewport.
+                        val layout=messageListState.layoutInfo
+                        val last=layout.visibleItemsInfo.lastOrNull()
+                        if(last?.index==latestCount-1){
+                            val clipped=(last.offset+last.size+layout.afterContentPadding-layout.viewportEndOffset).coerceAtLeast(0)
+                            if(clipped>0)messageListState.scrollBy(clipped.toFloat())
+                        }
+                    }
                 }
             }
         }
@@ -589,7 +599,9 @@ private class InboxController(
             onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."},onError={error=it})
         LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
         mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
-        BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
+        // The system keyboard owns Back while visible; do not close the thread.
+        val imeVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
+        BackHandler(selected != null && !imeVisible) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     }
 
     @Composable
