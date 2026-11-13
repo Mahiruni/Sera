@@ -183,20 +183,38 @@ class SeraCallDeclineReceiver:android.content.BroadcastReceiver(){
             try{
                 val token=SessionStore(app).actionAccess(recipient)?:return@Thread
                 if(SeraPush.owner(app)!=recipient)return@Thread
-                val raw=chatRpc(token,"sera_call_incoming",JSONObject().put("p_id",id)).first?:return@Thread
+                val raw=boundedCallRpc(token,"sera_call_incoming",JSONObject().put("p_id",id))?:return@Thread
                 if(raw=="null")return@Thread
                 val call=JSONObject(raw)
-                if(call.optString("callee")!=recipient||call.optString("state")!="ringing")return@Thread
+                // The incoming RPC only returns a row for its authenticated callee, while ringing.
+                if(call.optString("id")!=id)return@Thread
                 val conversation=call.optString("conversation_id")
                 if(!conversation.matches(Regex("[0-9a-fA-F-]{36}")))return@Thread
-                val result=chatRpc(token,"sera_call_transition",JSONObject().put("p_conversation",conversation).put("p_id",id).put("p_action","decline")).first
+                val result=boundedCallRpc(token,"sera_call_transition",JSONObject().put("p_conversation",conversation).put("p_id",id).put("p_action","decline"))
                 if(!result.isNullOrBlank()&&result!="null"){
                     SeraPush.dismissCallAlert(app,mapOf("call_id" to id,"recipient_id" to recipient))
-                    SeraPush.dispatch(token,"voice_call_dismiss",id)
+                    // A bounded request keeps the broadcast within Android’s execution window.
+                    boundedRequest("https://sera.hisabtech.com/api/native/push-event",token,JSONObject().put("kind","voice_call_dismiss").put("id",id),false)
                 }
             }catch(_:Exception){}finally{pending.finish()}
         }.start()
     }
+}
+private fun boundedCallRpc(token:String,fn:String,payload:JSONObject):String?=
+    boundedRequest(BuildConfig.SUPABASE_URL.trimEnd('/')+"/rest/v1/rpc/"+fn,token,payload,true)
+private fun boundedRequest(url:String,token:String,payload:JSONObject,supabase:Boolean):String?{
+    var connection:HttpURLConnection?=null
+    return try{
+        connection=(URL(url).openConnection() as HttpURLConnection).apply{
+            requestMethod="POST";doOutput=true;instanceFollowRedirects=false
+            connectTimeout=1200;readTimeout=1200
+            setRequestProperty("Authorization","Bearer "+token)
+            setRequestProperty("Content-Type","application/json")
+            if(supabase)setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY)
+        }
+        connection.outputStream.use{it.write(payload.toString().toByteArray(Charsets.UTF_8))}
+        if(connection.responseCode in 200..299)connection.inputStream.bufferedReader().use{it.readText()} else null
+    }catch(_:Exception){null}finally{connection?.disconnect()}
 }
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
