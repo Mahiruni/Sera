@@ -50,6 +50,17 @@ class SeraVoiceExperienceTest {
         compose.onNodeWithText("Back to messages").performClick()
         compose.runOnIdle{assertEquals(true,called);assertEquals(true,closed)}
     }
+    @Test fun closeSummaryDismissesWithoutRedial(){
+        var called=false
+        var closed=false
+        compose.setContent{MaterialTheme{
+            var visible by remember{mutableStateOf(true)}
+            if(visible)SeraVoiceSummaryContent("Test member",null,SeraVoiceSummary("Call cancelled",null,false),{called=true},{closed=true;visible=false})
+        }}
+        compose.onNodeWithTag("sera_voice_summary_close").assertHasClickAction().performClick()
+        compose.onNodeWithTag("sera_voice_summary").assertDoesNotExist()
+        compose.runOnIdle{assertEquals(true,closed);assertEquals(false,called)}
+    }
     @Test fun unansweredCallNeverDisplaysConversationDuration(){
         compose.setContent{MaterialTheme{SeraVoiceSummaryContent("Test member",null,SeraVoiceSummary("No answer",null,false),{}, {})}}
         compose.onNodeWithTag("sera_voice_summary_duration").assertDoesNotExist()
