@@ -27,14 +27,16 @@ import java.security.MessageDigest
 internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String, val sha256: String, val highlights: List<String> = emptyList())
 
 /** Accept only published APK assets from the official SERA GitHub repository. */
-internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.IO) {
+internal data class SeraUpdateCheck(val release:SeraRelease?=null,val successful:Boolean=false)
+
+internal suspend fun checkSeraUpdateResult(): SeraUpdateCheck = withContext(Dispatchers.IO) {
     try {
         val connection = URL("https://sera.hisabtech.com/api/native/updates").openConnection() as HttpURLConnection
         connection.connectTimeout = 8000
         connection.readTimeout = 8000
         connection.instanceFollowRedirects = false
         try {
-            if (connection.responseCode != 200) return@withContext null
+            if (connection.responseCode != 200) return@withContext SeraUpdateCheck()
             val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val code = data.optInt("versionCode", 0)
             val name = data.optString("versionName")
@@ -47,19 +49,23 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
                 parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
             if (!name.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) ||
                 !sha256.matches(Regex("[0-9a-f]{64}")) ||
-                code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
+                code <= 0 || parsed.protocol != "https" ||
                 parsed.userInfo != null || !(firstParty || officialRelease))
-                return@withContext null
+                return@withContext SeraUpdateCheck()
+            if (code <= BuildConfig.VERSION_CODE) return@withContext SeraUpdateCheck(successful=true)
             // Eliminate the extra first-party redirect for new clients.
             // Legacy clients still use the compatible URL served by the API.
             val directDownload = if (firstParty)
                 "https://github.com/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
                 else address
             val highlights = data.optJSONArray("highlights")?.let { arr -> (0 until minOf(arr.length(),8)).map { arr.optString(it).take(48) }.filter { it.isNotBlank() } }.orEmpty()
-            SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256, highlights)
+            SeraUpdateCheck(SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256, highlights),true)
         } finally { connection.disconnect() }
-    } catch (_: Exception) { null }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+    catch (_: Exception) { SeraUpdateCheck() }
 }
+
+internal suspend fun checkSeraUpdate(): SeraRelease? = checkSeraUpdateResult().release
 
 internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
     return try {
@@ -118,9 +124,10 @@ internal enum class SeraInstallResult { LAUNCHED, PERMISSION_REQUIRED, FAILED }
 
 internal data class SeraPendingUpdate(val id: Long, val release: SeraRelease)
 
-/** Preserve a user-approved download across app restarts and backgrounding. */
+/** Preserve an automatic download across app restarts and backgrounding. */
 internal fun saveSeraPendingUpdate(context: Context, id: Long, release: SeraRelease) {
     context.getSharedPreferences("sera_update", Context.MODE_PRIVATE).edit()
+        .putBoolean("automatic_install_attempted",false)
         .putLong("id", id)
         .putInt("code", release.versionCode)
         .putString("name", release.versionName)
@@ -147,6 +154,16 @@ internal fun readSeraPendingUpdate(context: Context): SeraPendingUpdate? {
     val highlights=runCatching { val arr=org.json.JSONArray(prefs.getString("highlights","[]")); (0 until minOf(arr.length(),8)).map { arr.optString(it) } }.getOrDefault(emptyList())
     return SeraPendingUpdate(id, SeraRelease(code, name, "", "", sha, highlights))
 }
+
+internal fun seraAutomaticInstallAttempted(context:Context,id:Long):Boolean {
+    val prefs=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE)
+    return prefs.getLong("id",-1L)==id && prefs.getBoolean("automatic_install_attempted",false)
+}
+internal fun markSeraAutomaticInstallAttempted(context:Context,id:Long) {
+    val prefs=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE)
+    if(prefs.getLong("id",-1L)==id) prefs.edit().putBoolean("automatic_install_attempted",true).apply()
+}
+
 internal fun discardSeraDownload(context: Context, downloadId: Long) {
     clearSeraPendingUpdate(context)
     runCatching {
