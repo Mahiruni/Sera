@@ -99,7 +99,7 @@ private class SeraInboxDrafts(context: Context) {
 }
 
 internal data class NativeConversation(val id: String, val peerId: String, val peerName: String, val preview:String="", val unread:Int=0, val photo:String?=null, val lastAt:String="",val pinned:Boolean=false,val archived:Boolean=false,val markedUnread:Boolean=false,val mutedUntil:String?=null)
-internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList(),val privateReadAt:String="")
+internal data class NativeMessage(val id: String, val senderId: String, val body: String, val readAt: String, val createdAt: String, val deliveredAt: String, val files: List<NativeChatFile>, val replyId:String="", val forwarded:Boolean=false, val unsent:Boolean=false, val clientId:String="", val reactions:List<Pair<String,String>> = emptyList(),val privateReadAt:String="",val editedAt:String="")
 
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
@@ -178,7 +178,7 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
 
 private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit")
+        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit")
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
@@ -186,7 +186,7 @@ private fun loadNativeMessages(token: String, conversationId: String, limit:Int=
             val item = rows.getJSONObject(i)
             val attachments = item.optJSONArray("professional_message_attachments") ?: JSONArray()
             val files = (0 until attachments.length()).map{attachments.getJSONObject(it)}.sortedBy{it.optInt("position")}.map { a -> NativeChatFile(a.optString("file_name"),a.optString("mime_type"),a.optString("storage_path"),a.optInt("byte_size"),a.optInt("duration_ms").takeIf{it>0}) }
-            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files,item.optString("reply_to_id").takeUnless{it=="null"}.orEmpty(),item.optBoolean("is_forwarded"),!item.isNull("unsent_at"),item.optString("client_message_id"),(item.optJSONArray("professional_message_reactions")?:JSONArray()).let{rs->(0 until rs.length()).map{rs.getJSONObject(it)}.filter{!it.isNull("emoji")}.map{it.optString("member_id") to it.optString("emoji")}},privateReadAt=item.optJSONObject("sera_private_message_reads")?.optString("read_at")?:item.optJSONArray("sera_private_message_reads")?.optJSONObject(0)?.optString("read_at").orEmpty())
+            NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files,item.optString("reply_to_id").takeUnless{it=="null"}.orEmpty(),item.optBoolean("is_forwarded"),!item.isNull("unsent_at"),item.optString("client_message_id"),(item.optJSONArray("professional_message_reactions")?:JSONArray()).let{rs->(0 until rs.length()).map{rs.getJSONObject(it)}.filter{!it.isNull("emoji")}.map{it.optString("member_id") to it.optString("emoji")}},privateReadAt=item.optJSONObject("sera_private_message_reads")?.optString("read_at")?:item.optJSONArray("sera_private_message_reads")?.optJSONObject(0)?.optString("read_at").orEmpty(),editedAt=item.optString("edited_at").takeUnless{it=="null"}.orEmpty())
         }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
 }
@@ -315,6 +315,8 @@ private class InboxThreadState {
     var initialMessagesLoaded by mutableStateOf(false)
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
+    var libraryMode by mutableStateOf<String?>(null)
+    var libraryRevision by mutableIntStateOf(0)
     var jumpMessageId by mutableStateOf<String?>(null)
     var suppressImeAnchor by mutableStateOf(false)
 }
@@ -738,20 +740,21 @@ private class InboxController(
                 if(thread.detailsOpen){
                     val current=conversations.firstOrNull{it.id==conversation.id}?:conversation
                     SeraConversationDetails(current,token,userId,peerActivity,messages,historyLimit,!thread.initialMessagesLoaded,playback,inboxInk,inboxSoft,muted,accent,
-                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true},onJumpToMessage={id->thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
+                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;thread.libraryMode="search"},onJumpToMessage={id->thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
                 }else{
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
-                    onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
+                    onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
-                if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
+                SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it})
+                thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={id->if(messages.any{it.id==id}){thread.libraryMode=null;thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;true}else false})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                 val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary)
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()})
                 key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
                 }
             }

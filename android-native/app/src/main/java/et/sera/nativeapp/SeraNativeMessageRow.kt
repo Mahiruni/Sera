@@ -81,7 +81,7 @@ import java.net.URL
 
 
 @Composable
-internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMessage?,userId:String,peerName:String,token:String,playback:SeraChatPlayback,maxBubbleWidth:androidx.compose.ui.unit.Dp,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,menuOpen:Boolean,onMenu:(Boolean)->Unit,onReply:()->Unit,onReact:()->Unit,onForward:()->Unit,onCopy:()->Unit,onUnsend:()->Unit,onReaction:(String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit){
+internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMessage?,userId:String,peerName:String,token:String,playback:SeraChatPlayback,maxBubbleWidth:androidx.compose.ui.unit.Dp,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,menuOpen:Boolean,onMenu:(Boolean)->Unit,onReply:()->Unit,onReact:()->Unit,onForward:()->Unit,onCopy:()->Unit,onUnsend:()->Unit,onReaction:(String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,conversationId:String="",onLibraryChanged:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val haptics=LocalHapticFeedback.current
@@ -93,6 +93,8 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                     val latestReply by rememberUpdatedState(onReply)
                     var info by remember(message.id){mutableStateOf(false)}
                     if(info)SeraMessageInfo(message,own,onDismiss={info=false})
+                    var editOpen by remember(message.id){mutableStateOf(false)}
+                    if(editOpen)SeraEditMessageDialog(token,message,onDismiss={editOpen=false},onSaved={editOpen=false;onLibraryChanged()})
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent) Box {
                             DropdownMenu(expanded=menuOpen,onDismissRequest={onMenu(false)}) {
@@ -100,6 +102,8 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                                 DropdownMenuItem(text={Text("React")},onClick={onReact();onMenu(false)})
                                 DropdownMenuItem(text={Text("Forward")},onClick={onForward();onMenu(false)})
                                 if(message.body.isNotBlank())DropdownMenuItem(text={Text("Copy text")},onClick={onCopy();onMenu(false)})
+                                if(conversationId.isNotBlank())SeraMessageLibraryActions(token,conversationId,message,userId,menuOpen,onClose={onMenu(false)},onChanged=onLibraryChanged,onError=onError)
+                                if(own&&message.files.isEmpty()&&seraCanEdit(message.createdAt))DropdownMenuItem(text={Text("Edit message")},onClick={editOpen=true;onMenu(false)})
                                 if(own)DropdownMenuItem(text={Text("Message info")},onClick={info=true;onMenu(false)})
                                 if(own)DropdownMenuItem(text={Text("Unsend")},onClick={onUnsend();onMenu(false)})
                             }
@@ -130,6 +134,7 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                                 val time = runCatching { java.time.Instant.parse(message.createdAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }.getOrDefault("")
                                 val read = message.readAt.isNotBlank() && message.readAt != "null"
                                 val delivered = read || (message.deliveredAt.isNotBlank() && message.deliveredAt != "null")
+                                if(message.editedAt.isNotBlank()&&!message.unsent)Text("Edited",fontSize=10.sp,color=if(own)Color.White.copy(alpha=.8f)else muted)
                                 SeraCompactReceipt(time,own&&!message.unsent,delivered,read,if(own&&!message.unsent)Color.White.copy(alpha=.8f)else muted)
                         }
 
