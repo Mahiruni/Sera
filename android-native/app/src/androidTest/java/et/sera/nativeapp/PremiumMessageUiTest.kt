@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
@@ -31,7 +32,7 @@ class PremiumMessageUiTest {
   }
   compose.onNodeWithTag("sera_quote_reply",useUnmergedTree=true).performClick()
   compose.runOnIdle{assertEquals("original",quote)}
-  compose.onNodeWithTag("sera_message_reply",useUnmergedTree=true).performTouchInput{longClick()}
+  compose.onNodeWithTag("sera_message_reply",useUnmergedTree=true).performSemanticsAction(SemanticsActions.OnLongClick)
   compose.onNodeWithContentDescription("React ❤️").performClick()
   compose.runOnIdle{assertEquals("❤️",reaction)}
  }
