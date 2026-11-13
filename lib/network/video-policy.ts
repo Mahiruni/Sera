@@ -11,7 +11,7 @@ const levels:VideoLevel[]=["paused","data_saver","standard","hd","super_hd"];
 export function authorizedVideoQuality(request:VideoQuality,premium:boolean):VideoQuality {
  return premium&&["hd","super_hd"].includes(request)?request:"standard";
 }
-export function videoConstraints(level:VideoQuality):MediaTrackConstraints{
+export function videoConstraints(level:Exclude<VideoLevel,"paused">):MediaTrackConstraints{
  const p=videoProfiles[level];
  return {width:{ideal:p.width,max:p.width},height:{ideal:p.height,max:p.height},frameRate:{ideal:p.fps,max:p.fps},facingMode:"user"};
 }
@@ -20,7 +20,8 @@ export class VideoAdaptation {
  private good=0;
  update(cap:VideoQuality,link:{outgoingBps?:number;loss?:number;rttSeconds?:number},dataSaver=false):VideoLevel{
   const max=levels.indexOf(dataSaver?"data_saver":cap);
-  const b=link.outgoingBps,l=link.loss,r=link.rttSeconds;
+  const finite=(n:number|undefined)=>typeof n==="number"&&Number.isFinite(n)&&n>=0?n:undefined;
+  const b=finite(link.outgoingBps),l=finite(link.loss),r=finite(link.rttSeconds);
   const severe=(b!==undefined&&b<140000)||(l!==undefined&&l>=.15)||(r!==undefined&&r>=1);
   const poor=(b!==undefined&&b<350000)||(l!==undefined&&l>=.07)||(r!==undefined&&r>=.6);
   const healthy=b!==undefined&&b>0&&l!==undefined&&l<.035&&r!==undefined&&r<.35;
