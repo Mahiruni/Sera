@@ -230,13 +230,39 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
     val palette=seraChatPalette(dark)
     val scheme=seraChatScheme(if(dark)darkColorScheme()else lightColorScheme(),palette,dark)
-    MaterialTheme(colorScheme=scheme,typography=seraChatTypography(MaterialTheme.typography),shapes=MaterialTheme.shapes){SeraNativeInboxContent(token,userId,modifier,openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)}
+    MaterialTheme(colorScheme=scheme,typography=seraChatTypography(MaterialTheme.typography),shapes=MaterialTheme.shapes){
+        SeraMessagingWrapper(modifier,palette) {
+            SeraNativeInboxContent(token,userId,Modifier.fillMaxSize(),openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)
+        }
+    }
+}
+
+/** Single layout boundary for the inbox, conversation, and conversation details. */
+internal fun seraMessagingHeightFraction(keyboardVisible:Boolean):Float = if(keyboardVisible)1f else .90f
+
+@Composable
+internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,content:@Composable ()->Unit) {
+    val keyboardVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
+    val fraction=seraMessagingHeightFraction(keyboardVisible)
+    // Apply system insets once, outside the fraction, so the composer stays
+    // above the keyboard and the bottom navigation/gesture area.
+    Box(modifier.fillMaxSize().background(palette.quote).navigationBarsPadding().imePadding()){
+        Surface(
+            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(fraction),
+            shape=RoundedCornerShape(topStart=if(keyboardVisible)0.dp else 28.dp,topEnd=if(keyboardVisible)0.dp else 28.dp),
+            color=palette.canvas,
+            tonalElevation=0.dp,
+            shadowElevation=if(keyboardVisible)0.dp else 5.dp
+        ){
+            Box(Modifier.fillMaxSize()) { content() }
+        }
+    }
 }
 @Composable
 private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,openCompany:Boolean,onCompanyConsumed:()->Unit,initialThread:String?,initialPeer:String,initialName:String,onThreadExit:(()->Unit)?,onThreadVisibility:(Boolean)->Unit,onInboxExit:(()->Unit)?){
     var companyInbox by remember { mutableStateOf(false) }
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
-    if(companyInbox){Box(modifier.fillMaxSize().navigationBarsPadding()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
+    if(companyInbox){Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
     // Fail safely if encrypted storage is temporarily unavailable; never
     // downgrade private message drafts to unencrypted preferences.
@@ -767,7 +793,7 @@ private class InboxController(
         val incoming=palette.incoming
         val muted=palette.muted
         val accent=palette.accent
-        Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
+        Column(modifier.fillMaxSize().background(chatSurface).padding(horizontal = 12.dp)) {
             Spacer(Modifier.height(4.dp))
             if (selected == null) {
                 TextButton(onClick={global.globalStars=true},modifier=Modifier.align(Alignment.End)){Text("All starred messages")}
