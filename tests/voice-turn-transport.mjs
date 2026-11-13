@@ -14,11 +14,22 @@ try{
  const result=await page.evaluate(async({username,credential,weak})=>{
   const config={iceServers:[{urls:"turn:127.0.0.1:3478?transport=udp",username,credential}],iceTransportPolicy:"relay"};
   const a=new RTCPeerConnection(config),b=new RTCPeerConnection(config);
-  const context=new AudioContext();await context.resume();
-  const tones=[],analysers=new Map();
-  function listen(pc){pc.ontrack=e=>{const source=context.createMediaStreamSource(e.streams[0]??new MediaStream([e.track]));const analyser=context.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=.2;const quiet=context.createGain();quiet.gain.value=0;source.connect(analyser).connect(quiet).connect(context.destination);analysers.set(pc,analyser);};}
-  if(weak){listen(a);listen(b);}
-  function attach(pc,hz){const osc=context.createOscillator();osc.frequency.value=hz;const gain=context.createGain();gain.gain.value=.04;const dest=context.createMediaStreamDestination();osc.connect(gain).connect(dest);osc.start();tones.push(osc);dest.stream.getTracks().forEach(t=>pc.addTrack(t,dest.stream));}
+  const context=new AudioContext({sampleRate:48000});await context.resume();
+  const tones=[],receivers=new Map(),sources=new Map();
+  function listen(pc){pc.ontrack=e=>{
+    // A real playing media element pulls decoded audio from the receiver, like the app.
+    const element=document.createElement("audio");element.autoplay=true;element.playsInline=true;
+    element.volume=.01;element.srcObject=new MediaStream([e.track]);document.body.append(element);
+    const playing=element.play();playing.catch(()=>{});receivers.set(pc,{element,track:e.track,playing});
+  };}
+  listen(a);listen(b);
+  function attach(pc,hz){
+    const osc=context.createOscillator();osc.frequency.value=hz;
+    const gain=context.createGain();gain.gain.value=.18;
+    const dest=context.createMediaStreamDestination();dest.channelCount=1;
+    osc.connect(gain).connect(dest);osc.start();tones.push(osc);
+    sources.set(pc,{osc,gain,dest});dest.stream.getAudioTracks().forEach(t=>pc.addTrack(t,dest.stream));
+  }
   function gather(pc){return new Promise((resolve,reject)=>{if(pc.iceGatheringState==="complete")return resolve();const timer=setTimeout(()=>reject(Error("ICE gathering timeout")),15000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete"){clearTimeout(timer);resolve();}});});}
   function relayOnly(sdp){const candidates=sdp.split(/\r?\n/).filter(x=>x.startsWith("a=candidate:"));return candidates.length>0&&candidates.every(x=>/ typ relay(?: |$)/.test(x));}
   try{
@@ -42,17 +53,54 @@ try{
        params.encodings.forEach(e=>{e.maxBitrate=12000;});await sender.setParameters(params);
       }
       const initialA=received(statsA),initialB=received(statsB);
-      const toneHeard=(peer,hz)=>{const analyser=analysers.get(peer);if(!analyser)return false;const data=new Float32Array(analyser.frequencyBinCount);analyser.getFloatFrequencyData(data);const bin=Math.round(hz*analyser.fftSize/context.sampleRate);let peak=-Infinity;for(let i=Math.max(0,bin-2);i<=Math.min(data.length-1,bin+2);i++)peak=Math.max(peak,data[i]);return peak>-65;};
-      let heardA=0,heardB=0;
-      for(let n=0;n<10;n++){await new Promise(resolve=>setTimeout(resolve,700));if(toneHeard(a,660))heardA++;if(toneHeard(b,440))heardB++;}
+      // Use the inbound RTP receiver's cumulative decoded audio energy, independent
+      // of the headless speaker/analyser output path. Verify actual playback starts too.
+      for(const peer of [a,b]){
+        const receiver=receivers.get(peer);
+        if(!receiver)throw Error("Missing remote audio track.");
+        await receiver.playing;
+        if(receiver.element.paused||receiver.track.readyState!=="live")throw Error("Remote audio playback did not start.");
+      }
+      async function snapshot(peer){
+        const stats=await peer.getStats();
+        const audio=[...stats.values()].find(x=>x.type==="inbound-rtp"&&(x.kind==="audio"||x.mediaType==="audio"));
+        if(!audio||!Number.isFinite(audio.totalAudioEnergy)||!Number.isFinite(audio.totalSamplesDuration))throw Error("Decoded audio energy metrics unavailable.");
+        return {energy:audio.totalAudioEnergy,duration:audio.totalSamplesDuration,packets:audio.packetsReceived||0};
+      }
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      async function measure(label,aGain,bGain){
+        // Distinct sender patterns must be reflected at the opposite receiver.
+        sources.get(a).gain.gain.value=aGain;sources.get(b).gain.gain.value=bGain;
+        await sleep(1800); // exclude jitter-buffer and packet-loss-concealment tail
+        const [a0,b0]=await Promise.all([snapshot(a),snapshot(b)]);
+        await sleep(2500);
+        const [a1,b1]=await Promise.all([snapshot(a),snapshot(b)]);
+        const rms=(before,after)=>{
+          const dt=after.duration-before.duration,energy=after.energy-before.energy;
+          if(dt<1||energy<0||!Number.isFinite(energy))throw Error("Insufficient decoded audio samples: "+JSON.stringify({label,before,after}));
+          return Math.sqrt(energy/dt);
+        };
+        return {label,aRms:rms(a0,a1),bRms:rms(b0,b1),aPackets:a1.packets-a0.packets,bPackets:b1.packets-b0.packets};
+      }
+      const both=await measure("both speaking",.18,.18);
+      const onlyA=await measure("A speaks",.18,0);
+      const onlyB=await measure("B speaks",0,.18);
       const aReceived=received(await a.getStats())-initialA,bReceived=received(await b.getStats())-initialB;
-      if(a.connectionState!=="connected"||b.connectionState!=="connected"||aReceived<30||bReceived<30||heardA<5||heardB<5)throw Error("Weak-link decoded audio verification failed: "+JSON.stringify({aReceived,bReceived,heardA,heardB}));
-      return {aReceived,bReceived,heardA,heardB,relayOnly:true,payloadCapBps:12000};
+      // Require non-silent decoded audio in both directions and direction-specific
+      // energy contrast. Packet counts alone can never satisfy this test.
+      const audible=x=>Number.isFinite(x)&&x>.008;
+      const contrast=(voice,silence)=>audible(voice)&&voice>Math.max(.004,silence)*3;
+      const results={aReceived,bReceived,both,onlyA,onlyB,payloadCapBps:12000};
+      console.log("Decoded voice measurements",JSON.stringify(results));
+      if(a.connectionState!=="connected"||b.connectionState!=="connected"||aReceived<30||bReceived<30||
+         !audible(both.aRms)||!audible(both.bRms)||!contrast(onlyB.aRms,onlyA.aRms)||!contrast(onlyA.bRms,onlyB.bRms))
+         throw Error("Weak-link decoded audio verification failed: "+JSON.stringify(results));
+      return {...results,relayOnly:true};
     }
     await new Promise(resolve=>setTimeout(resolve,500));
    }
    throw Error("Two-way audio RTP did not connect over TURN.");
-  }finally{a.close();b.close();tones.forEach(x=>x.stop());await context.close();}
+  }finally{a.close();b.close();for(const {element} of receivers.values()){element.pause();element.srcObject=null;element.remove();}tones.forEach(x=>x.stop());await context.close();}
  },{username,credential,weak:process.env.SERA_TEST_WEAK_NETWORK==="1"});
  console.log("PASS: actual bidirectional synthetic audio RTP over local authenticated TURN",result);
 }finally{await browser.close();server.close();}
