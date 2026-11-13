@@ -171,6 +171,14 @@ jobs:
           script: |
             bash android-native/scripts/verify_signed_upgrade.sh
             bash android-native/scripts/verify_signed_call_engine.sh
+      - name: Retain signed call diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sera-signed-call-crash-log
+          path: ${{ runner.temp }}/sera-call-smoke-logcat.txt
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Publish signed APK to GitHub Releases
         shell: bash
         env:
