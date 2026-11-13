@@ -250,7 +250,7 @@ fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier
 }
 
 /** Keep keyboard expansion separate from the user's chosen sheet position. */
-internal fun seraMessagingHeightFraction(keyboardVisible:Boolean,restingFraction:Float=.90f):Float = if(keyboardVisible)1f else restingFraction.coerceIn(.60f,1f)
+internal fun seraMessagingHeightFraction(keyboardVisible:Boolean,restingFraction:Float=1f):Float = if(keyboardVisible)1f else restingFraction.coerceIn(.60f,1f)
 
 internal fun seraMessagingDragFraction(current:Float,deltaPx:Float,availablePx:Float):Float =
     if(availablePx<=0f)current else (current-deltaPx/availablePx).coerceIn(.60f,1f)
@@ -269,30 +269,31 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,over
     val density=LocalDensity.current
     val keyboardVisible=WindowInsets.ime.getBottom(density)>0
     BackHandler(enabled=overlayOnPage&&!keyboardVisible&&onDismiss!=null){onDismiss?.invoke()}
-    var restingFraction by rememberSaveable{mutableStateOf(.90f)}
-    var dragFraction by remember{mutableStateOf(.90f)}
+    var restingFraction by rememberSaveable{mutableStateOf(1f)}
+    var dragFraction by remember{mutableStateOf(1f)}
     var dragging by remember{mutableStateOf(false)}
     val target=seraMessagingHeightFraction(keyboardVisible,if(dragging)dragFraction else restingFraction)
     val animatedFraction by animateFloatAsState(target,tween(if(dragging||keyboardVisible)0 else 210),label="messaging sheet height")
     LaunchedEffect(keyboardVisible){if(keyboardVisible)dragging=false}
     BoxWithConstraints(modifier.fillMaxSize().then(if(overlayOnPage)Modifier else Modifier.background(palette.quote)).imePadding()){
-        // The underlying destination remains visible; only the sheet owns its bottom surface.
+        // Full height by default; the underlying destination remains mounted for intentional collapse.
         if(overlayOnPage)Box(Modifier.matchParentSize().then(if(onDismiss!=null)Modifier.clickable(indication=null,interactionSource=remember{androidx.compose.foundation.interaction.MutableInteractionSource()}){onDismiss()} else Modifier.pointerInput(Unit){detectTapGestures{}}))
         val availablePx=with(density){maxHeight.toPx()}
         val flingThreshold=with(density){420.dp.toPx()}
         val dragState=rememberDraggableState{delta->
             if(!keyboardVisible)dragFraction=seraMessagingDragFraction(dragFraction,delta,availablePx)
         }
+        val fullHeight=keyboardVisible||animatedFraction>=.999f
         Surface(
             modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(if(keyboardVisible)1f else animatedFraction).then(if(overlayOnPage)Modifier.semantics{contentDescription="Messages sheet"} else Modifier),
-            shape=RoundedCornerShape(topStart=if(keyboardVisible)0.dp else 28.dp,topEnd=if(keyboardVisible)0.dp else 28.dp),
+            shape=RoundedCornerShape(topStart=if(fullHeight)0.dp else 28.dp,topEnd=if(fullHeight)0.dp else 28.dp),
             color=palette.canvas,
             tonalElevation=0.dp,
-            shadowElevation=if(keyboardVisible)0.dp else 5.dp
+            shadowElevation=if(fullHeight)0.dp else 5.dp
         ){
             Column(Modifier.fillMaxSize().then(if(keyboardVisible)Modifier else Modifier.navigationBarsPadding())){
                 if(!keyboardVisible)Box(
-                    Modifier.fillMaxWidth().height(44.dp)
+                    Modifier.fillMaxWidth().height(36.dp)
                         .semantics{contentDescription="Resize messages";stateDescription=when{restingFraction<.8f->"Compact";restingFraction<.95f->"Default";else->"Expanded"}}
                         .draggable(
                             state=dragState,orientation=Orientation.Vertical,
