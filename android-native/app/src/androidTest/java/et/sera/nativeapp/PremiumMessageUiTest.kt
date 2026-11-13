@@ -33,7 +33,12 @@ class PremiumMessageUiTest {
   compose.onNodeWithTag("sera_quote_reply",useUnmergedTree=true).performClick()
   compose.runOnIdle{assertEquals("original",quote)}
   compose.onNodeWithTag("sera_message_reply",useUnmergedTree=true).performSemanticsAction(SemanticsActions.OnLongClick)
+  listOf("👍","❤️","😂","😮","😢","🔥").forEach{compose.onNodeWithContentDescription("React "+it).assertExists()}
+  listOf("Select message","Reply","React","Forward","Copy text","Star message","Pin for everyone").forEach{compose.onNodeWithText(it).assertDoesNotExist()}
   compose.onNodeWithContentDescription("React ❤️").performClick()
   compose.runOnIdle{assertEquals("❤️",reaction)}
+  compose.onNodeWithContentDescription("Message options",useUnmergedTree=true).performClick()
+  compose.onNodeWithText("Copy text").assertExists()
+  compose.onNodeWithContentDescription("React ❤️").assertDoesNotExist()
  }
 }
