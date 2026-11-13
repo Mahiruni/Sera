@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
-type Photo = { url: string; alt: string };
+type Photo = { url: string; alt: string; width?:number; height?:number };
+const preview=(url:string,w:number)=>/^\/api\/post-media\/[0-9a-f-]{36}$/i.test(url)?url+`?w=${w}`:url;
 
 export function PostMedia({ images }: { images: Photo[] }) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -58,7 +59,11 @@ export function PostMedia({ images }: { images: Photo[] }) {
           <button type="button" className="social-image-link" key={photo.url + index}
             aria-label={`View photo ${index + 1} of ${images.length}`}
             onClick={() => openPhoto(index)}>
-            <Image unoptimized src={photo.url} alt={photo.alt} width={1200} height={900}
+            {/* Authenticated previews use browser srcset; Next Image optimizer cannot forward private cookies. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview(photo.url,800)} srcSet={preview(photo.url,480)!==photo.url?[480,800,1200].map(w=>`${preview(photo.url,w)} ${w}w`).join(", "):undefined}
+              sizes={images.length>1?"(max-width: 600px) 48vw, 340px":"(max-width: 720px) 100vw, 680px"}
+              alt={photo.alt} width={photo.width||1200} height={photo.height||900} loading="lazy" decoding="async"
               style={{ width: "100%", height: "auto", aspectRatio: "auto" }} />
             {images.length > 4 && index === 3 && <span className="social-more-images">+{images.length - 4}</span>}
           </button>
