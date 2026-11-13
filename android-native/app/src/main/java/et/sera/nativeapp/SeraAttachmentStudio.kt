@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PROFESSIONAL,LOCATION,CONTACT }
+internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PROFESSIONAL,LOCATION,CONTACT,MEETING }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SeraAttachmentStudio(onDismiss:()->Unit,onChoose:(SeraAttachmentKind)->Unit){
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
@@ -62,7 +62,7 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PR
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 AttachmentTile("Contact","Share name and phone",Icons.Outlined.Person,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.CONTACT)}
-                Spacer(Modifier.weight(1f))
+                AttachmentTile("Meeting","Propose a time",Icons.Outlined.Description,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.MEETING)}
             }
             Text("Private conversation · Up to 5 MB per file",fontSize=12.sp,color=muted)
         }
