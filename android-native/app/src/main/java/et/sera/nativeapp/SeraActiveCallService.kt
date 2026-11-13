@@ -74,7 +74,7 @@ class SeraActiveCallService:Service(){
             .setContentTitle(voiceText("Ongoing voice call")).setContentText(voiceText("Tap to return to your call"))
             .setCategory(NotificationCompat.CATEGORY_CALL).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel,voiceText("End call"),end).build()
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(androidx.core.app.Person.Builder().setName("Sera").build(),end)).build()
     }
     override fun onTaskRemoved(rootIntent:Intent?){lease?.let{SeraCallForeground.lost(it)};stopSelf();super.onTaskRemoved(rootIntent)}
     override fun onDestroy(){lease?.let{SeraCallForeground.lost(it)};lease=null;stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy()}
