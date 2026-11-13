@@ -363,7 +363,7 @@ private class InboxGlobalState(context: Context) {
     var lastMessageId by mutableStateOf<String?>(null)
     var checkingFile by mutableStateOf(false)
     var forwardClient by mutableStateOf("")
-    var sound by mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",false))
+    var sound by mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",true))
     var connectionAvailable by mutableStateOf(true)
 }
 
@@ -762,7 +762,7 @@ private class InboxController(
                     val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
                     result.first?.let { latest ->
                         if(!thread.initialMessagesLoaded){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
-                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){if(SeraMessageAlerts.enabled(context,userId)&&SeraMessageAlerts.mutedUntil(context,userId,conversation.id)<=System.currentTimeMillis())chime();SeraUnreadRefresh.changed()}
+                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){latest.lastOrNull()?.let{SeraMessageAlerts.playIncomingOnce(context,userId,conversation.id,it.id)};SeraUnreadRefresh.changed()}
                         messages = latest
                     thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
                         val unread = latest.filter { isUnreadIncoming(it,userId) }
