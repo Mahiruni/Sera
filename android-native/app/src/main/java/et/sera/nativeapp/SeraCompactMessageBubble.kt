@@ -35,9 +35,9 @@ internal fun ColumnScope.SeraCompactReceipt(time:String,own:Boolean,delivered:Bo
     Row(Modifier.align(Alignment.End).padding(top=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
         if(edited)Text("Edited ·",color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
         Text(time,color=foreground,style=seraChatMeta(MaterialTheme.typography.labelSmall))
-        if(own){
-            val status=if(read)"Read" else if(delivered)"Delivered" else "Sent"
-            val tint by animateColorAsState(if(read)seraChatColors().read else foreground,tween(150),label="Receipt tint")
+        if(own&&!read){
+            val status=if(delivered)"Delivered" else "Sent"
+            val tint by animateColorAsState(if(delivered)seraChatColors().read else foreground,tween(150),label="Receipt tint")
             Crossfade(targetState=status,animationSpec=tween(120),modifier=Modifier.size(16.dp),label="Receipt status"){state->
                 Icon(if(state=="Sent")Icons.Outlined.Check else Icons.Outlined.DoneAll,contentDescription=state,tint=tint,modifier=Modifier.fillMaxSize())
             }
