@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
@@ -103,7 +104,8 @@ import java.net.URL
             if(unreadOnly&&filtered.isEmpty()&&!loading&&search.isBlank())Text("You’re all caught up.",modifier=Modifier.padding(16.dp),color=muted)
             if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
             LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
-                items(filtered, key = { it.id }) { conversation ->
+                itemsIndexed(filtered, key = { _, conversation -> conversation.id }) { index, conversation ->
+                    Column(Modifier.fillMaxWidth()) {
                     Card(onClick = {onSelect(conversation)},
                         shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = if(conversation.unread>0) inboxSoft else chatSurface)) {
@@ -122,8 +124,17 @@ import java.net.URL
                             Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0||conversation.markedUnread) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
                         }
                     }
+                    if(index<filtered.lastIndex) SeraInboxConversationDivider()
+                    }
                 }
             }
 
     }
+}
+
+/** Quiet separator aligned to the message preview, never enclosing a row. */
+@Composable internal fun SeraInboxConversationDivider(){
+    Box(Modifier.fillMaxWidth().padding(start=72.dp,end=12.dp).height(1.dp)
+        .clip(CircleShape).background(seraChatColors().border.copy(alpha=.55f))
+        .testTag("sera_inbox_conversation_divider"))
 }
