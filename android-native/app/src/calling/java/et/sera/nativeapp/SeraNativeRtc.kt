@@ -143,10 +143,12 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     }
     private suspend fun gather(restart:Boolean=false):String{
         val deadline=android.os.SystemClock.elapsedRealtime()+(if(restart)12000L else 25000L)
-        while(!closed&&pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){
+        while(!closed&&android.os.SystemClock.elapsedRealtime()<deadline){
             // Non-trickle signaling can proceed as soon as a valid relay candidate exists.
             val current=pc.localDescription?.description.orEmpty()
-            if(!restart&&current.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})break
+            val hasRelay=current.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")}
+            if(hasRelay&&(!restart||pc.iceGatheringState()==PeerConnection.IceGatheringState.COMPLETE))break
+            if(!restart&&pc.iceGatheringState()==PeerConnection.IceGatheringState.COMPLETE)break
             delay(100)
         }
         if(closed)throw kotlinx.coroutines.CancellationException("Call closed")
