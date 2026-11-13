@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-export const alt = "Sera.et — opportunities, education and practical guidance";
+export const alt = "Sera — opportunities, education and practical guidance";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export default function Image() {
@@ -18,7 +18,7 @@ export default function Image() {
       }}
     >
       <div style={{ display: "flex", fontSize: 58, fontWeight: 700 }}>
-        Sera<span style={{ color: "#087f9f" }}>.et</span>
+        Sera
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <div

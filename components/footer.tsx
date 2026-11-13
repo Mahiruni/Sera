@@ -61,7 +61,7 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="footer-bottom">
-        <p>© {year} Sera.et</p>
+        <p>© {year} Sera</p>
         <p>{t("footer")}</p>
         <div>
           <Link href="/privacy">{t("privacyPolicy")}</Link>

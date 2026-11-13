@@ -15,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!isLocale(locale)) return {title:"Professional profile | SERA.et",robots:{index:false,follow:false}};
+  if (!isLocale(locale)) return {title:"Professional profile | Sera",robots:{index:false,follow:false}};
   if(locale==="en") notFound();
   return locale === "am"
     ? pageMetadata(
@@ -27,7 +27,7 @@ export async function generateMetadata({
     : pageMetadata(
         `/${locale}`,
         `${locales.find((l) => l.code === locale)!.name} Language Availability`,
-        "Translation availability and honest English fallback information for Sera.et.",
+        "Translation availability and honest English fallback information for Sera.",
       );
 }
 export default async function Page({

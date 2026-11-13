@@ -25,7 +25,7 @@ export const guides = [
       },
       {
         title: "Keep a simple application record",
-        body: "Track the original source, application date, documents sent and follow-up status in a private record. When a vacancy closes, update that record rather than continuing to treat the announcement as current. Sera.et’s recruitment area is presently a browser-only demonstration: its sample jobs and local application statuses are not live employer submissions.",
+        body: "Track the original source, application date, documents sent and follow-up status in a private record. When a vacancy closes, update that record rather than continuing to treat the announcement as current. Sera’s recruitment area is presently a browser-only demonstration: its sample jobs and local application statuses are not live employer submissions.",
       },
     ],
   },
@@ -43,7 +43,7 @@ export const guides = [
       },
       {
         title: "Check the institution and programme separately",
-        body: "Use the institution’s official website and current announcements. Where recognition or programme approval matters, verify it with the responsible official body instead of relying on a logo, social post or directory entry. Record the source and date of each check. Sera.et has not yet launched a verified institution directory and does not certify institutions or programmes.",
+        body: "Use the institution’s official website and current announcements. Where recognition or programme approval matters, verify it with the responsible official body instead of relying on a logo, social post or directory entry. Record the source and date of each check. Sera has not yet launched a verified institution directory and does not certify institutions or programmes.",
       },
       {
         title: "Ask clear admissions questions",
@@ -59,7 +59,7 @@ export const guides = [
       },
       {
         title: "Keep the decision record up to date",
-        body: "Create one row per programme and link each important fact to its source. Mark unanswered questions instead of filling them with assumptions. Recheck time-sensitive details before applying or making a commitment. Admissions, costs and official updates must come from current institutional or government information; Sera.et does not currently accept admissions applications.",
+        body: "Create one row per programme and link each important fact to its source. Mark unanswered questions instead of filling them with assumptions. Recheck time-sensitive details before applying or making a commitment. Admissions, costs and official updates must come from current institutional or government information; Sera does not currently accept admissions applications.",
       },
     ],
   },
@@ -88,7 +88,7 @@ export const guides = [
         body: "Create a realistic review schedule around the published syllabus and timetable. Keep a list of topics you can explain and questions that still need work. Use materials your institution permits, and confirm examination arrangements through official announcements. Do not distribute restricted exam papers, classmates’ work or grades through public links.",
       },
       {
-        title: "Know what Sera.et can do today",
+        title: "Know what Sera can do today",
         body: "This guide is available now. Academic accounts, institutional permissions, assignment submission, revision tracking, file conversion, exam delivery, calling and live chat are planned capabilities and are not enabled services. A future academic system will need secure identity, access controls, retention rules and institutional review before real student records are accepted.",
       },
     ],

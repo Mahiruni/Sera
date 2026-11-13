@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
         errorPanel.setPadding(40, 60, 40, 40);
         errorPanel.setGravity(android.view.Gravity.CENTER);
         TextView message = new TextView(this);
-        message.setText("Unable to connect to SERA.et. Check your internet connection and try again.");
+        message.setText("Unable to connect to Sera. Check your internet connection and try again.");
         message.setTextSize(18);
         message.setTextColor(Color.rgb(20,45,48));
         message.setGravity(android.view.Gravity.CENTER);

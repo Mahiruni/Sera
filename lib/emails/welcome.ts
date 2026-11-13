@@ -62,7 +62,7 @@ export async function dispatchWelcome(userId?: string) {
         origin: siteOrigin,
       });
       await transport.sendMail({
-        from: { name: "Sera.et", address: "mahir@hisabtech.com" },
+        from: { name: "Sera", address: "mahir@hisabtech.com" },
         to: u.email,
         subject: email.subject,
         text: email.text,

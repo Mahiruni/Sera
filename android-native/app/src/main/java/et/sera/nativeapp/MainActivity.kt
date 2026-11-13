@@ -491,7 +491,7 @@ fun SeraApp(
                 }
             } else if (oauthProcessing) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("SERA.et",style=MaterialTheme.typography.headlineLarge,color=teal,fontWeight=FontWeight.Bold)
+                    Text("Sera",style=MaterialTheme.typography.headlineLarge,color=teal,fontWeight=FontWeight.Bold)
                     Spacer(Modifier.height(24.dp));CircularProgressIndicator(color=teal);Spacer(Modifier.height(16.dp));Text("Connecting securely…",style=MaterialTheme.typography.titleMedium);Text("Preparing your workspace",style=MaterialTheme.typography.bodySmall)
                 }
             } else if (accessToken == null) {

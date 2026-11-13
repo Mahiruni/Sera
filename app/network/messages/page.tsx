@@ -4,7 +4,7 @@ import {serverClient} from "@/lib/supabase/server";
 import {memberCards} from "@/lib/activity/members";
 import {loadMessagePage} from "@/lib/network/message-view";
 import {validMessageId,type ThreadPreview} from "@/lib/network/message-contract";
-export const metadata={title:"Professional messages | SERA.et",robots:{index:false,follow:false}};
+export const metadata={title:"Professional messages | Sera",robots:{index:false,follow:false}};
 type InboxRow={id:string;member_a:string;member_b:string;last_message_at:string|null;last_message_id:string|null;last_body:string|null;last_sender_id:string|null;last_created_at:string|null;last_delivered_at:string|null;unread_count:number};
 export default async function ProfessionalInbox({searchParams}:{searchParams:Promise<{thread?:string;q?:string}>}){
   const {user}=await requiredProfile("/network/messages");const db=await serverClient(),params=await searchParams;

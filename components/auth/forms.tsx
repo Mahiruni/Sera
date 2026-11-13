@@ -133,8 +133,8 @@ export function AuthForm({
   return (
     <section className={`auth-layout auth-mode-${mode}`}>
       <aside className="auth-story">
-        <Link href="/" className="auth-wordmark" aria-label="Sera.et home">
-          Sera<span>.et</span>
+        <Link href="/" className="auth-wordmark" aria-label="Sera home">
+          Sera
         </Link>
         <div className="auth-story-content">
           <h2>
@@ -214,9 +214,9 @@ export function AuthForm({
         <Link
           href="/"
           className="auth-wordmark auth-mobile-brand"
-          aria-label="Sera.et home"
+          aria-label="Sera home"
         >
-          Sera<span>.et</span>
+          Sera
         </Link>
         {isEntry && (
           <nav

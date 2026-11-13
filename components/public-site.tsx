@@ -18,7 +18,7 @@ export function Breadcrumbs({
   return (
     <>
       <nav className="public-breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">Sera.et</Link>
+        <Link href="/">Sera</Link>
         {items.map((item) => (
           <span key={item.path}>
             <span aria-hidden="true">/</span>
@@ -30,7 +30,7 @@ export function Breadcrumbs({
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: jsonLd(
-            breadcrumbData([{ name: "Sera.et", path: "/" }, ...items]),
+            breadcrumbData([{ name: "Sera", path: "/" }, ...items]),
           ),
         }}
       />
@@ -70,7 +70,7 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
       </div>
       <section
         className="public-paths"
-        aria-label={am ? "ያስሱ" : "Explore Sera.et"}
+        aria-label={am ? "ያስሱ" : "Explore Sera"}
       >
         {[
           {
@@ -115,7 +115,7 @@ export function PublicLanding({ language = "en" }: { language?: "en" | "am" }) {
         <p>
           {am
             ? "የሥራ ማስታወቂያን ሲያነቡ ወይም የትምህርት አቅራቢን ሲያወዳድሩ፣ የመጀመሪያውን ምንጭ እና ቀን ያስቀምጡ። ጊዜ የሚገድበውን መረጃ ከኦፊሴላዊ ምንጭ እንደገና ያረጋግጡ። ሥራ በአሁኑ ጊዜ የተረጋገጡ ክፍት ሥራዎችን፣ የተቋማት ክፍያዎችን ወይም የመግቢያ ቀናትን አያትምም።"
-            : "Whether you are reading a vacancy or comparing a course, keep the original source and its date. Recheck deadlines and costs with the responsible organization before acting. Sera.et does not currently publish verified vacancies, institution fees or admissions deadlines. Our guides help you organize the questions and evidence you need."}
+            : "Whether you are reading a vacancy or comparing a course, keep the original source and its date. Recheck deadlines and costs with the responsible organization before acting. Sera does not currently publish verified vacancies, institution fees or admissions deadlines. Our guides help you organize the questions and evidence you need."}
         </p>
       </section>
       <GuideCards am={am} />
@@ -225,7 +225,7 @@ export function WebsiteData() {
           "@type": "WebSite",
           "@id": `${siteOrigin}/#website`,
           url: `${siteOrigin}/`,
-          name: "Sera.et",
+          name: "Sera",
           description:
             "A professional community for sharing ideas, showcasing work and discovering career opportunities.",
           inLanguage: ["en"],

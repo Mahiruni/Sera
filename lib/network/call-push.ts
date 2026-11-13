@@ -16,5 +16,5 @@ export async function dismissIncomingCallPush(db:SupabaseClient,id:string){
   const {data,error}=await db.rpc("sera_call_claim_dismissal",{p_id:id});
   if(error||!data||!Array.isArray(data.recipients)||typeof data.expires_at!=="string")return;
   const recipients=(data.recipients as unknown[]).filter((x):x is string=>typeof x==="string"&&validMessageId(x));
-  await Promise.all(recipients.map(recipient=>notifyProfessionalDevices(recipient,{title:"SERA.et",body:"Call invitation closed",url:"/network/messages",kind:"voice_call_dismiss",callId:id,recipientId:recipient,expiresAt:data.expires_at})));
+  await Promise.all(recipients.map(recipient=>notifyProfessionalDevices(recipient,{title:"Sera",body:"Call invitation closed",url:"/network/messages",kind:"voice_call_dismiss",callId:id,recipientId:recipient,expiresAt:data.expires_at})));
 }

@@ -23,15 +23,15 @@ export const metadata: Metadata = {
   ...pageMetadata(
     "/",
     "Your Work, Your People, Your Next Chapter",
-    "Share your ideas, showcase your work and discover professional opportunities with Sera.et.",
+    "Share your ideas, showcase your work and discover professional opportunities with Sera.",
     false,
   ),
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "Sera.et — Your Work, Your People, Your Next Chapter",
-    template: "%s | Sera.et",
+    default: "Sera — Your Work, Your People, Your Next Chapter",
+    template: "%s | Sera",
   },
-  applicationName: "Sera.et",
+  applicationName: "Sera",
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
     other: process.env.BING_SITE_VERIFICATION

@@ -158,7 +158,7 @@ export function Shell({
         >
           <Menu size={24}/>
         </button>
-        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="SERA.et home">SERA<span>.et</span></Link>
+        <Link href={authenticated ? "/feed" : "/"} className="sera-header-wordmark" aria-label="Sera home">Sera</Link>
         <div className="header-account-controls">
           <Link className="header-control" href={authenticated?"/discover#discover-filter":"/jobs"} aria-label="Search" title="Search"><Search size={22}/></Link>
           {verified ? <ActivityBell /> : <Link className="header-control" href="/notifications" aria-label="Notifications" title="Notifications"><Bell size={22}/></Link>}

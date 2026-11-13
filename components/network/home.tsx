@@ -85,7 +85,7 @@ export function NetworkHome({
           <h1>A good place to grow your career.</h1>
           <p>Discover people, ideas, projects and opportunities.</p>
         </div>
-        <div className="sera-premium-hero-art" aria-hidden="true">SERA.et</div>
+        <div className="sera-premium-hero-art" aria-hidden="true">Sera</div>
       </section>
       <nav className="sera-premium-quicklinks" aria-label="Explore SERA">
         <Link href="/jobs"><BriefcaseBusiness /><span>Jobs &amp; Opportunities</span></Link>

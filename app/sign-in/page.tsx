@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "/sign-in",
   "Sign in",
-  "Secure account access for Sera.et.",
+  "Secure account access for Sera.",
 );
 export default async function Page({
   searchParams,

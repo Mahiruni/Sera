@@ -50,7 +50,7 @@ export async function brandCv(bytes: Uint8Array) {
       color: rgb(0.78, 0.87, 0.9),
       thickness: 0.5,
     });
-    page.drawText("Sera.et | Professional Profile", {
+    page.drawText("Sera | Professional Profile", {
       x: 18,
       y: 22,
       size: 8,
@@ -74,6 +74,6 @@ export async function brandCv(bytes: Uint8Array) {
     });
   }
   output.setTitle("Sera professional profile - branded copy");
-  output.setCreator("Sera.et");
+  output.setCreator("Sera");
   return output.save();
 }

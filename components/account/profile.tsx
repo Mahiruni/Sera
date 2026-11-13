@@ -204,7 +204,7 @@ export function ProfessionalProfile({
       </div>
       <section className="profile-hero-card">
         <div className="profile-cover">
-          <span className="sera-cover-title">Your Professional<br/><strong>Journey</strong><br/>at <b>SERA.et</b></span>
+          <span className="sera-cover-title">Your Professional<br/><strong>Journey</strong><br/>at <b>Sera</b></span>
           <span className="profile-cover-mark">Your next chapter starts here.</span>
         </div>
         <div className="profile-hero-body">

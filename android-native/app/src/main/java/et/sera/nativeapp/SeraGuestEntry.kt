@@ -69,8 +69,8 @@ private fun GuestBrand(onLanguage: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("SERA", fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.7).sp, color = entryTeal)
-            Text(".et", fontWeight = FontWeight.Bold, fontSize = 25.sp, letterSpacing = (-0.7).sp, color = entryInk)
+            Text("Sera", fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.7).sp, color = entryTeal)
+
         }
         OutlinedButton(
             onClick = onLanguage,
@@ -378,7 +378,7 @@ fun SeraGuestEntry(
                     )
                 }
                 Spacer(Modifier.height(5.dp))
-                Text("SERA.et  •  Your profile. Your work. Your future.",
+                Text("Sera  •  Your profile. Your work. Your future.",
                     style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
                     color = entryMuted, modifier = Modifier.fillMaxWidth())
             }

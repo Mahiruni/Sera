@@ -44,7 +44,7 @@ export function ShareButton({ id, title, count }: { id: string; title: string; c
       const url = new URL("/posts/" + id, window.location.origin).href;
       try {
         if (kind === "device" && typeof navigator.share === "function") {
-          await navigator.share({ title: title || "A story on SERA.et", url });
+          await navigator.share({ title: title || "A story on Sera", url });
         } else {
           await navigator.clipboard.writeText(url);
         }

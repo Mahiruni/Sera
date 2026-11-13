@@ -1,6 +1,6 @@
 export const authCopy = {
   en: {
-    signup: "Create your Sera.et account",
+    signup: "Create your Sera account",
     signin: "Welcome back",
     name: "Full name",
     email: "Email address",
@@ -22,7 +22,7 @@ export const authCopy = {
     hide: "Hide password",
   },
   am: {
-    signup: "የSera.et መለያዎን ይፍጠሩ",
+    signup: "የSera መለያዎን ይፍጠሩ",
     signin: "እንኳን ደህና ተመለሱ",
     name: "ሙሉ ስም",
     email: "የኢሜይል አድራሻ",

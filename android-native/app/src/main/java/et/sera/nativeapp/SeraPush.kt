@@ -146,7 +146,7 @@ internal object SeraPush {
         val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("SERA.et").setContentText("Incoming call").build()
+        val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText("Incoming call").build()
         return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -172,7 +172,7 @@ class SeraFirebaseService:FirebaseMessagingService(){
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
         if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);return}
-        SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
+        SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"Sera",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token);SeraPush.refreshToken(this,token)}
     override fun onDeletedMessages(){super.onDeletedMessages();SeraPushRecovery.request(this)}

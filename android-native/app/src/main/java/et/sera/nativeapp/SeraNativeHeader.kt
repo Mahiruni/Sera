@@ -46,7 +46,7 @@ private val headerTeal=Color(0xFF087E83)
             IconButton(onClick=onMenu,modifier=Modifier.size(48.dp).semantics{contentDescription="Open navigation menu"}){
                 Canvas(Modifier.size(23.dp)){val w=size.width;val h=size.height;for(i in 0..2)drawLine(headerTeal,Offset(w*.12f,h*(.24f+i*.26f)),Offset(w*(if(i==1).68f else .9f),h*(.24f+i*.26f)),strokeWidth=2.dp.toPx(),cap=StrokeCap.Round)}
             }
-            Text(buildAnnotatedString{withStyle(SpanStyle(color=headerTeal,fontWeight=FontWeight.Black)){append("SERA")};withStyle(SpanStyle(color=ink,fontWeight=FontWeight.Bold)){append(".et")}},Modifier.weight(1f),fontSize=22.sp,maxLines=1,overflow=TextOverflow.Ellipsis,letterSpacing=(-1).sp)
+            Text(buildAnnotatedString{withStyle(SpanStyle(color=headerTeal,fontWeight=FontWeight.Black)){append("Sera")}},Modifier.weight(1f),fontSize=22.sp,maxLines=1,overflow=TextOverflow.Ellipsis,letterSpacing=(-1).sp)
             IconButton(onClick=onSearch,modifier=Modifier.size(48.dp)){Icon(Icons.Outlined.Search,"Discover",tint=ink,modifier=Modifier.size(22.dp))}
             IconButton(onClick=onNotifications,modifier=Modifier.size(48.dp)){BadgedBox(badge={SeraUnreadBadge(notificationCount)}){Icon(Icons.Outlined.NotificationsNone,if(notificationCount>0)"Notifications, $notificationCount unread" else "Notifications",tint=ink,modifier=Modifier.size(22.dp))}}
             if(showMessaging) IconButton(onClick=onMessaging,modifier=Modifier.size(48.dp)){BadgedBox(badge={SeraUnreadBadge(inboxCount)}){Icon(Icons.Outlined.ChatBubbleOutline,if(inboxCount>0)"Inbox, $inboxCount unread messages" else "Inbox",tint=ink,modifier=Modifier.size(22.dp))}}

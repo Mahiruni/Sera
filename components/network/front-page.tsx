@@ -230,7 +230,7 @@ export function NetworkFrontPage() {
               <Check size={15} /> Projects, talents & achievements
             </span>
             <span>
-              <Check size={15} /> CV upload with a SERA.et branded copy
+              <Check size={15} /> CV upload with a Sera branded copy
             </span>
           </div>
         </div>
@@ -240,7 +240,7 @@ export function NetworkFrontPage() {
         <h2>Bring what makes you, you.</h2>
         <p>Your ideas deserve a home. Your work deserves to be seen.</p>
         <Link href="/sign-up" className="network-button">
-          Join Sera.et <ArrowUpRight size={18} />
+          Join Sera <ArrowUpRight size={18} />
         </Link>
         <Link href="/employer" className="network-text-link">
           Here to hire? Meet your next team. <ArrowRight size={16} />

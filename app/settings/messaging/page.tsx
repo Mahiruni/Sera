@@ -3,7 +3,7 @@ import {requiredProfile} from "@/lib/auth/profile";
 import {serverClient} from "@/lib/supabase/server";
 import {saveMessagingPreferences,saveTypingVisibility,saveMessagingActivity,saveReadReceiptVisibility,saveNotificationPreviews} from "@/lib/network/message-control-actions";
 import {clockValue,defaultMessagePreferences} from "@/lib/network/message-control-model";
-export const metadata={title:"Messaging control center | SERA.et",robots:{index:false,follow:false}};
+export const metadata={title:"Messaging control center | Sera",robots:{index:false,follow:false}};
 export default async function MessagingSettings(){
  const {user}=await requiredProfile("/settings/messaging");const db=await serverClient();
  const {data,error}=await db.from("sera_message_preferences").select("notifications_enabled,quiet_enabled,quiet_start,quiet_end,quiet_timezone,typing_visible,read_receipts_visible,notification_previews").eq("user_id",user.id).maybeSingle();

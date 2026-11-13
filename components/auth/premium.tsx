@@ -114,7 +114,7 @@ const T = {
   am: {
     signinTitle: "እንኳን ደህና ተመለሱ",
     signinSub: "ወደ የግል ቦታዎ ይመለሱ።",
-    signupTitle: "የSera.et መለያዎን ይፍጠሩ",
+    signupTitle: "የSera መለያዎን ይፍጠሩ",
     signupSub: "በቀላሉ ይጀምሩ። የቀረውን በኋላ ያክሉ።",
     name: "ሙሉ ስም",
     namePh: "ሙሉ ስምዎ",
@@ -348,8 +348,8 @@ export function PremiumAuth({
     <section className={`ax ax-${mode}`} aria-labelledby="ax-title">
       <div className="ax-card">
         <header className="ax-head">
-          <Link href="/" className="ax-brand" aria-label="Sera.et home">
-            Sera<span>.et</span>
+          <Link href="/" className="ax-brand" aria-label="Sera home">
+            Sera
           </Link>
           <h1 id="ax-title">{signup ? t.signupTitle : t.signinTitle}</h1>
           <p>{signup ? t.signupSub : t.signinSub}</p>

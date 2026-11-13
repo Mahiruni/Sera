@@ -8,7 +8,7 @@ import { MemberAvatar } from "@/components/activity/avatar";
 import { markNotificationGroupRead, markAllNotificationsRead, professionalUnreadCount, refreshJobAlerts, setAutomaticJobAlerts } from "@/lib/network/notifications";
 import { notificationTabs, notificationTab, kindsForTab, notificationPage, notificationHref, notificationTimeGroup, notificationRequestTime, groupNotifications, notificationActorSummary } from "@/lib/network/notification-model";
 import { NotificationRefresh } from "@/components/network/notification-refresh";
-export const metadata={title:"Notifications | SERA.et",robots:{index:false,follow:false}};
+export const metadata={title:"Notifications | Sera",robots:{index:false,follow:false}};
 const descriptions:Record<string,string>={
  like:"liked your post",comment:"commented on your post",share:"shared your post",repost:"reposted your post",reply:"replied to your comment",
  follow:"started following you",connection_request:"sent you a connection invitation",

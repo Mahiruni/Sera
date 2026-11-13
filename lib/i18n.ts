@@ -21,7 +21,7 @@ const words = {
   helpContact: ["Help & contact", "እገዛ እና ግንኙነት"],
   privacyTerms: ["Privacy & terms", "ግላዊነት እና ውሎች"],
   footerDescription: [
-    "A home for professional ideas, meaningful work and your next chapter. Discover the people and possibilities on Sera.et.",
+    "A home for professional ideas, meaningful work and your next chapter. Discover the people and possibilities on Sera.",
     "ወደ ትርጉም ያለው ሥራ የሚወስድ ግልጽ መንገድ። ሥራዎችን ያግኙ፣ የወደዷቸውን ያስቀምጡ፣ ቀጣዩን እርምጃዎንም ያስሱ።",
   ],
   draftNotice: ["Draft information · demo release", "ረቂቅ መረጃ · የሙከራ ስሪት"],

@@ -81,7 +81,7 @@ internal fun SeraNavigationDrawer(
         drawerShape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
     ) {
         Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=12.dp)) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("SERA.et",color=drawerTeal,fontSize=25.sp,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close menu")}}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("Sera",color=drawerTeal,fontSize=25.sp,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close menu")}}
             Spacer(Modifier.height(8.dp))
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp)) {
                 Row(Modifier.fillMaxWidth().clickable{onNavigate("Profile")}.padding(vertical=12.dp,horizontal=4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -124,7 +124,7 @@ internal fun SeraNavigationDrawer(
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
                 onClick = {confirmSignOut=true})
-            Text("SERA.et · v${BuildConfig.VERSION_NAME} · Developed by Hisab Technologies",
+            Text("Sera · v${BuildConfig.VERSION_NAME} · Developed by Hisab Technologies",
                 fontSize = 10.sp, color = Color(0xFF71888A),
                 modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }

@@ -17,10 +17,10 @@ export function Brand({ small = false }: { small?: boolean }) {
     <Link
       href="/"
       className={`brand ${small ? "small" : ""}`}
-      aria-label="Sera.et home"
+      aria-label="Sera home"
     >
       <span className="text-wordmark">
-        Sera<span>.et</span>
+        Sera
       </span>
     </Link>
   );
