@@ -361,6 +361,7 @@ fun SeraApp(
     var showLanguagePicker by remember { mutableStateOf(false) }
     var authenticatedUserId by remember { mutableStateOf("") }
     var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
+    val globalVoice=remember(authenticatedUserId){SeraGlobalCallState()}
     val tabHistory = remember { mutableStateListOf<String>() }
     fun navigateTo(destination: String) {
         if (destination == tab) return
@@ -559,6 +560,10 @@ fun SeraApp(
                             }
                         }
                     }
+                    CompositionLocalProvider(LocalSeraGlobalCall provides globalVoice){
+                    Column(Modifier.fillMaxSize()){
+                    if(BuildConfig.LIVE_CALLING_INCLUDED&&authenticatedUserId.isNotBlank())SeraGlobalVoiceHost(globalVoice,accessToken ?: "",authenticatedUserId)
+                    Box(Modifier.weight(1f).fillMaxWidth()){
                     ModalNavigationDrawer(
                         drawerState = drawerState,
                         gesturesEnabled = !expanded && !standaloneThread,
@@ -693,6 +698,9 @@ fun SeraApp(
                             )
                         }
                         }
+                    }
+                    }
+                    }
                     }
                 }
             }
