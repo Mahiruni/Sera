@@ -8,6 +8,7 @@ import java.io.File
 
 internal data class NativePending(val clientId:String,val body:String,val replyId:String?,val file:NativeChatSelection?,val album:List<NativeChatSelection> = emptyList(),val paused:Boolean=false)
 internal class NativeChatOutbox(private val context:Context){
+    companion object { private val textLock=Any() }
     private val master=MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
     private val prefs=EncryptedSharedPreferences.create(context,"sera_chat_outbox",master,EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
     private fun key(user:String,thread:String)="$user:$thread"
@@ -43,20 +44,20 @@ internal class NativeChatOutbox(private val context:Context){
     }
     // Text queue is separate from the single large-file transfer slot.
     private fun textKey(user:String,thread:String) = "text:$user:$thread"
-    @Synchronized fun loadTexts(user:String,thread:String):List<NativeQueuedText>{
+    fun loadTexts(user:String,thread:String):List<NativeQueuedText> = synchronized(textLock){
         val rows=org.json.JSONArray(prefs.getString(textKey(user,thread),"[]") ?: "[]")
-        return (0 until rows.length()).map { i ->
+        (0 until rows.length()).map { i ->
             val row=rows.getJSONObject(i)
             NativeQueuedText(row.getString("id"),row.getString("body"),row.optString("reply").takeUnless{it.isBlank()||it=="null"},row.getString("at"),TextSendStage.Ready)
         }.sortedBy{it.createdAt}
     }
-    @Synchronized fun saveText(user:String,thread:String,p:NativeQueuedText){
+    fun saveText(user:String,thread:String,p:NativeQueuedText) = synchronized(textLock){
         val rows=loadTexts(user,thread)
-        if(rows.any{it.id==p.id})return
+        if(rows.any{it.id==p.id})return@synchronized
         require(rows.size<100){"Too many pending messages."}
         writeTexts(user,thread,rows+p)
     }
-    @Synchronized fun removeText(user:String,thread:String,id:String){
+    fun removeText(user:String,thread:String,id:String) = synchronized(textLock){
         writeTexts(user,thread,loadTexts(user,thread).filterNot{it.id==id})
     }
     private fun writeTexts(user:String,thread:String,rows:List<NativeQueuedText>){

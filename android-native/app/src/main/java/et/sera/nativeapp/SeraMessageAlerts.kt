@@ -45,6 +45,7 @@ internal object SeraMessageAlerts {
     @Synchronized private fun isVisible(owner:String,thread:String)=visible==(owner to thread)
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
     @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")}.forEach{editor.remove(it)};editor.apply()}
+    fun clearThreadAlert(context:Context,owner:String,thread:String){manager(context).cancel(tag(owner,thread),1);prefs(context).edit().remove("count:$owner:$thread").apply()}
     @Synchronized fun receive(context:Context,data:Map<String,String>){
         val owner=data["recipient_id"]?:return
         val thread=data["conversation_id"]?:return
@@ -76,11 +77,12 @@ internal object SeraMessageAlerts {
         val title=if(kind=="company_message")"New company message" else "New SERA message"
         val body=if(count==1)"You have a new private message." else "$count new private messages"
         val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("SERA.et").setContentText("New private activity").build()
-        val n=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
+        val builder=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
             .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public)
             .setNumber(count).setOnlyAlertOnce(true).setAutoCancel(true).setContentIntent(pi)
-            .addAction(android.R.drawable.ic_menu_view,"Open conversation",pi).build()
-        manager(context).notify(notificationTag,1,n)
+            .addAction(android.R.drawable.ic_menu_view,"Open conversation",pi)
+        if(kind=="message")SeraNotificationActions.addActions(context,builder,owner,thread,id)
+        manager(context).notify(notificationTag,1,builder.build())
     }
 }

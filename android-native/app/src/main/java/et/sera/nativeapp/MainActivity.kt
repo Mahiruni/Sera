@@ -339,7 +339,9 @@ fun SeraApp(
     val pushPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()){ granted -> if(granted) accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}} }
     LaunchedEffect(accessToken,authenticatedUserId){
         val token=accessToken?:return@LaunchedEffect
-        if(authenticatedUserId.isBlank()||!SeraPush.initialize(context))return@LaunchedEffect
+        if(authenticatedUserId.isBlank())return@LaunchedEffect
+        session.saveActionAccess(authenticatedUserId,token)
+        if(!SeraPush.initialize(context))return@LaunchedEffect
         if(android.os.Build.VERSION.SDK_INT>=33 && androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
             val prefs=context.getSharedPreferences("sera_push_permission",Context.MODE_PRIVATE)
             if(!prefs.getBoolean("asked",false)){prefs.edit().putBoolean("asked",true).apply();pushPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)}
@@ -746,7 +748,7 @@ private fun authenticate(grantType: String, credential: String, email: String = 
 }
 
 
-private class SessionStore(context: Context) {
+internal class SessionStore(context: Context) {
     private val prefs = EncryptedSharedPreferences.create(
         context,
         "sera_native_session",
@@ -755,6 +757,10 @@ private class SessionStore(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
     fun readRefreshToken(): String? = prefs.getString("refresh_token", null)
+    // Notification actions use only the current short-lived access token.
+    // Never rotate the refresh token from a background receiver.
+    fun saveActionAccess(owner:String,token:String){prefs.edit().putString("action_owner",owner).putString("action_access",token).apply()}
+    fun actionAccess(owner:String):String?=if(prefs.getString("action_owner",null)==owner)prefs.getString("action_access",null)else null
     fun saveRefreshToken(value: String) { prefs.edit().putString("refresh_token", value).apply() }
     fun clear() { prefs.edit().clear().apply() }
 }
