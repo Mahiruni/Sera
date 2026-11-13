@@ -1,0 +1,72 @@
+name: SERA Native Relay Recovery QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sera-native-relay-qa.yml'
+      - 'android-native/app/src/calling/java/et/sera/nativeapp/SeraNativeRtc.kt'
+      - 'android-native/app/src/callingPlatformSmoke/**'
+      - 'android-native/scripts/verify_native_relay_recovery.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sera-native-relay-qa
+  cancel-in-progress: true
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build native test APKs without production credentials
+        working-directory: android-native
+        run: gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=2 -PSERA_NATIVE_RELAY_QA=true -PSERA_ENABLE_LIVE_CALLING=true
+      - name: Start disposable authenticated TURN server
+        shell: bash
+        run: |
+          set -euo pipefail
+          username=sera-ci
+          credential="$(openssl rand -hex 24)"
+          echo "::add-mask::$credential"
+          echo "SERA_TEST_TURN_USERNAME=$username" >> "$GITHUB_ENV"
+          echo "SERA_TEST_TURN_CREDENTIAL=$credential" >> "$GITHUB_ENV"
+          relay_ip="$(ip route get 1.1.1.1 | sed -n 's/.* src \([^ ]*\).*/\1/p' | head -n1)"
+          test -n "$relay_ip"
+          docker run -d --name sera-native-test-turn --network host coturn/coturn:4.6.3 \
+            -n --listening-ip=127.0.0.1 --relay-ip="$relay_ip" --listening-port=3478 \
+            --min-port=49160 --max-port=49200 --realm=sera-native-ci.invalid \
+            --lt-cred-mech --user="$username:$credential" --allow-loopback-peers --no-tls --no-dtls --no-cli
+          sleep 3
+          docker inspect -f '{{.State.Running}}' sera-native-test-turn | grep true
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node_to_create=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify native relay connection and ICE restart
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: bash android-native/scripts/verify_native_relay_recovery.sh
+      - name: Retain native relay diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sera-native-relay-diagnostics
+          path: ${{ runner.temp }}/sera-native-relay-logcat.txt
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop disposable relay
+        if: always()
+        run: docker rm -f sera-native-test-turn || true
