@@ -43,7 +43,7 @@ internal class SeraChatPlayback(private val context:Context){
         val request=AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).setAudioAttributes(attributes).setOnAudioFocusChangeListener{if(it<0)pause()}.build()
         if(manager.requestAudioFocus(request)!=AudioManager.AUDIOFOCUS_REQUEST_GRANTED)return false
         focus=request
-        return runCatching{p.start();p.playbackParams=p.playbackParams.setSpeed(speed);playing=true;true}.getOrElse{abandon();false}
+        return runCatching{p.start();runCatching{p.playbackParams=p.playbackParams.setSpeed(speed)};playing=true;true}.getOrElse{abandon();false}
     }
     fun pause(){runCatching{player?.pause()};playing=false;abandon()}
     fun stop(){generation++;runCatching{player?.release()};player=null;temporary?.delete();temporary=null;abandon();activeId=null;playing=false;loading=false;position=0;duration=0}
