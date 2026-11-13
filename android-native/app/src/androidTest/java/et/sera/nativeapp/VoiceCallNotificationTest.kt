@@ -17,6 +17,14 @@ class VoiceCallNotificationTest {
         assertEquals(0L,callRingWindowMillis("not a date",now))
         assertEquals(0L,callRingWindowMillis(null,now))
     }
+    @Test fun notificationAnswerGrantIsOneUseAndAccountBound(){
+        SeraNotificationAnswer.issue(id,recipient)
+        assertFalse(SeraNotificationAnswer.take(id,"00000000-0000-4000-8000-000000000001"))
+        assertFalse(SeraNotificationAnswer.take(id,recipient))
+        SeraNotificationAnswer.issue(id,recipient)
+        assertTrue(SeraNotificationAnswer.take(id,recipient))
+        assertFalse(SeraNotificationAnswer.take(id,recipient))
+    }
     @Test fun incomingCallNotificationHasPrivateBoundedRingAndSilence(){
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val notification=SeraPush.buildCallNotification(context,id,recipient,21000L)
