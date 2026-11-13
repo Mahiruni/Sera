@@ -284,13 +284,13 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,over
             if(!keyboardVisible)dragFraction=seraMessagingDragFraction(dragFraction,delta,availablePx)
         }
         Surface(
-            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(animatedFraction).then(if(overlayOnPage)Modifier.semantics{contentDescription="Messages sheet"} else Modifier),
+            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(if(keyboardVisible)1f else animatedFraction).then(if(overlayOnPage)Modifier.semantics{contentDescription="Messages sheet"} else Modifier),
             shape=RoundedCornerShape(topStart=if(keyboardVisible)0.dp else 28.dp,topEnd=if(keyboardVisible)0.dp else 28.dp),
             color=palette.canvas,
             tonalElevation=0.dp,
             shadowElevation=if(keyboardVisible)0.dp else 5.dp
         ){
-            Column(Modifier.fillMaxSize().navigationBarsPadding()){
+            Column(Modifier.fillMaxSize().then(if(keyboardVisible)Modifier else Modifier.navigationBarsPadding())){
                 if(!keyboardVisible)Box(
                     Modifier.fillMaxWidth().height(44.dp)
                         .semantics{contentDescription="Resize messages";stateDescription=when{restingFraction<.8f->"Compact";restingFraction<.95f->"Default";else->"Expanded"}}
