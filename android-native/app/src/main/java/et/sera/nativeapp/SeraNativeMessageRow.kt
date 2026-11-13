@@ -91,6 +91,8 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                     val swipeOffset by animateFloatAsState(swipe,animationSpec=tween(if(swipe==0f)150 else 0),label="Reply gesture")
                     var armed by remember(message.id){mutableStateOf(false)}
                     val latestReply by rememberUpdatedState(onReply)
+                    var info by remember(message.id){mutableStateOf(false)}
+                    if(info)SeraMessageInfo(message,own,onDismiss={info=false})
                     val actions: @Composable () -> Unit = {
                         if(!message.unsent) Box {
                             DropdownMenu(expanded=menuOpen,onDismissRequest={onMenu(false)}) {
@@ -98,6 +100,7 @@ internal fun SeraNativeMessageRow(message:NativeMessage,originalMessage:NativeMe
                                 DropdownMenuItem(text={Text("React")},onClick={onReact();onMenu(false)})
                                 DropdownMenuItem(text={Text("Forward")},onClick={onForward();onMenu(false)})
                                 if(message.body.isNotBlank())DropdownMenuItem(text={Text("Copy text")},onClick={onCopy();onMenu(false)})
+                                if(own)DropdownMenuItem(text={Text("Message info")},onClick={info=true;onMenu(false)})
                                 if(own)DropdownMenuItem(text={Text("Unsend")},onClick={onUnsend();onMenu(false)})
                             }
                         }

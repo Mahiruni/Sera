@@ -306,6 +306,8 @@ private class InboxThreadState {
     var textQueue by mutableStateOf<List<NativeQueuedText>>(emptyList())
     var textAcknowledged by mutableStateOf<List<NativeMessage>>(emptyList())
     var textLoaded by mutableStateOf(false)
+    var unreadBoundary by mutableStateOf<String?>(null)
+    var initialMessagesLoaded by mutableStateOf(false)
 }
 
 private class InboxController(
@@ -443,12 +445,18 @@ private class InboxController(
     fun PresenceAndScroll() {
         LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
-        LaunchedEffect(selected?.id, tail) {
+        LaunchedEffect(selected?.id, tail,thread.initialMessagesLoaded) {
             val id = selected?.id ?: return@LaunchedEffect
             val last = tail ?: return@LaunchedEffect
+            if(!thread.initialMessagesLoaded)return@LaunchedEffect
             val changedConversation = lastVisibleConversation != id
-            val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
-            if (changedConversation || (last != lastMessageId && (nearBottom || thread.textQueue.isNotEmpty()))) { withFrameNanos{}; val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
+            val layout=messageListState.layoutInfo
+            val nearBottom=layout.visibleItemsInfo.lastOrNull()?.index?.let{it>=layout.totalItemsCount-3}?:true
+            if(changedConversation||last!=lastMessageId&&(nearBottom||thread.textQueue.isNotEmpty())){
+                withFrameNanos{}
+                val count=messageListState.layoutInfo.totalItemsCount
+                if(count>0){val target=if(changedConversation)unreadTimelineIndex(messages,callEvents,thread.unreadBoundary,historyLimit) else null;messageListState.scrollToItem((target?:count-1).coerceIn(0,count-1))}
+            }
             lastVisibleConversation = id
             lastMessageId = last
         }
@@ -572,7 +580,8 @@ private class InboxController(
                 SeraRealtime(token, conversation.id).run {
                     val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
                     result.first?.let { latest ->
-                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId)chime()
+                        if(!thread.initialMessagesLoaded){thread.unreadBoundary=latest.firstOrNull{isUnreadIncoming(it,userId)}?.id;thread.initialMessagesLoaded=true}
+                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId){if(SeraMessageAlerts.enabled(context,userId)&&SeraMessageAlerts.mutedUntil(context,userId,conversation.id)<=System.currentTimeMillis())chime();SeraUnreadRefresh.changed()}
                         messages = latest
                     thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}
                         val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
@@ -664,7 +673,7 @@ private class InboxController(
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)})
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary)
                 key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
             }
         }

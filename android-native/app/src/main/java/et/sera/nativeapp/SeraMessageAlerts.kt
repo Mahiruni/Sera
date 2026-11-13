@@ -30,7 +30,7 @@ internal object SeraMessageAlerts {
     fun mute(context:Context,owner:String,thread:String,until:Long){prefs(context).edit().putLong("mute:$owner:$thread",until).apply();if(until>System.currentTimeMillis()){manager(context).cancel(tag(owner,thread),1);if(banner?.thread==thread)dismissBanner()}}
     private fun showBanner(context:Context,event:SeraMessageBannerEvent){
         android.os.Handler(android.os.Looper.getMainLooper()).post{
-            if(foreground&&SeraPush.owner(context)==event.owner&&enabled(context,event.owner)&&mutedUntil(context,event.owner,event.thread)<=System.currentTimeMillis()){
+            if(foreground&&SeraPush.owner(context)==event.owner&&enabled(context,event.owner)&&mutedUntil(context,event.owner,event.thread)<=System.currentTimeMillis()&&(event.kind!="message"||!isVisible(event.owner,event.thread))){
                 banner=event
             }
         }
@@ -42,8 +42,9 @@ internal object SeraMessageAlerts {
         visible=thread?.let{owner to it}
         if(thread!=null){manager(context).cancel(tag(owner,thread),1);prefs(context).edit().remove("count:$owner:$thread").apply()}
     }
+    @Synchronized private fun isVisible(owner:String,thread:String)=visible==(owner to thread)
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
-    @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();prefs(context).edit().clear().apply()}
+    @Synchronized fun clearAccount(context:Context){visible=null;dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")}.forEach{editor.remove(it)};editor.apply()}
     @Synchronized fun receive(context:Context,data:Map<String,String>){
         val owner=data["recipient_id"]?:return
         val thread=data["conversation_id"]?:return

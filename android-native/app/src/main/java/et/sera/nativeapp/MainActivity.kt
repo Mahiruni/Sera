@@ -343,7 +343,8 @@ fun SeraApp(
         if(android.os.Build.VERSION.SDK_INT>=33 && androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
             val prefs=context.getSharedPreferences("sera_push_permission",Context.MODE_PRIVATE)
             if(!prefs.getBoolean("asked",false)){prefs.edit().putBoolean("asked",true).apply();pushPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)}
-        }else SeraPush.register(context,token,authenticatedUserId)
+        }
+        SeraPush.register(context,token,authenticatedUserId)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
     var openCompanyInbox by remember { mutableStateOf(false) }

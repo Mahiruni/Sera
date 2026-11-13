@@ -41,7 +41,7 @@ internal class SeraRealtime(private val token: String, private val conversationI
                         val data = runCatching { JSONObject(text) }.getOrNull() ?: return
                         when(data.optString("event")) {
                             "postgres_changes", "phx_reply" -> signals.trySend(Unit)
-                            "phx_error", "phx_close" -> { webSocket.cancel(); signals.trySend(Unit) }
+                            "phx_error", "phx_close" -> { disconnected.set(true); webSocket.cancel(); signals.trySend(Unit) }
                         }
                     }
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { disconnected.set(true); signals.trySend(Unit) }

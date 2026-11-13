@@ -56,7 +56,7 @@ internal object SeraPush {
     fun clearLocal(context:Context){SeraMessageAlerts.clearAccount(context);registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
     suspend fun register(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         if(!initialize(context)||userId.isBlank())return@withContext
-        if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return@withContext
+        // Data messages can refresh the foreground inbox even without OS notification permission.
         val generation=registrationGeneration.get()
         val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token,15,TimeUnit.SECONDS)}.getOrNull()?:return@withContext
         if(generation!=registrationGeneration.get())return@withContext
