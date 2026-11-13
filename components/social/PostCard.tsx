@@ -32,6 +32,7 @@ export function PostCard({
       <header className="social-post-header">
         <Link
           className="social-avatar"
+          prefetch={false}
           href={"/members/" + post.author_id}
           aria-label={`View ${post.author.full_name}'s professional profile`}
         >
@@ -42,9 +43,9 @@ export function PostCard({
           />
         </Link>
         <div>
-          <Link href={"/members/" + post.author_id} className="social-author">
+          <Link prefetch={false} href={"/members/" + post.author_id} className="social-author">
             {post.author.full_name}{post.identityVerified&&<IdentityBadge/>}
-          </Link>{post.repost_of&&<span className="sera-repost-byline"> | Reposted from {post.original?<Link href={"/members/"+post.original.author_id}>{post.original.name}</Link>:"original author"}</span>}
+          </Link>{post.repost_of&&<span className="sera-repost-byline"> | Reposted from {post.original?<Link prefetch={false} href={"/members/"+post.original.author_id}>{post.original.name}</Link>:"original author"}</span>}
           {post.author.headline&&<p className="sera-author-occupation">{post.author.headline}</p>}
           <small>
             <time dateTime={post.created_at}>
@@ -60,10 +61,10 @@ export function PostCard({
         </div>
         <PostOptions post={post} userId={currentUserId} detail={detail}/>
       </header>
-      {post.repost_of&&<>{post.repost_note&&<ExpandableCaption text={post.repost_note}/>}<div className="sera-original-byline">{post.original?<><MemberAvatar name={post.original.name} photo={post.original.photo} size={30}/><div><Link href={"/posts/"+post.original.id}>{post.original.name}</Link><small>Original · {new Date(post.original.published_at).toLocaleString("en-GB",{timeZone:"Africa/Addis_Ababa",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div></>:<span>Original post unavailable</span>}</div></>}
+      {post.repost_of&&<>{post.repost_note&&<ExpandableCaption text={post.repost_note}/>}<div className="sera-original-byline">{post.original?<><MemberAvatar name={post.original.name} photo={post.original.photo} size={30}/><div><Link prefetch={false} href={"/posts/"+post.original.id}>{post.original.name}</Link><small>Original · {new Date(post.original.published_at).toLocaleString("en-GB",{timeZone:"Africa/Addis_Ababa",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div></>:<span>Original post unavailable</span>}</div></>}
       {showTitle && (
         <h2>
-          <Link href={"/posts/" + post.id}>{title}</Link>
+          <Link prefetch={false} href={"/posts/" + post.id}>{title}</Link>
         </h2>
       )}
       {post.kind === "quote" ? (
