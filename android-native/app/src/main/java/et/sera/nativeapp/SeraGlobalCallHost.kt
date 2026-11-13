@@ -9,6 +9,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import org.json.JSONObject
+import org.json.JSONArray
 
 internal data class SeraCallTarget(val conversation:String,val name:String,val photo:String?)
 internal class SeraGlobalCallState {
@@ -30,6 +38,17 @@ internal class SeraGlobalCallState {
         private set
     fun queueAnswer(id:String){pendingAnswerId=id}
     fun consumeAnswer(id:String):Boolean{if(pendingAnswerId!=id)return false;pendingAnswerId=null;return true}
+    var pendingIncomingId by mutableStateOf<String?>(null)
+        private set
+    var pendingIncomingDeadline by mutableLongStateOf(0L)
+        private set
+    fun discover(value:SeraCallTarget,id:String,expiresAt:Long){
+        if(pinned||target?.conversation==value.conversation||expiresAt<=System.currentTimeMillis())return
+        target=value;eligible=false;pinned=true;pendingIncomingId=id;pendingIncomingDeadline=expiresAt
+    }
+    fun completeDiscovery(id:String?){
+        if(id!=null&&pendingIncomingId==id){pendingIncomingId=null;pendingIncomingDeadline=0L}
+    }
     private var pendingStart=false
     private var historySink:((List<SeraCallEvent>)->Unit)?=null
     private var audioStart:(()->Unit)?=null
@@ -38,7 +57,7 @@ internal class SeraGlobalCallState {
         if(!pinned){
             if(target?.conversation!=value.conversation)eligible=false
             target=value
-        }
+        }else if(target?.conversation==value.conversation){target=value}
     }
     fun unselect(conversation:String){
         if(selected?.conversation!=conversation)return
@@ -47,7 +66,7 @@ internal class SeraGlobalCallState {
     }
     fun report(conversation:String,keep:Boolean,enabled:Boolean){
         if(target?.conversation!=conversation)return
-        pinned=keep||pendingStart;eligible=enabled
+        pinned=keep||pendingStart||pendingIncomingId!=null;eligible=enabled
         if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false}
     }
     fun start(conversation:String){
@@ -63,6 +82,39 @@ internal class SeraGlobalCallState {
 internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{null}
 
 @Composable internal fun SeraGlobalVoiceHost(state:SeraGlobalCallState,token:String,userId:String){
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,userId,lifecycle,state){
+        if(token.isBlank()||userId.isBlank())return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){
+            while(true){
+                if(!state.pinned){
+                    try{
+                        val result=withContext(Dispatchers.IO){
+                            val raw=chatRpc(token,"sera_call_pending_incoming",JSONObject()).first
+                            val j=raw?.takeUnless{it=="null"}?.let{JSONObject(it)}
+                            if(j==null)null else {
+                                val id=j.optString("id");val conversation=j.optString("conversation_id");val caller=j.optString("caller")
+                                val expires=runCatching{java.time.Instant.parse(j.optString("expires_at")).toEpochMilli()}.getOrDefault(0L)
+                                if(!SeraMessageAlerts.validId(id)||!SeraMessageAlerts.validId(conversation)||!SeraMessageAlerts.validId(caller)||expires<=System.currentTimeMillis())null
+                                else {
+                                    val cards=runCatching{chatRpc(token,"member_cards",JSONObject().put("ids",JSONArray().put(caller))).first?.let{JSONArray(it)}}.getOrNull()
+                                    val name=cards?.optJSONObject(0)?.optString("full_name")?.takeIf{it.isNotBlank()}?:"Sera member"
+                                    Triple(SeraCallTarget(conversation,name,null),id,expires)
+                                }
+                            }
+                        }
+                        if(result!=null)state.discover(result.first,result.second,result.third)
+                    }catch(e:CancellationException){throw e}catch(_:Exception){/* FCM and per-thread polling remain available. */}
+                }
+                delay(8000)
+            }
+        }
+    }
+    LaunchedEffect(state.pendingIncomingId,state.pendingIncomingDeadline){
+        val id=state.pendingIncomingId?:return@LaunchedEffect
+        delay((state.pendingIncomingDeadline-System.currentTimeMillis()).coerceAtLeast(0L))
+        state.completeDiscovery(id)
+    }
     val target=state.target ?: return
     val c=MaterialTheme.colorScheme
     key(userId,target.conversation){
