@@ -146,12 +146,14 @@ internal object SeraPush {
         val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val decline=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallDeclineReceiver::class.java).apply{action="et.sera.nativeapp.DECLINE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText("Incoming call").build()
         return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
             .addAction(android.R.drawable.sym_call_incoming,"Open call",pi)
+            .addAction(android.R.drawable.sym_call_missed,"Decline",decline)
             .addAction(android.R.drawable.ic_lock_silent_mode,"Silence",silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
     }
     fun dispatch(access:String,kind:String,id:String){
@@ -165,6 +167,36 @@ internal object SeraPush {
 }
 class SeraCallSilenceReceiver:android.content.BroadcastReceiver(){
     override fun onReceive(context:Context,intent:Intent){if(intent.action=="et.sera.nativeapp.SILENCE_CALL")SeraPush.silenceCall(context,intent.getStringExtra("call_id")?:return,intent.getStringExtra("recipient_id")?:return)}
+}
+/** Explicit decline action: validate account, call membership and server state before transition. */
+class SeraCallDeclineReceiver:android.content.BroadcastReceiver(){
+    override fun onReceive(context:Context,intent:Intent){
+        if(intent.action!="et.sera.nativeapp.DECLINE_CALL")return
+        val id=intent.getStringExtra("call_id")?:return
+        val recipient=intent.getStringExtra("recipient_id")?:return
+        if(!id.matches(Regex("[0-9a-fA-F-]{36}"))||SeraPush.owner(context)!=recipient)return
+        val pending=goAsync()
+        val app=context.applicationContext
+        // Silence locally immediately; the authoritative decline is still subject to server authorization.
+        SeraPush.silenceCall(app,id,recipient)
+        Thread{
+            try{
+                val token=SessionStore(app).actionAccess(recipient)?:return@Thread
+                if(SeraPush.owner(app)!=recipient)return@Thread
+                val raw=chatRpc(token,"sera_call_incoming",JSONObject().put("p_id",id)).first?:return@Thread
+                if(raw=="null")return@Thread
+                val call=JSONObject(raw)
+                if(call.optString("callee")!=recipient||call.optString("state")!="ringing")return@Thread
+                val conversation=call.optString("conversation_id")
+                if(!conversation.matches(Regex("[0-9a-fA-F-]{36}")))return@Thread
+                val result=chatRpc(token,"sera_call_transition",JSONObject().put("p_conversation",conversation).put("p_id",id).put("p_action","decline")).first
+                if(!result.isNullOrBlank()&&result!="null"){
+                    SeraPush.dismissCallAlert(app,mapOf("call_id" to id,"recipient_id" to recipient))
+                    SeraPush.dispatch(token,"voice_call_dismiss",id)
+                }
+            }catch(_:Exception){}finally{pending.finish()}
+        }.start()
+    }
 }
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
