@@ -1,0 +1,12 @@
+import Link from "next/link";
+import {requiredProfile} from "@/lib/auth/profile";
+import {serverClient} from "@/lib/supabase/server";
+import {saveMessagingPreferences} from "@/lib/network/message-control-actions";
+import {clockValue,defaultMessagePreferences} from "@/lib/network/message-control-model";
+export const metadata={title:"Messaging control center | SERA.et",robots:{index:false,follow:false}};
+export default async function MessagingSettings(){
+ const {user}=await requiredProfile("/settings/messaging");const db=await serverClient();
+ const {data,error}=await db.from("sera_message_preferences").select("notifications_enabled,quiet_enabled,quiet_start,quiet_end,quiet_timezone").eq("user_id",user.id).maybeSingle();
+ const p=data??defaultMessagePreferences;
+ return <main className="container page account-foundation"><Link href="/settings">Back to settings</Link><h1>Messaging control center</h1><section className="account-security panel"><h2>Notifications</h2><p>These settings apply to new message push alerts on all your devices. Messages continue arriving in your inbox.</p>{error?<p role="alert">Preferences unavailable. Try again.</p>:<form action={saveMessagingPreferences} className="sera-visibility-form"><label><input type="checkbox" name="enabled" defaultChecked={p.notifications_enabled}/> Message notifications</label><label><input type="checkbox" name="quiet" defaultChecked={p.quiet_enabled}/> Quiet hours</label><label>Start<input type="time" name="start" required defaultValue={clockValue(p.quiet_start)}/></label><label>End<input type="time" name="end" required defaultValue={clockValue(p.quiet_end)}/></label><label>Time zone (IANA)<input name="zone" required maxLength={80} defaultValue={p.quiet_timezone}/></label><p>Overnight hours are supported. Quiet hours suppress alerts, not messages.</p><button className="button" type="submit">Save preferences</button></form>}</section><section className="account-security panel"><h2>Conversation organization</h2><p>Pin, archive, mute or mark a conversation unread for personal follow-up from its settings menu. Your existing read receipts are unchanged.</p><Link href="/network/messages" className="button secondary">Open messages</Link></section></main>
+}
