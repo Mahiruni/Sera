@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+val pilotArm64 = providers.gradleProperty("SERA_PILOT_ARM64").map { it.toBooleanStrict() }.orElse(false).get()
 val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
     .map { it.toBooleanStrict() }.orElse(false).get()
 
@@ -13,6 +14,7 @@ android {
     defaultConfig {
         applicationId = "et.sera.nativeapp"
         buildConfigField("boolean", "LIVE_CALLING_INCLUDED", includeLiveCalling.toString())
+        if (pilotArm64) { require(includeLiveCalling); ndk { abiFilters += "arm64-v8a" } }
         minSdk = 26
         targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -57,6 +59,7 @@ android {
             }
         }
     }
+    if (pilotArm64) packaging { jniLibs { useLegacyPackaging = true } }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

@@ -181,7 +181,7 @@ fun SeraApp(
         lastUpdateCheckElapsed = SystemClock.elapsedRealtime()
         installScope.launch {
             try {
-                val result = checkSeraUpdateResult()
+                val result = checkSeraUpdateResult(accessToken)
                 updateChecked = true
                 updateCheckSuccessful = result.successful
                 val release = result.release
@@ -216,6 +216,14 @@ fun SeraApp(
             activeDownloadId = pending.id
         } else startUpdateCheck()
         updateInitialized = true
+    }
+
+    // The first startup check may run before the restored sign-in is ready.
+    // Recheck once per authenticated session so eligible devices receive the pilot in-app.
+    LaunchedEffect(accessToken,updateInitialized) {
+        if(!updateInitialized||accessToken==null)return@LaunchedEffect
+        while(checkingUpdate) delay(100)
+        if(activeDownloadId==null)startUpdateCheck()
     }
 
     fun launchVerifiedInstaller() {

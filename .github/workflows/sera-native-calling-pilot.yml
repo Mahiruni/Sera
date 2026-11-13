@@ -14,7 +14,7 @@ jobs:
     needs: visual-regression
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -84,7 +84,7 @@ jobs:
           export SERA_RELEASE_KEYSTORE="$KEYSTORE"
           # Separate lint and packaging JVM lifetimes so R8 never shares a heap
           # with a live lint analysis. Neither quality gate is disabled.
-          args=(--no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=true "-PSERA_VERSION_CODE=$VERSION_CODE" "-PSERA_VERSION_NAME=$VERSION_NAME" "-PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co" "-PSERA_SUPABASE_ANON_KEY=$SERA_SUPABASE_ANON_KEY")
+          args=(--no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=true -PSERA_PILOT_ARM64=true "-PSERA_VERSION_CODE=$VERSION_CODE" "-PSERA_VERSION_NAME=$VERSION_NAME" "-PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co" "-PSERA_SUPABASE_ANON_KEY=$SERA_SUPABASE_ANON_KEY")
           gradle :app:lintVitalRelease "${args[@]}"
           gradle :app:assembleRelease "${args[@]}"
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
@@ -99,7 +99,9 @@ jobs:
           apk=pathlib.Path(sys.argv[1])
           with zipfile.ZipFile(apk) as z:
               rtc=[n for n in z.namelist() if n.startswith("lib/") and any(t in n.lower() for t in ("jingle","webrtc","peerconnection"))]
-              if not rtc: raise SystemExit("RTC native library missing")
+              if len(rtc)!=1 or not rtc[0].startswith("lib/arm64-v8a/"): raise SystemExit(f"Expected one ARM64 RTC library: {rtc}")
+              if any(n.startswith("lib/") and not n.startswith("lib/arm64-v8a/") for n in z.namelist()): raise SystemExit("Unexpected native ABI")
+              if apk.stat().st_size>12*1024**2: raise SystemExit("ARM64 calling APK exceeds 12 MiB budget")
           print(f"Calling pilot APK: {apk.stat().st_size/1024**2:.2f} MiB; {len(rtc)} RTC libraries")
           PY
       - name: Verify update compatibility with previous signed APK
@@ -110,16 +112,16 @@ jobs:
           set -euo pipefail
           old="$(mktemp -d)"
           trap 'rm -rf "$old"' EXIT
-          gh release download android-v1.0.87 --pattern 'SERA-1.0.87.apk' --dir "$old"
+          gh release download android-v1.0.88 --pattern 'SERA-1.0.88.apk' --dir "$old"
           APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           SIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          old_cert="$("$SIGNER" verify --print-certs "$old/SERA-1.0.87.apk" | grep 'certificate SHA-256 digest:' | sort)"
+          old_cert="$("$SIGNER" verify --print-certs "$old/SERA-1.0.88.apk" | grep 'certificate SHA-256 digest:' | sort)"
           new_cert="$("$SIGNER" verify --print-certs "$APK" | grep 'certificate SHA-256 digest:' | sort)"
           [[ -n "$old_cert" && "$old_cert" == "$new_cert" ]] || { echo "::error::APK signing certificate mismatch"; exit 1; }
-          old_package="$("$AAPT" dump badging "$old/SERA-1.0.87.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          old_package="$("$AAPT" dump badging "$old/SERA-1.0.88.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           new_package="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
-          old_code="$("$AAPT" dump badging "$old/SERA-1.0.87.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
+          old_code="$("$AAPT" dump badging "$old/SERA-1.0.88.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
           new_code="$("$AAPT" dump badging "$APK" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
           [[ "$old_package" == "et.sera.nativeapp" && "$new_package" == "$old_package" && "$old_code" =~ ^[0-9]+$ && "$new_code" =~ ^[0-9]+$ ]] || { echo "::error::APK package metadata mismatch"; exit 1; }
           (( new_code > old_code )) || { echo "::error::APK version code must increase"; exit 1; }
@@ -131,6 +133,17 @@ jobs:
           cp "$APK" "pilot-output/SERA-Calling-Pilot-${VERSION_NAME}.apk"
           cd pilot-output
           sha256sum "SERA-Calling-Pilot-${VERSION_NAME}.apk" > "SERA-Calling-Pilot-${VERSION_NAME}.apk.sha256"
+      - name: Publish signed ARM64 early-access release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="android-v${VERSION_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then echo "::error::Version already published"; exit 1; fi
+          cp "pilot-output/SERA-Calling-Pilot-${VERSION_NAME}.apk" "SERA-${VERSION_NAME}.apk"
+          sha256sum "SERA-${VERSION_NAME}.apk" > "SERA-${VERSION_NAME}.apk.sha256"
+          NOTES="$(printf 'Android versionCode: %s\nChannel: sera-calling-arm64\nHighlight: AURA voice calling\nHighlight: Smaller ARM64 download\n' "$VERSION_CODE")"
+          gh release create "$TAG" "SERA-${VERSION_NAME}.apk" "SERA-${VERSION_NAME}.apk.sha256" --target "$GITHUB_SHA" --prerelease --latest=false --title "SERA Calling Early Access ${VERSION_NAME}" --notes "$NOTES"
       - uses: actions/upload-artifact@v4
         with:
           name: SERA-Calling-Pilot-${{ env.VERSION_NAME }}

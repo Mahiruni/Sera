@@ -22,14 +22,22 @@ internal data class SeraRelease(val versionCode: Int, val versionName: String, v
 /** Accept only published APK assets from the official SERA GitHub repository. */
 internal data class SeraUpdateCheck(val release:SeraRelease?=null,val successful:Boolean=false)
 
-internal suspend fun checkSeraUpdateResult(): SeraUpdateCheck = withContext(Dispatchers.IO) {
-    try {
-        val connection = URL("https://sera.hisabtech.com/api/native/updates").openConnection() as HttpURLConnection
+internal suspend fun checkSeraUpdateResult(accessToken:String?=null): SeraUpdateCheck = withContext(Dispatchers.IO) {
+    val eligibleDevice=Build.SUPPORTED_ABIS.contains("arm64-v8a")
+    val pilot=if(eligibleDevice&&!accessToken.isNullOrBlank()) fetchSeraUpdate("https://sera.hisabtech.com/api/native/updates/pilot",accessToken) else SeraUpdateCheck()
+    if(pilot.successful) return@withContext pilot
+    fetchSeraUpdate("https://sera.hisabtech.com/api/native/updates",null)
+}
+
+private fun fetchSeraUpdate(endpoint:String,accessToken:String?): SeraUpdateCheck {
+    return try {
+        val connection = URL(endpoint).openConnection() as HttpURLConnection
+        if(accessToken!=null){connection.setRequestProperty("Authorization","Bearer $accessToken");connection.setRequestProperty("X-Sera-ABI","arm64-v8a")}
         connection.connectTimeout = 8000
         connection.readTimeout = 8000
         connection.instanceFollowRedirects = false
         try {
-            if (connection.responseCode != 200) return@withContext SeraUpdateCheck()
+            if (connection.responseCode != 200) return SeraUpdateCheck()
             val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val code = data.optInt("versionCode", 0)
             val name = data.optString("versionName")
@@ -44,8 +52,8 @@ internal suspend fun checkSeraUpdateResult(): SeraUpdateCheck = withContext(Disp
                 !sha256.matches(Regex("[0-9a-f]{64}")) ||
                 code <= 0 || parsed.protocol != "https" ||
                 parsed.userInfo != null || !(firstParty || officialRelease))
-                return@withContext SeraUpdateCheck()
-            if (code <= BuildConfig.VERSION_CODE) return@withContext SeraUpdateCheck(successful=true)
+                return SeraUpdateCheck()
+            if (code <= BuildConfig.VERSION_CODE) return SeraUpdateCheck(successful=true)
             // Eliminate the extra first-party redirect for new clients.
             // Legacy clients still use the compatible URL served by the API.
             val directDownload = if (firstParty)
