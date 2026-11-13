@@ -52,14 +52,36 @@ function DeliverySync({userId,threads}:{userId:string;threads:ThreadPreview[]}){
   return null;
 }
 export function MessageWorkspace({userId,threads,selected,messages,hasMore,search,loadError,candidates}:{userId:string;threads:ThreadPreview[];selected:ThreadPreview|null;messages:MessageView[];hasMore:boolean;search:string;loadError:string;candidates:Candidate[]}){
+  const workspace=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const el=workspace.current;if(!el)return;
+    const sync=()=>{
+      const vv=window.visualViewport;
+      if(window.matchMedia("(max-width: 700px)").matches&&vv){
+        el.style.setProperty("--sera-chat-vv-height",vv.height+"px");
+        el.style.setProperty("--sera-chat-vv-top",vv.offsetTop+"px");
+        const active=document.activeElement;
+        const editing=active instanceof HTMLElement&&el.contains(active)&&active.matches("textarea,input,[contenteditable=true]");
+        el.dataset.keyboard=String(editing&&vv.scale<1.1&&window.innerHeight-vv.height>100);
+      }else{
+        el.style.removeProperty("--sera-chat-vv-height");
+        el.style.removeProperty("--sera-chat-vv-top");
+        delete el.dataset.keyboard;
+      }
+    };
+    sync();
+    window.visualViewport?.addEventListener("resize",sync);window.visualViewport?.addEventListener("scroll",sync);
+    window.addEventListener("resize",sync);document.addEventListener("focusin",sync);document.addEventListener("focusout",sync);
+    return()=>{window.visualViewport?.removeEventListener("resize",sync);window.visualViewport?.removeEventListener("scroll",sync);window.removeEventListener("resize",sync);document.removeEventListener("focusin",sync);document.removeEventListener("focusout",sync);};
+  },[]);
   const [query,setQuery]=useState("");
   const [filter,setFilter]=useState<"all"|"unread"|"archived">("all");
   const filtered=threads.filter(t=>(filter==="archived"?t.archived:!t.archived&&(filter!=="unread"||t.unread>0||t.markedUnread))&&(t.name.toLowerCase().includes(query.trim().toLowerCase())||(t.lastBody??"").toLowerCase().includes(query.trim().toLowerCase()))).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));
 
-  return <div className={"sera-chat-workspace"+(selected?" has-thread":"")}>
+  return <div ref={workspace} className={"sera-chat-workspace sera-chat-wrapper-90"+(selected?" has-thread":"")}>
     <InboxRefresh/><DeliverySync userId={userId} threads={threads}/>
     <aside className="sera-chat-sidebar" aria-label="Conversations">
-      <div className="sera-chat-inbox-head"><div><h1>Messages</h1></div><details className="sera-chat-new"><summary className="sera-chat-icon" aria-label="New conversation"><Plus size={22}/></summary><div className="sera-chat-new-panel"><h3>New conversation</h3>{candidates.length?candidates.map(c=><form key={c.id} action={openProfessionalConversation}><input type="hidden" name="recipient" value={c.id}/><MemberAvatar name={c.name} photo={c.photo}/><span>{c.name}</span><button type="submit" className="sera-chat-icon" aria-label={"Message "+c.name}><MessageCircle size={19}/></button></form>):<p>Connect with a professional to start a conversation.</p>}<Link href="/connections">Discover connections</Link></div></details></div>
+      <div className="sera-chat-inbox-head"><div className="sera-chat-inbox-title"><Link href="/feed" className="sera-chat-icon sera-chat-inbox-back" aria-label="Back to feed"><ArrowLeft size={23}/></Link><h1>Messages</h1></div><details className="sera-chat-new"><summary className="sera-chat-icon" aria-label="New conversation"><Plus size={22}/></summary><div className="sera-chat-new-panel"><h3>New conversation</h3>{candidates.length?candidates.map(c=><form key={c.id} action={openProfessionalConversation}><input type="hidden" name="recipient" value={c.id}/><MemberAvatar name={c.name} photo={c.photo}/><span>{c.name}</span><button type="submit" className="sera-chat-icon" aria-label={"Message "+c.name}><MessageCircle size={19}/></button></form>):<p>Connect with a professional to start a conversation.</p>}<Link href="/connections">Discover connections</Link></div></details></div>
       <label className="sera-chat-list-search"><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search conversations" aria-label="Search conversations"/></label>
       <div className="sera-chat-filters" role="group" aria-label="Filter conversations">{(["all","unread","archived"] as const).map(f=><button key={f} type="button" aria-pressed={filter===f} onClick={()=>setFilter(f)}>{f==="all"?"All":f==="unread"?"Unread":"Archived"}</button>)}<Link href="/settings/messaging">Settings</Link></div>
       <div className="sera-chat-list">{filtered.map(t=><Link key={t.id} href={"/network/messages?thread="+t.id} className={"sera-chat-list-item"+(selected?.id===t.id?" is-selected":"")+(t.unread>0||t.markedUnread?" is-unread":"")} aria-current={selected?.id===t.id?"page":undefined}>
