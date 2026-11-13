@@ -16,7 +16,7 @@ permissions:
 jobs:
   visual:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -30,13 +30,15 @@ jobs:
         shell: bash
         run: |
           total_gib=$(awk '/MemTotal/ {print int($2/1048576)}' /proc/meminfo)
-          heap=$((total_gib / 2 + 1))
-          if (( heap > 8 )); then heap=8; fi
-          if (( heap < 5 )); then heap=5; fi
+          heap=$((total_gib - 4))
+          if (( heap > 12 )); then heap=12; fi
+          if (( heap < 2 )); then echo '::error::Insufficient build memory'; exit 1; fi
           sed -i "s/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx${heap}g -Dfile.encoding=UTF-8/" android-native/gradle.properties
           echo "CI build memory: ${total_gib} GiB host, ${heap} GiB Gradle heap"
       - name: Compile app and instrumentation APK before starting emulator
         run: gradle -p android-native :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=1
+      - name: Reduce Gradle heap for emulator test execution
+        run: sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8/' android-native/gradle.properties
       - name: Enable emulator hardware acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
