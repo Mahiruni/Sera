@@ -857,6 +857,7 @@ private class InboxController(
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
+                SeraThreadHeaderDivider()
                 val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
                 if(thread.selectedMessages.isNotEmpty()){
                     SeraMultiSelectToolbar(chosen.size,thread.bulkBusy,chosen.all{it.files.isEmpty()},onClose={thread.selectedMessages=emptySet()},onCopy={clipboard.setText(AnnotatedString(chosen.joinToString("\n\n"){it.body}));thread.selectedMessages=emptySet()},onStar={
