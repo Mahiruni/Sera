@@ -4,8 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,9 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val dockBackground = Color(0xDC173438)
-private val dockActive = Color(0xFF8EF3E4)
-private val dockIdle = Color(0xFFD3E0E0)
 
 private fun dockIcon(section: String): ImageVector = when (section) {
     "Search" -> Icons.Outlined.Explore
@@ -44,7 +39,7 @@ private fun dockIcon(section: String): ImageVector = when (section) {
     else -> Icons.Outlined.AccountCircle
 }
 
-/** Full-width bottom dock with five accessible destinations and no floating outer margins. */
+/** Floating, safe-area-aware dock; no full-width background or costly blur. */
 @Composable
 internal fun SeraFloatingDock(
     selected: String,
@@ -54,18 +49,22 @@ internal fun SeraFloatingDock(
     profileAvatarUrl: String? = null,
     inboxCount: Int = 0
 ) {
+    val colors=MaterialTheme.colorScheme
+    val dockActive=colors.primary
+    val dockIdle=colors.onSurfaceVariant
+    val haptics=androidx.compose.ui.platform.LocalHapticFeedback.current
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=12.dp,vertical=8.dp),contentAlignment=Alignment.Center){
     Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(0.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .28f)),
-        shadowElevation = 0.dp,
+        color = colors.surface.copy(alpha=.96f),
+        shape = RoundedCornerShape(32.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        shadowElevation = 5.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.widthIn(max=420.dp).fillMaxWidth()
     ) {
         Row(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xEE315257), dockBackground, Color(0xFF122D32))))
-                .navigationBarsPadding().height(60.dp).padding(horizontal = 8.dp),
+                .height(58.dp).padding(horizontal = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -84,7 +83,7 @@ internal fun SeraFloatingDock(
                             enabled = true,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(bounded = true)
-                        ) { onNavigate(section) }
+                        ) { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigate(section) }
                         .padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -97,7 +96,7 @@ internal fun SeraFloatingDock(
                             modifier = Modifier.size(26.dp).clip(CircleShape)
                         )
                     } else if(section == "Inbox") {
-                        BadgedBox(badge={if(inboxCount>0)Badge(containerColor=dockActive,contentColor=Color(0xFF173438)){Text(if(inboxCount>99)"99+" else inboxCount.toString(),fontSize=10.sp,fontWeight=FontWeight.Bold)}}){
+                        BadgedBox(badge={if(inboxCount>0)Badge(containerColor=dockActive,contentColor=colors.onPrimary){Text(if(inboxCount>99)"99+" else inboxCount.toString(),fontSize=10.sp,fontWeight=FontWeight.Bold)}}){
                             Icon(dockIcon(section),contentDescription=if(inboxCount>0)"Messages, $inboxCount unread" else "Messages",tint=tint,modifier=Modifier.size(24.dp).graphicsLayer{scaleX=scale;scaleY=scale})
                         }
                     } else {
@@ -112,4 +111,5 @@ internal fun SeraFloatingDock(
             }
         }
     }
+}
 }

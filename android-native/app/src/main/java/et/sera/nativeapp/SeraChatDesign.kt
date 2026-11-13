@@ -22,13 +22,13 @@ internal data class SeraChatPalette(
     val button:Color,val onButton:Color,val outgoingBorder:Color
 )
 internal fun seraChatPalette(dark:Boolean)=if(dark) SeraChatPalette(
-    canvas=Color(0xFF111B1E),surface=Color(0xFF192629),incoming=Color(0xFF233337),outgoing=Color(0xFF174D4B),
+    canvas=Color(0xFF0D171A),surface=Color(0xFF152326),incoming=Color(0xFF233337),outgoing=Color(0xFF174D4B),
     ink=Color(0xFFE8F1EF),muted=Color(0xFFA9BDBB),accent=Color(0xFF8AD7CA),border=Color(0xFF364B4E),
     quote=Color(0xFF1B2B2E),selection=Color(0xFF244B48),onOutgoing=Color(0xFFEFFBF8),outgoingMeta=Color(0xFFB7D6CE),
     outgoingLink=Color(0xFFA4F0DC),outgoingQuote=Color(0xFF123F3E),read=Color(0xFF99ECD6),
     button=Color(0xFF83D7CA),onButton=Color(0xFF103633),outgoingBorder=Color(0xFF2F635F)
 ) else SeraChatPalette(
-    canvas=Color(0xFFF4F7F6),surface=Color.White,incoming=Color.White,outgoing=Color(0xFFDFF1ED),
+    canvas=Color(0xFFF6FAF9),surface=Color.White,incoming=Color.White,outgoing=Color(0xFFDFF1ED),
     ink=Color(0xFF20363A),muted=Color(0xFF5B7073),accent=Color(0xFF086E70),border=Color(0xFFDCE7E3),
     quote=Color(0xFFEDF3F1),selection=Color(0xFFD4EAE4),onOutgoing=Color(0xFF16443F),outgoingMeta=Color(0xFF476C64),
     outgoingLink=Color(0xFF095E59),outgoingQuote=Color(0xFFCCE6E1),read=Color(0xFF096A5B),

@@ -19,6 +19,7 @@ import "./sera-interaction-system.css";
 import "./identity-verification.css";
 import "./sera-messaging-excellence.css";
 import "./sera-messaging-surfaces.css";
+import "./sera-visual-system.css";
 export const metadata: Metadata = {
   ...pageMetadata(
     "/",
@@ -43,7 +44,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f5fafb",
+  themeColor: [{media:"(prefers-color-scheme: light)",color:"#F6FAF9"},{media:"(prefers-color-scheme: dark)",color:"#0D171A"}],
 };
 export default async function RootLayout({
   children,

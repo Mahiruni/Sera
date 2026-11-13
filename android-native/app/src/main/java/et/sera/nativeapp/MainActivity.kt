@@ -60,9 +60,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-private val teal = Color(0xFF087E83)
-private val ink = Color(0xFF183B40)
-private val bg = Color(0xFFF5FAFB)
+private val teal = Color(0xFF0D7C86)
+private val ink = Color(0xFF16363A)
+private val bg = Color(0xFFF6FAF9)
 
 class MainActivity : AppCompatActivity() {
     private val callback = mutableStateOf<Uri?>(null)
@@ -470,20 +470,15 @@ fun SeraApp(
             confirmButton = { TextButton(onClick = { showLanguagePicker = false }) { Text(stringResource(R.string.close)) } })
     }
     BackHandler(enabled = accessToken != null && !(tab=="Inbox"&&inboxThreadOpen) && (tab != "Home" || tabHistory.isNotEmpty())) { if(tab=="Inbox")closeInbox() else tab = if (tabHistory.isNotEmpty()) tabHistory.removeAt(tabHistory.lastIndex) else "Home" }
+    val systemDark=androidx.compose.foundation.isSystemInDarkTheme()
+    val appColors=seraColorScheme(systemDark)
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = teal, onPrimary = Color.White,
-            secondary = Color(0xFF126F70),
-            background = bg, surface = Color.White,
-            onSurface = ink, onSurfaceVariant = Color(0xFF607B7D),
-            surfaceVariant = Color(0xFFF0F7F6),
-            outline = Color(0xFFC6DCDA)
-        ),
+        colorScheme = appColors,
         typography = SeraTypography,
         shapes = SeraShapes
     ) {
         SeraLinkNavigation(accessToken,authenticatedUserId,onSection={section->navigateTo(when(section){"feed"->"Home";"jobs"->"Jobs";"discover"->"Search";"connections"->"Network";"settings"->"Settings";"workspace"->"Workspace";"notifications"->"Notifications";"saved"->"Saved";"messages"->"Inbox";else->"Profile"})}){
-        Surface(modifier = Modifier.fillMaxSize(), color = bg) {
+        Surface(modifier = Modifier.fillMaxSize(), color = appColors.background) {
             Box(Modifier.fillMaxSize()) {
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
@@ -534,7 +529,7 @@ fun SeraApp(
                     val chromeVisible = remember(baseTab) { mutableStateOf(true) }
                     SideEffect {
                         (context as? android.app.Activity)?.let { activity ->
-                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply{isAppearanceLightStatusBars=if(standaloneThread)!darkSystem else true;isAppearanceLightNavigationBars=if(standaloneThread)!darkSystem else expanded || !chromeVisible.value || keyboardOpen}
+                            WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply{isAppearanceLightStatusBars=!darkSystem;isAppearanceLightNavigationBars=!darkSystem}
                         }
                     }
                     // Listen to the actual nested scroll consumption of the active page.
@@ -620,7 +615,7 @@ fun SeraApp(
                                     .nestedScroll(scrollObserver)
                             ) {
                                 val pageModifier = Modifier.fillMaxSize()
-                                    .padding(top = 60.dp, bottom = bottomInset + if (expanded) 0.dp else 60.dp)
+                                    .padding(top = 60.dp, bottom = bottomInset + if (expanded) 0.dp else 76.dp)
                                 Crossfade(
                                     targetState = baseTab,
                                     animationSpec = spring(

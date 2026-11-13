@@ -1,0 +1,5 @@
+# Sera Visual System 2.0
+
+The shared Compose color scheme and final web theme stylesheet define light and dark surfaces, text, brand accent and selected containers. Native home chrome now uses a curved, inset light/dark dock, safe-area margins, haptic selection and a low-cost translucent surface rather than real-time native blur. The header has a hairline divider and no heavy elevation. Feed tabs and composer use teal containers, not Material's default lavender. The existing scroll-hide, accessibility, authentication, messaging and update flows remain intact. Mobile signed-in web routes have a matching dock; desktop and dedicated message threads retain their existing navigation.
+
+The native theme follows system dark mode; web follows the existing theme setting. This is the shared foundation and main chrome/feed pass, not a claim that every legacy hardcoded screen has been individually audited. Before release, verify both themes on small screens, keyboard and safe areas, capture actual screenshots, and run signed upgrade tests. Keep the unified public APK workflow; no separate calling channel.

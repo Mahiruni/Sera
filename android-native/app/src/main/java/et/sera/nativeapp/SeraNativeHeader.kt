@@ -24,12 +24,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val headerTeal=Color(0xFF087E83)
+
 @Composable internal fun SeraAccountAvatar(name:String,url:String?,size:Int=36){
     val initials=name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()}.ifBlank{"S"}
-    Box(Modifier.size(size.dp).clip(CircleShape).background(Color(0xFFE0F4F1)),contentAlignment=Alignment.Center){
+    Box(Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),contentAlignment=Alignment.Center){
         if(!url.isNullOrBlank())SeraMediaImage(url,"Profile photo",128,128,Modifier.fillMaxSize())
-        else Text(initials,fontSize=(size*.39f).sp,fontWeight=FontWeight.Bold,color=headerTeal)
+        else Text(initials,fontSize=(size*.39f).sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }
 @Composable internal fun SeraNativeHeader(
@@ -40,8 +40,11 @@ private val headerTeal=Color(0xFF087E83)
 ){
     var profileOpen by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
-    val ink=MaterialTheme.colorScheme.onSurface
-    Surface(color=MaterialTheme.colorScheme.surface,shadowElevation=1.dp){
+    val colors=MaterialTheme.colorScheme
+    val ink=colors.onSurface
+    val headerTeal=colors.primary
+    Surface(color=colors.surface.copy(alpha=.96f),shadowElevation=0.dp,tonalElevation=0.dp){
+        Column {
         Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onMenu,modifier=Modifier.size(48.dp).semantics{contentDescription="Open navigation menu"}){
                 Canvas(Modifier.size(23.dp)){val w=size.width;val h=size.height;for(i in 0..2)drawLine(headerTeal,Offset(w*.12f,h*(.24f+i*.26f)),Offset(w*(if(i==1).68f else .9f),h*(.24f+i*.26f)),strokeWidth=2.dp.toPx(),cap=StrokeCap.Round)}
@@ -69,7 +72,9 @@ private val headerTeal=Color(0xFF087E83)
                 }
             }
         }
+        HorizontalDivider(thickness=.5.dp,color=colors.outlineVariant.copy(alpha=.7f))
+        }
     }
     if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your professional account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
 }
-@Composable private fun SeraUnreadBadge(count:Int){if(count>0)Badge(containerColor=SeraPurple,contentColor=Color.White){Text(if(count>99)"99+" else count.toString(),fontSize=10.sp,fontWeight=FontWeight.SemiBold)}}
+@Composable private fun SeraUnreadBadge(count:Int){if(count>0)Badge(containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary){Text(if(count>99)"99+" else count.toString(),fontSize=10.sp,fontWeight=FontWeight.SemiBold)}}

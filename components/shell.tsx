@@ -316,6 +316,7 @@ export function Shell({
         <TranslationNotice />
         {children}
       </main>
+      {verified&&privateWorkspace&&!pathname.startsWith("/network/messages")&&!pathname.startsWith("/messages")&&<nav className="sera-mobile-dock" aria-label="Main navigation">{[{href:"/feed",label:"Home",Icon:Home},{href:"/connections",label:"Network",Icon:UsersRound},{href:"/discover",label:"Discover",Icon:Compass},{href:"/jobs",label:"Jobs",Icon:BriefcaseBusiness},{href:"/network/messages",label:"Messages",Icon:MessagesSquare}].map(({href,label,Icon})=><Link key={href} href={href} aria-label={label} aria-current={navIsActive(pathname,href)?"page":undefined}><Icon size={23} strokeWidth={1.8}/></Link>)}</nav>}
       {!privateWorkspace && <SiteFooter />}
       <div className="toast" role="status" aria-live="polite">
         {notice && (

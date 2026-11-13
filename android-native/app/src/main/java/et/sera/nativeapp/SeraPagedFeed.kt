@@ -52,8 +52,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 
-private val feedTeal = Color(0xFF087E83)
-private val feedInk = Color(0xFF183B40)
+private val feedTeal = Color(0xFF0D7C86)
+private val feedInk = Color(0xFF16363A)
 private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +108,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")});FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")})} }
+            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
             if(!savedOnly) item(key="home-compose") { SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose) }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
@@ -126,7 +126,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             if(!savedOnly && index>0) HorizontalDivider(thickness=.7.dp,color=MaterialTheme.colorScheme.outlineVariant.copy(alpha=.75f))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
-                                    Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
+                                    Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (post.avatarUrl != null) {
@@ -272,7 +272,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                         Text("Close", color = feedTeal)
                     }
                 }
-                HorizontalDivider(color = Color(0xFFE0ECEA))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(
                     Modifier.fillMaxWidth().heightIn(max = 430.dp)
                         .verticalScroll(rememberScrollState())
@@ -280,7 +280,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Surface(
-                        color = Color(0xFFF0F8F7),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -308,7 +308,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                         Text(repostMessage, color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall)
                 }
-                HorizontalDivider(color = Color(0xFFE0ECEA))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
@@ -375,7 +375,7 @@ private fun postTimeLabel(value: String): String = runCatching {
 private fun SeraHomeComposeCard(name:String,avatar:String?,enabled:Boolean,onCompose:(String?)->Unit){
     val colors=MaterialTheme.colorScheme
     Surface(shape=RoundedCornerShape(20.dp),color=colors.surface,border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant),modifier=Modifier.fillMaxWidth()){
-        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled=enabled){onCompose(null)}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 SeraAccountAvatar(name.ifBlank{"SERA member"},avatar,44)
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
