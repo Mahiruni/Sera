@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -100,7 +101,7 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
     Column(Modifier.weight(1f)){Text(when(mode){"star"->"Starred messages";"pin"->"Pinned messages";else->"Search conversation"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(when(mode){"star"->"Private to you";"pin"->"Shared with participants";else->"Entire conversation history"},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
    }
    if(mode=="search"){
-    OutlinedTextField(query,{query=it.take(120)},label={Text("Find a message")},leadingIcon={Icon(Icons.Outlined.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Outlined.Close,"Clear search")}},singleLine=true,shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth())
+    OutlinedTextField(query,{query=it.take(120)},label={Text("Find a message")},leadingIcon={Icon(Icons.Outlined.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Outlined.Close,"Clear search")}},singleLine=true,shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth().testTag("sera_library_search"))
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("all" to "Everyone","you" to "You","contact" to "Contact").forEach{(key,label)->FilterChip(selected=sender==key,onClick={sender=key},label={Text(label)})}}
     Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(from,{from=it.take(10)},label={Text("From date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f));OutlinedTextField(until,{until=it.take(10)},label={Text("To date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f))}
    }
