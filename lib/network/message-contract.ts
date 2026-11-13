@@ -16,7 +16,7 @@ export type MessageView = {
   reply:{id:string;senderId:string;body:string;unsent:boolean}|null;
   files:ChatFile[]; reactions:{memberId:string;emoji:string}[];
 };
-export type ThreadPreview = { id:string; peerId:string; name:string; photo?:string|null; lastBody:string|null; lastAt:string|null; unread:number; lastMessageId:string|null; lastSenderId:string|null; lastDeliveredAt:string|null };
+export type ThreadPreview = { id:string; peerId:string; name:string; photo?:string|null; lastBody:string|null; lastAt:string|null; unread:number; lastMessageId:string|null; lastSenderId:string|null; lastDeliveredAt:string|null; pinned?:boolean; archived?:boolean; markedUnread?:boolean; mutedUntil?:string|null };
 export type SendInput = { conversation:string; clientId:string; body:string; replyTo?:string|null; attachment?:AttachmentMeta|null };
 export const validMessageId = (v:unknown):v is string => typeof v==="string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 export const isChatMime = (v:unknown):v is ChatMime => typeof v==="string" && Object.prototype.hasOwnProperty.call(CHAT_MIME_EXT,v);
