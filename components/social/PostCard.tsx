@@ -11,6 +11,15 @@ import { RepostButton } from "./RepostButton";
 import { SeraConversationSheet } from "./SeraConversationSheet";
 import { SeraReactionIcon } from "./SeraReactionIcon";
 import { ExpandableCaption, PostMedia } from "./post-media";
+function relativePostTime(value:string){
+  const date=new Date(value), delta=Math.max(0,Math.floor((Date.now()-date.getTime())/60000));
+  if(!Number.isFinite(delta))return "";
+  if(delta<1)return "Just now";
+  if(delta<60)return delta+"m ago";
+  if(delta<1440)return Math.floor(delta/60)+"h ago";
+  if(delta<10080)return Math.floor(delta/1440)+"d ago";
+  return date.toLocaleDateString("en-GB",{timeZone:"Africa/Addis_Ababa",day:"numeric",month:"short",...(date.getFullYear()!==new Date().getFullYear()?{year:"numeric" as const}:{})});
+}
 export function PostCard({
   post,
   currentUserId,
@@ -48,13 +57,8 @@ export function PostCard({
           </Link>{post.repost_of&&<span className="sera-repost-byline"> | Reposted from {post.original?<Link prefetch={false} href={"/members/"+post.original.author_id}>{post.original.name}</Link>:"original author"}</span>}
           {post.author.headline&&<p className="sera-author-occupation">{post.author.headline}</p>}
           <small>
-            <time dateTime={post.created_at}>
-              {post.repost_of?"Reposted ":""}{new Date(post.published_at||post.created_at).toLocaleString("en-GB", {
-                timeZone: "Africa/Addis_Ababa",
-                day: "numeric",
-                month: "short",
-                hour: "2-digit", minute: "2-digit",
-              })}
+            <time dateTime={post.published_at||post.created_at} title={new Date(post.published_at||post.created_at).toLocaleString("en-GB",{timeZone:"Africa/Addis_Ababa"})}>
+              {post.repost_of?"Reposted ":""}{relativePostTime(post.published_at||post.created_at)}
             </time>
             {post.edited_at ? " · Edited" : ""}
           </small>
