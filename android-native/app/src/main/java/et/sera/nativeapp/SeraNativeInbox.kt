@@ -263,6 +263,7 @@ internal fun seraMessagingSnapFraction(current:Float,velocityPx:Float,flingThres
 internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,overlayOnPage:Boolean=false,onDismiss:(()->Unit)?=null,content:@Composable ()->Unit) {
     val density=LocalDensity.current
     val keyboardVisible=WindowInsets.ime.getBottom(density)>0
+    BackHandler(enabled=overlayOnPage&&!keyboardVisible&&onDismiss!=null){onDismiss?.invoke()}
     var restingFraction by rememberSaveable{mutableStateOf(.90f)}
     var dragFraction by remember{mutableStateOf(.90f)}
     var dragging by remember{mutableStateOf(false)}
@@ -278,7 +279,7 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,over
             if(!keyboardVisible)dragFraction=seraMessagingDragFraction(dragFraction,delta,availablePx)
         }
         Surface(
-            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(animatedFraction),
+            modifier=Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(animatedFraction).then(if(overlayOnPage)Modifier.semantics{contentDescription="Messages sheet"} else Modifier),
             shape=RoundedCornerShape(topStart=if(keyboardVisible)0.dp else 28.dp,topEnd=if(keyboardVisible)0.dp else 28.dp),
             color=palette.canvas,
             tonalElevation=0.dp,
