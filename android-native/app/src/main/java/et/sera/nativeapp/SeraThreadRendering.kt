@@ -107,8 +107,6 @@ import java.net.URL
                 Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false});DropdownMenuItem(text={Text(if(mutedUntil>System.currentTimeMillis())"Unmute notifications" else "Mute notifications")},onClick={threadMenu=false;if(mutedUntil>System.currentTimeMillis()){mutedUntil=0;SeraMessageAlerts.mute(context,userId,conversation.id,0)}else muteDialog=true})}}
                 if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text("Cancel")}})
             }
-            if(showNew&&messageSearch.isBlank())FilledTonalButton(onClick={scrollScope.launch{val n=messageListState.layoutInfo.totalItemsCount;if(n>0)messageListState.animateScrollToItem(n-1)}},modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp)){Text("New messages ↓")}
-            }
 }
 @Composable internal fun SeraThreadTimeline(modifier:Modifier,messageListState:androidx.compose.foundation.lazy.LazyListState,messages:List<NativeMessage>,callEvents:List<SeraCallEvent>,messageSearch:String,historyLimit:Int,menu:String?,peerName:String,token:String,userId:String,playback:SeraChatPlayback,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,onLoadEarlier:()->Unit,onMenu:(String?)->Unit,onReply:(NativeMessage)->Unit,onReact:(NativeMessage)->Unit,onForward:(NativeMessage)->Unit,onCopy:(NativeMessage)->Unit,onUnsend:(NativeMessage)->Unit,onReaction:(NativeMessage,String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,pendingTexts:List<NativeQueuedText> = emptyList(),connectionAvailable:Boolean=true,onRetryText:(String)->Unit={},unreadBoundary:String?=null){
             val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp*.76f).coerceIn(120.dp,340.dp)
@@ -135,4 +133,6 @@ import java.net.URL
                 }
             }
 
+            if(showNew&&messageSearch.isBlank())FilledTonalButton(onClick={scrollScope.launch{val n=messageListState.layoutInfo.totalItemsCount;if(n>0)messageListState.animateScrollToItem(n-1)}},modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp)){Text("New messages ↓")}
+            }
 }
