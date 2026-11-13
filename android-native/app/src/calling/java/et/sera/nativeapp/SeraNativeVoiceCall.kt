@@ -95,8 +95,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         preparation=scope.launch{try{
             if(!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))error("Open SERA to begin a call.")
             foregroundLease=SeraCallForeground.start(context){val current=row;preparation?.cancel();scope.launch{end("end",target=current)}}
-            val fresh=managedCallConfig(token,conversation,true)?:error("Calling is unavailable.")
-            if(!fresh.optBoolean("enabled"))error("Calling is unavailable.")
+            val fresh=managedCallConfig(token,conversation,true)?:error("Secure call relay unavailable. Try again.")
+            if(!fresh.optBoolean("enabled"))error("Secure call relay unavailable. Try again.")
             if(cancelRequested){cleanup();return@launch};config=fresh;val p=peer()
             if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));if(cancelRequested){end("decline",target=s);return@launch};val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(cancelRequested){end("end",target=next);return@launch};scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
             else{val offer=p.offer();if(cancelRequested){cleanup();return@launch};val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;if(cancelRequested){end("end",target=s);return@launch};phase="Calling…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
@@ -109,26 +109,26 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     val enabled=config?.optBoolean("enabled")==true
     LaunchedEffect(enabled,token,conversation,lifecycle){
         if(!enabled)return@LaunchedEffect
-        var failures=0
+        var failureSince=0L
         while(true){
             if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)||SeraCallForeground.owns(foregroundLease)){
                 if(!busy){try{
-                    val old=row;val next=parseCall(callRequest(token,"sera_call_status",payload().put("p_id",old?.id?:JSONObject.NULL)));failures=0
+                    val old=row;val next=parseCall(callRequest(token,"sera_call_status",payload().put("p_id",old?.id?:JSONObject.NULL)));if(busy||row?.id!=old?.id){delay(1500);continue};failureSince=0L
                     if(next==null){if(old!=null){cleanup();error="Call is no longer available."}}
                     else if(!next.live){if(old!=null){cleanup();error=when(next.state){"missed"->"No answer";"declined"->"Call declined";"failed"->"Call connection failed";else->"Call ended"}}}
                     else if(next.state=="accepted"&&rtc==null){if(old!=null){cleanup();error="Call answered on another device."}}
                     else if(old!=null||next.callee==userId){
                         row=next
-                        if(next.state=="accepted"&&next.caller==userId&&next.answer!=null&&lastAnswer!=next.answer){lastAnswer=next.answer;rtc?.remoteAnswer(next.answer);if(started==0L)phase="Connecting…"}
+                        if(next.state=="accepted"&&next.caller==userId&&next.answer!=null&&lastAnswer!=next.answer){rtc?.remoteAnswer(next.answer);lastAnswer=next.answer;if(started==0L)phase="Connecting…"}
                     }
-                }catch(e:CancellationException){throw e}catch(_:Exception){if(++failures>=3&&row!=null)end("fail","Call connection lost.")}}
+                }catch(e:CancellationException){throw e}catch(_:Exception){if(!busy&&row!=null){if(failureSince==0L)failureSince=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-failureSince>=30000L)end("fail","Call signaling lost. Try again.")}}}
             }
             delay(1500)
         }
     }
     LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
-    LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(25000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
+    LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(45000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()
     var resumed by remember(lifecycle){mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}
     val latestRow by rememberUpdatedState(row)
@@ -173,7 +173,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,surface,bg))).systemBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=16.dp),horizontalAlignment=Alignment.CenterHorizontally){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                 if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,"Minimize call",tint=primary)}else Spacer(Modifier.size(48.dp))
-                Text("SERA voice",color=secondary,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
+                Text("Sera voice",color=secondary,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.size(48.dp))
             }
             Spacer(Modifier.height(48.dp))
