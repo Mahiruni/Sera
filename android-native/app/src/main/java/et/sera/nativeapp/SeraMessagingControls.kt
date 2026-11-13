@@ -34,17 +34,19 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  var loaded by remember{mutableStateOf(false)}
  var enabled by remember{mutableStateOf(true)}
  var quiet by remember{mutableStateOf(false)}
+ var typing by remember{mutableStateOf(true)}
  var start by remember{mutableStateOf("22:00")}
  var end by remember{mutableStateOf("07:00")}
  var zone by remember{mutableStateOf("Africa/Addis_Ababa")}
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
- LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
+ LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
  AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Messaging control center")},text={
  Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
  Text("Account-wide push preferences. Messages continue arriving in your inbox.",fontSize=12.sp)
  Row(verticalAlignment=Alignment.CenterVertically){Text("Message notifications",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=enabled,onCheckedChange={enabled=it})}
  Row(verticalAlignment=Alignment.CenterVertically){Text("Quiet hours",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=quiet,onCheckedChange={quiet=it})}
+ Row(verticalAlignment=Alignment.CenterVertically){Text("Show typing activity",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=typing,onCheckedChange={typing=it})}
  OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
@@ -53,7 +55,7 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  },confirmButton={TextButton(enabled=loaded&&!busy,onClick={
  val a=parseClock(start);val z=parseClock(end)
  if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@TextButton}
- busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};busy=false;if(result.first!=null)onDismiss()else error=result.second}
+ busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};busy=false;if(privacy.first!=null)onDismiss()else error="Notification preferences saved. Typing preference could not be saved."}else{busy=false;error=result.second}}
  }){Text(if(busy)"Saving…" else "Save")}},dismissButton={TextButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}})
 }
 @Composable internal fun SeraConversationControlMenu(token:String,conversation:NativeConversation,onChanged:()->Unit){

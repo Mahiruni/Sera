@@ -18,3 +18,10 @@ export async function setConversationControl(conversation:string,action:"pin"|"a
  if(error)return {ok:false,error:"Could not save conversation preference."};
  revalidatePath("/network/messages");return {ok:true,error:""};
 }
+
+export async function saveTypingVisibility(form:FormData){
+ const user=await currentUser();if(!user?.email_confirmed_at)return;
+ const db=await serverClient();const {error}=await db.rpc("sera_set_typing_visibility",{p_visible:form.get("typing")==="on"});
+ if(error)throw new Error("Could not save typing privacy.");
+ revalidatePath("/settings/messaging");
+}
