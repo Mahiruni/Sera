@@ -31,7 +31,7 @@ try{
     osc.connect(gain).connect(dest);osc.start();tones.push(osc);
     sources.set(pc,{osc,gain,dest});dest.stream.getAudioTracks().forEach(t=>pc.addTrack(t,dest.stream));
   }
-  function gather(pc){return new Promise((resolve,reject)=>{if(pc.iceGatheringState==="complete")return resolve();const timer=setTimeout(()=>reject(Error("ICE gathering timeout")),15000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete"){clearTimeout(timer);resolve();}});});}
+  function gather(pc){return new Promise((resolve,reject)=>{const ready=()=>pc.iceGatheringState==="complete"&&relayOnly(pc.localDescription?.sdp??"");const done=()=>{clearInterval(poll);clearTimeout(timer);};const poll=setInterval(()=>{if(ready()){done();resolve();}},100);const timer=setTimeout(()=>{done();reject(Error("ICE gathering timeout: "+pc.iceGatheringState));},15000);if(ready()){done();resolve();}});}
   function relayOnly(sdp){const candidates=sdp.split(/\r?\n/).filter(x=>x.startsWith("a=candidate:"));return candidates.length>0&&candidates.every(x=>/ typ relay(?: |$)/.test(x));}
   try{
    attach(a,440);attach(b,660);
@@ -90,7 +90,8 @@ try{
       const trackB=b.getSenders().find(s=>s.track?.kind==="audio").track;
       await a.setLocalDescription(await a.createOffer({iceRestart:true}));await gather(a);
       const afterRestart=a.localDescription.sdp.match(/^a=ice-ufrag:(.+)$/m)?.[1].trim();
-      if(!afterRestart||beforeRestart===afterRestart||!relayOnly(a.localDescription.sdp))throw Error("ICE restart did not rotate credentials or preserve relay-only policy.");
+      if(!afterRestart||beforeRestart===afterRestart)throw Error("ICE restart did not rotate credentials.");
+      if(!relayOnly(a.localDescription.sdp))throw Error("ICE restart did not preserve relay-only policy.");
       await b.setRemoteDescription(a.localDescription);await b.setLocalDescription(await b.createAnswer());await gather(b);
       if(!relayOnly(b.localDescription.sdp))throw Error("Restart answer is not relay-only.");
       await a.setRemoteDescription(b.localDescription);
