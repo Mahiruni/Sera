@@ -80,7 +80,9 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var showHistory by remember(conversation){mutableStateOf(false)}
     var minimized by remember(conversation){mutableStateOf(false)}
     var cancelRequested by remember(conversation){mutableStateOf(false)}
-    var history by remember(conversation){mutableStateOf<List<String>>(emptyList())}
+    var history by remember(conversation){mutableStateOf<List<SeraCallEvent>>(emptyList())}
+    var historyLoading by remember(conversation){mutableStateOf(false)}
+    suspend fun fetchHistory(){historyLoading=true;try{val a=JSONArray(callRequest(token,"sera_call_history",JSONObject().put("p_conversation",conversation))?:"[]");history=(0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))}.distinctBy{it.id}}catch(e:CancellationException){throw e}catch(_:Exception){error="Call history unavailable. Try again."}finally{historyLoading=false}}
     var summary by remember(conversation){mutableStateOf<SeraVoiceSummary?>(null)}
     var silenced by remember(conversation){mutableStateOf(false)}
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
@@ -189,7 +191,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         var seenHistory by remember{mutableIntStateOf(host.historyRequest)}
         LaunchedEffect(host.callRequest){if(seenStart!=host.callRequest){seenStart=host.callRequest;host.consumeStart();request(false)}}
         LaunchedEffect(host.returnRequest){if(seenReturn!=host.returnRequest){seenReturn=host.returnRequest;minimized=false}}
-        LaunchedEffect(host.historyRequest){if(seenHistory!=host.historyRequest){seenHistory=host.historyRequest;showHistory=true;history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")+" · "+j.optString("created_at").take(10)}}.getOrDefault(emptyList())}}
+        LaunchedEffect(host.historyRequest){if(seenHistory!=host.historyRequest){seenHistory=host.historyRequest;showHistory=true;fetchHistory()}}
         if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelRequested=true;rtc?.mute(true);phase="Cancelling…"}else scope.launch{end("end")}},canMute=row?.state=="accepted")
     }
     if(!enabled&&summary==null&&!active)return
@@ -197,8 +199,12 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     if(host==null&&minimized&&active){
         TextButton(onClick={minimized=false}){Text(if(started>0)seraCallDuration(seconds) else "Return to call",color=accent,maxLines=1)}
     }
-    if(host==null&&!active)IconButton(onClick={showHistory=true;scope.launch{history=runCatching{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");(0 until a.length()).map{val j=a.getJSONObject(it);(if(j.getString("caller")==userId)"Outgoing"else "Incoming")+" · "+j.getString("state")+" · "+j.optString("created_at").take(10)}}.getOrDefault(emptyList())}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
-    if(showHistory)AlertDialog(onDismissRequest={showHistory=false},title={Text("Recent calls")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){Text(name,fontWeight=FontWeight.SemiBold);if(history.isEmpty())Text("No recent calls") else history.take(10).forEach{Text(it,fontSize=13.sp)}}},confirmButton={TextButton(onClick={showHistory=false;request(false)},enabled=!active&&!busy){Text("Call",color=accent)}},dismissButton={TextButton(onClick={showHistory=false}){Text("Close")}})
+    if(host==null&&!active)IconButton(onClick={showHistory=true;scope.launch{fetchHistory()}},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,"Recent calls",tint=ink)}
+    if(showHistory)Dialog(onDismissRequest={showHistory=false},properties=DialogProperties(usePlatformDefaultWidth=false)){
+        Surface(Modifier.fillMaxWidth().padding(16.dp),shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surface){
+            SeraVoiceHistoryContent(name,photo,history,userId,historyLoading,onCall={showHistory=false;request(false)},onClose={showHistory=false})
+        }
+    }
     if(active&&!minimized)Dialog(onDismissRequest={if(!incoming)minimized=true},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false,dismissOnBackPress=!incoming)){
         val colors=MaterialTheme.colorScheme
         val dark=ink.luminance()>.5f
