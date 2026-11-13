@@ -53,6 +53,7 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((performance.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
   async function prepareMedia(){
     const fresh=await getCallConfig(conversation,true);if(!fresh.enabled||!fresh.iceServers?.length)throw new Error("Secure calling access unavailable. Try again later.");
+    if(!mounted.current||cancelRequested.current)throw abortError();
     if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection)throw new Error("This browser does not support voice calling.");
     let local:MediaStream;try{local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});}catch(e){if(e instanceof DOMException&&e.name==="NotAllowedError")throw new Error("Allow microphone access in your browser to call.");throw e;}
     if(!mounted.current||cancelRequested.current){local.getTracks().forEach(t=>t.stop());throw new Error("Conversation closed.");}
@@ -102,7 +103,7 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
   }
   async function accept(){
     const s=current.current;if(!s?.offer||busy.current)return;busy.current=true;operation.current="accept";cancelRequested.current=false;setMinimized(false);setError("");setPhase("Preparing call…");
-    try{const peer=await prepareWithFallback(s.offer,s.expires_at);if(!mounted.current||pc.current!==peer||cancelRequested.current)throw new Error("Call cancelled.");const next=await changeCall(conversation,s.id,"accept",peer.localDescription!.sdp);if(!live(next))throw new Error("Call ended.");if(!mounted.current){void changeCall(conversation,next.id,"end").catch(()=>{});return;}update(next);if(cancelRequested.current){await terminate("end");return;}if(!started.current)setPhase("Connecting…");}
+    try{const peer=await prepareWithFallback(s.offer,s.expires_at??new Date(Date.parse(s.created_at)+45000).toISOString());if(!mounted.current||pc.current!==peer||cancelRequested.current)throw new Error("Call cancelled.");const next=await changeCall(conversation,s.id,"accept",peer.localDescription!.sdp);if(!live(next))throw new Error("Call ended.");if(!mounted.current){void changeCall(conversation,next.id,"end").catch(()=>{});return;}update(next);if(cancelRequested.current){await terminate("end");return;}if(!started.current)setPhase("Connecting…");}
     catch(e){await terminate(cancelRequested.current?"decline":"fail",cancelRequested.current?"":e instanceof Error?e.message:"Could not accept call.");}finally{busy.current=false;operation.current=null;}
   }
 
