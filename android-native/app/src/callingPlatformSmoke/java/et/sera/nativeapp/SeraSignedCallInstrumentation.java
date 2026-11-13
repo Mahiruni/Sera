@@ -9,7 +9,9 @@ import java.util.concurrent.Executor;
 
 /** Only Android framework and Java APIs: no shared Kotlin/AndroidX test runtime. */
 public final class SeraSignedCallInstrumentation extends Instrumentation {
+    private Bundle options;
     @Override public void onCreate(Bundle arguments) {
+        options = arguments;
         super.onCreate(arguments);
         start();
     }
@@ -22,6 +24,11 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
             Executor main = command -> runOnMainSync(command);
             engine.getMethod("verifySignedEngine", Context.class, Executor.class)
                 .invoke(null, target, main);
+            if (options != null && "true".equals(options.getString("relay_qa"))) {
+                engine.getMethod("verifyRelayRecovery", Context.class, Executor.class, String.class, String.class, String.class)
+                    .invoke(null, target, main, options.getString("turn_url"), options.getString("turn_username"), options.getString("turn_credential"));
+                result.putString("sera_relay_recovery", "passed");
+            }
             result.putString("sera_call_smoke", "passed");
             result.putString("stream", "Signed WebRTC audio offers created twice successfully.\n");
             finish(Activity.RESULT_OK, result);
