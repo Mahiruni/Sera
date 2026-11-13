@@ -27,6 +27,6 @@ class VoiceCallNotificationTest {
         assertNotNull(notification.publicVersion)
         assertNotNull(notification.contentIntent)
         assertNotNull(notification.deleteIntent)
-        assertEquals(listOf("Open call","Silence"),notification.actions.map{it.title.toString()})
+        assertEquals(listOf("Open call","Decline","Silence"),notification.actions.map{it.title.toString()})
     }
 }
