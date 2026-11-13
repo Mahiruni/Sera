@@ -14,6 +14,25 @@ import org.junit.Test
 
 class SeraVoiceExperienceTest {
     @get:Rule val compose=createComposeRule()
+    @Test fun packetLossWarningRequiresMeasuredAudio(){
+        assertEquals(null,seraAudioQuality(null,SeraAudioSample(100,3)))
+        assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(101,3)))
+        assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(99,3)))
+        assertEquals(null,seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(200,4)))
+        assertEquals("Unstable connection",seraAudioQuality(SeraAudioSample(100,3),SeraAudioSample(190,13)))
+    }
+    @Test fun historyDistinguishesMissedAndUnansweredCalls(){
+        val missed=SeraCallEvent("1","peer","missed","2026-11-13T20:00:00Z")
+        val outgoing=SeraCallEvent("2","me","missed","2026-11-13T20:01:00Z")
+        assertEquals("Missed call",missed.outcome("me"))
+        assertEquals("No answer",outgoing.outcome("me"))
+        compose.setContent{MaterialTheme{SeraVoiceHistoryContent("Test member",null,listOf(missed,outgoing),"me",false,{}, {})}}
+        compose.onNodeWithText("Missed call").assertExists()
+        compose.onNodeWithText("No answer").assertExists()
+        compose.onNodeWithText("Missed",substring=false).performClick()
+        compose.onNodeWithText("Missed call").assertExists()
+        compose.onNodeWithText("No answer").assertDoesNotExist()
+    }
     @Test fun durationDoesNotCountNegativeTimeAndSupportsHours(){
         assertEquals("00:00",seraCallDuration(-1))
         assertEquals("00:59",seraCallDuration(59))
