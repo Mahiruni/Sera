@@ -60,6 +60,10 @@ internal object SeraPush {
         val generation=registrationGeneration.get()
         val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token,15,TimeUnit.SECONDS)}.getOrNull()?:return@withContext
         if(generation!=registrationGeneration.get())return@withContext
+        registerToken(context,access,userId,token,generation)
+    }
+    private fun registerToken(context:Context,access:String,userId:String,token:String,generation:Int){
+        if(generation!=registrationGeneration.get())return
         val old=prefs(context).getString("token",null)
         val oldOwner=prefs(context).getString("owner",null)
         if(old!=null&&old!=token&&oldOwner==userId)deviceRequest(access,old,userId,true)
@@ -67,6 +71,12 @@ internal object SeraPush {
             if(generation==registrationGeneration.get())prefs(context).edit().putString("token",token).putString("owner",userId).apply()
             else deviceRequest(access,token,userId,true)
         }
+    }
+    fun refreshToken(context:Context,token:String){
+        val generation=registrationGeneration.get()
+        val user=owner(context)?:return
+        val access=runCatching{SessionStore(context).actionAccess(user)}.getOrNull()?:return
+        if(owner(context)==user&&generation==registrationGeneration.get())registerToken(context,access,user,token,generation)
     }
     suspend fun unregister(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         val token=prefs(context).getString("token",null)
@@ -96,7 +106,7 @@ internal object SeraPush {
         val intent=Intent(context,MainActivity::class.java).apply{flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind",kind)}
         val id=(System.currentTimeMillis()%Int.MAX_VALUE).toInt()
         val pi=PendingIntent.getActivity(context,id,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val n=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind)).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pi).build()
+        val n=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind)).setSmallIcon(R.drawable.ic_sera_notification).setColor(ContextCompat.getColor(context,R.color.sera_teal)).setContentTitle(title).setContentText(body).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pi).build()
         context.getSystemService(NotificationManager::class.java).notify(id,n)
     }
     fun clearCallNotification(context:Context,id:String){if(callUuid.matches(id))context.getSystemService(NotificationManager::class.java).cancel("sera-call:"+id,1)}
@@ -164,7 +174,8 @@ class SeraFirebaseService:FirebaseMessagingService(){
         if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }
-    override fun onNewToken(token:String){super.onNewToken(token)}
+    override fun onNewToken(token:String){super.onNewToken(token);SeraPush.refreshToken(this,token)}
+    override fun onDeletedMessages(){super.onDeletedMessages();SeraPushRecovery.request(this)}
 }
 
 /** Server timestamps are authoritative; never extend a ringing invitation locally. */

@@ -76,9 +76,9 @@ internal object SeraMessageAlerts {
         val pi=PendingIntent.getActivity(context,1,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val title=preview?.title?:if(kind=="company_message")"New company message" else "New SERA message"
         val body=if(count==1)preview?.body?:"You have a new private message." else "$count new private messages"
-        val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("SERA.et").setContentText("New private activity").build()
+        val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(R.drawable.ic_sera_notification).setColor(ContextCompat.getColor(context,R.color.sera_teal)).setContentTitle("SERA.et").setContentText("New private activity").build()
         val builder=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
-            .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body)
+            .setSmallIcon(R.drawable.ic_sera_notification).setColor(ContextCompat.getColor(context,R.color.sera_teal)).setContentTitle(title).setContentText(body)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public)
             .setNumber(count).setOnlyAlertOnce(true).setAutoCancel(true).setContentIntent(pi)
             .addAction(android.R.drawable.ic_menu_view,"Open conversation",pi)

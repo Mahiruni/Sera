@@ -576,7 +576,8 @@ private class InboxController(
 
     @Composable
     fun MessagePolling() {
-        LaunchedEffect(token, selected?.id, lifecycle, historyLimit) {
+        val recoveryRevision=SeraPushRecovery.revision
+        LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision) {
             val conversation = selected ?: return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 SeraRealtime(token, conversation.id).run {

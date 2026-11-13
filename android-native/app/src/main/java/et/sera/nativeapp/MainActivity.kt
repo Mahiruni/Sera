@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         callback.value = intent?.data?.takeIf { isSeraOAuthCallback(it) }
-        pushKind.value = intent?.getStringExtra("sera_kind") ?: intent?.getStringExtra("kind")
+        pushKind.value = seraLaunchDestination(intent)
         SeraPush.channel(this)
         SeraPush.initialize(this)
         // A warm start, configuration change, process restoration or OAuth
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         callback.value = intent.data?.takeIf { isSeraOAuthCallback(it) }
-        pushKind.value = intent.getStringExtra("sera_kind") ?: intent.getStringExtra("kind")
+        pushKind.value = seraLaunchDestination(intent)
     }
 }
 

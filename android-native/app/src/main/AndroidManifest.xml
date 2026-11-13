@@ -18,6 +18,8 @@
         <service android:name=".SeraActiveCallService" android:exported="false" android:foregroundServiceType="microphone" android:stopWithTask="true"/>
         <service android:name=".SeraFirebaseService" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter></service>
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="sera_messages"/>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_sera_notification"/>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/sera_teal"/>
         <receiver android:name=".SeraPackageReplacedReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
         <receiver android:name=".SeraInstallStatusReceiver" android:exported="false"/>
         <receiver android:name=".SeraCallSilenceReceiver" android:exported="false"/>
