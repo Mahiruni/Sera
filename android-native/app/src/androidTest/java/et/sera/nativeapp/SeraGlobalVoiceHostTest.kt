@@ -33,6 +33,32 @@ class SeraGlobalVoiceHostTest {
         assertEquals(second,state.target)
         assertFalse(state.pinned)
     }
+    @Test fun globalIncomingNeverReplacesAnActiveCallAndExpiresCleanly(){
+        val state=SeraGlobalCallState()
+        val first=SeraCallTarget("first","First member",null)
+        val incoming=SeraCallTarget("incoming","Incoming member",null)
+        val later=SeraCallTarget("later","Later member",null)
+        state.select(first,{}, {})
+        state.report("first",false,true)
+        state.discover(incoming,"invite",System.currentTimeMillis()+45000)
+        assertEquals(incoming,state.target)
+        assertEquals("invite",state.pendingIncomingId)
+        state.report("incoming",false,true)
+        assertTrue(state.pinned)
+        state.select(later,{}, {})
+        state.discover(later,"other",System.currentTimeMillis()+45000)
+        assertEquals(incoming,state.target)
+        state.completeDiscovery("other")
+        assertEquals("invite",state.pendingIncomingId)
+        state.completeDiscovery("invite")
+        state.report("incoming",true,true)
+        assertTrue(state.pinned)
+        state.report("incoming",false,true)
+        assertEquals(later,state.target)
+        assertFalse(state.pinned)
+        state.discover(first,"expired",System.currentTimeMillis()-1)
+        assertEquals(later,state.target)
+    }
     @Test fun ongoingStripProvidesReturnMuteAndEnd(){
         var restore=0
         var mute=0
