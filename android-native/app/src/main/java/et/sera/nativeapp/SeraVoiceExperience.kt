@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import android.animation.ValueAnimator
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -37,19 +39,38 @@ internal fun seraCallDuration(seconds:Long):String {
 }
 internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?,val incoming:Boolean,val endedAt:Long=System.currentTimeMillis(),val detail:String="")
 
+/** A gentle double heartbeat, drawn in a fixed footprint so the name and controls never jump. */
 @Composable internal fun SeraVoiceAvatar(name:String,photo:String?,accent:Color,pulsing:Boolean,modifier:Modifier=Modifier){
     val colors=MaterialTheme.colorScheme
-    val pulse=if(pulsing){
-        val animation=rememberInfiniteTransition(label="voice halo")
-        val alpha by animation.animateFloat(.16f,.48f,infiniteRepeatable(tween(1300,easing=FastOutSlowInEasing),RepeatMode.Reverse),label="halo opacity")
-        alpha
-    }else .23f
-    Box(modifier.size(156.dp).border(1.dp,accent.copy(alpha=pulse),CircleShape),contentAlignment=Alignment.Center){
-        Box(Modifier.size(136.dp).background(accent.copy(alpha=.07f),CircleShape).border(1.dp,accent.copy(alpha=pulse),CircleShape),contentAlignment=Alignment.Center){
-            Box(Modifier.size(112.dp).clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
-                Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
-                if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
-            }
+    val animate=pulsing&&ValueAnimator.areAnimatorsEnabled()
+    val beat=if(animate){
+        val transition=rememberInfiniteTransition(label="voice heartbeat")
+        transition.animateFloat(
+            initialValue=0f,targetValue=0f,
+            animationSpec=infiniteRepeatable(keyframes{
+                durationMillis=1500
+                0f at 0 using FastOutSlowInEasing
+                1f at 190 using FastOutSlowInEasing
+                .12f at 360 using FastOutSlowInEasing
+                .65f at 520 using FastOutSlowInEasing
+                0f at 780
+                0f at 1500
+            },RepeatMode.Restart),label="double heartbeat"
+        )
+    }else rememberUpdatedState(0f)
+    // Reserve the largest pulse size; the photo stays circular and centred.
+    Box(modifier.size(176.dp).testTag("sera_voice_avatar_footprint"),contentAlignment=Alignment.Center){
+        Box(Modifier.size(156.dp).graphicsLayer{
+            val v=beat.value;scaleX=1f+.10f*v;scaleY=scaleX;alpha=.65f+.35f*v
+        }.border(1.dp,accent.copy(alpha=.55f),CircleShape))
+        Box(Modifier.size(136.dp).graphicsLayer{
+            val v=beat.value;scaleX=1f+.075f*v;scaleY=scaleX
+        }.background(accent.copy(alpha=.07f),CircleShape).border(1.dp,accent.copy(alpha=.40f),CircleShape))
+        Box(Modifier.size(112.dp).graphicsLayer{
+            val v=beat.value;scaleX=1f+.06f*v;scaleY=scaleX
+        }.clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
+            Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
+            if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
         }
     }
 }
