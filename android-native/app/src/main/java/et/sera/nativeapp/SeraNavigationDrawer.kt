@@ -1,6 +1,9 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -61,7 +64,15 @@ internal fun SeraNavigationDrawer(
     onSignOut: () -> Unit,
     avatarUrl:String?=null,
     headline:String="",identityVerified:Boolean=false,
-    onClose:()->Unit={}
+    onClose:()->Unit={},
+    updateStatus:String="Not checked yet",
+    updateVersion:String?=null,
+    updateProgress:Int?=null,
+    updateNotice:String="",
+    updateChecking:Boolean=false,
+    updateCanInstall:Boolean=false,
+    updatePermission:Boolean=false,
+    onInstallUpdate:()->Unit={}
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     ModalDrawerSheet(
@@ -107,9 +118,8 @@ internal fun SeraNavigationDrawer(
                 onClick = onCompose)
             NavigationDrawerItem(label={Text("Language")},selected=false,icon={Icon(Icons.Outlined.Language,null)},onClick=onLanguage)
             NavigationDrawerItem(label={Text("Settings")},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
-            NavigationDrawerItem(label = { Text("Check for app updates") }, selected = false,
-                icon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
-                onClick = onCheckUpdates)
+            Spacer(Modifier.height(10.dp))
+            SeraDrawerUpdateCard(updateStatus,updateVersion,updateProgress,updateNotice,updateChecking,updateCanInstall,updatePermission,onCheckUpdates,onInstallUpdate)
             HorizontalDivider(Modifier.padding(vertical=8.dp))
             NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
@@ -120,4 +130,37 @@ internal fun SeraNavigationDrawer(
         }
     }
     if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
+}
+
+/** Installed version is always the running APK's BuildConfig, never a server claim. */
+@Composable
+private fun SeraDrawerUpdateCard(status:String,version:String?,progress:Int?,notice:String,checking:Boolean,canInstall:Boolean,permission:Boolean,onCheck:()->Unit,onInstall:()->Unit) {
+    val colors=MaterialTheme.colorScheme
+    Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp),color=colors.surfaceVariant.copy(alpha=.42f),border=BorderStroke(1.dp,colors.outlineVariant)){
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                Surface(shape=RoundedCornerShape(12.dp),color=colors.primaryContainer){
+                    Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.SystemUpdate,null,tint=colors.onPrimaryContainer)}
+                }
+                Column(Modifier.weight(1f)){
+                    Text("App updates",fontWeight=FontWeight.Bold,fontSize=15.sp,color=colors.onSurface)
+                    Text("Installed v${BuildConfig.VERSION_NAME}",fontSize=12.sp,color=colors.onSurfaceVariant)
+                }
+            }
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                if(status=="Up to date")Icon(Icons.Outlined.CheckCircleOutline,null,tint=colors.primary,modifier=Modifier.size(17.dp))
+                Text(status,fontWeight=FontWeight.SemiBold,fontSize=12.sp,color=colors.primary,modifier=Modifier.weight(1f))
+            }
+            if(version!=null)Text("New version: v$version",fontSize=12.sp,color=colors.onSurfaceVariant)
+            if(progress!=null)LinearProgressIndicator(progress={progress.coerceIn(0,100)/100f},modifier=Modifier.fillMaxWidth())
+            Text("Automatic downloads enabled",fontSize=11.sp,color=colors.onSurfaceVariant)
+            if(notice.isNotBlank())Text(notice,fontSize=12.sp,color=colors.onSurfaceVariant)
+            if(canInstall||permission) Button(onClick=onInstall,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(12.dp)){Text(if(permission)"Allow installation" else "Install update")}
+            else OutlinedButton(onClick=onCheck,enabled=!checking&&version==null,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(12.dp)){
+                Icon(Icons.Outlined.Refresh,null,Modifier.size(17.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if(checking)"Checking…" else "Check for updates",fontSize=12.sp)
+            }
+        }
+    }
 }

@@ -9,14 +9,7 @@ import android.provider.Settings
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.content.ActivityNotFoundException
 import android.os.Environment
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -27,14 +20,16 @@ import java.security.MessageDigest
 internal data class SeraRelease(val versionCode: Int, val versionName: String, val url: String, val notes: String, val sha256: String, val highlights: List<String> = emptyList())
 
 /** Accept only published APK assets from the official SERA GitHub repository. */
-internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.IO) {
+internal data class SeraUpdateCheck(val release:SeraRelease?=null,val successful:Boolean=false)
+
+internal suspend fun checkSeraUpdateResult(): SeraUpdateCheck = withContext(Dispatchers.IO) {
     try {
         val connection = URL("https://sera.hisabtech.com/api/native/updates").openConnection() as HttpURLConnection
         connection.connectTimeout = 8000
         connection.readTimeout = 8000
         connection.instanceFollowRedirects = false
         try {
-            if (connection.responseCode != 200) return@withContext null
+            if (connection.responseCode != 200) return@withContext SeraUpdateCheck()
             val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val code = data.optInt("versionCode", 0)
             val name = data.optString("versionName")
@@ -47,19 +42,23 @@ internal suspend fun checkSeraUpdate(): SeraRelease? = withContext(Dispatchers.I
                 parsed.path == "/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
             if (!name.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) ||
                 !sha256.matches(Regex("[0-9a-f]{64}")) ||
-                code <= BuildConfig.VERSION_CODE || parsed.protocol != "https" ||
+                code <= 0 || parsed.protocol != "https" ||
                 parsed.userInfo != null || !(firstParty || officialRelease))
-                return@withContext null
+                return@withContext SeraUpdateCheck()
+            if (code <= BuildConfig.VERSION_CODE) return@withContext SeraUpdateCheck(successful=true)
             // Eliminate the extra first-party redirect for new clients.
             // Legacy clients still use the compatible URL served by the API.
             val directDownload = if (firstParty)
                 "https://github.com/Mahiruni/Sera/releases/download/android-v$name/SERA-$name.apk"
                 else address
             val highlights = data.optJSONArray("highlights")?.let { arr -> (0 until minOf(arr.length(),8)).map { arr.optString(it).take(48) }.filter { it.isNotBlank() } }.orEmpty()
-            SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256, highlights)
+            SeraUpdateCheck(SeraRelease(code, name, directDownload, data.optString("notes").take(600), sha256, highlights),true)
         } finally { connection.disconnect() }
-    } catch (_: Exception) { null }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+    catch (_: Exception) { SeraUpdateCheck() }
 }
+
+internal suspend fun checkSeraUpdate(): SeraRelease? = checkSeraUpdateResult().release
 
 internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
     return try {
@@ -73,24 +72,6 @@ internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
             .setMimeType("application/vnd.android.package-archive")
         manager.enqueue(request)
     } catch (_: Exception) { null }
-}
-
-@Composable
-internal fun SeraUpdatePrompt(release: SeraRelease, onDismiss: () -> Unit, onDownload: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("A new SERA update is ready") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Version ${release.versionName}")
-                if (release.notes.isNotBlank()) Text(release.notes)
-                Text("Download the update inside SERA. Android will ask you to approve installation. Your account and data remain intact when the signing certificate matches.")
-            }
-        },
-        confirmButton = { Button(onClick = onDownload) { Text("Download update") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Later") } },
-        shape = RoundedCornerShape(22.dp)
-    )
 }
 
 internal data class SeraDownloadStatus(
@@ -118,9 +99,10 @@ internal enum class SeraInstallResult { LAUNCHED, PERMISSION_REQUIRED, FAILED }
 
 internal data class SeraPendingUpdate(val id: Long, val release: SeraRelease)
 
-/** Preserve a user-approved download across app restarts and backgrounding. */
+/** Preserve an automatic download across app restarts and backgrounding. */
 internal fun saveSeraPendingUpdate(context: Context, id: Long, release: SeraRelease) {
     context.getSharedPreferences("sera_update", Context.MODE_PRIVATE).edit()
+        .putBoolean("automatic_install_attempted",false)
         .putLong("id", id)
         .putInt("code", release.versionCode)
         .putString("name", release.versionName)
@@ -147,6 +129,19 @@ internal fun readSeraPendingUpdate(context: Context): SeraPendingUpdate? {
     val highlights=runCatching { val arr=org.json.JSONArray(prefs.getString("highlights","[]")); (0 until minOf(arr.length(),8)).map { arr.optString(it) } }.getOrDefault(emptyList())
     return SeraPendingUpdate(id, SeraRelease(code, name, "", "", sha, highlights))
 }
+
+internal fun shouldAutomaticallyOfferSeraInstall(foreground:Boolean,restoring:Boolean,downloaded:Boolean,attempted:Boolean):Boolean =
+    foreground && !restoring && downloaded && !attempted
+
+internal fun seraAutomaticInstallAttempted(context:Context,id:Long):Boolean {
+    val prefs=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE)
+    return prefs.getLong("id",-1L)==id && prefs.getBoolean("automatic_install_attempted",false)
+}
+internal fun markSeraAutomaticInstallAttempted(context:Context,id:Long) {
+    val prefs=context.getSharedPreferences("sera_update",Context.MODE_PRIVATE)
+    if(prefs.getLong("id",-1L)==id) prefs.edit().putBoolean("automatic_install_attempted",true).apply()
+}
+
 internal fun discardSeraDownload(context: Context, downloadId: Long) {
     clearSeraPendingUpdate(context)
     runCatching {
@@ -162,7 +157,8 @@ internal fun discardSeraDownload(context: Context, downloadId: Long) {
  *
  * Called on Dispatchers.IO because staging copies the APK into an OS session.
  */
-internal fun openSeraInstaller(context: Context, downloadId: Long): SeraInstallResult {
+internal fun openSeraInstaller(context: Context, downloadId: Long, expectedSha256: String): SeraInstallResult {
+    if (!expectedSha256.matches(Regex("[0-9a-f]{64}"))) return SeraInstallResult.FAILED
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         !context.packageManager.canRequestPackageInstalls()) {
         return SeraInstallResult.PERMISSION_REQUIRED
@@ -187,17 +183,21 @@ internal fun openSeraInstaller(context: Context, downloadId: Long): SeraInstallR
             }
             sessionId = installer.createSession(params)
             installer.openSession(sessionId).use { session ->
+                val digest = MessageDigest.getInstance("SHA-256")
                 FileInputStream(apk.fileDescriptor).use { input ->
                     session.openWrite("base.apk", 0, if (size > 0L) size else -1L).use { output ->
                         val buffer = ByteArray(65536)
                         while (true) {
                             val count = input.read(buffer)
                             if (count < 0) break
+                            digest.update(buffer, 0, count)
                             output.write(buffer, 0, count)
                         }
                         session.fsync(output)
                     }
                 }
+                val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+                check(MessageDigest.isEqual(actual.toByteArray(Charsets.US_ASCII),expectedSha256.toByteArray(Charsets.US_ASCII))) { "APK changed before installation" }
                 val receiver = Intent(context, SeraInstallStatusReceiver::class.java).apply {
                     action = "et.sera.nativeapp.INSTALL_STATUS"
                 }
