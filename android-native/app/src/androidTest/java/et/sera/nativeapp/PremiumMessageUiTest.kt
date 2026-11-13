@@ -15,6 +15,10 @@ import org.junit.Test
 
 class PremiumMessageUiTest {
  @get:Rule val compose=createComposeRule()
+ @Test fun chatHeaderDividerIsThinAndPresent(){
+  compose.setContent{MaterialTheme{SeraThreadHeaderDivider()}}
+  compose.onNodeWithTag("sera_thread_header_divider").assertExists().assertHeightIsEqualTo(1.dp)
+ }
  @Test fun quoteNavigationAndAccessibleQuickReaction(){
   var quote=""
   var reaction=""
