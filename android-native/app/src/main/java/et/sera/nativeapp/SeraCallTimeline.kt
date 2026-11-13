@@ -24,7 +24,7 @@ internal data class SeraTimelineItem(val at:String,val message:NativeMessage?,va
   Surface(shape=RoundedCornerShape(16.dp),color=surface){
    Row(Modifier.padding(horizontal=14.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
     Icon(icon,null,tint=if(event.state=="missed"&&incoming)MaterialTheme.colorScheme.error else accent,modifier=Modifier.size(19.dp))
-    Column{Text(voiceText(label),color=ink,fontSize=12.sp,fontWeight=FontWeight.SemiBold);Text(voiceText(if(event.caller==userId)"Outgoing"else "Incoming")+" · "+time,color=muted,fontSize=10.sp)}
+    Column{Text(voiceText(label),color=ink,fontSize=12.sp,fontWeight=FontWeight.SemiBold);Text(voiceText(if(event.caller==userId)"Outgoing"else "Incoming")+" · "+time+(event.connectedSeconds?.let{" · "+seraCallDuration(it)}?:""),color=muted,fontSize=10.sp)}
    }
   }
  }
