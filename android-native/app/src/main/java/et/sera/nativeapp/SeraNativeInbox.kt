@@ -233,12 +233,12 @@ private fun markNativeMessagesRead(token: String, conversationId: String, userId
 }
 
 @Composable
-fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}, onInboxExit:(()->Unit)?=null) {
+fun SeraNativeInbox(token: String, userId: String, modifier: Modifier = Modifier, openCompany: Boolean=false, onCompanyConsumed:()->Unit={}, initialThread:String?=null, initialPeer:String="", initialName:String="", onThreadExit:(()->Unit)?=null, onThreadVisibility:(Boolean)->Unit={}, onInboxExit:(()->Unit)?=null,overlayOnPage:Boolean=false) {
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
     val palette=seraChatPalette(dark)
     val scheme=seraChatScheme(if(dark)darkColorScheme()else lightColorScheme(),palette,dark)
     MaterialTheme(colorScheme=scheme,typography=seraChatTypography(MaterialTheme.typography),shapes=MaterialTheme.shapes){
-        SeraMessagingWrapper(modifier,palette) {
+        SeraMessagingWrapper(modifier,palette,overlayOnPage,onInboxExit) {
             SeraNativeInboxContent(token,userId,Modifier.fillMaxSize(),openCompany,onCompanyConsumed,initialThread,initialPeer,initialName,onThreadExit,onThreadVisibility,onInboxExit)
         }
     }
@@ -260,7 +260,7 @@ internal fun seraMessagingSnapFraction(current:Float,velocityPx:Float,flingThres
 }
 
 @Composable
-internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,content:@Composable ()->Unit) {
+internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,overlayOnPage:Boolean=false,onDismiss:(()->Unit)?=null,content:@Composable ()->Unit) {
     val density=LocalDensity.current
     val keyboardVisible=WindowInsets.ime.getBottom(density)>0
     var restingFraction by rememberSaveable{mutableStateOf(.90f)}
@@ -269,7 +269,9 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,cont
     val target=seraMessagingHeightFraction(keyboardVisible,if(dragging)dragFraction else restingFraction)
     val animatedFraction by animateFloatAsState(target,tween(if(dragging||keyboardVisible)0 else 210),label="messaging sheet height")
     LaunchedEffect(keyboardVisible){if(keyboardVisible)dragging=false}
-    BoxWithConstraints(modifier.fillMaxSize().background(palette.quote).navigationBarsPadding().imePadding()){
+    BoxWithConstraints(modifier.fillMaxSize().then(if(overlayOnPage)Modifier else Modifier.background(palette.quote)).imePadding()){
+        // The underlying destination remains visible; only the sheet owns its bottom surface.
+        if(overlayOnPage)Box(Modifier.matchParentSize().then(if(onDismiss!=null)Modifier.clickable(indication=null,interactionSource=remember{androidx.compose.foundation.interaction.MutableInteractionSource()}){onDismiss()} else Modifier.pointerInput(Unit){detectTapGestures{}}))
         val availablePx=with(density){maxHeight.toPx()}
         val flingThreshold=with(density){420.dp.toPx()}
         val dragState=rememberDraggableState{delta->
@@ -282,7 +284,7 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,cont
             tonalElevation=0.dp,
             shadowElevation=if(keyboardVisible)0.dp else 5.dp
         ){
-            Column(Modifier.fillMaxSize()){
+            Column(Modifier.fillMaxSize().navigationBarsPadding()){
                 if(!keyboardVisible)Box(
                     Modifier.fillMaxWidth().height(44.dp)
                         .semantics{contentDescription="Resize messages";stateDescription=when{restingFraction<.8f->"Compact";restingFraction<.95f->"Default";else->"Expanded"}}
