@@ -5,7 +5,7 @@ import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/cal
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
-export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;accepted_at:string|null;ended_at:string|null};
+export type CallSession={id:string;caller:string;callee:string;state:CallState;offer:string|null;answer:string|null;created_at:string;expires_at?:string;accepted_at:string|null;ended_at:string|null};
 export type CallHistoryEntry=Pick<CallSession,"id"|"caller"|"callee"|"state"|"created_at"|"accepted_at"|"ended_at">;
 export type CallConfig={enabled:boolean;iceServers?:RTCIceServer[]};
 async function dbFor(conversation:string){
