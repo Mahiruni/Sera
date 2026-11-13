@@ -735,7 +735,7 @@ private class InboxController(
             onRemoveDismiss={remove=null},onReactionDismiss={reaction=null},onForwardDismiss={forwarding=null},
             onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
         SeraNativeAttachmentPicker(token=token,userId=userId,conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
-            onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."},onError={error=it})
+            onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->if(parseSeraMeeting(url)!=null&&draft.isNotBlank()){error="Finish your existing draft before adding a meeting."}else{val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."}},onError={error=it})
         LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
         mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
         // The system keyboard owns Back while visible; do not close the thread.
@@ -746,12 +746,14 @@ private class InboxController(
     @Composable
     fun ConversationPolling() {
         val unreadRevision=SeraUnreadRefresh.revision
+        val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
         LaunchedEffect(token,userId,refresh,selected?.id,lifecycle,unreadRevision) {
             if(userId.isBlank())return@LaunchedEffect
+            if(conversations.isEmpty()){val saved=withContext(Dispatchers.IO){runCatching{cache?.readInbox(userId).orEmpty()}.getOrDefault(emptyList())};if(saved.isNotEmpty()){conversations=saved;loading=false}}
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
                     val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
-                    result.first?.let{rows->conversations=rows;val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
+                    result.first?.let{rows->conversations=rows;withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}};val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
                     delay(20000)
