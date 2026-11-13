@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -28,6 +29,12 @@ internal class SeraGlobalCallState {
         private set
     var eligible by mutableStateOf(false)
         private set
+    var videoEligible by mutableStateOf(false)
+        private set
+    var videoRequest by mutableIntStateOf(0)
+        private set
+    fun reportVideo(conversation:String,enabled:Boolean){if(target?.conversation==conversation)videoEligible=enabled}
+    fun startVideo(conversation:String){if(target?.conversation==conversation&&videoEligible&&!pinned)videoRequest++}
     var callRequest by mutableIntStateOf(0)
         private set
     var returnRequest by mutableIntStateOf(0)
@@ -44,7 +51,7 @@ internal class SeraGlobalCallState {
         private set
     fun discover(value:SeraCallTarget,id:String,expiresAt:Long){
         if(pinned||target?.conversation==value.conversation||expiresAt<=System.currentTimeMillis())return
-        target=value;eligible=false;pinned=true;pendingIncomingId=id;pendingIncomingDeadline=expiresAt
+        target=value;eligible=false;videoEligible=false;pinned=true;pendingIncomingId=id;pendingIncomingDeadline=expiresAt
     }
     fun completeDiscovery(id:String?){
         if(id!=null&&pendingIncomingId==id){pendingIncomingId=null;pendingIncomingDeadline=0L}
@@ -55,19 +62,19 @@ internal class SeraGlobalCallState {
     fun select(value:SeraCallTarget,onAudio:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
         selected=value;audioStart=onAudio;historySink=onHistory
         if(!pinned){
-            if(target?.conversation!=value.conversation)eligible=false
+            if(target?.conversation!=value.conversation){eligible=false;videoEligible=false}
             target=value
         }else if(target?.conversation==value.conversation){target=value}
     }
     fun unselect(conversation:String){
         if(selected?.conversation!=conversation)return
         selected=null;audioStart=null;historySink=null
-        if(!pinned){target=null;eligible=false}
+        if(!pinned){target=null;eligible=false;videoEligible=false}
     }
     fun report(conversation:String,keep:Boolean,enabled:Boolean){
         if(target?.conversation!=conversation)return
         pinned=keep||pendingStart||pendingIncomingId!=null;eligible=enabled
-        if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false}
+        if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false;videoEligible=false}
     }
     fun start(conversation:String){
         if(target?.conversation!=conversation||!eligible)return
@@ -83,6 +90,9 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
 
 @Composable internal fun SeraGlobalVoiceHost(state:SeraGlobalCallState,token:String,userId:String){
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,userId,lifecycle){
+        if(BuildConfig.LIVE_CALLING_INCLUDED&&token.isNotBlank()&&userId.isNotBlank())lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{withContext(Dispatchers.IO){chatRpc(token,"sera_call_video_ready",JSONObject())}}catch(e:CancellationException){throw e}catch(_:Exception){};delay(25000)}}
+    }
     LaunchedEffect(token,userId,lifecycle,state){
         if(token.isBlank()||userId.isBlank())return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){
@@ -90,7 +100,7 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
                 if(!state.pinned){
                     try{
                         val result=withContext(Dispatchers.IO){
-                            val raw=chatRpc(token,"sera_call_pending_incoming",JSONObject()).first
+                            val raw=chatRpc(token,"sera_call_media_pending_incoming",JSONObject()).first
                             val j=raw?.takeUnless{it=="null"}?.let{JSONObject(it)}
                             if(j==null)null else {
                                 val id=j.optString("id");val conversation=j.optString("conversation_id");val caller=j.optString("caller")
@@ -136,6 +146,7 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
         IconButton(onClick={host.start(conversation)},modifier=Modifier.size(44.dp)){
             Icon(Icons.Outlined.Call,voiceText(if(host.pinned)"Return to call" else "Voice call"),tint=if(host.pinned)accent else ink)
         }
+        if(host.videoEligible&&!host.pinned)IconButton(onClick={host.startVideo(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.Videocam,voiceText("Video call"),tint=ink)}
         if(showHistoryIcon&&!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}
     }
 }
