@@ -72,7 +72,8 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
   const terminate=useCallback(async(action:"end"|"decline"|"fail",message="")=>{const s=current.current;captureSummary(action==="decline"?"Call declined":action==="fail"?"Connection lost":started.current?"Call ended":"Call cancelled",s,message);cleanup();update(null);setPhase("");if(s&&live(s)){try{await changeCall(conversation,s.id,action);}catch{if(mounted.current)setError(message||"Call closed locally. Remote status will expire.");}}},[captureSummary,cleanup,conversation,update]);
   useEffect(()=>{mounted.current=true;void getCallConfig(conversation).then(c=>{if(mounted.current)setConfig(c);});return()=>{mounted.current=false;const s=current.current;cleanup();if(s&&live(s))void changeCall(conversation,s.id,"end").catch(()=>{});};},[conversation,cleanup]);
   async function recoverMedia(call:CallSession){
-    const peer=pc.current;if(!peer||call.state!=="accepted")return;
+    const connection=pc.current;if(!connection||call.state!=="accepted")return;
+    const peer:RTCPeerConnection=connection;
     const caller=call.caller===userId,generation=call.restart_generation??0,r=restart.current;
     if(caller&&!lastRemote.current)return;
     const signal=(action:"ready"|"request"|"offer"|"answer",rev=generation,sdp?:string)=>restartCallMedia(conversation,call.id,action,rev,sdp);
