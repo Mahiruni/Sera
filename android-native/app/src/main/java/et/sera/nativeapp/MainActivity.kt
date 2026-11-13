@@ -487,6 +487,7 @@ fun SeraApp(
         typography = SeraTypography,
         shapes = SeraShapes
     ) {
+        SeraLinkNavigation(accessToken,authenticatedUserId,onSection={section->navigateTo(when(section){"feed"->"Home";"jobs"->"Jobs";"discover"->"Search";"connections"->"Network";"settings"->"Settings";"workspace"->"Workspace";"notifications"->"Notifications";"saved"->"Saved";"messages"->"Inbox";else->"Profile"})}){
         Surface(modifier = Modifier.fillMaxSize(), color = bg) {
             Box(Modifier.fillMaxSize()) {
             if (restoring) {
@@ -710,6 +711,7 @@ fun SeraApp(
                 SeraUpdateProgressPanel(highlights=activeRelease?.highlights.orEmpty(),version=activeRelease?.versionName.orEmpty(),progress=updateProgress,bytes=updateBytes,total=updateTotalBytes,downloaded=updateDownloaded,verifying=checkingApkIntegrity,preparing=preparingInstaller,permission=installerPermissionRequired,requested=installerRequested,onInstall={launchVerifiedInstaller()},onPermission={openUpdatePermission()},modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=12.dp).padding(bottom=bottom + if(accessToken!=null) 76.dp else 12.dp))
             }
             }
+        }
         }
     }
 }
