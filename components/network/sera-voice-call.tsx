@@ -4,7 +4,7 @@ import {Phone,PhoneOff,Mic,MicOff,X,ChevronDown,History,Maximize2} from "lucide-
 import {createPortal} from "react-dom";
 import {useSera} from "@/components/store";
 import {voiceText} from "@/lib/network/voice-i18n";
-import {SpeechAdaptation,speechProfiles,readSpeechLink} from "@/lib/network/voice-network-policy";
+import {SpeechAdaptation,speechProfiles,readSpeechLink,speechJitterTargetMs,speechQualityWarning} from "@/lib/network/voice-network-policy";
 import {secureRelayAttempts} from "@/lib/network/relay-recovery";
 import {MemberAvatar} from "@/components/activity/avatar";
 import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,confirmCallMedia,restartCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
@@ -61,13 +61,14 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
   const tr=(value:string)=>voiceText(locale,value);
   const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallHistoryEntry[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false),[minimized,setMinimized]=useState(false);
   const [summary,setSummary]=useState<VoiceSummary|null>(null);
+  const [quality,setQuality]=useState(false);
   const preparationAbort=useRef<AbortController|null>(null);
-  const restart=useRef({applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0});
+  const restart=useRef({applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0,networkChanged:false});
   const restartAbort=useRef<AbortController|null>(null);
   const cancelRequested=useRef(false),operation=useRef<"dial"|"accept"|null>(null),polling=useRef(false);
   const pc=useRef<RTCPeerConnection|null>(null),stream=useRef<MediaStream|null>(null),audio=useRef<HTMLAudioElement>(null),current=useRef<CallSession|null>(null),busy=useRef(false),mounted=useRef(true),started=useRef(0),lastRemote=useRef(""),failTimer=useRef<ReturnType<typeof setTimeout>|null>(null),pollErrors=useRef(0),missingSince=useRef(0);
   const update=useCallback((s:CallSession|null)=>{current.current=s;if(mounted.current)setSession(s);},[]);
-  const cleanup=useCallback(()=>{restartAbort.current?.abort();restartAbort.current=null;restart.current={applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0};preparationAbort.current?.abort();preparationAbort.current=null;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;pollErrors.current=0;missingSince.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);setMinimized(false);}},[]);
+  const cleanup=useCallback(()=>{restartAbort.current?.abort();restartAbort.current=null;restart.current={applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0,networkChanged:false};preparationAbort.current?.abort();preparationAbort.current=null;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;pollErrors.current=0;missingSince.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);setMinimized(false);setQuality(false);}},[]);
   const captureSummary=useCallback((title:string,s:CallSession|null,detail?:string)=>{if(mounted.current)setSummary({title,duration:started.current?Math.floor((performance.now()-started.current)/1000):null,direction:s?.callee===userId?"Incoming":"Outgoing",endedAt:Date.now(),detail});},[userId]);
   const terminate=useCallback(async(action:"end"|"decline"|"fail",message="")=>{const s=current.current;captureSummary(action==="decline"?"Call declined":action==="fail"?"Connection lost":started.current?"Call ended":"Call cancelled",s,message);cleanup();update(null);setPhase("");if(s&&live(s)){try{await changeCall(conversation,s.id,action);}catch{if(mounted.current)setError(message||"Call closed locally. Remote status will expire.");}}},[captureSummary,cleanup,conversation,update]);
   useEffect(()=>{mounted.current=true;void getCallConfig(conversation).then(c=>{if(mounted.current)setConfig(c);});return()=>{mounted.current=false;const s=current.current;cleanup();if(s&&live(s))void changeCall(conversation,s.id,"end").catch(()=>{});};},[conversation,cleanup]);
@@ -96,9 +97,10 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
     if(!caller&&generation>r.applied&&call.restart_offer&&!call.restart_answer){r.pendingGeneration=generation;r.pendingSdp=await prepare(call.restart_offer);const result=await signal("answer",generation,r.pendingSdp);if(result&&stillCurrent()){r.applied=generation;r.pendingSdp="";}return;}
     const now=performance.now();if(peer.connectionState==="connected")r.unhealthySince=0;else if(!r.unhealthySince)r.unhealthySince=now;
     if(caller&&call.restart_requested&&generation<3&&generation===r.applied&&peer.signalingState==="stable"){r.attemptAt=now;r.pendingGeneration=generation+1;r.pendingSdp=await prepare();if(await signal("offer",r.pendingGeneration,r.pendingSdp))r.pendingSdp="";return;}
-    if(r.unhealthySince&&now-r.unhealthySince>=3000&&now-r.attemptAt>=8000&&generation<3&&generation===r.applied&&!call.restart_requested){r.attemptAt=now;await signal("request");}
+    if((r.networkChanged&&started.current>0||r.unhealthySince&&now-r.unhealthySince>=3000)&&now-r.attemptAt>=8000&&generation<3&&generation===r.applied&&!call.restart_requested){r.attemptAt=now;const result=await signal("request");if(result?.restart_requested)r.networkChanged=false;}
   }
-  useEffect(()=>{if(!config.enabled)return;let stopped=false;const poll=async()=>{if(stopped||busy.current||polling.current)return;polling.current=true;try{
+  useEffect(()=>{if(session?.state!=="accepted")return;const changed=()=>{restart.current.networkChanged=true;};const network=(navigator as Navigator&{connection?:EventTarget}).connection;window.addEventListener("online",changed);network?.addEventListener("change",changed);return()=>{window.removeEventListener("online",changed);network?.removeEventListener("change",changed);};},[session?.id,session?.state]);
+  useEffect(()=>{if(!config.enabled)return;let stopped=false;let lastIdlePoll=0;const poll=async()=>{if(stopped||busy.current||polling.current)return;if(!current.current){if(document.hidden||Date.now()-lastIdlePoll<4000)return;lastIdlePoll=Date.now();}polling.current=true;try{
     const prior=current.current;const s=await getCallStatus(conversation,prior?.id??null);if(stopped||busy.current||prior!==current.current)return;pollErrors.current=0;
     if(!s){if(prior){if(!missingSince.current)missingSince.current=Date.now();if(Date.now()-missingSince.current>=15000){cleanup();update(null);setPhase("");setError("Call is no longer available.");}}return;}missingSince.current=0;
     if(!live(s)){if(prior){captureSummary(outcome(s,userId),s);cleanup();update(null);setPhase("");}return;}
@@ -109,22 +111,29 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
     if(s.state==="accepted"&&s.caller===userId&&s.answer&&pc.current&&lastRemote.current!==s.answer){await pc.current.setRemoteDescription({type:"answer",sdp:s.answer});lastRemote.current=s.answer;if(mounted.current&&!started.current)setPhase("Connecting…");}
     if(s.state==="accepted")await recoverMedia(s);
   }catch{if(!busy.current&&current.current){if(!pollErrors.current)pollErrors.current=Date.now();if(Date.now()-pollErrors.current>=45000){await terminate("fail","Call signaling connection lost. Try again.");}}}finally{polling.current=false;}};
-  void poll();const timer=setInterval(()=>void poll(),1500);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,userId,cleanup,update,terminate,captureSummary]);
-  useEffect(()=>{if(!config.enabled)return;let stopped=false;const refresh=()=>void getCallHistory(conversation).then(events=>{if(!stopped)onHistory(events);}).catch(()=>{});refresh();const timer=setInterval(refresh,10000);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,onHistory]);
+  void poll();const timer=setInterval(()=>void poll(),1500);const visible=()=>{if(!document.hidden){lastIdlePoll=0;void poll();}};document.addEventListener("visibilitychange",visible);return()=>{stopped=true;clearInterval(timer);document.removeEventListener("visibilitychange",visible);};},[config.enabled,conversation,userId,cleanup,update,terminate,captureSummary]);
+  useEffect(()=>{if(!config.enabled)return;let stopped=false;const refresh=()=>void getCallHistory(conversation).then(events=>{if(!stopped)onHistory(events);}).catch(()=>{});refresh();const timer=setInterval(()=>{if(!document.hidden)refresh();},20000);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,onHistory]);
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((performance.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
   useEffect(()=>{if(session?.state!=="accepted"||!pc.current||pc.current.connectionState==="connected"||failTimer.current)return;const peer=pc.current,id=session.id;failTimer.current=setTimeout(()=>{if(pc.current===peer&&current.current?.id===id&&peer.connectionState!=="connected")void terminate("fail",started.current?"Call connection lost. Try again.":"Could not establish the call.");},45000);},[session?.id,session?.state,phase,terminate]);
   useEffect(()=>{if(session?.state!=="accepted"||!started.current)return;const id=session.id;let stopped=false,confirmed=false,inFlight=false;const report=async()=>{if(stopped||confirmed||inFlight||pc.current?.connectionState!=="connected")return;inFlight=true;try{confirmed=await confirmCallMedia(conversation,id);}catch{}finally{inFlight=false;}};void report();const timer=setInterval(()=>void report(),4000);return()=>{stopped=true;clearInterval(timer);};},[conversation,session?.id,session?.state,phase]);
   useEffect(()=>{
     if(session?.state!=="accepted"||!pc.current)return;
-    const peer=pc.current,adaptation=new SpeechAdaptation();let stopped=false,inFlight=false,applied:number|undefined,lastReport:number|undefined;
+    const peer=pc.current,adaptation=new SpeechAdaptation();let stopped=false,inFlight=false,applied:number|undefined,lastReport:number|undefined,jitterApplied:number|undefined;
     const adjust=async()=>{
       if(stopped||inFlight||pc.current!==peer||peer.connectionState!=="connected")return;
       inFlight=true;
       try{
         const stats=await peer.getStats();if(stopped||pc.current!==peer)return;
         const {link,remoteTimestamp}=readSpeechLink(stats.values());
+        const inbound=Array.from(stats.values()).find(s=>s.type==="inbound-rtp"&&(s.kind==="audio"||s.mediaType==="audio"));
+        const jitter=typeof inbound?.jitter==="number"?inbound.jitter:undefined;
+        const target=speechJitterTargetMs(jitter);
+        if(target!==undefined&&target!==jitterApplied){
+          for(const receiver of peer.getReceivers())if(receiver.track.kind==="audio"&&"jitterBufferTarget" in receiver){try{(receiver as RTCRtpReceiver&{jitterBufferTarget:number|null}).jitterBufferTarget=target;jitterApplied=target;}catch{/* keep browser default */}}
+        }
         const fresh=remoteTimestamp!==undefined&&remoteTimestamp!==lastReport;
         if(fresh)lastReport=remoteTimestamp;
+        setQuality(speechQualityWarning(fresh?link.loss:undefined,jitter,link.rttSeconds));
         const bitrate=speechProfiles[adaptation.update(fresh?link:{...link,loss:undefined})];
         if(applied!==bitrate){
           const sender=peer.getSenders().find(s=>s.track?.kind==="audio");
@@ -205,7 +214,7 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
   <audio ref={audio} autoPlay playsInline/>
   {active&&typeof document!=="undefined"&&createPortal(minimized&&!incoming?<div className="sera-aura-mini" style={{zIndex:2147483000}}><button type="button" onClick={()=>setMinimized(false)}><MemberAvatar name={name} photo={photo} size={32}/><span><strong>{name}</strong><small>{phase==="Connected"?duration:tr(phase||"Calling…")}</small></span><Maximize2 size={17}/></button>{session?.state==="accepted"&&<button type="button" aria-label={tr(muted?"Unmute":"Mute")} aria-pressed={muted} onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>{t.enabled=!next;});setMuted(next);}}>{muted?<MicOff size={18}/>:<Mic size={18}/>}</button>}<button type="button" className="sera-aura-hang" aria-label={tr("End call")} onClick={end}><PhoneOff size={19}/></button></div>:<CallTopLayer label={tr(incoming?"Incoming voice call":"Voice call")} onDismiss={()=>{if(!incoming)setMinimized(true);}}><div className="sera-call-overlay sera-aura-overlay"><div className="sera-call-panel sera-aura-panel">
     <header className="sera-aura-header">{!incoming?<button type="button" aria-label={tr("Minimize call")} onClick={()=>setMinimized(true)}><ChevronDown/></button>:<span/>}<span>Sera voice</span><span/></header>
-    <div className="sera-aura-identity"><div className="sera-aura-avatar"><MemberAvatar name={name} photo={photo} size={104}/></div><h2>{name}</h2><p role="status">{tr(incoming?"Incoming voice call":phase||"Calling…")}</p>{(phase==="Connected"||seconds>0)&&<strong className="sera-aura-duration">{duration}</strong>}</div>
+    <div className="sera-aura-identity"><div className="sera-aura-avatar"><MemberAvatar name={name} photo={photo} size={104}/></div><h2>{name}</h2><p role="status">{tr(incoming?"Incoming voice call":phase||"Calling…")}</p>{(phase==="Connected"||seconds>0)&&<strong className="sera-aura-duration">{duration}</strong>}{quality&&phase==="Connected"&&<p role="status">{tr("Unstable connection")}</p>}</div>
     {(phase==="Finding secure connection…"||phase==="Trying alternative secure connection…"||phase==="Preparing call…")&&<progress aria-label={tr("Preparing secure connection")} style={{width:"65%",accentColor:"var(--sera-teal, #087E83)"}}/>}
     {audioBlocked&&<button className="sera-aura-audio" type="button" onClick={()=>void audio.current?.play().then(()=>setAudioBlocked(false)).catch(()=>{})}>{tr("Enable call audio")}</button>}
     <div className="sera-aura-controls">{incoming?<><button type="button" className="sera-aura-control" onClick={()=>void terminate("decline")}><span className="sera-aura-hang"><PhoneOff/></span>{tr("Decline")}</button><button type="button" className="sera-aura-control" onClick={()=>void accept()}><span className="sera-aura-answer"><Phone/></span>{tr("Answer")}</button></>:<>{session?.state==="accepted"&&<button type="button" aria-pressed={muted} className="sera-aura-control" onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>{t.enabled=!next;});setMuted(next);}}><span className={muted?"sera-aura-answer":""}>{muted?<MicOff/>:<Mic/>}</span>{tr(muted?"Unmute":"Mute")}</button>}<button type="button" className="sera-aura-control" onClick={end}><span className="sera-aura-hang"><PhoneOff/></span>{tr(phase==="Cancelling…"?"Cancelling…":"End call")}</button></>}</div>
