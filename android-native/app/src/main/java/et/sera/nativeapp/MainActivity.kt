@@ -439,7 +439,7 @@ fun SeraApp(
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    fun signOutSera(){accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
+    fun signOutSera(){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         if (authenticatedUserId.isBlank()) {
