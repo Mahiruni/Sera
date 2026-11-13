@@ -19,7 +19,8 @@ try{
   function listen(pc){pc.ontrack=e=>{
     // A real playing media element pulls decoded audio from the receiver, like the app.
     const element=document.createElement("audio");element.autoplay=true;element.playsInline=true;
-    element.volume=.01;element.srcObject=new MediaStream([e.track]);document.body.append(element);
+    // Use unity playback gain: the receiver energy metric can include output gain.
+    element.volume=1;element.srcObject=new MediaStream([e.track]);document.body.append(element);
     const playing=element.play();playing.catch(()=>{});receivers.set(pc,{element,track:e.track,playing});
   };}
   listen(a);listen(b);
