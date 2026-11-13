@@ -41,6 +41,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
                 try{
                     val sdp=kotlinx.coroutines.runBlocking { engine.prepareLocalOffer() }
                     check(sdp.contains("m=audio ")){"Native WebRTC did not create an audio offer"}
+                    check(sdp.contains("useinbandfec=1")&&sdp.contains("maxaveragebitrate=32000")){"Speech protection was not negotiated in local SDP"}
                 }finally{onMain{engine.close()}}
             }
         }
@@ -56,6 +57,10 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
     private val source:AudioSource
     private val track:AudioTrack
     private val pc:PeerConnection
+    private val sender:RtpSender
+    private val speech=SeraSpeechAdaptation()
+    private var appliedBitrate:Int?=null
+    private var lastRemoteReport:Double?=null
     init {
         android.util.Log.i("SeraRtc","Initializing WebRTC")
         ensureInitialized(context)
@@ -80,9 +85,13 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         }
         pc=factory.createPeerConnection(rtc,observer)?:error("Voice connection could not initialize.")
         android.util.Log.i("SeraRtc","Peer connection ready")
-        source=factory.createAudioSource(MediaConstraints())
+        source=factory.createAudioSource(MediaConstraints().apply{
+            optional.add(MediaConstraints.KeyValuePair("googEchoCancellation","true"))
+            optional.add(MediaConstraints.KeyValuePair("googNoiseSuppression","true"))
+            optional.add(MediaConstraints.KeyValuePair("googAutoGainControl","true"))
+        })
         track=factory.createAudioTrack("sera-voice",source)
-        pc.addTrack(track,listOf("sera-audio"))
+        sender=pc.addTrack(track,listOf("sera-audio"))?:error("Voice track unavailable.")
         manager.mode=AudioManager.MODE_IN_COMMUNICATION
         manager.requestAudioFocus(focusRequest)
         android.util.Log.i("SeraRtc","Audio track ready")
@@ -105,9 +114,10 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         }
         if(local)pc.setLocalDescription(observer,s)else pc.setRemoteDescription(observer,s)
     }
-    suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=description(true);set(offer,true);offer.description}
+    private fun speechDescription(s:SessionDescription)=SessionDescription(s.type,seraSpeechSdp(s.description))
+    suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=speechDescription(description(true));set(offer,true);offer.description}
     suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
-    suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(description(false),true);gather()}
+    suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);gather()}
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false)}
     private suspend fun gather():String{
         val deadline=android.os.SystemClock.elapsedRealtime()+25000L
@@ -122,16 +132,43 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         if(!sdp.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})throw SeraRelayUnavailable()
         return sdp
     }
-    suspend fun audioSample():SeraAudioSample?=kotlinx.coroutines.withTimeoutOrNull(2500){
-        suspendCancellableCoroutine{continuation->
-            if(closed){continuation.resume(null);return@suspendCancellableCoroutine}
-            pc.getStats{report->
-                val audio=report.statsMap.values.filter{stat->stat.type=="inbound-rtp"&&(stat.members["kind"]=="audio"||stat.members["mediaType"]=="audio")}
-                val samples=audio.mapNotNull{stat->val received=(stat.members["packetsReceived"] as? Number)?.toLong();val lost=(stat.members["packetsLost"] as? Number)?.toLong();if(received!=null&&lost!=null)SeraAudioSample(received,lost)else null}
-                val sample=if(samples.isEmpty())null else SeraAudioSample(samples.sumOf{it.received},samples.sumOf{it.lost})
-                if(continuation.isActive)continuation.resume(sample)
+    private data class SpeechStats(val sample:SeraAudioSample?,val link:SeraSpeechLink,val remoteTimestamp:Double?)
+    suspend fun audioSample():SeraAudioSample? {
+        val stats=kotlinx.coroutines.withTimeoutOrNull(2500){
+            suspendCancellableCoroutine<SpeechStats?>{continuation->
+                if(closed){continuation.resume(null);return@suspendCancellableCoroutine}
+                pc.getStats{report->
+                    val values=report.statsMap.values
+                    fun isAudio(stat:RTCStats)=stat.members["kind"]=="audio"||stat.members["mediaType"]=="audio"
+                    val samples=values.filter{it.type=="inbound-rtp"&&isAudio(it)}.mapNotNull{stat->
+                        val received=(stat.members["packetsReceived"] as? Number)?.toLong()
+                        val lost=(stat.members["packetsLost"] as? Number)?.toLong()
+                        if(received!=null&&lost!=null)SeraAudioSample(received,lost)else null
+                    }
+                    val sample=if(samples.isEmpty())null else SeraAudioSample(samples.sumOf{it.received},samples.sumOf{it.lost})
+                    val remote=values.firstOrNull{it.type=="remote-inbound-rtp"&&isAudio(it)}
+                    val selectedId=values.firstOrNull{it.type=="transport"}?.members?.get("selectedCandidatePairId") as? String
+                    val pair=selectedId?.let{report.statsMap[it]}
+                    val loss=(remote?.members?.get("fractionLost") as? Number)?.toDouble()
+                    val rtt=(remote?.members?.get("roundTripTime") as? Number)?.toDouble()?: (pair?.members?.get("currentRoundTripTime") as? Number)?.toDouble()
+                    val bandwidth=(pair?.members?.get("availableOutgoingBitrate") as? Number)?.toDouble()
+                    if(continuation.isActive)continuation.resume(SpeechStats(sample,SeraSpeechLink(loss,rtt,bandwidth),remote?.timestampUs))
+                }
+            }
+        }?:return null
+        if(!closed){
+            val fresh=stats.remoteTimestamp!=null&&stats.remoteTimestamp!=lastRemoteReport
+            if(fresh)lastRemoteReport=stats.remoteTimestamp
+            val next=speech.update(if(fresh)stats.link else stats.link.copy(loss=null))
+            if(appliedBitrate!=next.bitrate)runCatching{
+                val parameters=sender.parameters
+                if(parameters.encodings.isNotEmpty()){
+                    parameters.encodings.forEach{it.maxBitrateBps=next.bitrate}
+                    if(sender.setParameters(parameters))appliedBitrate=next.bitrate
+                }
             }
         }
+        return stats.sample
     }
     fun mute(value:Boolean){if(!closed)track.setEnabled(!value)}
     fun speaker(value:Boolean){
