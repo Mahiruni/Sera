@@ -27,6 +27,9 @@ export async function testDatabase() {
   `);
   const migrations = (await readdir(root + "supabase/migrations"))
     .filter((p) => p.endsWith(".sql"))
+    // pg_net and pg_cron are hosted platform extensions, not available in PGlite.
+    // The recovery schema and all authorization functions still replay and are tested below.
+    .filter((p) => !p.endsWith("_sera_message_push_scheduler.sql"))
     .sort();
   try {
     for (const name of migrations)
