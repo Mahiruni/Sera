@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
@@ -80,6 +81,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 
+/** One quiet, theme-aware separator between chat identity and quick actions. */
+@Composable internal fun SeraThreadHeaderDivider(){
+    Box(Modifier.fillMaxWidth().padding(horizontal=20.dp).height(1.dp)
+        .clip(CircleShape).background(seraChatColors().border.copy(alpha=.8f))
+        .testTag("sera_thread_header_divider"))
+}
+
 @Composable internal fun SeraThreadHeader(conversation:NativeConversation,fallbackPhoto:String?,token:String,userId:String,peerTyping:Boolean,peerActivity:String?,sound:Boolean,inboxInk:Color,inboxSoft:Color,muted:Color,accent:Color,inboxTeal:Color,onBack:()->Unit,onSearch:()->Unit,onSound:()->Unit,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit,onDetails:()->Unit={}){
             Row(
                 modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -109,7 +117,7 @@ import java.net.URL
                 if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text("Cancel")}})
             }
 }
-@Composable internal fun SeraThreadTimeline(modifier:Modifier,messageListState:androidx.compose.foundation.lazy.LazyListState,messages:List<NativeMessage>,callEvents:List<SeraCallEvent>,messageSearch:String,historyLimit:Int,menu:String?,peerName:String,token:String,userId:String,playback:SeraChatPlayback,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,onLoadEarlier:()->Unit,onMenu:(String?)->Unit,onReply:(NativeMessage)->Unit,onReact:(NativeMessage)->Unit,onForward:(NativeMessage)->Unit,onCopy:(NativeMessage)->Unit,onUnsend:(NativeMessage)->Unit,onReaction:(NativeMessage,String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,pendingTexts:List<NativeQueuedText> = emptyList(),connectionAvailable:Boolean=true,onRetryText:(String)->Unit={},unreadBoundary:String?=null,conversationId:String="",onLibraryChanged:()->Unit={},onQuote:(String)->Unit={},highlightedId:String?=null,selectedIds:Set<String> = emptySet(),onSelectMessage:(String)->Unit={}){
+@Composable internal fun SeraThreadTimeline(modifier:Modifier,messageListState:androidx.compose.foundation.lazy.LazyListState,messages:List<NativeMessage>,callEvents:List<SeraCallEvent>,messageSearch:String,historyLimit:Int,menu:String?,peerName:String,token:String,userId:String,playback:SeraChatPlayback,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,onLoadEarlier:()->Unit,onMenu:(String?)->Unit,onReply:(NativeMessage)->Unit,onReact:(NativeMessage)->Unit,onForward:(NativeMessage)->Unit,onCopy:(NativeMessage)->Unit,onUnsend:(NativeMessage)->Unit,onReaction:(NativeMessage,String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,pendingTexts:List<NativeQueuedText> = emptyList(),connectionAvailable:Boolean=true,onRetryText:(String)->Unit={},unreadBoundary:String?=null,conversationId:String="",onLibraryChanged:()->Unit={},onQuote:(String)->Unit={},highlightedId:String?=null,selectedIds:Set<String> = emptySet(),onSelectMessage:(String)->Unit={},peerPhoto:String?=null){
             val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp*.76f).coerceIn(120.dp,340.dp)
             val scrollScope=rememberCoroutineScope()
             val showNew by remember(messageListState,messages,userId){derivedStateOf{val layout=messageListState.layoutInfo;layout.totalItemsCount>0&&layout.visibleItemsInfo.lastOrNull()?.index?.let{it<layout.totalItemsCount-2}==true&&messages.any{isUnreadIncoming(it,userId)}}}
@@ -126,7 +134,10 @@ import java.net.URL
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
                     if(item.message?.id==unreadBoundary&&messageSearch.isBlank())Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f));Text("New messages",fontSize=11.sp,color=accent,fontWeight=FontWeight.SemiBold);HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f))}
                     val message=item.message
-                    if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={onMenu(if(it)message.id else null)},onReply={onReply(message)},onReact={onReact(message)},onForward={onForward(message)},onCopy={onCopy(message)},onUnsend={onUnsend(message)},onReaction={onReaction(message,it)},onImage=onImage,onError=onError,conversationId=conversationId,onLibraryChanged=onLibraryChanged,onQuote=onQuote,highlighted=message.id==highlightedId,selectionMode=selectedIds.isNotEmpty(),selected=message.id in selectedIds,onSelect={onSelectMessage(message.id)})
+                    val next=timeline.getOrNull(index+1)
+                    val nextMessage=next?.message
+                    val showPeerAvatar=message!=null&&message.senderId!=userId&&!message.unsent&&(nextMessage==null||nextMessage.senderId!=message.senderId||nextMessage.unsent||date!=runCatching{java.time.Instant.parse(nextMessage.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull())
+                    if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={onMenu(if(it)message.id else null)},onReply={onReply(message)},onReact={onReact(message)},onForward={onForward(message)},onCopy={onCopy(message)},onUnsend={onUnsend(message)},onReaction={onReaction(message,it)},onImage=onImage,onError=onError,conversationId=conversationId,onLibraryChanged=onLibraryChanged,onQuote=onQuote,highlighted=message.id==highlightedId,selectionMode=selectedIds.isNotEmpty(),selected=message.id in selectedIds,onSelect={onSelectMessage(message.id)},peerPhoto=peerPhoto,showPeerAvatar=showPeerAvatar,reservePeerAvatar=true)
                     }
                 }
                 items(pendingTexts.filter{messageSearch.isBlank()||it.body.contains(messageSearch,true)},key={"client-"+userId+"-"+it.id}){p->

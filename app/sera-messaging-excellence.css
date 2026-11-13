@@ -96,3 +96,10 @@ html[data-sera-theme=dark] .sera-chat-page{--chat-bg:#12262b;--chat-surface:#183
  .sera-chat-message-actions .sera-chat-menu{position:fixed;left:50%;right:auto;top:50%;bottom:auto;transform:translate(-50%,-50%);width:240px;max-height:calc(100dvh - 48px);overflow:auto;z-index:100001}
  .sera-chat-message-actions .sera-chat-reaction-picker{position:fixed;left:50%!important;right:auto!important;top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:100001}
 }
+
+/* Tiny sender identity at the bottom corner; preserve alignment between grouped bubbles. */
+.sera-chat-message-row .sera-chat-message-avatar{display:flex;align-items:center;justify-content:center;width:22px;min-width:22px;height:22px;align-self:flex-end;margin-bottom:2px;flex-shrink:0}
+
+/* Single inset hairline below chat identity; no full-width header border. */
+.sera-chat-thread>.sera-chat-header{position:relative;border-bottom:0}
+.sera-chat-thread>.sera-chat-header::after{content:"";position:absolute;inset-inline:20px;bottom:0;height:1px;border-radius:999px;background:var(--chat-line);opacity:.8;pointer-events:none}
