@@ -81,6 +81,11 @@ import java.net.URL
     var unreadOnly by remember{mutableStateOf(false)}
     var archivedOnly by remember{mutableStateOf(false)}
     var controls by remember{mutableStateOf(false)}
+    var revealed by remember{mutableStateOf<String?>(null)}
+    var swipeError by remember{mutableStateOf("")}
+    var busy by remember{mutableStateOf(false)}
+    val scope=rememberCoroutineScope()
+    fun quick(c:NativeConversation,action:String,value:Boolean,minutes:Int=0){if(busy)return;busy=true;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_conversation_preference",JSONObject().put("p_conversation",c.id).put("p_action",action).put("p_value",value).put("p_mute_minutes",minutes))};busy=false;if(r.first!=null){revealed=null;onControlChanged()}else swipeError=r.second}}
     if(controls)SeraMessagingControlDialog(token,userId,onDismiss={controls=false})
     Column(Modifier.fillMaxSize()){
             Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
@@ -95,6 +100,7 @@ import java.net.URL
                 if(search.isNotEmpty())IconButton(onClick={onSearch("")},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!unreadOnly&&!archivedOnly,onClick={unreadOnly=false;archivedOnly=false},label={Text("All")});FilterChip(selected=unreadOnly,onClick={unreadOnly=true;archivedOnly=false},label={Text("Unread")});FilterChip(selected=archivedOnly,onClick={archivedOnly=true;unreadOnly=false},label={Text("Archived")});Spacer(Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("${if(unreadTotal>99) "99+" else unreadTotal} unread",fontSize=12.sp,color=accent)}
+            if(swipeError.isNotBlank())Row(verticalAlignment=Alignment.CenterVertically){Text(swipeError,Modifier.weight(1f),color=MaterialTheme.colorScheme.error);TextButton(onClick={swipeError=""}){Text("Dismiss")}}
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick=onRetry){Text("Retry")}}
             if (!loading && conversations.isEmpty() && error.isBlank())
@@ -103,9 +109,10 @@ import java.net.URL
             if(unreadOnly&&filtered.isEmpty()&&!loading&&search.isBlank())Text("You’re all caught up.",modifier=Modifier.padding(16.dp),color=muted)
             if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
             LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
-                items(filtered, key = { it.id }) { conversation ->
+                itemsIndexed(filtered, key = { _,c -> c.id }) { index,conversation ->
+                    Column(Modifier.fillMaxWidth()) {
                     Card(onClick = {onSelect(conversation)},
-                        shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().pointerInput(conversation.id){var dx=0f;detectHorizontalDragGestures(onDragStart={dx=0f},onHorizontalDrag={change,amount->change.consume();dx+=amount},onDragEnd={if(kotlin.math.abs(dx)>52.dp.toPx())revealed=if(revealed==conversation.id)null else conversation.id},onDragCancel={dx=0f})},
                         colors = CardDefaults.cardColors(containerColor = if(conversation.unread>0) inboxSoft else chatSurface)) {
                         Row(Modifier.padding(horizontal=12.dp,vertical=12.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -122,8 +129,20 @@ import java.net.URL
                             Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0||conversation.markedUnread) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
                         }
                     }
+                    androidx.compose.animation.AnimatedVisibility(visible=revealed==conversation.id&&userId.isNotBlank()){
+                        Row(Modifier.fillMaxWidth().padding(start=60.dp,end=4.dp),horizontalArrangement=Arrangement.SpaceEvenly){
+                            TextButton(enabled=!busy,onClick={quick(conversation,"pin",!conversation.pinned)}){Text(if(conversation.pinned)"Unpin" else "Pin",fontSize=11.sp)}
+                            TextButton(enabled=!busy,onClick={quick(conversation,"archive",!conversation.archived)}){Text(if(conversation.archived)"Restore" else "Archive",fontSize=11.sp)}
+                            TextButton(enabled=!busy,onClick={quick(conversation,"unread",!conversation.markedUnread)}){Text(if(conversation.markedUnread)"Clear" else "Unread",fontSize=11.sp)}
+                            TextButton(enabled=!busy,onClick={quick(conversation,"mute",true,if(conversation.mutedUntil!=null)0 else 60)}){Text(if(conversation.mutedUntil!=null)"Unmute" else "Mute 1h",fontSize=11.sp)}
+                        }
+                    }
+                    if(index<filtered.lastIndex)SeraUnifiedInboxDivider()
+                    }
                 }
             }
 
     }
 }
+
+@Composable private fun SeraUnifiedInboxDivider(){Box(Modifier.fillMaxWidth().padding(start=72.dp,end=12.dp).height(1.dp).clip(CircleShape).background(seraChatColors().border.copy(alpha=.55f)))}
