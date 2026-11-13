@@ -33,6 +33,7 @@ internal fun seraLinkDestination(raw:String):SeraLinkDestination? {
         return SeraLinkDestination(parts[0],parts[1].lowercase())
     if(parts.isEmpty()||(parts.size==1&&parts[0] in listOf("privacy","terms","help","about","contact","guides","education","how-it-works")))
         return SeraLinkDestination("public","https://sera.hisabtech.com/"+parts.joinToString("/"))
+    if(parts==listOf("network","messages"))return SeraLinkDestination("section","messages")
     if(parts.size==1&&parts[0] in listOf("feed","jobs","discover","connections","settings","workspace","notifications","saved","profile","messages"))
         return SeraLinkDestination("section",parts[0])
     return SeraLinkDestination("unsupported",u.toString())
@@ -121,7 +122,7 @@ internal fun SeraLinkNavigation(token:String?,userId:String,onSection:(String)->
                     }
                     loadUrl(url)
                 }
-            },onRelease={it.stopLoading();it.destroy()})
+            },onReset=null,onRelease={it.stopLoading();it.destroy()})
         }
     }
 }
