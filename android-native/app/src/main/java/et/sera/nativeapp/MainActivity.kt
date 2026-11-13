@@ -357,6 +357,7 @@ fun SeraApp(
     var busy by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf("Home") }
     var showComposer by remember { mutableStateOf(false) }
+    var composerInitialKind by remember { mutableStateOf<String?>(null) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     var authenticatedUserId by remember { mutableStateOf("") }
     var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
@@ -457,7 +458,7 @@ fun SeraApp(
         }
         dataLoading = false
     }
-    if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, token = accessToken!!, onPublished = { showComposer = false; refresh++ }, onDismiss = { showComposer = false })
+    if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, token = accessToken!!, initialKind=composerInitialKind, onPublished = { showComposer = false; composerInitialKind=null; refresh++ }, onDismiss = { showComposer = false; composerInitialKind=null })
     if (showLanguagePicker) {
         val locales = listOf("en" to "English", "am" to "አማርኛ", "om" to "Afaan Oromo")
         AlertDialog(onDismissRequest = { showLanguagePicker = false },
@@ -643,7 +644,9 @@ fun SeraApp(
                                                 }
                                             },
                                             modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
-                                            onAtTop={chromeVisible.value=true},savedOnly=tab=="Saved"
+                                            onAtTop={chromeVisible.value=true},savedOnly=currentTab=="Saved",
+                                            composerName=identity.lineSequence().firstOrNull().orEmpty(),composerAvatar=profileAvatarUrl,
+                                            canCompose=authenticatedUserId.isNotBlank(),onCompose={kind->composerInitialKind=kind;showComposer=true}
                                         )
                                         "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
@@ -748,8 +751,8 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraFloatingDock(
             selected = selected,
-            sections = listOf("Home", "Network", "Create", "Jobs", "Profile"),
-            onNavigate = { if (it == "Create") onCompose() else onNavigate(it) },
+            sections = listOf("Home", "Network", "Search", "Jobs", "Profile"),
+            onNavigate = onNavigate,
             canCompose = canCompose,
             profileAvatarUrl = profileAvatarUrl
         )

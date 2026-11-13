@@ -14,6 +14,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -54,8 +58,11 @@ private val feedMuted = Color(0xFF667A7E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false) {
+fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={}) {
     val context = LocalContext.current
+    val feedInk=MaterialTheme.colorScheme.onSurface
+    val feedMuted=MaterialTheme.colorScheme.onSurfaceVariant
+    val feedTeal=MaterialTheme.colorScheme.primary
     val listState=rememberLazyListState()
     val topCallback by rememberUpdatedState(onAtTop)
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
@@ -99,24 +106,26 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp,
                 top = 73.dp, bottom = 92.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")});FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")})} }
+            if(!savedOnly) item(key="home-compose") { SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose) }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
             items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->
                 val post = posts[index]
                 if (post != null) {
                     Surface(
-                        shape = RoundedCornerShape(0.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
                         color = MaterialTheme.colorScheme.surface,
                         modifier = Modifier.fillMaxWidth().animateContentSize()
                     ) {
-                        Column(Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                                 Box(
-                                    Modifier.size(43.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
+                                    Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFE1F5F2)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (post.avatarUrl != null) {
@@ -133,7 +142,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
                                     Text(buildAnnotatedString {
-                                        withStyle(SpanStyle(color=feedInk,fontWeight=FontWeight.Bold,fontSize=14.sp)){append(post.author)}
+                                        withStyle(SpanStyle(color=feedInk,fontWeight=FontWeight.Bold,fontSize=15.sp)){append(post.author)}
                                         if(post.repostOf!=null) withStyle(SpanStyle(color=SeraPurple,fontWeight=FontWeight.Medium,fontSize=11.sp)){append(" | Reposted from "+(post.repostAuthor?:"original author"))}
                                     },maxLines=2,overflow=TextOverflow.Ellipsis,lineHeight=17.sp,modifier=Modifier.weight(1f,fill=false))
                                     if(post.identityVerified)SeraIdentityBadge()
@@ -153,7 +162,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
                             if(post.repostOf!=null){
                                 if(post.repostNote.isNotBlank()) Text(post.repostNote,color=feedInk)
-                                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFFF1F8F7)).clickable(enabled=post.originalBody!=null){nativePostId=post.repostOf}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
+                                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(enabled=post.originalBody!=null){nativePostId=post.repostOf}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
                                     if(post.originalAvatar!=null)SeraMediaImage(post.originalAvatar,"Original author",96,96,modifier=Modifier.size(30.dp).clip(CircleShape))
                                     Column(Modifier.weight(1f)){Text(post.repostAuthor?:"Original post unavailable",color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=12.sp);Text("Original · "+postTimeLabel(post.originalTime.orEmpty()),color=feedMuted,fontSize=11.sp)}
                                     if(post.originalBody!=null)TextButton(onClick={nativePostId=post.repostOf}){Text("›",fontSize=22.sp,color=SeraPurple)}
@@ -166,7 +175,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                             val readableBody = body.ifBlank { if (title.isNotBlank()) title else "" }
                             if (readableBody.isNotBlank()) {
                                 Text(readableBody, color = feedInk, fontFamily = FontFamily.SansSerif,
-                                    fontSize = 14.sp, lineHeight = 21.sp,
+                                    fontSize = 15.sp, lineHeight = 23.sp,
                                     maxLines = if (expandedPosts[post.id] == true) Int.MAX_VALUE else 7,
                                     overflow = TextOverflow.Ellipsis)
                                 if (readableBody.length > 330) TextButton(
@@ -212,7 +221,6 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                                     scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second}else if(savedOnly)posts.refresh();savePending.remove(post.id)}
                                 }
                             }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.7.dp)
                         }
                     }
                 }
@@ -358,5 +366,32 @@ private fun postTimeLabel(value: String): String = runCatching {
         val scale by animateFloatAsState(if(active&&kind==SeraReactionKind.LIKE)1.06f else 1f,label="Reaction scale")
         SeraReactionGlyph(kind,active,Modifier.graphicsLayer{scaleX=scale;scaleY=scale})
         if(count>0){Spacer(Modifier.width(3.dp));Text(if(count>=1000)"${count/1000}k" else count.toString(),fontSize=11.sp,color=if(active)feedTeal else MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)}
+    }
+}
+
+@Composable
+private fun SeraHomeComposeCard(name:String,avatar:String?,enabled:Boolean,onCompose:(String?)->Unit){
+    val colors=MaterialTheme.colorScheme
+    Surface(shape=RoundedCornerShape(20.dp),color=colors.surface,border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant),modifier=Modifier.fillMaxWidth()){
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled=enabled){onCompose(null)}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                SeraAccountAvatar(name.ifBlank{"SERA member"},avatar,44)
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                    Text("Share something valuable",fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=colors.onSurface)
+                    Text("Ideas, projects, achievements…",fontSize=12.sp,color=colors.onSurfaceVariant)
+                }
+                Surface(shape=RoundedCornerShape(12.dp),color=colors.primaryContainer){Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.EditNote,"Create post",tint=colors.onPrimaryContainer)}}
+            }
+            HorizontalDivider(color=colors.outlineVariant)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                listOf(Triple("Photo","photos",Icons.Outlined.Image),Triple("Project","project",Icons.Outlined.WorkOutline),Triple("Thought","quote",Icons.Outlined.FormatQuote)).forEach{(label,kind,icon)->
+                    TextButton(onClick={onCompose(kind)},enabled=enabled,modifier=Modifier.weight(1f),contentPadding=PaddingValues(horizontal=3.dp,vertical=8.dp)){
+                        Icon(icon,null,Modifier.size(19.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(label,fontSize=12.sp,maxLines=1)
+                    }
+                }
+            }
+        }
     }
 }

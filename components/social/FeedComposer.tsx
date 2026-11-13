@@ -61,7 +61,7 @@ export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerif
     <section className="sera-feed-compose" aria-label="Create a post">
       <div className="sera-feed-compose-top">
         <MemberAvatar name={name} photo={avatarUrl} size={46} />
-        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}>What&apos;s on your mind, {name.split(" ")[0]}?</button>
+        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}><strong>Share something valuable</strong><small>Ideas, projects, achievements…</small></button>
         <button type="button" className="sera-feed-compose-pencil" aria-label="Create a post" onClick={() => launch("idea")}><PenLine size={19}/></button>
       </div>
       <div className="sera-feed-compose-actions">

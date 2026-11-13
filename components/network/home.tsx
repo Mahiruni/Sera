@@ -201,6 +201,7 @@ export function NetworkHome({
               Explore projects <ArrowUpRight size={11} />
             </Link>
           </nav>
+          <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} headline={profile?.headline} identityVerified={identityVerified}/>
           <nav className="sera-premium-people" aria-label="Professionals to discover">
             <Link href="/discover?tab=people" className="sera-premium-person sera-premium-add">
               <span className="sera-premium-person-avatar"><Plus size={27} /></span>
@@ -213,7 +214,6 @@ export function NetworkHome({
               </Link>
             ))}
           </nav>
-          <FeedComposer name={name} avatarUrl={avatarUrl} userId={userId} headline={profile?.headline} identityVerified={identityVerified}/>
           <nav className="social-filters" aria-label="Filter stories">
             <Link
               href={mine ? "/feed?view=mine" : "/feed"}

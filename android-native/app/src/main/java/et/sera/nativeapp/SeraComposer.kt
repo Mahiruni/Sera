@@ -72,7 +72,7 @@ private class ComposerDrafts(context: Context) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismiss: () -> Unit) {
+fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismiss: () -> Unit, initialKind:String?=null) {
     val context = LocalContext.current
     val focus = LocalFocusManager.current
     val drafts = remember(context) { runCatching { ComposerDrafts(context) }.getOrNull() }
@@ -90,7 +90,7 @@ fun SeraComposer(userId: String, token: String, onPublished: () -> Unit, onDismi
     var audience by rememberSaveable(userId){mutableStateOf(runCatching{drafts?.audience(userId)}.getOrNull()?:"public")}
     var audienceOpen by remember{mutableStateOf(false)}
     val audiences=linkedMapOf("public" to "Public","connections" to "Connections","followers" to "Followers","only_me" to "Only me")
-    var kind by rememberSaveable(userId){mutableStateOf(restored.optString("kind","idea").takeIf{it in listOf("idea","quote","talent","project","achievement","question","photos")}?: "idea")}
+    var kind by rememberSaveable(userId){mutableStateOf((initialKind?:restored.optString("kind","idea")).takeIf{it in listOf("idea","quote","talent","project","achievement","question","photos")}?: "idea")}
     val kinds=linkedMapOf("idea" to "Idea","photos" to "Photo","quote" to "Quote","talent" to "Talent","project" to "Project","achievement" to "Achievement","question" to "Discussion")
     var saved by remember { mutableStateOf(false) }
     var publishing by remember { mutableStateOf(false) }

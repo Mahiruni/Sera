@@ -15,7 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PeopleOutline
@@ -36,7 +36,7 @@ private val dockActive = Color(0xFF8EF3E4)
 private val dockIdle = Color(0xFFD3E0E0)
 
 private fun dockIcon(section: String): ImageVector = when (section) {
-    "Create" -> Icons.Outlined.AddCircleOutline
+    "Search" -> Icons.Outlined.Explore
     "Home" -> Icons.Outlined.Home
     "Network" -> Icons.Outlined.PeopleOutline
     "Jobs" -> Icons.Outlined.WorkOutline
@@ -80,7 +80,7 @@ internal fun SeraFloatingDock(
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .clickable(
-                            enabled = section != "Create" || canCompose,
+                            enabled = true,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(bounded = true)
                         ) { onNavigate(section) }
@@ -96,7 +96,7 @@ internal fun SeraFloatingDock(
                             modifier = Modifier.size(26.dp).clip(CircleShape)
                         )
                     } else {
-                        Icon(dockIcon(section), contentDescription = section, tint = tint,
+                        Icon(dockIcon(section), contentDescription = if(section=="Search")"Discover" else section, tint = tint,
                             modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale })
                     }
                     Spacer(Modifier.height(5.dp))
