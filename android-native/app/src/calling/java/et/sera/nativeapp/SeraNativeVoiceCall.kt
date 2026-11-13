@@ -77,6 +77,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var seconds by remember(conversation){mutableLongStateOf(0L)}
     var quality by remember(conversation){mutableStateOf<String?>(null)}
     var peerGeneration by remember(conversation){mutableIntStateOf(0)}
+    var recoverySince by remember(conversation){mutableLongStateOf(0L)}
     var lastAnswer by remember(conversation){mutableStateOf<String?>(null)}
     var showHistory by remember(conversation){mutableStateOf(false)}
     var minimized by remember(conversation){mutableStateOf(false)}
@@ -89,7 +90,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
     fun payload()=JSONObject().put("p_conversation",conversation)
     fun closePeer(){peerGeneration++;val previous=rtc;rtc=null;previous?.close()}
-    fun cleanup(){closePeer();SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
+    fun cleanup(){closePeer();SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;recoverySince=0;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
     suspend fun end(action:String,message:String="",target:CallRow?=null){
         val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};if(call!=null||phase.isNotBlank())finishSummary(when(action){"decline"->"Call declined";"fail"->"Connection lost";else->if(started>0)"Call ended" else "Call cancelled"},call,message);cleanup()
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
@@ -98,7 +99,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         onAudioStart()
         val generation=++peerGeneration
         return SeraNativeRtc(context,c){state->scope.launch{
-            if(rtc!=null&&generation==peerGeneration&&!cancelRequested){when(state){"connected"->{phase="Connected";if(started==0L)started=SystemClock.elapsedRealtime()};"connecting"->if(row?.state=="accepted")phase="Connecting…";"disconnected"->phase="Reconnecting…";"failed"->if(!busy)end("fail","Call connection failed.")}}
+            if(rtc!=null&&generation==peerGeneration&&!cancelRequested){when(state){"connected"->{recoverySince=0;phase="Connected";if(started==0L)started=SystemClock.elapsedRealtime()};"connecting","disconnected","failed"->if(row?.state=="accepted"&&!busy){if(recoverySince==0L)recoverySince=SystemClock.elapsedRealtime();phase=if(started>0)"Reconnecting…" else "Connecting…"}}}
         }}.also{rtc=it}
     }
     suspend fun prepareWithFallback(fresh:JSONObject,invitation:CallRow?):String{
@@ -185,7 +186,13 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             delay(4000)
         }
     }
-    LaunchedEffect(phase,row?.id){if(phase=="Connecting…"||phase=="Reconnecting…"){delay(45000);if(phase=="Connecting…"||phase=="Reconnecting…")end("fail","Could not establish the call.")}}
+    LaunchedEffect(phase,row?.id,recoverySince){
+        if(phase=="Connecting…"||phase=="Reconnecting…"){
+            val deadline=(if(recoverySince>0L)recoverySince else SystemClock.elapsedRealtime())+45000L
+            delay((deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+            if(phase=="Connecting…"||phase=="Reconnecting…")end("fail",if(started>0)"Call connection lost. Try again." else "Could not establish the call.")
+        }
+    }
     val incoming=row?.state=="ringing"&&row?.callee==userId&&phase.isBlank()
     var resumed by remember(lifecycle){mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}
     val latestRow by rememberUpdatedState(row)
