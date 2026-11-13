@@ -316,6 +316,7 @@ private class InboxThreadState {
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
     var jumpMessageId by mutableStateOf<String?>(null)
+    var suppressImeAnchor by mutableStateOf(false)
 }
 
 private class InboxController(
@@ -505,7 +506,8 @@ private class InboxController(
                 val layout = messageListState.layoutInfo
                 Triple(ime.getBottom(density), layout.viewportSize.height, layout.totalItemsCount)
             }.collectLatest { (bottom, height, count) ->
-                val shouldAnchor = bottom>0 && count>0 &&
+                if(bottom==0)thread.suppressImeAnchor=false
+                val shouldAnchor = bottom>0 && count>0 && !thread.suppressImeAnchor &&
                     (bottom!=previousIme || height!=previousHeight || previousCount==0)
                 previousIme=bottom
                 previousHeight=height
@@ -514,7 +516,7 @@ private class InboxController(
                     // Wait for the resized list to be measured before scrolling.
                     withFrameNanos{}
                     val latestCount=messageListState.layoutInfo.totalItemsCount
-                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch && thread.jumpMessageId==null && messageListState.canScrollForward){
+                    if(latestCount>0 && ime.getBottom(density)>0 && !showSearch && thread.jumpMessageId==null && !thread.suppressImeAnchor && messageListState.canScrollForward){
                         messageListState.scrollToItem(latestCount-1)
                         // A very tall last bubble may still extend below the viewport.
                         val layout=messageListState.layoutInfo
@@ -736,7 +738,7 @@ private class InboxController(
                 if(thread.detailsOpen){
                     val current=conversations.firstOrNull{it.id==conversation.id}?:conversation
                     SeraConversationDetails(current,token,userId,peerActivity,messages,historyLimit,!thread.initialMessagesLoaded,playback,inboxInk,inboxSoft,muted,accent,
-                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true},onJumpToMessage={id->thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
+                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;showSearch=true},onJumpToMessage={id->thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
                 }else{
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
