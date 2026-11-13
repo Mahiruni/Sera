@@ -83,7 +83,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var cancelRequested by remember(conversation){mutableStateOf(false)}
     var history by remember(conversation){mutableStateOf<List<SeraCallEvent>>(emptyList())}
     var historyLoading by remember(conversation){mutableStateOf(false)}
-    suspend fun fetchHistory(){historyLoading=true;try{val a=JSONArray(callRequest(token,"sera_call_history",JSONObject().put("p_conversation",conversation))?:"[]");history=(0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))}.distinctBy{it.id}}catch(e:CancellationException){throw e}catch(_:Exception){error="Call history unavailable. Try again."}finally{historyLoading=false}}
+    suspend fun fetchHistory(){historyLoading=true;try{val a=JSONArray(callRequest(token,"sera_call_history",JSONObject().put("p_conversation",conversation))?:"[]");history=(0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"),if(j.isNull("connected_seconds"))null else j.optLong("connected_seconds"))}.distinctBy{it.id}}catch(e:CancellationException){throw e}catch(_:Exception){error="Call history unavailable. Try again."}finally{historyLoading=false}}
     var summary by remember(conversation){mutableStateOf<SeraVoiceSummary?>(null)}
     var silenced by remember(conversation){mutableStateOf(false)}
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
@@ -161,7 +161,18 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             delay(1500)
         }
     }
-    LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
+    LaunchedEffect(enabled,token,conversation,lifecycle){if(enabled)lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{val a=JSONArray(callRequest(token,"sera_call_history",payload())?:"[]");onHistory((0 until a.length()).map{val j=a.getJSONObject(it);SeraCallEvent(j.getString("id"),j.getString("caller"),j.getString("state"),j.getString("created_at"),if(j.isNull("connected_seconds"))null else j.optLong("connected_seconds"))})}catch(e:CancellationException){throw e}catch(_:Exception){};delay(10000)}}}
+    LaunchedEffect(row?.id,row?.state,started){
+        val id=row?.id?:return@LaunchedEffect
+        if(row?.state!="accepted"||started<=0L)return@LaunchedEffect
+        while(row?.id==id&&row?.state=="accepted"){
+            if(phase=="Connected"){
+                val confirmed=try{callRequest(token,"sera_call_confirm_media",payload().put("p_id",id))=="true"}catch(e:CancellationException){throw e}catch(_:Exception){false}
+                if(confirmed)break
+            }
+            delay(4000)
+        }
+    }
     LaunchedEffect(started){while(started>0){seconds=(SystemClock.elapsedRealtime()-started)/1000;delay(1000)}}
     LaunchedEffect(phase,row?.id){
         quality=null
