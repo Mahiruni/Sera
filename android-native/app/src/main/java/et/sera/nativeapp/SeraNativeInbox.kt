@@ -187,6 +187,11 @@ private fun loadNativeMessages(token: String, conversationId: String, limit:Int=
     val (raw, error) = inboxRequest(token,
         "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}?:""))
     if (raw == null) return null to error
+    val parsed=parseNativeMessageRows(raw)
+    if(parsed.first!=null&&ids==null)runCatching{cache?.write(owner,conversationId,raw)}
+    return parsed
+}
+private fun parseNativeMessageRows(raw:String):Pair<List<NativeMessage>?,String>{
     return try {
         val rows = JSONArray(raw)
         (0 until rows.length()).map { i ->
