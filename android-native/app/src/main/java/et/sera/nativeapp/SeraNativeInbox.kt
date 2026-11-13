@@ -556,6 +556,12 @@ private class InboxController(
         set(value) { thread.attachmentStudio = value }
 
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
+    fun loadEarlier(){
+        if(historyLimit>=1000||!connectionAvailable)return
+        historyLimit=(historyLimit+100).coerceAtMost(1000)
+        reload()
+    }
+
     fun reload(){
         val c=selected?:return
         thread.manualSyncRequested=true
@@ -823,7 +829,7 @@ private class InboxController(
     fun MessagePolling() {
         val recoveryRevision=SeraPushRecovery.revision
         val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
-        LaunchedEffect(token, selected?.id, lifecycle, historyLimit,recoveryRevision,connectionAvailable) {
+        LaunchedEffect(token, selected?.id, lifecycle,recoveryRevision,connectionAvailable) {
             val conversation = selected ?: return@LaunchedEffect
             if(!thread.initialMessagesLoaded&&messages.isEmpty()){
                 val cached=withContext(Dispatchers.IO){runCatching{cache?.read(userId,conversation.id)?.let{parseNativeMessageRows(it).first}}.getOrNull()}
@@ -914,7 +920,7 @@ private class InboxController(
                 if(thread.detailsOpen){
                     val current=conversations.firstOrNull{it.id==conversation.id}?:conversation
                     SeraConversationDetails(current,token,userId,peerActivity,messages,historyLimit,!thread.initialMessagesLoaded,playback,inboxInk,inboxSoft,muted,accent,
-                        onBack={thread.detailsOpen=false},onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;thread.libraryMode="search"},onJumpToMessage={id->thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
+                        onBack={thread.detailsOpen=false},onLoadEarlier={loadEarlier()},onChanged={refresh++},onImage={mediaViewer=it},onSearch={thread.detailsOpen=false;thread.libraryMode="search"},onJumpToMessage={id->thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;thread.detailsOpen=false})
                 }else{
                 SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
@@ -940,7 +946,7 @@ private class InboxController(
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)},peerPhoto=conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo,onMeetingResponse={m,text->if(draft.isBlank()){reply=m;draft=text;runCatching{savedDrafts?.write(userId,conversation.id,text)}}else error="Finish your existing draft before responding."})
+                    onLoadEarlier={loadEarlier()},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)},peerPhoto=conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo,onMeetingResponse={m,text->if(draft.isBlank()){reply=m;draft=text;runCatching{savedDrafts?.write(userId,conversation.id,text)}}else error="Finish your existing draft before responding."})
                 if(thread.selectedMessages.isEmpty())key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
                 }
                 }

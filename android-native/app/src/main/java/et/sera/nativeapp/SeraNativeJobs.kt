@@ -1,5 +1,8 @@
 package et.sera.nativeapp
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateContentSize
@@ -80,7 +83,8 @@ private fun fetchOpenJobs(token: String): Pair<List<NativeJob>?, String> {
 fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
-    var search by remember { mutableStateOf("") }
+    var search by rememberSaveable(userId) { mutableStateOf("") }
+    val jobsListState=rememberLazyListState()
     var jobs by remember { mutableStateOf<List<NativeJob>>(emptyList()) }
     var selected by remember { mutableStateOf<NativeJob?>(null) }
     var showCreate by remember { mutableStateOf(false) }
@@ -154,6 +158,7 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
             Text("No matching opportunities yet. Try another search.", modifier = Modifier.padding(top = 30.dp))
         }
         LazyColumn(
+            state=jobsListState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {

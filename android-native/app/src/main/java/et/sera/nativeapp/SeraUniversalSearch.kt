@@ -1,5 +1,8 @@
 package et.sera.nativeapp
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -163,13 +166,14 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
 internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Modifier){
     var discovery by remember(userId){mutableStateOf(false)}
     if(discovery){SeraIntelligentDiscovery(token,userId,modifier){discovery=false};return}
-    var query by remember(userId){mutableStateOf("")}
-    var tab by remember(userId){mutableStateOf("All")}
-    var location by remember(userId){mutableStateOf("")}
-    var work by remember(userId){mutableStateOf("")}
-    var skill by remember(userId){mutableStateOf("")}
-    var days by remember(userId){mutableStateOf("")}
-    var filters by remember{mutableStateOf(false)}
+    var query by rememberSaveable(userId){mutableStateOf("")}
+    var tab by rememberSaveable(userId){mutableStateOf("All")}
+    var location by rememberSaveable(userId){mutableStateOf("")}
+    var work by rememberSaveable(userId){mutableStateOf("")}
+    var skill by rememberSaveable(userId){mutableStateOf("")}
+    var days by rememberSaveable(userId){mutableStateOf("")}
+    var filters by rememberSaveable(userId){mutableStateOf(false)}
+    val searchListState=rememberLazyListState()
     val context=LocalContext.current
     val preferences=remember(context){context.getSharedPreferences("sera_search_history",android.content.Context.MODE_PRIVATE)}
     val historyKey="recent_"+userId
@@ -180,15 +184,19 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
     var error by remember{mutableStateOf(false)}
     var selected by remember(userId){mutableStateOf<SearchHit?>(null)}
     var retry by remember{mutableIntStateOf(0)}
+    var lastCriteria by remember{mutableStateOf<List<String>?>(null)}
     val focus=LocalFocusManager.current
     fun switchTab(next:String){tab=next;if(next=="Topics")location="";if(next !in listOf("All","Jobs","Companies"))work="";if(next !in listOf("All","Posts","Projects","Topics"))skill="";if(next=="People")days=""}
     fun submit(term:String){val q=cleanSearch(term);query=q;if(q.isNotBlank())saveHistory((listOf(q)+history.filterNot{it.equals(q,true)}).take(8));focus.clearFocus();retry++}
     LaunchedEffect(token,userId,query,tab,location,work,skill,days,retry){
-        results=emptyList();error=false
-        if(cleanSearch(query).length<2&&listOf(location,work,skill,days).all{it.isBlank()}){loading=false;return@LaunchedEffect}
+        val criteria=listOf(userId,query,tab,location,work,skill,days)
+        if(lastCriteria!=criteria){results=emptyList();lastCriteria=criteria}
+        error=false
+        if(cleanSearch(query).length<2&&listOf(location,work,skill,days).all{it.isBlank()}){results=emptyList();loading=false;return@LaunchedEffect}
         loading=true;delay(250)
         val response=withContext(Dispatchers.IO){readSearch(token,query,tab,location,work,skill,days)}
-        results=response.first;error=response.second;loading=false
+        if(!response.second||response.first.isNotEmpty())results=response.first
+        error=response.second;loading=false
     }
     selected?.takeIf{it.kind!="Posts"&&it.kind!="Projects"}?.let{hit->SearchResultDetail(token,userId,hit,modifier){selected=null;retry++};return}
     Column(modifier.fillMaxSize().imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -205,7 +213,7 @@ internal fun SeraUniversalSearch(token:String,userId:String,modifier:Modifier=Mo
         }
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Row{Text("Some results could not load.",Modifier.weight(1f));TextButton(onClick={retry++}){Text("Retry")}}
-        LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
+        LazyColumn(Modifier.weight(1f),state=searchListState,verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
             if(query.isBlank()&&history.isNotEmpty()) {
                 item{Row{Text("Recent searches",Modifier.weight(1f),fontWeight=FontWeight.Bold);TextButton(onClick={saveHistory(emptyList())}){Text("Clear all")}}}
                 items(history,key={"recent"+it}){term->Row{TextButton(onClick={submit(term)},modifier=Modifier.weight(1f)){Text(term)};TextButton(onClick={saveHistory(history.filterNot{it==term})}){Text("Remove")}}}

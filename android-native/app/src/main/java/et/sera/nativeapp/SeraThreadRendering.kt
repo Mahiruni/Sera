@@ -150,7 +150,7 @@ import java.net.URL
             Box(modifier){
             LazyColumn(Modifier.fillMaxSize(), state = messageListState, verticalArrangement = Arrangement.spacedBy(7.dp,Alignment.Bottom),
                 contentPadding = PaddingValues(vertical = 12.dp)) {
-                if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick=onLoadEarlier){Text(stringResource(R.string.load_earlier))}}
+                if(messages.size>=historyLimit && historyLimit<1000)item(key="sera_load_earlier"){TextButton(onClick=onLoadEarlier){Text(stringResource(R.string.load_earlier))}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
                 val timeline=(filteredMessages.map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.filter{messageSearch.isBlank()||"voice call".contains(messageSearch,true)}.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
                 itemsIndexed(timeline,key={_,item->item.message?.let(::messageTimelineKey)?:"call-"+item.event?.id}) { index,item ->

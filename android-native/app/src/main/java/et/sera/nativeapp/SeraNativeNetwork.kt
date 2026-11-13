@@ -1,5 +1,8 @@
 package et.sera.nativeapp
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -68,8 +71,9 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     var showCommunities by remember { mutableStateOf(false) }
     if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}
     var people by remember(userId) { mutableStateOf<List<SeraProfessional>>(emptyList()) }
-    var query by remember(userId) { mutableStateOf("") }
-    var view by remember(userId) { mutableStateOf("Discover") }
+    var query by rememberSaveable(userId) { mutableStateOf("") }
+    var view by rememberSaveable(userId) { mutableStateOf("Discover") }
+    val networkListState=rememberLazyListState()
     var selected by remember { mutableStateOf<SearchHit?>(null) }
     var more by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
@@ -116,7 +120,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(view,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f));TextButton(onClick={reload++},enabled=!loading){Text("Refresh")}}
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error.isNotBlank()||actionError.isNotBlank())Text(error.ifBlank{actionError},color=MaterialTheme.colorScheme.error)
-        LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp)){
+        LazyColumn(Modifier.weight(1f),state=networkListState,contentPadding=PaddingValues(bottom=16.dp)){
             items(matches,key={it.id}){person->
                 val followed=person.id in relations.follows
                 val request=invitations.firstOrNull{it.requester==person.id||it.recipient==person.id}
