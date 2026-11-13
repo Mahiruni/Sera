@@ -165,18 +165,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            set -e
-            adb install release-output/previous.apk
-            adb shell am start -n et.sera.nativeapp/.MainActivity
-            before="$(adb shell dumpsys package et.sera.nativeapp | grep -m1 firstInstallTime)"
-            adb install -r "release-output/SERA-${VERSION_NAME}.apk"
-            adb shell dumpsys package et.sera.nativeapp | grep "versionCode=${VERSION_CODE} "
-            test "$(adb shell dumpsys package et.sera.nativeapp | grep -m1 firstInstallTime)" = "$before"
-            adb shell am start -n et.sera.nativeapp/.MainActivity
-            adb shell pidof et.sera.nativeapp
-            adb install -r "release-output/SERA-${VERSION_NAME}-x86_64.apk"
-            adb shell am start -n et.sera.nativeapp/.MainActivity
-            adb shell pidof et.sera.nativeapp
+            bash android-native/scripts/verify_signed_upgrade.sh
       - name: Publish signed APK to GitHub Releases
         shell: bash
         env:
