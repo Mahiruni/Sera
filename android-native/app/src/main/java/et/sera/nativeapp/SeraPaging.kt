@@ -35,6 +35,6 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
 }
 
 fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=false) = Pager(
-    config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, enablePlaceholders = false),
+    config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, maxSize = 120, enablePlaceholders = false),
     pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly) }
 ).flow

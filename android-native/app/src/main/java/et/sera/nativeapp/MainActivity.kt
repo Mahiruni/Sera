@@ -420,7 +420,6 @@ fun SeraApp(
         }else{openCompanyInbox=kind=="company_message";navigateTo(if(kind=="message"||kind=="company_message")"Inbox" else "Notifications")}
         onPushConsumed()
     }
-    var feed by remember { mutableStateOf<List<SeraPost>>(emptyList()) }
     var identity by remember { mutableStateOf("") }
     var profileAvatarUrl by remember { mutableStateOf<String?>(null) }
     var profileHeadline by remember(authenticatedUserId){mutableStateOf("")}
@@ -440,23 +439,19 @@ fun SeraApp(
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    fun signOutSera(){accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;feed=emptyList();dataError="";dataLoading=false;editProfileRequested=false}
+    fun signOutSera(){accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         if (authenticatedUserId.isBlank()) {
             val userIdResult = withContext(Dispatchers.IO) { loadSeraUserId(token) }
             if (userIdResult.first != null) authenticatedUserId = userIdResult.first!!
         }
-        if (tab != "Home" && tab != "Profile") return@LaunchedEffect
+        // The paged homepage already loads its own feed. Do not issue a duplicate full feed request.
+        if (tab != "Profile") return@LaunchedEffect
         dataLoading = true
         dataError = ""
-        if (tab == "Home") {
-            val result = withContext(Dispatchers.IO) { loadSeraFeed(token) }
-            if (result.first != null) feed = result.first!! else dataError = result.second
-        } else {
-            val result = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
-            if (result.first != null) identity = result.first!! else dataError = result.second
-        }
+        val result = withContext(Dispatchers.IO) { loadSeraIdentity(token) }
+        if (result.first != null) identity = result.first!! else dataError = result.second
         dataLoading = false
     }
     if (showComposer && accessToken != null && authenticatedUserId.isNotBlank()) SeraComposer(userId = authenticatedUserId, token = accessToken!!, initialKind=composerInitialKind, onPublished = { showComposer = false; composerInitialKind=null; refresh++ }, onDismiss = { showComposer = false; composerInitialKind=null })
