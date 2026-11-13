@@ -3,6 +3,8 @@ package et.sera.nativeapp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -106,4 +108,36 @@ internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample)
     if(received<0||lost<0||received+lost<12)return null
     val ratio=lost.toDouble()/(received+lost)
     return if(ratio>=.08)"Unstable connection" else null
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable internal fun SeraVoiceHistoryContent(name:String,photo:String?,events:List<SeraCallEvent>,userId:String,loading:Boolean,onCall:()->Unit,onClose:()->Unit){
+    val c=MaterialTheme.colorScheme
+    var filter by remember{mutableStateOf("All")}
+    val filtered=events.filter{when(filter){"Missed"->it.state=="missed"&&it.incoming(userId);"Incoming"->it.incoming(userId);"Outgoing"->!it.incoming(userId);else->true}}
+    Column(Modifier.fillMaxWidth().padding(20.dp).testTag("sera_voice_history"),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){Text("Recent calls",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(name,color=c.onSurfaceVariant,fontSize=13.sp,maxLines=1)}
+            IconButton(onClick=onClose){Icon(Icons.Outlined.Close,"Close call history")}
+        }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
+            listOf("All","Missed","Incoming","Outgoing").forEach{label->FilterChip(selected=filter==label,onClick={filter=label},label={Text(label,fontSize=10.sp,maxLines=1)},modifier=Modifier.weight(1f))}
+        }
+        if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        else if(filtered.isEmpty())Text("No calls in this view",color=c.onSurfaceVariant,modifier=Modifier.padding(vertical=24.dp))
+        else LazyColumn(Modifier.fillMaxWidth().heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+            items(filtered,key={it.id}){event->
+                val incoming=event.incoming(userId)
+                val missed=incoming&&event.state=="missed"
+                Surface(color=c.surfaceVariant.copy(alpha=.5f),shape=RoundedCornerShape(16.dp)){
+                    Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(c.primaryContainer),contentAlignment=Alignment.Center){Icon(if(missed)Icons.Outlined.CallMissed else if(incoming)Icons.Outlined.CallReceived else Icons.Outlined.CallMade,null,tint=if(missed)c.error else c.onPrimaryContainer)}
+                        Column(Modifier.weight(1f)){Text(event.outcome(userId),fontWeight=FontWeight.Medium,color=c.onSurface,fontSize=13.sp);Text((if(incoming)"Incoming" else "Outgoing")+" · "+event.dateTime(),fontSize=11.sp,color=c.onSurfaceVariant)}
+                        IconButton(onClick=onCall){Icon(Icons.Outlined.Call,"Call again",tint=c.primary)}
+                    }
+                }
+            }
+        }
+        Button(onClick=onCall,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(18.dp)){Text("Call "+name,maxLines=1)}
+    }
 }
