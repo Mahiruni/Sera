@@ -9,6 +9,10 @@ val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
     .map { it.toBooleanStrict() }.orElse(true).get()
 
 android {
+    if (providers.gradleProperty("SERA_SIGNED_CALL_SMOKE").orElse("false").get().toBoolean()) {
+        testBuildType = "release"
+        sourceSets.getByName("androidTest").java.setSrcDirs(listOf("src/callingSmokeTest/java"))
+    }
     sourceSets.getByName("main").java.srcDir(if (includeLiveCalling) "src/calling/java" else "src/lightweight/java")
     namespace = "et.sera.nativeapp"
     compileSdk = 35
@@ -38,7 +42,7 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     val releaseStore = providers.environmentVariable("SERA_RELEASE_KEYSTORE").orNull
