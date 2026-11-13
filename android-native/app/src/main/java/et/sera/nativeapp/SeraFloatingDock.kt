@@ -23,20 +23,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.PeopleOutline
-import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,7 +97,7 @@ internal fun SeraFloatingDock(
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .testTag("sera_dock_"+section)
-                        .semantics { selected=active;contentDescription=when(section){"Search"->"Discover";"Inbox"->if(inboxCount>0)"Messages, $inboxCount unread" else "Messages";else->section} }
+                        .semantics { this.selected=active;contentDescription=when(section){"Search"->"Discover";"Inbox"->if(inboxCount>0)"Messages, $inboxCount unread" else "Messages";else->section} }
                         .clickable(
                             enabled = true,
                             role = Role.Tab,
