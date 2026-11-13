@@ -5,7 +5,7 @@ export const VOICE_LIMIT_MS = 120000;
 export const REACTIONS = ["👍","❤️","😂","😮","😢","👏"] as const;
 export const CHAT_MIME_EXT = {
   "image/jpeg":"jpg", "image/png":"png", "image/webp":"webp", "application/pdf":"pdf",
-  "audio/mp4":"m4a", "audio/webm":"webm", "audio/ogg":"ogg", "audio/mpeg":"mp3",
+  "audio/mp4":"m4a", "audio/webm":"webm", "audio/ogg":"ogg", "audio/mpeg":"mp3", "video/mp4":"mp4",
 } as const;
 export type ChatMime = keyof typeof CHAT_MIME_EXT;
 export type AttachmentMeta = { name:string; mime:ChatMime; size:number; durationMs?:number|null };
@@ -37,6 +37,7 @@ export function hasFileSignature(bytes:Uint8Array,mime:ChatMime):boolean {
     case "image/png": return bytes.length>=8 && [137,80,78,71,13,10,26,10].every((x,i)=>bytes[i]===x);
     case "image/webp": return bytes.length>=12 && text(0,4)==="RIFF" && text(8,4)==="WEBP";
     case "application/pdf": return text(0,5)==="%PDF-";
+    case "video/mp4":
     case "audio/mp4": return bytes.length>=12 && text(4,4)==="ftyp";
     case "audio/webm": return bytes.length>=4 && [26,69,223,163].every((x,i)=>bytes[i]===x);
     case "audio/ogg": return text(0,4)==="OggS";

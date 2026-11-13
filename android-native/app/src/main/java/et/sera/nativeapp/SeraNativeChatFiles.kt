@@ -20,11 +20,11 @@ private fun java.io.InputStream.readChatBounded(): ByteArray {
     while (out.size() <= CHAT_LIMIT) { val n=read(buffer,0,minOf(buffer.size,CHAT_LIMIT+1-out.size())); if(n<=0) break; out.write(buffer,0,n) }
     return out.toByteArray()
 }
-private val chatMimes = setOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg")
+private val chatMimes = setOf("image/jpeg","image/png","image/webp","application/pdf","audio/mp4","audio/webm","audio/ogg","audio/mpeg","video/mp4")
 internal fun selectChatFile(context: Context, uri: Uri): NativeChatSelection {
     val resolver = context.contentResolver
     val mime = (resolver.getType(uri) ?: error("Choose a supported file.")).let { if(it=="audio/x-m4a") "audio/mp4" else it }
-    require(mime in chatMimes) { "Choose a supported image, PDF or audio file." }
+    require(mime in chatMimes) { "Choose a supported image, MP4 video, PDF or audio file." }
     val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
         if (it.moveToFirst()) it.getString(0) else null
     }?.replace(Regex("[\\p{Cntrl}/\\\\]"),"_")?.take(180)?.takeIf { it.isNotBlank() } ?: "Attachment"
@@ -35,7 +35,7 @@ internal fun selectChatFile(context: Context, uri: Uri): NativeChatSelection {
         "image/jpeg" -> bytes.size >= 3 && (bytes[0].toInt() and 255) == 255 && (bytes[1].toInt() and 255) == 216
         "image/png" -> bytes.size >= 8 && bytes.take(8).toByteArray().contentEquals(byteArrayOf(-119,80,78,71,13,10,26,10))
         "image/webp" -> bytes.size >= 12 && String(bytes,0,4) == "RIFF" && String(bytes,8,4) == "WEBP"
-        "audio/mp4" -> bytes.size>=12 && String(bytes,4,4)=="ftyp"
+        "video/mp4", "audio/mp4" -> bytes.size>=12 && String(bytes,4,4)=="ftyp"
         "audio/webm" -> bytes.size>=4 && bytes.take(4).toByteArray().contentEquals(byteArrayOf(26,69,-33,-93))
         "audio/ogg" -> bytes.size>=4 && String(bytes,0,4)=="OggS"
         "audio/mpeg" -> bytes.size>=3 && (String(bytes,0,3)=="ID3" || (bytes[0].toInt() and 255)==255)
@@ -69,7 +69,7 @@ internal fun readChatFile(token:String,file:NativeChatFile):ByteArray {
 }
 internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,clientId:String,body:String,file:NativeChatSelection?,reply:String?=null,forward:String?=null,onProgress:(Int)->Unit={}):Pair<String?,String> {
     return try {
-        val ext=when(file?.mime){"application/pdf"->"pdf";"image/png"->"png";"image/webp"->"webp";"audio/mp4"->"m4a";"audio/webm"->"webm";"audio/ogg"->"ogg";"audio/mpeg"->"mp3";else->"jpg"}
+        val ext=when(file?.mime){"application/pdf"->"pdf";"image/png"->"png";"image/webp"->"webp";"audio/mp4"->"m4a";"audio/webm"->"webm";"audio/ogg"->"ogg";"audio/mpeg"->"mp3";"video/mp4"->"mp4";else->"jpg"}
         val path=if(file==null)null else "$userId/$conversation/$clientId.$ext"
         if(file!=null && path!=null){
             require(file.mime in chatMimes && file.bytes.size in 1..CHAT_LIMIT)

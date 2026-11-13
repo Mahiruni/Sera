@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Description
@@ -24,7 +25,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO }
+internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SeraAttachmentStudio(onDismiss:()->Unit,onChoose:(SeraAttachmentKind)->Unit){
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
@@ -46,6 +47,10 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 AttachmentTile("Document","PDF files",Icons.Outlined.Description,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.DOCUMENT)}
                 AttachmentTile("Audio","Choose audio",Icons.Outlined.Headphones,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.AUDIO)}
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                AttachmentTile("Video","MP4 · up to 5 MB",Icons.Outlined.Videocam,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.VIDEO)}
+                Spacer(Modifier.weight(1f))
             }
             Text("Private conversation · Up to 5 MB per file",fontSize=12.sp,color=muted)
         }

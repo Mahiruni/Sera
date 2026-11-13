@@ -103,7 +103,7 @@ internal fun SeraNativeComposer(
     attachment?.let{file->
         Surface(color=soft,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
-                if(file.mime.startsWith("audio/")){
+                if(file.mime=="video/mp4"){Box(Modifier.weight(1f)){SeraVideoDraftPreview(file,accent,onAudioStart={playback.pause()})}}else if(file.mime.startsWith("audio/")){
                     Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},onError)}})}
                 }else{
                     SeraAttachmentThumbnail(file,accent);Spacer(Modifier.width(10.dp))

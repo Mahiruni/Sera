@@ -84,6 +84,7 @@ internal fun SeraNativeAttachmentPicker(
         try{
             when(kind){
                 SeraAttachmentKind.PHOTO->{pickerConversation=conversationId;photos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}
+                SeraAttachmentKind.VIDEO->{pickerConversation=conversationId;documents.launch(arrayOf("video/mp4"))}
                 SeraAttachmentKind.DOCUMENT->{pickerConversation=conversationId;documents.launch(arrayOf("application/pdf"))}
                 SeraAttachmentKind.AUDIO->{pickerConversation=conversationId;documents.launch(arrayOf("audio/mp4","audio/webm","audio/ogg","audio/mpeg"))}
                 SeraAttachmentKind.CAMERA->{
