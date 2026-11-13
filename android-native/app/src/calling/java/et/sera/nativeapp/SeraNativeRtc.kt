@@ -73,12 +73,15 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         }
         if(local)pc.setLocalDescription(observer,s)else pc.setRemoteDescription(observer,s)
     }
-    suspend fun offer():String=withTimeout(15000){set(description(true),true);gather()}
-    suspend fun answer(sdp:String):String=withTimeout(15000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(description(false),true);gather()}
+    suspend fun offer():String=withTimeout(35000){set(description(true),true);gather()}
+    suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(description(false),true);gather()}
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false)}
     private suspend fun gather():String{
-        while(pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE){delay(100)}
-        return pc.localDescription?.description?:error("Call connection unavailable.")
+        val deadline=android.os.SystemClock.elapsedRealtime()+25000L
+        while(pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){delay(100)}
+        val sdp=pc.localDescription?.description?:error("Call connection unavailable.")
+        if(!sdp.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})error("No secure call relay found. Check your network and try again.")
+        return sdp
     }
     fun mute(value:Boolean){if(!closed)track.setEnabled(!value)}
     fun speaker(value:Boolean){
