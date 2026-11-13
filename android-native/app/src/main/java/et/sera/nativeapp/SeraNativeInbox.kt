@@ -218,200 +218,392 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     LaunchedEffect(openCompany){if(openCompany){companyInbox=true;onCompanyConsumed()}}
     if(companyInbox){Box(modifier.fillMaxSize().navigationBarsPadding()){SeraCompanyInbox(token,userId,onBack={companyInbox=false})};return}
     val context = LocalContext.current
-    val clipboard=LocalClipboardManager.current
-    val haptics=LocalHapticFeedback.current
-    val swipeThreshold=with(LocalDensity.current){64.dp.toPx()}
     // Fail safely if encrypted storage is temporarily unavailable; never
     // downgrade private message drafts to unencrypted preferences.
     val savedDrafts = remember(context) { runCatching { SeraInboxDrafts(context) }.getOrNull() }
-    var conversations by remember { mutableStateOf<List<NativeConversation>>(emptyList()) }
-    var selected by remember(initialThread) { mutableStateOf(initialThread?.let{NativeConversation(it,initialPeer,initialName)}) }
-    LaunchedEffect(selected?.id){onThreadVisibility(selected!=null)}
-    DisposableEffect(Unit){onDispose{onThreadVisibility(false)}}
-    var messages by remember { mutableStateOf<List<NativeMessage>>(emptyList()) }
-    var callEvents by remember(selected?.id){mutableStateOf<List<SeraCallEvent>>(emptyList())}
-    var draft by remember(initialThread) { mutableStateOf(initialThread?.let{savedDrafts?.read(userId,it)}.orEmpty()) }
-    var error by remember { mutableStateOf("") }
-    var sending by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(true) }
-    var refresh by remember { mutableIntStateOf(0) }
-    var search by remember { mutableStateOf("") }
-    var peerTyping by remember { mutableStateOf(false) }
-    var peerActivity by remember(selected?.id) { mutableStateOf<String?>(null) }
-    var typingPulse by remember { mutableIntStateOf(0) }
+    val global = remember { InboxGlobalState(context) }
+    val selection = remember(initialThread) { InboxSelectionState(initialThread, initialPeer, initialName, savedDrafts, userId) }
+    val thread = remember(selection.selected?.id) { InboxThreadState() }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
     val messageListState = rememberLazyListState()
-    var lastVisibleConversation by remember { mutableStateOf<String?>(null) }
-    var lastMessageId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(selected?.id, messages.lastOrNull()?.id) {
-        val id = selected?.id ?: return@LaunchedEffect
-        val last = messages.lastOrNull()?.id ?: return@LaunchedEffect
-        val changedConversation = lastVisibleConversation != id
-        val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
-        if (changedConversation || (last != lastMessageId && nearBottom)) { val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
-        lastVisibleConversation = id
-        lastMessageId = last
-    }
     val scope = rememberCoroutineScope()
-    var attachment by remember(selected?.id) { mutableStateOf<NativeChatSelection?>(null) }
-    var album by remember(selected?.id){mutableStateOf<List<NativeChatSelection>>(emptyList())}
-    var checkingFile by remember { mutableStateOf(false) }
-    var transferProgress by remember(selected?.id){mutableIntStateOf(-1)}
-    var activeTransfer by remember(selected?.id){mutableStateOf<NativeChatTransfer?>(null)}
-    var mediaViewer by remember(selected?.id){mutableStateOf<NativeChatFile?>(null)}
-    var recordingVoice by remember(selected?.id){mutableStateOf(false)}
-    var reply by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
-    var menu by remember(selected?.id){mutableStateOf<String?>(null)}
-    var reaction by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
-    var remove by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
-    var forwarding by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
-    var forwardClient by remember{mutableStateOf("")}
-    var historyLimit by remember(selected?.id){mutableIntStateOf(100)}
-    var messageSearch by remember(selected?.id){mutableStateOf("")}
-    var showSearch by remember(selected?.id){mutableStateOf(false)}
-    var sound by remember{mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",false))}
-    val playback=remember(context,selected?.id){SeraChatPlayback(context.applicationContext)}
-    var sendFailed by remember(selected?.id){mutableStateOf(false)}
+    val playback = remember(context, selection.selected?.id) { SeraChatPlayback(context.applicationContext) }
     val outbox=remember(context){runCatching{NativeChatOutbox(context)}.getOrNull()}
-    var queued by remember(selected?.id){mutableStateOf<NativePending?>(null)}
-    var retrySignal by remember(selected?.id){mutableIntStateOf(0)}
-    var connectionAvailable by remember{mutableStateOf(true)}
-    LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;album=emptyList();reply=null}}
-    LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
+    LaunchedEffect(selection.selected?.id) { onThreadVisibility(selection.selected != null) }
+    DisposableEffect(Unit) { onDispose { onThreadVisibility(false) } }
+    val controller = InboxController(global, selection, thread, token, userId, context, savedDrafts, lifecycle, messageListState, scope, playback, outbox, onThreadExit)
+    controller.PresenceAndScroll()
+    controller.ConnectionAndPlayback()
+    controller.TransferEffects()
+    controller.Dialogs()
+    controller.ConversationPolling()
+    controller.MessagePolling()
+    controller.ReadReceipts()
+    controller.TypingEffects()
+    controller.Render(modifier, onInboxExit, onCompany = { companyInbox = true })
+}
+
+// Keep snapshot state in independently remembered holders and split the effects
+// into separate composable functions to bound Kotlin FIR data-flow analysis.
+private class InboxGlobalState(context: Context) {
+    var conversations by mutableStateOf<List<NativeConversation>>(emptyList())
+    var messages by mutableStateOf<List<NativeMessage>>(emptyList())
+    var error by mutableStateOf("")
+    var sending by mutableStateOf(false)
+    var loading by mutableStateOf(true)
+    var refresh by mutableIntStateOf(0)
+    var search by mutableStateOf("")
+    var peerTyping by mutableStateOf(false)
+    var typingPulse by mutableIntStateOf(0)
+    var lastVisibleConversation by mutableStateOf<String?>(null)
+    var lastMessageId by mutableStateOf<String?>(null)
+    var checkingFile by mutableStateOf(false)
+    var forwardClient by mutableStateOf("")
+    var sound by mutableStateOf(context.getSharedPreferences("sera_chat_settings",0).getBoolean("sound",false))
+    var connectionAvailable by mutableStateOf(true)
+}
+
+private class InboxSelectionState(initialThread: String?, initialPeer: String, initialName: String, savedDrafts: SeraInboxDrafts?, userId: String) {
+    var selected by mutableStateOf(initialThread?.let{NativeConversation(it,initialPeer,initialName)})
+    var draft by mutableStateOf(initialThread?.let{savedDrafts?.read(userId,it)}.orEmpty())
+}
+
+private class InboxThreadState {
+    var callEvents by mutableStateOf<List<SeraCallEvent>>(emptyList())
+    var peerActivity by mutableStateOf<String?>(null)
+    var attachment by mutableStateOf<NativeChatSelection?>(null)
+    var album by mutableStateOf<List<NativeChatSelection>>(emptyList())
+    var transferProgress by mutableIntStateOf(-1)
+    var activeTransfer by mutableStateOf<NativeChatTransfer?>(null)
+    var mediaViewer by mutableStateOf<NativeChatFile?>(null)
+    var recordingVoice by mutableStateOf(false)
+    var reply by mutableStateOf<NativeMessage?>(null)
+    var menu by mutableStateOf<String?>(null)
+    var reaction by mutableStateOf<NativeMessage?>(null)
+    var remove by mutableStateOf<NativeMessage?>(null)
+    var forwarding by mutableStateOf<NativeMessage?>(null)
+    var historyLimit by mutableIntStateOf(100)
+    var messageSearch by mutableStateOf("")
+    var showSearch by mutableStateOf(false)
+    var sendFailed by mutableStateOf(false)
+    var queued by mutableStateOf<NativePending?>(null)
+    var retrySignal by mutableIntStateOf(0)
+    var attachmentStudio by mutableStateOf(false)
+}
+
+private class InboxController(
+    private val global: InboxGlobalState,
+    private val selection: InboxSelectionState,
+    private val thread: InboxThreadState,
+    private val token: String,
+    private val userId: String,
+    private val context: Context,
+    private val savedDrafts: SeraInboxDrafts?,
+    private val lifecycle: androidx.lifecycle.Lifecycle,
+    private val messageListState: androidx.compose.foundation.lazy.LazyListState,
+    private val scope: kotlinx.coroutines.CoroutineScope,
+    private val playback: SeraChatPlayback,
+    private val outbox: NativeChatOutbox?,
+    private val onThreadExit: (() -> Unit)?
+) {
+    var conversations
+        get() = global.conversations
+        set(value) { global.conversations = value }
+    var messages
+        get() = global.messages
+        set(value) { global.messages = value }
+    var error
+        get() = global.error
+        set(value) { global.error = value }
+    var sending
+        get() = global.sending
+        set(value) { global.sending = value }
+    var loading
+        get() = global.loading
+        set(value) { global.loading = value }
+    var refresh
+        get() = global.refresh
+        set(value) { global.refresh = value }
+    var search
+        get() = global.search
+        set(value) { global.search = value }
+    var peerTyping
+        get() = global.peerTyping
+        set(value) { global.peerTyping = value }
+    var typingPulse
+        get() = global.typingPulse
+        set(value) { global.typingPulse = value }
+    var lastVisibleConversation
+        get() = global.lastVisibleConversation
+        set(value) { global.lastVisibleConversation = value }
+    var lastMessageId
+        get() = global.lastMessageId
+        set(value) { global.lastMessageId = value }
+    var checkingFile
+        get() = global.checkingFile
+        set(value) { global.checkingFile = value }
+    var forwardClient
+        get() = global.forwardClient
+        set(value) { global.forwardClient = value }
+    var sound
+        get() = global.sound
+        set(value) { global.sound = value }
+    var connectionAvailable
+        get() = global.connectionAvailable
+        set(value) { global.connectionAvailable = value }
+    var selected
+        get() = selection.selected
+        set(value) { selection.selected = value }
+    var draft
+        get() = selection.draft
+        set(value) { selection.draft = value }
+    var callEvents
+        get() = thread.callEvents
+        set(value) { thread.callEvents = value }
+    var peerActivity
+        get() = thread.peerActivity
+        set(value) { thread.peerActivity = value }
+    var attachment
+        get() = thread.attachment
+        set(value) { thread.attachment = value }
+    var album
+        get() = thread.album
+        set(value) { thread.album = value }
+    var transferProgress
+        get() = thread.transferProgress
+        set(value) { thread.transferProgress = value }
+    var activeTransfer
+        get() = thread.activeTransfer
+        set(value) { thread.activeTransfer = value }
+    var mediaViewer
+        get() = thread.mediaViewer
+        set(value) { thread.mediaViewer = value }
+    var recordingVoice
+        get() = thread.recordingVoice
+        set(value) { thread.recordingVoice = value }
+    var reply
+        get() = thread.reply
+        set(value) { thread.reply = value }
+    var menu
+        get() = thread.menu
+        set(value) { thread.menu = value }
+    var reaction
+        get() = thread.reaction
+        set(value) { thread.reaction = value }
+    var remove
+        get() = thread.remove
+        set(value) { thread.remove = value }
+    var forwarding
+        get() = thread.forwarding
+        set(value) { thread.forwarding = value }
+    var historyLimit
+        get() = thread.historyLimit
+        set(value) { thread.historyLimit = value }
+    var messageSearch
+        get() = thread.messageSearch
+        set(value) { thread.messageSearch = value }
+    var showSearch
+        get() = thread.showSearch
+        set(value) { thread.showSearch = value }
+    var sendFailed
+        get() = thread.sendFailed
+        set(value) { thread.sendFailed = value }
+    var queued
+        get() = thread.queued
+        set(value) { thread.queued = value }
+    var retrySignal
+        get() = thread.retrySignal
+        set(value) { thread.retrySignal = value }
+    var attachmentStudio
+        get() = thread.attachmentStudio
+        set(value) { thread.attachmentStudio = value }
+
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
-    LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
-    DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.stop()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
-    LaunchedEffect(attachment){if(playback.activeId?.startsWith("preview:")==true&&playback.activeId!="preview:"+System.identityHashCode(attachment))playback.stop()}
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
-    LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
-        val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
-        if(!connectionAvailable||p.paused)return@LaunchedEffect
-        val transfer=NativeChatTransfer();activeTransfer=transfer
-        sending=true;transferProgress=if(p.file!=null||p.album.isNotEmpty())0 else -1
-        try{
-            val progress:(Int)->Unit={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}}
-            val result=withContext(Dispatchers.IO){if(p.album.isNotEmpty())sendNativePhotoAlbum(token,userId,c.id,p,progress,transfer)else sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress=progress,transfer=transfer)}
-            if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
-            else{sendFailed=true;error=result.second}
-        }finally{if(activeTransfer===transfer){activeTransfer=null;sending=false;transferProgress=-1}}
-    }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
-    SeraNativeMessageDialogs(remove=remove,reaction=reaction,forwarding=forwarding,conversations=conversations,token=token,userId=userId,forwardClient=forwardClient,
-        onRemoveDismiss={remove=null},onReactionDismiss={reaction=null},onForwardDismiss={forwarding=null},
-        onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
 
-    var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
-    SeraNativeAttachmentPicker(token=token,userId=userId,conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
-        onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."},onError={error=it})
-    LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
-    mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
-    BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
-    LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
-        if(userId.isBlank())return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
-            while(true){
-                val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
-                result.first?.let{rows->conversations=rows;val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
-                if(selected==null)error=result.second;loading=false
-                if(selected!=null)break
-                delay(20000)
-            }
+    @Composable
+    fun PresenceAndScroll() {
+        LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
+        LaunchedEffect(selected?.id, messages.lastOrNull()?.id) {
+            val id = selected?.id ?: return@LaunchedEffect
+            val last = messages.lastOrNull()?.id ?: return@LaunchedEffect
+            val changedConversation = lastVisibleConversation != id
+            val nearBottom = messageListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 2 } ?: true
+            if (changedConversation || (last != lastMessageId && nearBottom)) { val count=messageListState.layoutInfo.totalItemsCount;if(count>0)messageListState.scrollToItem(count-1) }
+            lastVisibleConversation = id
+            lastMessageId = last
         }
     }
-    LaunchedEffect(token, selected?.id, lifecycle, historyLimit) {
-        val conversation = selected ?: return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-            SeraRealtime(token, conversation.id).run {
-                val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
-                result.first?.let { latest ->
-                    if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId)chime()
-                    messages = latest
-                    val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
-                    val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
-                    if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
-                }
-                error = result.second
-            }
-        }
-    }
-    LaunchedEffect(token,selected?.id,lifecycle){
-        val c=selected?:return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
-            val seen=mutableSetOf<String>()
-            snapshotFlow{messageListState.layoutInfo.visibleItemsInfo.map{it.key.toString()} to messages}
-                .collectLatest{(visible,latest)->
-                    delay(600)
-                    val ids=latest.filter{it.id in visible&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
-                    if(ids.isNotEmpty()){val r=withContext(Dispatchers.IO){chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",c.id).put("p_ids",JSONArray(ids)).put("p_read",true))};if(r.first!=null){seen.addAll(ids);SeraUnreadRefresh.changed()}}
-                }
-        }
-    }
-    LaunchedEffect(token, selected?.id, lifecycle) {
-        val conversation = selected ?: return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-            while (true) {
-                val result = withContext(Dispatchers.IO) { inboxRequest(token, "professional_typing_status?select=member_id&conversation_id=eq.${conversation.id}&member_id=neq.$userId&limit=1") }
-                peerTyping = runCatching { JSONArray(result.first ?: "[]").length() > 0 }.getOrDefault(false)
-                delay(2500)
-            }
-        }
-    }
-    LaunchedEffect(token, selected?.id, typingPulse) {
-        val conversation = selected ?: return@LaunchedEffect
-        if (typingPulse == 0) return@LaunchedEffect
-        delay(350)
-        withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",draft.isNotBlank())) }
-        delay(4000)
-        withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",false)) }
-    }
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
-    val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
-    val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
-    val chatSurface = if(dark) Color(0xFF111D21) else Color(0xFFF9FCFC)
-    val outgoing = if(dark) Color(0xFF087478) else Color(0xFF087478)
-    val incoming = if(dark) Color(0xFF26383D) else Color(0xFFE7F0EF)
-    val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
-    val accent=if(dark) Color(0xFF6DE0D8) else inboxTeal
-    Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
-        Spacer(Modifier.height(4.dp))
-        if (selected == null) {
-            SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany={companyInbox=true},onSearch={search=it},onRetry={refresh++},onSelect={conversation->
-                draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
-            })
-        } else {
-            val conversation = selected!!
-            SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
-                onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
-                onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
-                onAudioStart={playback.pause()},onHistory={callEvents=it})
-            if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
-            HorizontalDivider(color=inboxSoft,thickness=1.dp)
-            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-            SeraThreadTimeline(Modifier.weight(1f),messageListState,messages,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it})
-            SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
-                onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
-                onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
-                onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},
-                onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;album=q.album;sendFailed=false}},
-                onVoice={attachment=it;album=emptyList();error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
-                onSend={
 
-                    val body = draft.trim()
-                    val file=attachment
-                    if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null) return@SeraNativeComposer
-                    sending = true
-                    scope.launch {
-                        val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file,album)
-                        val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.save(userId,conversation.id,p)}}
-                        if(saved.isSuccess){
-                            runCatching{savedDrafts?.clear(userId,conversation.id)}
-                            if(selected?.id==conversation.id){draft="";attachment=null;album=emptyList();reply=null;queued=p;sendFailed=false;error=""}
-                        }else error="Secure message storage is unavailable. Your draft was retained."
-                        sending = false
+    @Composable
+    fun ConnectionAndPlayback() {
+        LaunchedEffect(selected?.id,userId){val c=selected?:return@LaunchedEffect;queued=withContext(Dispatchers.IO){runCatching{outbox?.load(userId,c.id)}.getOrNull()};if(queued!=null){draft="";attachment=null;album=emptyList();reply=null}}
+        LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){val cm=context.getSystemService(ConnectivityManager::class.java);val caps=cm.getNetworkCapabilities(cm.activeNetwork);connectionAvailable=caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true;delay(2000)}}}
+        LaunchedEffect(playback,playback.playing){while(playback.playing){playback.tick();delay(250)}}
+        DisposableEffect(playback,lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_PAUSE)playback.stop()};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer);playback.stop()}}
+        LaunchedEffect(attachment){if(playback.activeId?.startsWith("preview:")==true&&playback.activeId!="preview:"+System.identityHashCode(attachment))playback.stop()}
+    }
+
+    @Composable
+    fun TransferEffects() {
+        LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
+            val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
+            if(!connectionAvailable||p.paused)return@LaunchedEffect
+            val transfer=NativeChatTransfer();activeTransfer=transfer
+            sending=true;transferProgress=if(p.file!=null||p.album.isNotEmpty())0 else -1
+            try{
+                val progress:(Int)->Unit={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}}
+                val result=withContext(Dispatchers.IO){if(p.album.isNotEmpty())sendNativePhotoAlbum(token,userId,c.id,p,progress,transfer)else sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress=progress,transfer=transfer)}
+                if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
+                else{sendFailed=true;error=result.second}
+            }finally{if(activeTransfer===transfer){activeTransfer=null;sending=false;transferProgress=-1}}
+        }
+    }
+
+    @Composable
+    fun Dialogs() {
+        SeraNativeMessageDialogs(remove=remove,reaction=reaction,forwarding=forwarding,conversations=conversations,token=token,userId=userId,forwardClient=forwardClient,
+            onRemoveDismiss={remove=null},onReactionDismiss={reaction=null},onForwardDismiss={forwarding=null},
+            onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
+        SeraNativeAttachmentPicker(token=token,userId=userId,conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
+            onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onShare={url->val next=draft.trimEnd()+(if(draft.isBlank())"" else "\n")+url;if(next.length<=4000){draft=next;selected?.id?.let{runCatching{savedDrafts?.write(userId,it,next)}}}else error="Message is too long to add this link."},onError={error=it})
+        LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
+        mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
+        BackHandler(selected != null) { if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
+    }
+
+    @Composable
+    fun ConversationPolling() {
+        LaunchedEffect(token,userId,refresh,selected?.id,lifecycle) {
+            if(userId.isBlank())return@LaunchedEffect
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+                while(true){
+                    val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
+                    result.first?.let{rows->conversations=rows;val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
+                    if(selected==null)error=result.second;loading=false
+                    if(selected!=null)break
+                    delay(20000)
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun MessagePolling() {
+        LaunchedEffect(token, selected?.id, lifecycle, historyLimit) {
+            val conversation = selected ?: return@LaunchedEffect
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                SeraRealtime(token, conversation.id).run {
+                    val result = withContext(Dispatchers.IO) { loadNativeMessages(token, conversation.id, historyLimit) }
+                    result.first?.let { latest ->
+                        if(messages.isNotEmpty() && latest.lastOrNull()?.id!=messages.lastOrNull()?.id && latest.lastOrNull()?.senderId!=userId)chime()
+                        messages = latest
+                        val unread = latest.filter { it.senderId != userId && (it.readAt.isBlank() || it.readAt == "null") }
+                        val undelivered=unread.filter{it.deliveredAt.isBlank()||it.deliveredAt=="null"}
+                        if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
                     }
-                })
+                    error = result.second
+                }
+            }
         }
+    }
+
+    @Composable
+    fun ReadReceipts() {
+        LaunchedEffect(token,selected?.id,lifecycle){
+            val c=selected?:return@LaunchedEffect
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+                val seen=mutableSetOf<String>()
+                snapshotFlow{messageListState.layoutInfo.visibleItemsInfo.map{it.key.toString()} to messages}
+                    .collectLatest{(visible,latest)->
+                        delay(600)
+                        val ids=latest.filter{it.id in visible&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
+                        if(ids.isNotEmpty()){val r=withContext(Dispatchers.IO){chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",c.id).put("p_ids",JSONArray(ids)).put("p_read",true))};if(r.first!=null){seen.addAll(ids);SeraUnreadRefresh.changed()}}
+                    }
+            }
+        }
+    }
+
+    @Composable
+    fun TypingEffects() {
+        LaunchedEffect(token, selected?.id, lifecycle) {
+            val conversation = selected ?: return@LaunchedEffect
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                while (true) {
+                    val result = withContext(Dispatchers.IO) { inboxRequest(token, "professional_typing_status?select=member_id&conversation_id=eq.${conversation.id}&member_id=neq.$userId&limit=1") }
+                    peerTyping = runCatching { JSONArray(result.first ?: "[]").length() > 0 }.getOrDefault(false)
+                    delay(2500)
+                }
+            }
+        }
+        LaunchedEffect(token, selected?.id, typingPulse) {
+            val conversation = selected ?: return@LaunchedEffect
+            if (typingPulse == 0) return@LaunchedEffect
+            delay(350)
+            withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",draft.isNotBlank())) }
+            delay(4000)
+            withContext(Dispatchers.IO) { inboxRequest(token, "rpc/sera_set_typing", "POST", JSONObject().put("p_conversation",conversation.id).put("p_typing",false)) }
+        }
+    }
+
+    @Composable
+    fun Render(modifier: Modifier, onInboxExit: (() -> Unit)?, onCompany: () -> Unit) {
+        val clipboard = LocalClipboardManager.current
+        val dark = androidx.compose.foundation.isSystemInDarkTheme()
+        val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
+        val inboxSoft = if(dark) Color(0xFF233E43) else Color(0xFFE9F2F1)
+        val chatSurface = if(dark) Color(0xFF111D21) else Color(0xFFF9FCFC)
+        val outgoing = if(dark) Color(0xFF087478) else Color(0xFF087478)
+        val incoming = if(dark) Color(0xFF26383D) else Color(0xFFE7F0EF)
+        val muted = if(dark) Color(0xFFA8C3C5) else Color(0xFF62777B)
+        val accent=if(dark) Color(0xFF6DE0D8) else inboxTeal
+        Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
+            Spacer(Modifier.height(4.dp))
+            if (selected == null) {
+                SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany=onCompany,onSearch={search=it},onRetry={refresh++},onSelect={conversation->
+                    draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
+                })
+            } else {
+                val conversation = selected!!
+                SeraThreadHeader(conversation,conversations.firstOrNull{it.id==conversation.id}?.photo,token,userId,peerTyping,peerActivity,sound,inboxInk,inboxSoft,muted,accent,inboxTeal,
+                    onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={showSearch=!showSearch},
+                    onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
+                    onAudioStart={playback.pause()},onHistory={callEvents=it})
+                if(showSearch)OutlinedTextField(messageSearch,{messageSearch=it},modifier=Modifier.fillMaxWidth(),placeholder={Text("Search loaded messages")},singleLine=true)
+                HorizontalDivider(color=inboxSoft,thickness=1.dp)
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                SeraThreadTimeline(Modifier.weight(1f),messageListState,messages,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it})
+                RenderComposer(conversation, inboxInk, inboxSoft, muted, accent)
+            }
+        }
+    }
+
+    @Composable
+    fun RenderComposer(conversation: NativeConversation, inboxInk: Color, inboxSoft: Color, muted: Color, accent: Color) {
+        val haptics = LocalHapticFeedback.current
+        SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
+            onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
+            onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
+            onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},
+            onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;album=q.album;sendFailed=false}},
+            onVoice={attachment=it;album=emptyList();error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
+            onSend={
+    
+                val body = draft.trim()
+                val file=attachment
+                if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null) return@SeraNativeComposer
+                sending = true
+                scope.launch {
+                    val p=NativePending(UUID.randomUUID().toString(),body,reply?.id,file,album)
+                    val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.save(userId,conversation.id,p)}}
+                    if(saved.isSuccess){
+                        runCatching{savedDrafts?.clear(userId,conversation.id)}
+                        if(selected?.id==conversation.id){draft="";attachment=null;album=emptyList();reply=null;queued=p;sendFailed=false;error=""}
+                    }else error="Secure message storage is unavailable. Your draft was retained."
+                    sending = false
+                }
+            })
     }
 }
