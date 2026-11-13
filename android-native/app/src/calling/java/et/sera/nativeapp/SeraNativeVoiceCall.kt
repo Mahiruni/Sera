@@ -2,7 +2,6 @@ package et.sera.nativeapp
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.media.RingtoneManager
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -159,9 +158,10 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     LaunchedEffect(incoming,resumed,row?.id){if(incoming&&resumed)row?.let{SeraPush.clearCallNotification(context,it.id)}}
     DisposableEffect(incoming,resumed,row?.id,silenced){
         val id=row?.id
-        val ringtone=if(incoming&&resumed&&id!=null&&!silenced&&!SeraPush.isCallSilenced(context,id))runCatching{RingtoneManager.getRingtone(context,RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)).apply{audioAttributes=android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build();if(android.os.Build.VERSION.SDK_INT>=28)isLooping=true;play()}}.getOrNull()else null
-        onDispose{runCatching{ringtone?.stop()}}
+        val alert=if(incoming&&resumed&&id!=null&&!silenced&&!SeraPush.isCallSilenced(context,id)&&callRingWindowMillis(row?.expiresAt,System.currentTimeMillis())>0)SeraForegroundRing.start(context)else null
+        onDispose{alert?.close()}
     }
+    LaunchedEffect(incoming,row?.id){if(incoming){val remaining=callRingWindowMillis(row?.expiresAt,System.currentTimeMillis());delay(remaining);silenced=true}}
     // Local ringback is only an outgoing progress cue, not proof that the remote device rings.
     LaunchedEffect(phase,row?.id,resumed){
         if(phase=="Calling…"&&resumed){
@@ -214,7 +214,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
             Column(Modifier.fillMaxWidth().padding(bottom=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(incoming){
-                    TextButton(onClick={silenced=true},enabled=!silenced){Icon(Icons.Outlined.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(if(silenced)"Ringtone silenced" else "Silence ringtone")}
+                    TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){Icon(Icons.Outlined.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(if(silenced)"Ringtone silenced" else "Silence ringtone")}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
                         SeraVoiceControl(Icons.Outlined.CallEnd,"Decline",destructive=true){scope.launch{end("decline")}}
                         SeraVoiceControl(Icons.Outlined.Call,"Answer",accept=true){request(true)}
