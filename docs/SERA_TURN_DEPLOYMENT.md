@@ -9,3 +9,15 @@ The SERA clients already consume short-lived coturn REST credentials. This setup
 5. Enroll only two consenting dedicated QA users, then enable the pilot. Test Android↔Android, web↔web and Android↔web across different networks. Check real microphone audio, mute, speaker, interruption, call end and notification expiry. Remove test access after verification if required.
 
 The workflow SERA Voice TURN Transport QA validates synthetic bidirectional RTP on a disposable local relay. It does not validate the production relay, the real application sign-in flow, physical-device audio or background calling. No production relay or billing resource is created by the workflow.
+
+## Deployment configuration generator
+Use `infra/turn/generate_turn_config.py` on a dedicated Linux relay host after obtaining a public IPv4, DNS record and trusted TLS certificate. For example (replace all values):
+
+```sh
+sudo python3 infra/turn/generate_turn_config.py \\
+  --hostname turn.example.com --local-ip 10.1.2.3 --public-ip YOUR_PUBLIC_IPV4 \\
+  --cert /etc/ssl/sera-turn/fullchain.pem --key /etc/ssl/sera-turn/privkey.pem \\
+  --output /etc/turnserver-sera.conf
+```
+
+The generator creates a mode-0600 config with a fresh 256-bit secret, quotas, a bounded pilot UDP relay range, TLS and private-address restrictions. It refuses to overwrite an existing file. Use the service account that runs coturn, granting only that account read access to the configuration and private key. Do not put the generated file in the repository. Review the interface/NAT mapping, egress firewall (including cloud metadata/private destinations), certificate renewal and bandwidth capacity before starting the service. The included unit tests validate config generation, not a production network deployment.
