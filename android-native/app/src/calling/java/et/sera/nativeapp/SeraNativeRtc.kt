@@ -13,6 +13,8 @@ import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+internal data class SeraAudioRoute(val id:Int,val label:String)
+
 /** Voice only. TURN relay is mandatory; no direct exposure of peer IP addresses. */
 internal class SeraNativeRtc(private val context:Context,config:JSONObject,private val onState:(String)->Unit){
     private val manager=context.getSystemService(AudioManager::class.java)
@@ -34,7 +36,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         val rtc=PeerConnection.RTCConfiguration(ice).apply{sdpSemantics=PeerConnection.SdpSemantics.UNIFIED_PLAN;iceTransportsType=PeerConnection.IceTransportsType.RELAY}
         val observer=object:PeerConnection.Observer{
             override fun onSignalingChange(s:PeerConnection.SignalingState){}
-            override fun onIceConnectionChange(s:PeerConnection.IceConnectionState){onState(when(s){PeerConnection.IceConnectionState.CONNECTED,PeerConnection.IceConnectionState.COMPLETED->"connected";PeerConnection.IceConnectionState.DISCONNECTED->"disconnected";PeerConnection.IceConnectionState.FAILED->"failed";PeerConnection.IceConnectionState.CHECKING->"connecting";else->"new"})}
+            override fun onIceConnectionChange(s:PeerConnection.IceConnectionState){}
             override fun onIceConnectionReceivingChange(receiving:Boolean){}
             override fun onIceGatheringChange(s:PeerConnection.IceGatheringState){}
             override fun onIceCandidate(candidate:IceCandidate){}
@@ -44,7 +46,7 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             override fun onDataChannel(channel:DataChannel){}
             override fun onRenegotiationNeeded(){}
             override fun onAddTrack(receiver:RtpReceiver,streams:Array<out MediaStream>){}
-            override fun onConnectionChange(state:PeerConnection.PeerConnectionState){if(state==PeerConnection.PeerConnectionState.FAILED)onState("failed")}
+            override fun onConnectionChange(state:PeerConnection.PeerConnectionState){onState(when(state){PeerConnection.PeerConnectionState.CONNECTED->"connected";PeerConnection.PeerConnectionState.CONNECTING->"connecting";PeerConnection.PeerConnectionState.DISCONNECTED->"disconnected";PeerConnection.PeerConnectionState.FAILED->"failed";else->"new"})}
         }
         pc=factory.createPeerConnection(rtc,observer)?:error("Voice connection could not initialize.")
         source=factory.createAudioSource(MediaConstraints())
@@ -86,6 +88,28 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             val device=manager.availableCommunicationDevices.firstOrNull{it.type==type}
             if(device!=null)manager.setCommunicationDevice(device)else if(!value)manager.clearCommunicationDevice()
         }else @Suppress("DEPRECATION") run{manager.isSpeakerphoneOn=value}
+    }
+    fun routes():List<SeraAudioRoute>{
+        if(closed)return emptyList()
+        if(Build.VERSION.SDK_INT>=31)return listOf(SeraAudioRoute(-1,"System default"))+manager.availableCommunicationDevices.map{device->
+            SeraAudioRoute(device.id,when(device.type){
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER->"Speaker"
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE->"Earpiece"
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,AudioDeviceInfo.TYPE_BLE_HEADSET,AudioDeviceInfo.TYPE_BLE_SPEAKER->"Bluetooth"
+                AudioDeviceInfo.TYPE_WIRED_HEADSET,AudioDeviceInfo.TYPE_WIRED_HEADPHONES,AudioDeviceInfo.TYPE_USB_HEADSET->"Headset"
+                else->"Audio device"
+            })
+        }
+        return listOf(SeraAudioRoute(-1,"System default"),SeraAudioRoute(-2,"Speaker"))
+    }
+    fun selectRoute(id:Int):Boolean{
+        if(closed)return false
+        return runCatching{
+            if(Build.VERSION.SDK_INT>=31){
+                if(id==-1){manager.clearCommunicationDevice();true}
+                else manager.availableCommunicationDevices.firstOrNull{it.id==id}?.let{manager.setCommunicationDevice(it)}?:false
+            }else{speaker(id==-2);true}
+        }.getOrDefault(false)
     }
     fun close(){
         if(closed)return;closed=true

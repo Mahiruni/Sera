@@ -67,6 +67,9 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var busy by remember(conversation){mutableStateOf(false)}
     var muted by remember(conversation){mutableStateOf(false)}
     var speaker by remember(conversation){mutableStateOf(false)}
+    var routeMenu by remember(conversation){mutableStateOf(false)}
+    var routes by remember(conversation){mutableStateOf<List<SeraAudioRoute>>(emptyList())}
+    var routeLabel by remember(conversation){mutableStateOf("Audio") }
     var started by remember(conversation){mutableLongStateOf(0L)}
     var seconds by remember(conversation){mutableLongStateOf(0L)}
     var lastAnswer by remember(conversation){mutableStateOf<String?>(null)}
@@ -75,7 +78,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var cancelRequested by remember(conversation){mutableStateOf(false)}
     var history by remember(conversation){mutableStateOf<List<String>>(emptyList())}
     fun payload()=JSONObject().put("p_conversation",conversation)
-    fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;started=0;seconds=0;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
+    fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
     suspend fun end(action:String,message:String="",target:CallRow?=null){
         val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};cleanup();if(message.isNotBlank())error=message
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
@@ -97,7 +100,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             if(cancelRequested){cleanup();return@launch};config=fresh;val p=peer()
             if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));if(cancelRequested){end("decline",target=s);return@launch};val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(cancelRequested){end("end",target=next);return@launch};scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
             else{val offer=p.offer();if(cancelRequested){cleanup();return@launch};val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;if(cancelRequested){end("end",target=s);return@launch};phase="Calling…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
-        }catch(e:CancellationException){cleanup();throw e}catch(e:Exception){if(accept)end("fail",e.message?:"Call unavailable.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error=e.message?:"Call unavailable."}}finally{busy=false}}
+        }catch(e:kotlinx.coroutines.TimeoutCancellationException){if(accept)end(if(cancelRequested)"decline" else "fail",if(cancelRequested)"" else "Call preparation timed out.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error="Call preparation timed out."}}catch(e:CancellationException){cleanup();throw e}catch(e:Exception){if(accept)end("fail",e.message?:"Call unavailable.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error=e.message?:"Call unavailable."}}finally{busy=false}}
     }
     var permissionAccept by remember{mutableStateOf(false)}
     val micPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)begin(permissionAccept)else error="Microphone permission is required for voice calling."}
@@ -197,7 +200,17 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 if(row?.state=="accepted"){
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
                         CallControl(if(muted)Icons.Outlined.MicOff else Icons.Outlined.Mic,if(muted)"Unmute"else "Mute",if(muted)teal else Color(0xFF35565B),primary){muted=!muted;rtc?.mute(muted)}
-                        CallControl(if(speaker)Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,if(speaker)"Speaker on" else "Speaker",if(speaker)teal else Color(0xFF35565B),primary){speaker=!speaker;rtc?.speaker(speaker)}
+                        Box{
+                            CallControl(Icons.Outlined.VolumeUp,routeLabel,if(speaker)teal else Color(0xFF35565B),primary){routes=runCatching{rtc?.routes().orEmpty()}.getOrDefault(emptyList());routeMenu=true}
+                            DropdownMenu(expanded=routeMenu,onDismissRequest={routeMenu=false}){
+                                routes.forEach{route->DropdownMenuItem(text={Text(route.label)},onClick={
+                                    routeMenu=false
+                                    if(rtc?.selectRoute(route.id)==true){routeLabel=route.label;speaker=route.label=="Speaker"}
+                                    else error="This audio device is no longer available."
+                                })}
+                                if(routes.isEmpty())DropdownMenuItem(text={Text("No audio routes available")},onClick={routeMenu=false})
+                            }
+                        }
                     }
                     Spacer(Modifier.height(30.dp))
                 }
