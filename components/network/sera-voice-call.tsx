@@ -51,7 +51,7 @@ export function SeraVoiceProvider({userId,children}:{userId:string;children:Reac
  const history=useCallback((events:CallHistoryEntry[])=>{const s=stateRef.current;if(s.selected?.conversation===s.target?.conversation)s.selected?.onHistory(events);},[]);
  const api=useMemo(()=>({register,unregister}),[register,unregister]);
  const target=state.target;
- useEffect(()=>{if(!userId)return;const ready=()=>{if(!document.hidden&&navigator.mediaDevices?.getUserMedia&&typeof RTCPeerConnection!=="undefined")void markVideoReady().catch(()=>{});};ready();const timer=setInterval(ready,25000);document.addEventListener("visibilitychange",ready);return()=>{clearInterval(timer);document.removeEventListener("visibilitychange",ready);};},[userId]);
+ useEffect(()=>{if(!userId)return;const ready=()=>{if(!document.hidden&&typeof navigator.mediaDevices?.getUserMedia==="function"&&typeof RTCPeerConnection!=="undefined")void markVideoReady().catch(()=>{});};ready();const timer=setInterval(ready,25000);document.addEventListener("visibilitychange",ready);return()=>{clearInterval(timer);document.removeEventListener("visibilitychange",ready);};},[userId]);
  useEffect(()=>{
   if(!userId||state.pinned)return;let stopped=false,inFlight=false;
   const discover=async()=>{
