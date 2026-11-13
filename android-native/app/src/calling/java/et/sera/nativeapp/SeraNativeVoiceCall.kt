@@ -327,7 +327,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val primary=colors.onSurface
         val secondary=colors.onSurfaceVariant
         val teal=colors.primary
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).clip(androidx.compose.foundation.shape.RectangleShape)){
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).clip(androidx.compose.ui.graphics.RectangleShape)){
             // The cached contact photo becomes an atmospheric, decorative layer only.
             // Native blur is supported from Android 12; older devices keep the gradient.
             if(!photo.isNullOrBlank() && android.os.Build.VERSION.SDK_INT>=31){
