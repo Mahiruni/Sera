@@ -102,7 +102,7 @@ private fun editPostText(token:String,post:SeraPost,title:String,body:String):Pa
    if(result.first){confirm="";panel="";onChanged(action)}else{error=result.second;confirm=""}
   }
  }
- IconButton(onClick={panel="menu";error="";copied=false},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreHoriz,"Post options",tint=controlInk)}
+ IconButton(onClick={panel="menu";error="";copied=false},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreHoriz,"Post options",tint=MaterialTheme.colorScheme.onSurfaceVariant)}
  if(panel.isNotBlank())SeraSignatureSheet(onDismissRequest={requestClose()},allowPartial=panel=="menu"||panel=="privacy",canDismiss=!busy&&(panel!="edit"||(title==post.title&&body==(if(post.repostOf!=null)post.repostNote else post.body)))){
   val keyboard=WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)>0
   Column(Modifier.fillMaxWidth().heightIn(max=680.dp).padding(bottom=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
