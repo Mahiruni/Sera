@@ -16,8 +16,8 @@ internal fun parseSeraMeeting(body:String):SeraMeeting?=runCatching{
     require(title.length in 1..120&&minutes in listOf(15,30,45,60,90,120))
     SeraMeeting(title,at,minutes)
 }.getOrNull()
-@Composable internal fun SeraMeetingDialog(onDismiss:()->Unit,onAdd:(String)->Unit){
-    var title by remember{mutableStateOf("")}
+@Composable internal fun SeraMeetingDialog(onDismiss:()->Unit,onAdd:(String)->Unit,initialTitle:String=""){
+    var title by remember{mutableStateOf(initialTitle)}
     var date by remember{mutableStateOf(LocalDate.now().plusDays(1).toString())}
     var time by remember{mutableStateOf("10:00")}
     var minutes by remember{mutableIntStateOf(30)}
