@@ -115,10 +115,20 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         if(local)pc.setLocalDescription(observer,s)else pc.setRemoteDescription(observer,s)
     }
     private fun speechDescription(s:SessionDescription)=SessionDescription(s.type,seraSpeechSdp(s.description))
-    suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=speechDescription(description(true));set(offer,true);offer.description}
+    private fun applySpeechProfile(){
+        if(closed||appliedBitrate==speech.profile.bitrate)return
+        runCatching{
+            val parameters=sender.parameters
+            if(parameters.encodings.isNotEmpty()){
+                parameters.encodings.forEach{it.maxBitrateBps=speech.profile.bitrate}
+                if(sender.setParameters(parameters))appliedBitrate=speech.profile.bitrate
+            }
+        }
+    }
+    suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=speechDescription(description(true));set(offer,true);applySpeechProfile();pc.localDescription?.description?:offer.description}
     suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
-    suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);gather()}
-    suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false)}
+    suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(speechDescription(description(false)),true);applySpeechProfile();gather()}
+    suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false);appliedBitrate=null;applySpeechProfile()}
     private suspend fun gather():String{
         val deadline=android.os.SystemClock.elapsedRealtime()+25000L
         while(!closed&&pc.iceGatheringState()!=PeerConnection.IceGatheringState.COMPLETE&&android.os.SystemClock.elapsedRealtime()<deadline){
@@ -159,14 +169,8 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         if(!closed){
             val fresh=stats.remoteTimestamp!=null&&stats.remoteTimestamp!=lastRemoteReport
             if(fresh)lastRemoteReport=stats.remoteTimestamp
-            val next=speech.update(if(fresh)stats.link else stats.link.copy(loss=null))
-            if(appliedBitrate!=next.bitrate)runCatching{
-                val parameters=sender.parameters
-                if(parameters.encodings.isNotEmpty()){
-                    parameters.encodings.forEach{it.maxBitrateBps=next.bitrate}
-                    if(sender.setParameters(parameters))appliedBitrate=next.bitrate
-                }
-            }
+            speech.update(if(fresh)stats.link else stats.link.copy(loss=null))
+            applySpeechProfile()
         }
         return stats.sample
     }
