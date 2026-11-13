@@ -6,7 +6,7 @@ import androidx.security.crypto.MasterKey
 import org.json.JSONObject
 import java.io.File
 
-internal data class NativePending(val clientId:String,val body:String,val replyId:String?,val file:NativeChatSelection?,val album:List<NativeChatSelection> = emptyList())
+internal data class NativePending(val clientId:String,val body:String,val replyId:String?,val file:NativeChatSelection?,val album:List<NativeChatSelection> = emptyList(),val paused:Boolean=false)
 internal class NativeChatOutbox(private val context:Context){
     private val master=MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
     private val prefs=EncryptedSharedPreferences.create(context,"sera_chat_outbox",master,EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
@@ -21,7 +21,7 @@ internal class NativeChatOutbox(private val context:Context){
         fun store(id:String,f:NativeChatSelection){val target=path(user,id);if(!target.exists()){written.add(target);encrypted(target).openFileOutput().use{it.write(f.bytes)}}}
         try{
             val f=p.file
-            val json=JSONObject().put("id",p.clientId).put("body",p.body).put("reply",p.replyId?:JSONObject.NULL)
+            val json=JSONObject().put("id",p.clientId).put("body",p.body).put("reply",p.replyId?:JSONObject.NULL).put("paused",p.paused)
             if(f!=null){store(p.clientId,f);json.put("name",f.name).put("mime",f.mime).put("duration",f.durationMs?:JSONObject.NULL)}
             if(p.album.isNotEmpty()){
                 val photos=org.json.JSONArray()
@@ -39,7 +39,11 @@ internal class NativeChatOutbox(private val context:Context){
         val file=if(j.has("mime"))loadFile(id,j)else null
         val photos=j.optJSONArray("photos")
         val album=if(photos!=null){require(photos.length() in 2..4&&file==null);(0 until photos.length()).map{loadFile(albumItemId(id,it),photos.getJSONObject(it))}}else emptyList()
-        return NativePending(id,j.optString("body"),j.optString("reply").takeUnless{it=="null"||it.isBlank()},file,album)
+        return NativePending(id,j.optString("body"),j.optString("reply").takeUnless{it=="null"||it.isBlank()},file,album,j.optBoolean("paused"))
+    }
+    fun setPaused(user:String,thread:String,id:String,paused:Boolean){
+        val raw=prefs.getString(key(user,thread),null)?:error("Pending message unavailable.")
+        val j=JSONObject(raw);check(j.optString("id")==id);j.put("paused",paused);check(prefs.edit().putString(key(user,thread),j.toString()).commit())
     }
     fun remove(user:String,thread:String,id:String){
         val existing=prefs.getString(key(user,thread),null)?.let{runCatching{JSONObject(it).optString("id")}.getOrNull()}

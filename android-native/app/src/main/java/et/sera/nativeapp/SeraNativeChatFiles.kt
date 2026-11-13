@@ -67,21 +67,24 @@ internal fun readChatFile(token:String,file:NativeChatFile):ByteArray {
     val c=chatConnection(token,"/storage/v1/object/authenticated/professional-message-files/"+file.path,"GET")
     try { check(c.responseCode in 200..299){"File unavailable."}; return c.inputStream.use{it.readChatBounded()}.also{require(it.size==file.bytes)} } finally {c.disconnect()}
 }
-internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,clientId:String,body:String,file:NativeChatSelection?,reply:String?=null,forward:String?=null,onProgress:(Int)->Unit={}):Pair<String?,String> {
+internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,clientId:String,body:String,file:NativeChatSelection?,reply:String?=null,forward:String?=null,onProgress:(Int)->Unit={},transfer:NativeChatTransfer?=null):Pair<String?,String> {
     return try {
         val ext=when(file?.mime){"application/pdf"->"pdf";"image/png"->"png";"image/webp"->"webp";"audio/mp4"->"m4a";"audio/webm"->"webm";"audio/ogg"->"ogg";"audio/mpeg"->"mp3";"video/mp4"->"mp4";else->"jpg"}
         val path=if(file==null)null else "$userId/$conversation/$clientId.$ext"
         if(file!=null && path!=null){
             require(file.mime in chatMimes && file.bytes.size in 1..CHAT_LIMIT)
             val c=chatConnection(token,"/storage/v1/object/professional-message-files/"+path,"POST")
-            try{c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size);c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){val count=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,count);offset+=count;onProgress((offset*100L/file.bytes.size).toInt().coerceAtMost(99))}}
+            try{transfer?.bind(c);c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size);c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){transfer?.checkActive();val count=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,count);offset+=count;onProgress((offset*100L/file.bytes.size).toInt().coerceAtMost(99))}}
+                transfer?.checkActive()
                 if(c.responseCode !in 200..299){
+                    transfer?.checkActive()
                     val previous=readChatFile(token,NativeChatFile(file.name,file.mime,path,file.bytes.size))
                     if(!previous.contentEquals(file.bytes))return null to "Attachment upload could not be verified."
                 }
-            }finally{c.disconnect()}
-            onProgress(100)
+            }finally{transfer?.release(c);c.disconnect()}
         }
+        transfer?.beginCommit()
+        if(file!=null)onProgress(100)
         val payload=JSONObject().put("p_conversation",conversation).put("p_client_id",clientId).put("p_body",body)
             .put("p_reply_to",reply?:JSONObject.NULL).put("p_forward_source",forward?:JSONObject.NULL)
             .put("p_path",path?:JSONObject.NULL).put("p_name",file?.name?:JSONObject.NULL)
@@ -90,7 +93,7 @@ internal fun sendNativeMessageV2(token:String,userId:String,conversation:String,
         val r=chatRpc(token,"sera_send_message_v2",payload)
         val id=r.first?.trim()?.trim('"')
         if(id!=null && id.matches(Regex("[0-9a-f-]{36}"))){runCatching{SeraPush.dispatch(token,"message",id)};id to ""}else null to r.second.ifBlank{"Message not sent. Retry."}
-    }catch(_:Exception){null to "Transfer interrupted. Check your connection and retry."}
+    }catch(_:Exception){null to if(transfer?.cancelled==true)"Upload cancelled. Retry or edit your message." else "Transfer interrupted. Check your connection and retry."}
 }
 internal fun sendChatAttachment(token:String,userId:String,conversation:String,body:String,file:NativeChatSelection):String =
     sendNativeMessageV2(token,userId,conversation,UUID.randomUUID().toString(),body,file).second
@@ -138,29 +141,32 @@ internal fun prepareCapturedChatPhoto(file:File):NativeChatSelection{
 
 /** Stable per-item paths make retries idempotent without replacing uploaded objects. */
 internal fun albumItemId(clientId:String,index:Int):String=UUID.nameUUIDFromBytes(("sera-photo:"+clientId+":"+index).toByteArray(Charsets.UTF_8)).toString()
-internal fun sendNativePhotoAlbum(token:String,userId:String,conversation:String,p:NativePending,onProgress:(Int)->Unit):Pair<String?,String>{
+internal fun sendNativePhotoAlbum(token:String,userId:String,conversation:String,p:NativePending,onProgress:(Int)->Unit,transfer:NativeChatTransfer?=null):Pair<String?,String>{
     return try{
         require(p.album.size in 2..4 && p.file==null)
         val total=p.album.sumOf{it.bytes.size.toLong()};var transferred=0L
         val meta=org.json.JSONArray()
         p.album.forEachIndexed{index,file->
+            transfer?.checkActive()
             require(file.mime in setOf("image/jpeg","image/png","image/webp")&&file.bytes.size in 1..CHAT_LIMIT)
             val ext=when(file.mime){"image/png"->"png";"image/webp"->"webp";else->"jpg"}
             val path="$userId/$conversation/${albumItemId(p.clientId,index)}.$ext"
             val c=chatConnection(token,"/storage/v1/object/professional-message-files/"+path,"POST")
             try{
-                c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size)
-                c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){val n=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,n);offset+=n;onProgress(((transferred+offset)*100/total).toInt().coerceAtMost(99))}}
+                transfer?.bind(c);c.doOutput=true;c.setRequestProperty("Content-Type",file.mime);c.setRequestProperty("x-upsert","false");c.setFixedLengthStreamingMode(file.bytes.size)
+                c.outputStream.use{out->var offset=0;while(offset<file.bytes.size){transfer?.checkActive();val n=minOf(32768,file.bytes.size-offset);out.write(file.bytes,offset,n);offset+=n;onProgress(((transferred+offset)*100/total).toInt().coerceAtMost(99))}}
+                transfer?.checkActive()
                 if(c.responseCode !in 200..299){val previous=readChatFile(token,NativeChatFile(file.name,file.mime,path,file.bytes.size));check(previous.contentEquals(file.bytes)){"Uploaded photo did not match."}}
-            }finally{c.disconnect()}
+            }finally{transfer?.release(c);c.disconnect()}
             transferred+=file.bytes.size
             meta.put(JSONObject().put("path",path).put("name",file.name).put("mime",file.mime).put("size",file.bytes.size))
         }
+        transfer?.beginCommit()
         onProgress(100)
         val r=chatRpc(token,"sera_send_photo_album",JSONObject().put("p_conversation",conversation).put("p_client_id",p.clientId).put("p_body",p.body).put("p_reply_to",p.replyId?:JSONObject.NULL).put("p_files",meta))
         val id=r.first?.trim()?.trim('"')
         if(id!=null&&id.matches(Regex("[0-9a-f-]{36}"))){runCatching{SeraPush.dispatch(token,"message",id)};id to ""}else null to r.second.ifBlank{"Album not sent. Retry."}
-    }catch(_:Exception){null to "Photo album transfer interrupted. Retry to send all photos."}
+    }catch(_:Exception){null to if(transfer?.cancelled==true)"Upload cancelled. Retry or edit your message." else "Photo album transfer interrupted. Retry to send all photos."}
 }
 
 /** Read only the signed-in account's CV; copy bytes into the private chat outbox on explicit send. */

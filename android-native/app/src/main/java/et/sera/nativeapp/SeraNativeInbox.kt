@@ -258,6 +258,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     var album by remember(selected?.id){mutableStateOf<List<NativeChatSelection>>(emptyList())}
     var checkingFile by remember { mutableStateOf(false) }
     var transferProgress by remember(selected?.id){mutableIntStateOf(-1)}
+    var activeTransfer by remember(selected?.id){mutableStateOf<NativeChatTransfer?>(null)}
     var mediaViewer by remember(selected?.id){mutableStateOf<NativeChatFile?>(null)}
     var recordingVoice by remember(selected?.id){mutableStateOf(false)}
     var reply by remember(selected?.id){mutableStateOf<NativeMessage?>(null)}
@@ -285,14 +286,15 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
     LaunchedEffect(token,selected?.id,queued?.clientId,retrySignal,connectionAvailable){
         val c=selected?:return@LaunchedEffect;val p=queued?:return@LaunchedEffect
-        if(!connectionAvailable)return@LaunchedEffect
+        if(!connectionAvailable||p.paused)return@LaunchedEffect
+        val transfer=NativeChatTransfer();activeTransfer=transfer
         sending=true;transferProgress=if(p.file!=null||p.album.isNotEmpty())0 else -1
         try{
             val progress:(Int)->Unit={percent->scope.launch{if(selected?.id==c.id)transferProgress=percent}}
-            val result=withContext(Dispatchers.IO){if(p.album.isNotEmpty())sendNativePhotoAlbum(token,userId,c.id,p,progress)else sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress=progress)}
+            val result=withContext(Dispatchers.IO){if(p.album.isNotEmpty())sendNativePhotoAlbum(token,userId,c.id,p,progress,transfer)else sendNativeMessageV2(token,userId,c.id,p.clientId,p.body,p.file,p.replyId,onProgress=progress,transfer=transfer)}
             if(result.first!=null){withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,c.id,p.clientId)}};if(selected?.id==c.id){queued=null;sendFailed=false;error="";chime();reload()};runCatching{savedDrafts?.clear(userId,c.id)}}
             else{sendFailed=true;error=result.second}
-        }finally{sending=false;transferProgress=-1}
+        }finally{if(activeTransfer===transfer){activeTransfer=null;sending=false;transferProgress=-1}}
     }
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
     SeraNativeMessageDialogs(remove=remove,reaction=reaction,forwarding=forwarding,conversations=conversations,token=token,userId=userId,forwardClient=forwardClient,
@@ -419,7 +421,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
             SeraNativeComposer(draft=draft,attachment=attachment,album=album,reply=reply,queued=queued,sending=sending,checkingFile=checkingFile,connectionAvailable=connectionAvailable,sendFailed=sendFailed,transferProgress=transferProgress,recordingVoice=recordingVoice,ink=inboxInk,soft=inboxSoft,muted=muted,accent=accent,teal=inboxTeal,playback=playback,
                 onDraftChange={draft=it;typingPulse++;runCatching{savedDrafts?.write(userId,conversation.id,it)}},
                 onAttach={attachmentStudio=true;haptics.performHapticFeedback(HapticFeedbackType.LongPress)},
-                onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onRetry={retrySignal++},
+                onRemoveAttachment={attachment=null},onRemovePhoto={index->val next=album.filterIndexed{i,_->i!=index};if(next.size==1){attachment=next.first();album=emptyList()}else album=next},onCancelReply={reply=null},onCancelUpload={val q=queued;val transfer=activeTransfer;if(q!=null&&transfer?.requestCancel()==true){queued=q.copy(paused=true);scope.launch(Dispatchers.IO){runCatching{transfer.disconnect();check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,true)}.onFailure{withContext(Dispatchers.Main){error="Could not persist upload pause. Keep this conversation open."}}}}},onRetry={val q=queued;if(q!=null&&q.paused){scope.launch{val saved=withContext(Dispatchers.IO){runCatching{check(outbox!=null);outbox.setPaused(userId,conversation.id,q.clientId,false)}};if(saved.isSuccess&&selected?.id==conversation.id){queued=q.copy(paused=false);retrySignal++}else error="Could not resume pending upload."}}else retrySignal++},
                 onEditQueued={val q=queued;if(q!=null)scope.launch{withContext(Dispatchers.IO){runCatching{outbox?.remove(userId,conversation.id,q.clientId)}};queued=null;draft=q.body;attachment=q.file;album=q.album;sendFailed=false}},
                 onVoice={attachment=it;album=emptyList();error=""},onRecording={recordingVoice=it;if(it)playback.pause()},onError={error=it},
                 onSend={

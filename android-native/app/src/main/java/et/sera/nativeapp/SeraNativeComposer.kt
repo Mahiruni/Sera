@@ -81,7 +81,7 @@ import java.net.URL
 internal fun SeraNativeComposer(
     draft:String,attachment:NativeChatSelection?,album:List<NativeChatSelection>,reply:NativeMessage?,queued:NativePending?,sending:Boolean,checkingFile:Boolean,connectionAvailable:Boolean,sendFailed:Boolean,transferProgress:Int,recordingVoice:Boolean,
     ink:Color,soft:Color,muted:Color,accent:Color,teal:Color,playback:SeraChatPlayback,
-    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
+    onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onCancelUpload:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
 ){
     val scope=rememberCoroutineScope()
     var pdfPreview by remember(attachment){mutableStateOf(false)}
@@ -96,8 +96,8 @@ internal fun SeraNativeComposer(
             Column(Modifier.padding(10.dp)){
                 Text(q.body.ifBlank{q.file?.name?:if(q.album.isNotEmpty())"${q.album.size} photos" else "Attachment"},maxLines=2,color=ink)
                 if(sending&&transferProgress in 0..99)LinearProgressIndicator(progress={transferProgress/100f},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),color=accent)
-                Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=accent)
-                Row{TextButton(onClick=onRetry,enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick=onEditQueued,enabled=!sending){Text("Edit message")}}
+                Text(if(sending&&transferProgress in 0..99)"Uploading · $transferProgress%" else if(sending&&transferProgress==100)"Upload complete · sending message…" else if(sending)"Sending…" else if(q.paused)"Upload paused · retry" else if(!connectionAvailable)"Queued · waiting for connection" else if(sendFailed)"Not sent · retry" else "Queued",fontSize=12.sp,color=accent)
+                Row{if(sending&&!q.paused&&transferProgress in 0..99)TextButton(onClick=onCancelUpload){Text("Cancel upload")};TextButton(onClick=onRetry,enabled=!sending&&connectionAvailable){Text("Retry")};TextButton(onClick=onEditQueued,enabled=!sending){Text("Edit message")}}
             }
         }
     }
