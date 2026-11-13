@@ -8,10 +8,12 @@ val pilotArm64 = providers.gradleProperty("SERA_PILOT_ARM64").map { it.toBoolean
 val includeLiveCalling = providers.gradleProperty("SERA_ENABLE_LIVE_CALLING")
     .map { it.toBooleanStrict() }.orElse(true).get()
 
+val signedCallSmoke = providers.gradleProperty("SERA_SIGNED_CALL_SMOKE").orElse("false").get().toBoolean()
+
 android {
-    if (providers.gradleProperty("SERA_SIGNED_CALL_SMOKE").orElse("false").get().toBoolean()) {
+    if (signedCallSmoke) {
         testBuildType = "release"
-        sourceSets.getByName("androidTest").java.setSrcDirs(listOf("src/callingSmokeTest/java"))
+        sourceSets.getByName("androidTest").java.setSrcDirs(listOf("src/callingPlatformSmoke/java"))
     }
     sourceSets.getByName("main").java.srcDir(if (includeLiveCalling) "src/calling/java" else "src/lightweight/java")
     namespace = "et.sera.nativeapp"
@@ -22,7 +24,7 @@ android {
         if (pilotArm64) { require(includeLiveCalling); ndk { abiFilters += "arm64-v8a" } }
         minSdk = 26
         targetSdk = 35
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = if (signedCallSmoke) "et.sera.nativeapp.SeraSignedCallInstrumentation" else "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.gradleProperty("SERA_VERSION_CODE").orElse("1").get().toInt()
         versionName = providers.gradleProperty("SERA_VERSION_NAME").orElse("0.1.0").get()
         val supabaseUrl = providers.gradleProperty("SERA_SUPABASE_URL").orElse("").get()
@@ -74,12 +76,12 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    // The signed instrumentation runner loads Trace through the target app classloader.
+    if (!signedCallSmoke) {
+        androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+        androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+        androidTestImplementation("androidx.test:runner:1.6.2")
+    }
     implementation("androidx.tracing:tracing:1.2.0")
-    androidTestImplementation("androidx.tracing:tracing:1.2.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
