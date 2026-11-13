@@ -129,6 +129,7 @@ export function Provider({
   const [notice, notify] = useState("");
   const htmlLanguage = pageLanguage(pathname, value.locale);
   const lang: Lang = htmlLanguage === "am" ? "am" : "en";
+  const interfaceLocale = pathname === "/am" ? "am" : pathname === "/om" ? "om" : pathname === "/en" ? "en" : value.locale;
   useEffect(() => {
     document.documentElement.lang = htmlLanguage;
     document.documentElement.dir = "ltr";
@@ -145,7 +146,7 @@ export function Provider({
         lang,
         setState,
         setLang,
-        t: (k) => translate(htmlLanguage, k),
+        t: (k) => translate(interfaceLocale, k),
         notice,
         notify,
       }}

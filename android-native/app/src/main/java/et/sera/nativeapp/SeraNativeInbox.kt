@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.platform.testTag
+
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -877,7 +879,7 @@ private class InboxController(
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true},onSafety={thread.safetyDialog=true})
                 if(thread.safetyDialog)SeraConversationSafetyDialog(conversation.peerName,onDismiss={thread.safetyDialog=false},onBlock={scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_blocks","POST",JSONObject().put("blocker_id",userId).put("blocked_id",conversation.peerId))};if(result.first!=null){withContext(Dispatchers.IO){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(userId)}};thread.safetyDialog=false;messages=emptyList();conversations=conversations.filterNot{it.peerId==conversation.peerId};selected=null;refresh++;onThreadExit?.invoke()}else error=result.second}},onReport={reason,details->scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_reports","POST",JSONObject().put("reporter_id",userId).put("reported_id",conversation.peerId).put("reason",reason).put("details",details))};if(result.first!=null){thread.safetyDialog=false;android.widget.Toast.makeText(context,"Report submitted",android.widget.Toast.LENGTH_SHORT).show()}else error=result.second}})
-                HorizontalDivider(color=palette.border,thickness=.7.dp)
+                HorizontalDivider(modifier=Modifier.testTag("sera_thread_header_divider"),color=palette.border,thickness=.7.dp)
                 Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal=12.dp)){
                 val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
                 if(thread.selectedMessages.isNotEmpty()){

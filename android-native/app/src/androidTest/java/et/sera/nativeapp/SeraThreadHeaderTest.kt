@@ -21,8 +21,8 @@ class SeraThreadHeaderTest {
     }
    }
   }
-  compose.onNodeWithTag("sera_thread_contact_name").assertTextEquals("Halima Aman")
-  compose.onNodeWithTag("sera_thread_presence").assertTextEquals("3 hours ago")
+  compose.onNodeWithTag("sera_thread_contact_name",useUnmergedTree=true).assertTextEquals("Halima Aman")
+  compose.onNodeWithTag("sera_thread_presence",useUnmergedTree=true).assertTextEquals("3 hours ago")
  }
  @Test fun relativeActivityUsesElapsedTime(){
   assertEquals("Active now",seraRelativeActivity(45))
