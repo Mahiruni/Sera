@@ -7,7 +7,7 @@ import {voiceText} from "@/lib/network/voice-i18n";
 import {SpeechAdaptation,speechProfiles,readSpeechLink,speechJitterTargetMs,speechQualityWarning} from "@/lib/network/voice-network-policy";
 import {secureRelayAttempts} from "@/lib/network/relay-recovery";
 import {MemberAvatar} from "@/components/activity/avatar";
-import {getCallConfig,getCallStatus,startCall,changeCall,getCallHistory,confirmCallMedia,restartCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
+import {getCallConfig,getCallStatus,getPendingIncomingCall,startCall,changeCall,getCallHistory,confirmCallMedia,restartCallMedia,type CallSession,type CallConfig,type CallHistoryEntry} from "@/lib/network/voice-calls";
 
 type VoiceSummary={title:string;duration:number|null;direction:"Incoming"|"Outgoing";endedAt:number;detail?:string};
 const formatDuration=(seconds:number)=>{const s=Math.max(0,Math.floor(seconds));const mm=String(Math.floor(s/60)%60).padStart(2,"0"),ss=String(s%60).padStart(2,"0");return s>=3600?`${Math.floor(s/3600)}:${mm}:${ss}`:`${mm}:${ss}`;};
@@ -31,7 +31,7 @@ function gather(pc:RTCPeerConnection,budgetMs:number,signal:AbortSignal,complete
   });
 }
 type VoiceEntry={conversation:string;userId:string;name:string;photo?:string|null;onHistory:(events:CallHistoryEntry[])=>void};
-type VoiceTarget=VoiceEntry&{node:HTMLElement};
+type VoiceTarget=VoiceEntry&{node:HTMLElement|null;initialIncomingId?:string;initialIncomingExpiresAt?:string};
 type VoiceHostState={selected:VoiceTarget|null;target:VoiceTarget|null;pinned:boolean};
 const VoiceHost=createContext<{register:(target:VoiceTarget)=>void;unregister:(node:HTMLElement)=>void}|null>(null);
 /** Root-layout host survives client navigation; only the chat-header controls are portaled. */
@@ -44,6 +44,17 @@ export function SeraVoiceProvider({userId,children}:{userId:string;children:Reac
  const history=useCallback((events:CallHistoryEntry[])=>{const s=stateRef.current;if(s.selected?.conversation===s.target?.conversation)s.selected?.onHistory(events);},[]);
  const api=useMemo(()=>({register,unregister}),[register,unregister]);
  const target=state.target;
+ useEffect(()=>{
+  if(!userId||state.pinned)return;let stopped=false,inFlight=false;
+  const discover=async()=>{
+   if(stopped||inFlight||document.hidden)return;inFlight=true;
+   try{const call=await getPendingIncomingCall();if(stopped||!call)return;
+    setState(s=>s.pinned||s.target?.conversation===call.conversation?s:{...s,pinned:true,target:{conversation:call.conversation,userId,name:call.name,photo:call.photo,node:null,onHistory:history,initialIncomingId:call.id,initialIncomingExpiresAt:call.expiresAt}});
+   }catch{/* The current thread and existing call remain unaffected by a discovery failure. */}finally{inFlight=false;}
+  };
+  void discover();const timer=setInterval(()=>void discover(),6000);const visible=()=>{if(!document.hidden)void discover();};document.addEventListener("visibilitychange",visible);
+  return()=>{stopped=true;clearInterval(timer);document.removeEventListener("visibilitychange",visible);};
+ },[userId,state.pinned,history]);
  const selected=state.selected?.conversation===target?.conversation?state.selected:null;
  return <VoiceHost.Provider value={api}>{children}{userId&&target?.userId===userId&&<VoiceEngine key={userId+":"+target.conversation} {...target} onHistory={history} controlRoot={selected?.node??null} global selected={Boolean(selected)} report={report}/>}</VoiceHost.Provider>;
 }
@@ -56,11 +67,13 @@ export function SeraVoiceCall(props:VoiceEntry){
  },[host,props.conversation,props.userId,props.name,props.photo]);
  return host?<span ref={node} style={{display:"contents"}}/>:<VoiceEngine {...props}/>;
 }
-function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,global=false,selected=true,report}:VoiceEntry&{controlRoot?:HTMLElement|null;global?:boolean;selected?:boolean;report?:(id:string,pinned:boolean)=>void}){
+function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,global=false,selected=true,report,initialIncomingId,initialIncomingExpiresAt}:VoiceEntry&{controlRoot?:HTMLElement|null;global?:boolean;selected?:boolean;report?:(id:string,pinned:boolean)=>void;initialIncomingId?:string;initialIncomingExpiresAt?:string}){
   const {locale}=useSera();
   const tr=(value:string)=>voiceText(locale,value);
   const [config,setConfig]=useState<CallConfig>({enabled:false}),[session,setSession]=useState<CallSession|null>(null),[phase,setPhase]=useState(""),[muted,setMuted]=useState(false),[seconds,setSeconds]=useState(0),[error,setError]=useState(""),[history,setHistory]=useState<CallHistoryEntry[]|null>(null),[audioBlocked,setAudioBlocked]=useState(false),[minimized,setMinimized]=useState(false);
   const [summary,setSummary]=useState<VoiceSummary|null>(null);
+  const [pendingDiscovery,setPendingDiscovery]=useState(Boolean(initialIncomingId));
+  const incomingProbe=useRef(initialIncomingId??null);
   const [quality,setQuality]=useState(false);
   const preparationAbort=useRef<AbortController|null>(null);
   const restart=useRef({applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0,networkChanged:false});
@@ -71,7 +84,7 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
   const cleanup=useCallback(()=>{restartAbort.current?.abort();restartAbort.current=null;restart.current={applied:0,pendingGeneration:0,pendingSdp:"",attemptAt:0,unhealthySince:0,networkChanged:false};preparationAbort.current?.abort();preparationAbort.current=null;if(failTimer.current)clearTimeout(failTimer.current);failTimer.current=null;const connection=pc.current;pc.current=null;if(connection){connection.onconnectionstatechange=null;connection.ontrack=null;connection.close();}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(audio.current)audio.current.srcObject=null;lastRemote.current="";started.current=0;pollErrors.current=0;missingSince.current=0;if(mounted.current){setMuted(false);setSeconds(0);setAudioBlocked(false);setMinimized(false);setQuality(false);}},[]);
   const captureSummary=useCallback((title:string,s:CallSession|null,detail?:string)=>{if(mounted.current)setSummary({title,duration:started.current?Math.floor((performance.now()-started.current)/1000):null,direction:s?.callee===userId?"Incoming":"Outgoing",endedAt:Date.now(),detail});},[userId]);
   const terminate=useCallback(async(action:"end"|"decline"|"fail",message="")=>{const s=current.current;captureSummary(action==="decline"?"Call declined":action==="fail"?"Connection lost":started.current?"Call ended":"Call cancelled",s,message);cleanup();update(null);setPhase("");if(s&&live(s)){try{await changeCall(conversation,s.id,action);}catch{if(mounted.current)setError(message||"Call closed locally. Remote status will expire.");}}},[captureSummary,cleanup,conversation,update]);
-  useEffect(()=>{mounted.current=true;void getCallConfig(conversation).then(c=>{if(mounted.current)setConfig(c);});return()=>{mounted.current=false;const s=current.current;cleanup();if(s&&live(s))void changeCall(conversation,s.id,"end").catch(()=>{});};},[conversation,cleanup]);
+  useEffect(()=>{mounted.current=true;void getCallConfig(conversation).then(c=>{if(mounted.current){setConfig(c);if(!c.enabled){incomingProbe.current=null;setPendingDiscovery(false);}}});return()=>{mounted.current=false;const s=current.current;cleanup();if(s&&live(s))void changeCall(conversation,s.id,"end").catch(()=>{});};},[conversation,cleanup]);
   async function recoverMedia(call:CallSession){
     const connection=pc.current;if(!connection||call.state!=="accepted")return;
     const peer:RTCPeerConnection=connection;
@@ -101,7 +114,8 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
   }
   useEffect(()=>{if(session?.state!=="accepted")return;const changed=()=>{restart.current.networkChanged=true;};const network=(navigator as Navigator&{connection?:EventTarget}).connection;window.addEventListener("online",changed);network?.addEventListener("change",changed);return()=>{window.removeEventListener("online",changed);network?.removeEventListener("change",changed);};},[session?.id,session?.state]);
   useEffect(()=>{if(!config.enabled)return;let stopped=false;let lastIdlePoll=0;const poll=async()=>{if(stopped||busy.current||polling.current)return;if(!current.current){if(document.hidden||Date.now()-lastIdlePoll<4000)return;lastIdlePoll=Date.now();}polling.current=true;try{
-    const prior=current.current;const s=await getCallStatus(conversation,prior?.id??null);if(stopped||busy.current||prior!==current.current)return;pollErrors.current=0;
+    const prior=current.current;const s=await getCallStatus(conversation,prior?.id??incomingProbe.current);if(stopped||busy.current||prior!==current.current)return;pollErrors.current=0;
+    if(incomingProbe.current){incomingProbe.current=null;setPendingDiscovery(false);}
     if(!s){if(prior){if(!missingSince.current)missingSince.current=Date.now();if(Date.now()-missingSince.current>=15000){cleanup();update(null);setPhase("");setError("Call is no longer available.");}}return;}missingSince.current=0;
     if(!live(s)){if(prior){captureSummary(outcome(s,userId),s);cleanup();update(null);setPhase("");}return;}
     if(s.state==="accepted"&&!pc.current){if(prior){update(null);setPhase("");setError("Call answered on another device.");}return;}
@@ -200,7 +214,12 @@ function VoiceEngine({conversation,userId,name,photo,onHistory,controlRoot,globa
     catch(e){await terminate(cancelRequested.current?"decline":"fail",cancelRequested.current?"":e instanceof Error?e.message:"Could not accept call.");}finally{busy.current=false;operation.current=null;}
   }
 
-  const held=Boolean(session||phase||summary);
+  useEffect(()=>{
+    if(!pendingDiscovery||!initialIncomingExpiresAt)return;
+    const timer=setTimeout(()=>{incomingProbe.current=null;setPendingDiscovery(false);},Math.max(0,Date.parse(initialIncomingExpiresAt)-Date.now()));
+    return()=>clearTimeout(timer);
+  },[pendingDiscovery,initialIncomingExpiresAt]);
+  const held=Boolean(session||phase||summary||pendingDiscovery);
   useLayoutEffect(()=>{report?.(conversation,held);},[report,conversation,held]);
   useEffect(()=>{if(!selected&&session?.state!=="ringing"){const frame=requestAnimationFrame(()=>setMinimized(true));return()=>cancelAnimationFrame(frame);}},[selected,session?.state]);
   if(!config.enabled)return null;
