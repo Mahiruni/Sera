@@ -23,6 +23,16 @@ class PremiumMessageUiTest {
   compose.setContent{MaterialTheme{SeraThreadHeaderDivider()}}
   compose.onNodeWithTag("sera_thread_header_divider").assertExists().assertHeightIsEqualTo(1.dp)
  }
+ @Test fun seenUsesLatestPublicOutgoingReadReceiptOnly(){
+  val first=NativeMessage("first","me","First","2026-11-13T10:03:00Z","2026-11-13T10:00:00Z","",emptyList())
+  val newest=first.copy(id="newest",createdAt="2026-11-13T10:01:00Z")
+  val delivered=newest.copy(id="delivered",createdAt="2026-11-13T10:02:00Z",readAt="",deliveredAt="2026-11-13T10:03:00Z")
+  val privateRead=delivered.copy(id="private",privateReadAt="2026-11-13T10:04:00Z")
+  val incoming=newest.copy(id="incoming",senderId="peer",createdAt="2026-11-13T10:04:00Z")
+  val unsent=newest.copy(id="unsent",unsent=true,createdAt="2026-11-13T10:05:00Z")
+  assertEquals("newest",seraLatestSeenMessageId(listOf(incoming,first,delivered,newest,privateRead,unsent),"me"))
+  assertEquals(null,seraLatestSeenMessageId(listOf(delivered,privateRead,incoming,unsent),"me"))
+ }
  @Test fun quoteNavigationAndAccessibleQuickReaction(){
   var quote=""
   var reaction=""
