@@ -26,6 +26,7 @@ internal class SeraGlobalCallState {
         private set
     var historyRequest by mutableIntStateOf(0)
         private set
+    private var pendingStart=false
     private var historySink:((List<SeraCallEvent>)->Unit)?=null
     private var audioStart:(()->Unit)?=null
     fun select(value:SeraCallTarget,onAudio:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
@@ -42,13 +43,14 @@ internal class SeraGlobalCallState {
     }
     fun report(conversation:String,keep:Boolean,enabled:Boolean){
         if(target?.conversation!=conversation)return
-        pinned=keep;eligible=enabled
-        if(!keep&&selected?.conversation!=conversation){target=selected;eligible=false}
+        pinned=keep||pendingStart;eligible=enabled
+        if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false}
     }
     fun start(conversation:String){
         if(target?.conversation!=conversation||!eligible)return
-        if(pinned)returnRequest++ else {pinned=true;callRequest++}
+        if(pinned)returnRequest++ else {pendingStart=true;pinned=true;callRequest++}
     }
+    fun consumeStart(){pendingStart=false}
     fun restore(){if(pinned)returnRequest++}
     fun history(conversation:String){if(target?.conversation==conversation&&eligible)historyRequest++}
     fun audioStarting(){audioStart?.invoke()}
