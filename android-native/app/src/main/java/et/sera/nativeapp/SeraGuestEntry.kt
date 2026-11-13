@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import kotlinx.coroutines.launch
 import android.content.Intent
@@ -80,7 +82,7 @@ private fun GuestBrand(onLanguage: () -> Unit) {
         ) {
             Icon(Icons.Outlined.Language, contentDescription = null, tint = entryTeal, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Language", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
+            Text(stringResource(R.string.language), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = entryInk)
         }
     }
 }
@@ -182,9 +184,9 @@ private fun SeraSocialFirstSignIn(
                     )
                 }
                 Spacer(Modifier.width(11.dp))
-                Text("Continue with LinkedIn", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(stringResource(R.string.continue_linkedin), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             }
-            if (pending) { Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp);Text("Complete secure sign-in",fontSize=12.sp,color=entryMuted);TextButton(onClick={cancelNativeOAuth(context);pending=false;onOAuthError("")}){Text("Cancel")}} }
+            if (pending) { Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp);Text("Complete secure sign-in",fontSize=12.sp,color=entryMuted);TextButton(onClick={cancelNativeOAuth(context);pending=false;onOAuthError("")}){Text(stringResource(R.string.cancel))}} }
             if (oauthError.isNotBlank()) Text(oauthError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
 
             Row(
@@ -193,12 +195,12 @@ private fun SeraSocialFirstSignIn(
                 horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 HorizontalDivider(Modifier.weight(1f), color = Color(0xFFDDE9E8))
-                Text("or sign in with email", fontSize = 11.sp, color = entryMuted)
+                Text(stringResource(R.string.or_email), fontSize = 11.sp, color = entryMuted)
                 HorizontalDivider(Modifier.weight(1f), color = Color(0xFFDDE9E8))
             }
             OutlinedTextField(
                 value = email, onValueChange = onEmailChange, singleLine = true,
-                placeholder = { Text("Email address", fontSize = 13.sp) },
+                placeholder = { Text(stringResource(R.string.email_address), fontSize = 13.sp) },
                 leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null, tint = entryMuted, modifier = Modifier.size(19.dp)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
@@ -210,7 +212,7 @@ private fun SeraSocialFirstSignIn(
             )
             OutlinedTextField(
                 value = password, onValueChange = onPasswordChange, singleLine = true,
-                placeholder = { Text("Password", fontSize = 13.sp) },
+                placeholder = { Text(stringResource(R.string.password), fontSize = 13.sp) },
                 leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = entryMuted, modifier = Modifier.size(19.dp)) },
                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -232,7 +234,7 @@ private fun SeraSocialFirstSignIn(
                 onClick = onRecover, modifier = Modifier.align(Alignment.End).height(30.dp),
                 contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp)
             ) {
-                Text("Forgot password?", fontSize = 12.sp, color = entryTeal, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.forgot_password), fontSize = 12.sp, color = entryTeal, fontWeight = FontWeight.SemiBold)
             }
             Button(
                 onClick = onSignIn,
@@ -247,7 +249,7 @@ private fun SeraSocialFirstSignIn(
             ) {
                 if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                 else {
-                    Text("Sign in", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.sign_in), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
@@ -260,12 +262,12 @@ private fun SeraSocialFirstSignIn(
             ) {
                 Text("New to SERA? ", fontSize = 12.sp, color = entryMuted)
                 TextButton(onClick = onRegister, contentPadding = PaddingValues(horizontal = 2.dp)) {
-                    Text("Create an account", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = entryTeal)
+                    Text(stringResource(R.string.create_account), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = entryTeal)
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = { openSeraSite(linkHandler, "privacy") }) { Text("Privacy", fontSize = 12.sp, color = entryTeal) }
-                TextButton(onClick = { openSeraSite(linkHandler, "terms") }) { Text("Terms", fontSize = 12.sp, color = entryTeal) }
+                TextButton(onClick = { openSeraSite(linkHandler, "privacy") }) { Text(stringResource(R.string.privacy), fontSize = 12.sp, color = entryTeal) }
+                TextButton(onClick = { openSeraSite(linkHandler, "terms") }) { Text(stringResource(R.string.terms), fontSize = 12.sp, color = entryTeal) }
             }
         }
     }
@@ -345,7 +347,7 @@ fun SeraGuestEntry(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         border = BorderStroke(1.dp, entryTeal),
                         shape = RoundedCornerShape(17.dp)
-                    ) { Text("Sign in to SERA", fontWeight = FontWeight.SemiBold, color = entryTeal) }
+                    ) { Text(stringResource(R.string.sign_in_to_sera), fontWeight = FontWeight.SemiBold, color = entryTeal) }
                     Text("Create your SERA profile without leaving the Android app.", style = MaterialTheme.typography.bodySmall, color = entryMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     TextButton(onClick = { entryPage = "signin" }, modifier = Modifier.fillMaxWidth()) {
                         Text("Sign in with email to continue in the Android app", color = entryTeal, textAlign = TextAlign.Center)

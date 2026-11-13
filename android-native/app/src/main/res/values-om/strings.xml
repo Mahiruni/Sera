@@ -1,1 +1,33 @@
-<resources><string name="language">Afaan</string><string name="system_language">Afaan sirnaa</string><string name="home">Mana</string><string name="network">Walitti dhufeenya</string><string name="jobs">Hojiiwwan</string><string name="inbox">Ergaawwan</string><string name="profile">Piroofaayilii</string><string name="create_post">Maxxansa uumi</string><string name="sign_out">Nageenyaan ba\'i</string><string name="save_draft">Wiixinee olkaa\'i</string><string name="publish_comment">Yaada maxxansi</string><string name="welcome">Baga nagaan deebitan</string><string name="sign_in">Seeni</string><string name="email">Imeelii</string><string name="password">Jecha icciitii</string><string name="comments">Yaadota</string><string name="share">Qoodi</string><string name="conversation">Marii</string><string name="retry">Irra deebi\'i</string><string name="no_comments">Hanga ammaatti yaadni hin jiru.</string><string name="write_comment">Yaada barreessi</string><string name="close">Cufi</string><string name="reply">Deebii</string><string name="refresh_feed">Haaromsi</string><string name="composer_title">Maxxansa ogummaa uumi</string><string name="composer_placeholder">Maal qooduu barbaadda?</string><string name="draft_saved">Wiixineen meeshaa kana irratti olkaa\'ameera.</string></resources>
+<resources><string name="language">Afaan</string><string name="system_language">Afaan sirnaa</string><string name="home">Mana</string><string name="network">Walitti dhufeenya</string><string name="jobs">Hojiiwwan</string><string name="inbox">Ergaawwan</string><string name="profile">Piroofaayilii</string><string name="create_post">Maxxansa uumi</string><string name="sign_out">Nageenyaan ba\'i</string><string name="save_draft">Wiixinee olkaa\'i</string><string name="publish_comment">Yaada maxxansi</string><string name="welcome">Baga nagaan deebitan</string><string name="sign_in">Seeni</string><string name="email">Imeelii</string><string name="password">Jecha icciitii</string><string name="comments">Yaadota</string><string name="share">Qoodi</string><string name="conversation">Marii</string><string name="retry">Irra deebi\'i</string><string name="no_comments">Hanga ammaatti yaadni hin jiru.</string><string name="write_comment">Yaada barreessi</string><string name="close">Cufi</string><string name="reply">Deebii</string><string name="refresh_feed">Haaromsi</string><string name="composer_title">Maxxansa ogummaa uumi</string><string name="composer_placeholder">Maal qooduu barbaadda?</string><string name="draft_saved">Wiixineen meeshaa kana irratti olkaa\'ameera.</string>
+<string name="discover">Sakatta\'i</string>
+<string name="saved">Kan olkaa\'aman</string>
+<string name="workspace">Iddoo hojii</string>
+<string name="settings">Qindaa\'ina</string>
+<string name="messages">Ergaawwan</string>
+<string name="notifications">Beeksisoota</string>
+<string name="view_profile">Piroofaayilii ilaali</string>
+<string name="edit_profile">Piroofaayilii gulaali</string>
+<string name="settings_privacy">Qindaa\'inaa fi iccitii</string>
+<string name="sign_out_short">Ba\'i</string>
+<string name="cancel">Dhiisi</string>
+<string name="sign_out_question">Sera keessaa ba\'uu barbaaddaa?</string>
+<string name="sign_out_explainer">Akkaawuntii kee fayyadamuuf irra deebi\'tee seenuu dandeessa.</string>
+<string name="latest">Haaraa</string>
+<string name="for_you">Siif</string>
+<string name="share_something">Waan bu\'a qabeessa qoodi</string>
+<string name="ideas_projects">Yaadota, pirojektoota, milkaa\'inoota…</string>
+<string name="saved_posts">Maxxansoota olkaa\'aman</string>
+<string name="message_placeholder">Ergaa…</string>
+<string name="seen">Argame</string>
+<string name="new_messages">Ergaawwan haaraa</string>
+<string name="load_earlier">Ergaawwan duraanii fidi</string>
+<string name="forgot_password">Jecha icciitii dagatte?</string>
+<string name="create_account">Akkaawuntii uumi</string>
+<string name="privacy">Iccitii dhuunfaa</string>
+<string name="terms">Haalota</string>
+<string name="email_address">Teessoo imeelii</string>
+<string name="app_updates">Haaromsa appii</string>
+<string name="sign_in_to_sera">Sera keessa seeni</string>
+<string name="continue_linkedin">LinkedIn fayyadamuun itti fufi</string>
+<string name="or_email">yookaan imeeliin seeni</string>
+</resources>

@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -64,17 +66,17 @@ import androidx.compose.ui.unit.sp
                         }
                     }
                     HorizontalDivider()
-                    DropdownMenuItem(text={Text("View profile")},leadingIcon={Icon(Icons.Outlined.AccountCircle,null)},onClick={profileOpen=false;onProfile()})
-                    DropdownMenuItem(text={Text("Edit profile")},leadingIcon={Icon(Icons.Outlined.EditNote,null)},onClick={profileOpen=false;onEditProfile()})
-                    DropdownMenuItem(text={Text("Settings & privacy")},leadingIcon={Icon(Icons.Outlined.Settings,null)},onClick={profileOpen=false;onSettings()})
+                    DropdownMenuItem(text={Text(stringResource(R.string.view_profile))},leadingIcon={Icon(Icons.Outlined.AccountCircle,null)},onClick={profileOpen=false;onProfile()})
+                    DropdownMenuItem(text={Text(stringResource(R.string.edit_profile))},leadingIcon={Icon(Icons.Outlined.EditNote,null)},onClick={profileOpen=false;onEditProfile()})
+                    DropdownMenuItem(text={Text(stringResource(R.string.settings_privacy))},leadingIcon={Icon(Icons.Outlined.Settings,null)},onClick={profileOpen=false;onSettings()})
                     HorizontalDivider()
-                    DropdownMenuItem(text={Text("Sign out")},leadingIcon={Icon(Icons.Outlined.Logout,null)},onClick={profileOpen=false;confirmSignOut=true})
+                    DropdownMenuItem(text={Text(stringResource(R.string.sign_out_short))},leadingIcon={Icon(Icons.Outlined.Logout,null)},onClick={profileOpen=false;confirmSignOut=true})
                 }
             }
         }
         HorizontalDivider(thickness=.5.dp,color=colors.outlineVariant.copy(alpha=.7f))
         }
     }
-    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your professional account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
+    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text(stringResource(R.string.sign_out_question))},text={Text(stringResource(R.string.sign_out_explainer))},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text(stringResource(R.string.sign_out_short))}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text(stringResource(R.string.cancel))}})
 }
 @Composable private fun SeraUnreadBadge(count:Int){if(count>0)Badge(containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary){Text(if(count>99)"99+" else count.toString(),fontSize=10.sp,fontWeight=FontWeight.SemiBold)}}

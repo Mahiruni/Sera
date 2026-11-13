@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -114,7 +116,7 @@ import java.net.URL
                 var muteDialog by remember(conversation.id){mutableStateOf(false)}
                 var threadMenu by remember{mutableStateOf(false)}
                 Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text("Safety and privacy")},onClick={threadMenu=false;onSafety()});DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false});DropdownMenuItem(text={Text(if(mutedUntil>System.currentTimeMillis())"Unmute notifications" else "Mute notifications")},onClick={threadMenu=false;if(mutedUntil>System.currentTimeMillis()){mutedUntil=0;SeraMessageAlerts.mute(context,userId,conversation.id,0)}else muteDialog=true})}}
-                if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text("Cancel")}})
+                if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text(stringResource(R.string.cancel))}})
             }
 }
 @Composable internal fun SeraThreadTimeline(modifier:Modifier,messageListState:androidx.compose.foundation.lazy.LazyListState,messages:List<NativeMessage>,callEvents:List<SeraCallEvent>,messageSearch:String,historyLimit:Int,menu:String?,peerName:String,token:String,userId:String,playback:SeraChatPlayback,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,onLoadEarlier:()->Unit,onMenu:(String?)->Unit,onReply:(NativeMessage)->Unit,onReact:(NativeMessage)->Unit,onForward:(NativeMessage)->Unit,onCopy:(NativeMessage)->Unit,onUnsend:(NativeMessage)->Unit,onReaction:(NativeMessage,String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,pendingTexts:List<NativeQueuedText> = emptyList(),connectionAvailable:Boolean=true,onRetryText:(String)->Unit={},unreadBoundary:String?=null,conversationId:String="",onLibraryChanged:()->Unit={},onQuote:(String)->Unit={},highlightedId:String?=null,selectedIds:Set<String> = emptySet(),onSelectMessage:(String)->Unit={},peerPhoto:String?=null,onMeetingResponse:((NativeMessage,String)->Unit)?=null){
@@ -125,7 +127,7 @@ import java.net.URL
             Box(modifier){
             LazyColumn(Modifier.fillMaxSize(), state = messageListState, verticalArrangement = Arrangement.spacedBy(7.dp,Alignment.Bottom),
                 contentPadding = PaddingValues(vertical = 12.dp)) {
-                if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick=onLoadEarlier){Text("Load earlier messages")}}
+                if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick=onLoadEarlier){Text(stringResource(R.string.load_earlier))}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
                 val timeline=(filteredMessages.map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.filter{messageSearch.isBlank()||"voice call".contains(messageSearch,true)}.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
                 itemsIndexed(timeline,key={_,item->item.message?.let(::messageTimelineKey)?:"call-"+item.event?.id}) { index,item ->
@@ -133,14 +135,14 @@ import java.net.URL
                     val date=runCatching{java.time.Instant.parse(item.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
                     val previousDate=timeline.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
-                    if(item.message?.id==unreadBoundary&&messageSearch.isBlank())Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f));Text("New messages",fontSize=11.sp,color=accent,fontWeight=FontWeight.SemiBold);HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f))}
+                    if(item.message?.id==unreadBoundary&&messageSearch.isBlank())Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f));Text(stringResource(R.string.new_messages),fontSize=11.sp,color=accent,fontWeight=FontWeight.SemiBold);HorizontalDivider(Modifier.weight(1f),color=accent.copy(alpha=.35f))}
                     val message=item.message
                     val next=timeline.getOrNull(index+1)
                     val nextMessage=next?.message
                     val showPeerAvatar=message!=null&&message.senderId!=userId&&!message.unsent&&(nextMessage==null||nextMessage.senderId!=message.senderId||nextMessage.unsent||date!=runCatching{java.time.Instant.parse(nextMessage.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull())
                     if(message==null){item.event?.let{SeraCallTimelineRow(it,userId,inboxSoft,inboxInk,muted,accent)}}else SeraNativeMessageRow(message=message,originalMessage=messages.firstOrNull{it.id==message.replyId},userId=userId,peerName=peerName,token=token,playback=playback,maxBubbleWidth=maxBubbleWidth,inboxInk=inboxInk,inboxSoft=inboxSoft,chatSurface=chatSurface,muted=muted,accent=accent,outgoing=outgoing,incoming=incoming,menuOpen=menu==message.id,onMenu={onMenu(if(it)message.id else null)},onReply={onReply(message)},onReact={onReact(message)},onForward={onForward(message)},onCopy={onCopy(message)},onUnsend={onUnsend(message)},onReaction={onReaction(message,it)},onImage=onImage,onError=onError,conversationId=conversationId,onLibraryChanged=onLibraryChanged,onQuote=onQuote,highlighted=message.id==highlightedId,selectionMode=selectedIds.isNotEmpty(),selected=message.id in selectedIds,onSelect={onSelectMessage(message.id)},peerPhoto=peerPhoto,showPeerAvatar=showPeerAvatar,reservePeerAvatar=true,onMeetingResponse=onMeetingResponse)
                     if(message!=null&&message.id==latestSeenId&&messageSearch.isBlank()&&selectedIds.isEmpty()){
-                        Text("Seen",modifier=Modifier.align(Alignment.End).padding(end=8.dp,top=3.dp).testTag("sera_seen_"+message.id),style=MaterialTheme.typography.labelSmall,color=seraChatColors().read,fontWeight=FontWeight.Medium)
+                        Text(stringResource(R.string.seen),modifier=Modifier.align(Alignment.End).padding(end=8.dp,top=3.dp).testTag("sera_seen_"+message.id),style=MaterialTheme.typography.labelSmall,color=seraChatColors().read,fontWeight=FontWeight.Medium)
                     }
                     }
                 }

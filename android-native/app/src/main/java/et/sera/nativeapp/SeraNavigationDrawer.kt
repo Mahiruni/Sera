@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.outlined.SystemUpdate
@@ -97,7 +99,7 @@ internal fun SeraNavigationDrawer(
             HorizontalDivider(Modifier.padding(vertical=8.dp))
             listOf("Home", "Network", "Search", "Jobs", "Inbox", "Saved", "Workspace").forEach { section ->
                 NavigationDrawerItem(
-                    label = { Text(when(section){"Search"->"Discover";"Inbox"->"Messages";else->section}, fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
+                    label = { Text(stringResource(when(section){"Home"->R.string.home;"Network"->R.string.network;"Search"->R.string.discover;"Jobs"->R.string.jobs;"Inbox"->R.string.messages;"Saved"->R.string.saved;else->R.string.workspace}), fontWeight = if (section == selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = section == selected,
                     icon = { Icon(drawerIcon(section), contentDescription = null) },
                     onClick = { onNavigate(section) },
@@ -113,15 +115,15 @@ internal fun SeraNavigationDrawer(
                 )
             }
             HorizontalDivider(Modifier.padding(vertical = 15.dp), color = Color(0xFFD9E7E5))
-            NavigationDrawerItem(label = { Text("Create post") }, selected = false,
+            NavigationDrawerItem(label = { Text(stringResource(R.string.create_post)) }, selected = false,
                 icon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
                 onClick = onCompose)
-            NavigationDrawerItem(label={Text("Language")},selected=false,icon={Icon(Icons.Outlined.Language,null)},onClick=onLanguage)
-            NavigationDrawerItem(label={Text("Settings")},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
+            NavigationDrawerItem(label={Text(stringResource(R.string.language))},selected=false,icon={Icon(Icons.Outlined.Language,null)},onClick=onLanguage)
+            NavigationDrawerItem(label={Text(stringResource(R.string.settings))},selected=selected=="Settings",icon={Icon(Icons.Outlined.Settings,null)},onClick={onNavigate("Settings")})
             Spacer(Modifier.height(10.dp))
             SeraDrawerUpdateCard(updateStatus,updateVersion,updateProgress,updateNotice,updateChecking,updateCanInstall,updatePermission,onCheckUpdates,onInstallUpdate)
             HorizontalDivider(Modifier.padding(vertical=8.dp))
-            NavigationDrawerItem(label = { Text("Sign out") }, selected = false,
+            NavigationDrawerItem(label = { Text(stringResource(R.string.sign_out_short)) }, selected = false,
                 icon = { Icon(Icons.Outlined.Logout, contentDescription = null) },
                 onClick = {confirmSignOut=true})
             Text("Sera · v${BuildConfig.VERSION_NAME} · Developed by Hisab Technologies",
@@ -129,7 +131,7 @@ internal fun SeraNavigationDrawer(
                 modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }
     }
-    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text("Sign out of SERA?")},text={Text("You can sign in again to access your account.")},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text("Sign out")}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text("Cancel")}})
+    if(confirmSignOut)AlertDialog(onDismissRequest={confirmSignOut=false},title={Text(stringResource(R.string.sign_out_question))},text={Text(stringResource(R.string.sign_out_explainer))},confirmButton={TextButton(onClick={confirmSignOut=false;onSignOut()}){Text(stringResource(R.string.sign_out_short))}},dismissButton={TextButton(onClick={confirmSignOut=false}){Text(stringResource(R.string.cancel))}})
 }
 
 /** Installed version is always the running APK's BuildConfig, never a server claim. */
@@ -143,7 +145,7 @@ private fun SeraDrawerUpdateCard(status:String,version:String?,progress:Int?,not
                     Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.SystemUpdate,null,tint=colors.onPrimaryContainer)}
                 }
                 Column(Modifier.weight(1f)){
-                    Text("App updates",fontWeight=FontWeight.Bold,fontSize=15.sp,color=colors.onSurface)
+                    Text(stringResource(R.string.app_updates),fontWeight=FontWeight.Bold,fontSize=15.sp,color=colors.onSurface)
                     Text("Installed v${BuildConfig.VERSION_NAME}",fontSize=12.sp,color=colors.onSurfaceVariant)
                 }
             }

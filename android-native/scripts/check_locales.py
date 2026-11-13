@@ -43,8 +43,8 @@ try:
     locale_root = ET.parse(config).getroot()
     declared = {node.attrib.get("{http://schemas.android.com/apk/res/android}name") for node in locale_root}
     missing = set(languages) | {"en"}
-    if not missing.issubset(declared):
-        errors.append(f"Missing locale declarations: {sorted(missing - declared)}")
+    if declared != missing:
+        errors.append(f"Expected exactly {sorted(missing)}, found {sorted(declared)}")
 except (ET.ParseError, FileNotFoundError) as exc:
     errors.append(f"Invalid locale config: {exc}")
 

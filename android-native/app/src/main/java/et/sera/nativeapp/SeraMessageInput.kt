@@ -1,5 +1,7 @@
 package et.sera.nativeapp
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -83,7 +85,7 @@ internal fun SeraMessageInput(
                     autoCorrectEnabled = true, keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
                 decorationBox = { inner ->
                     Box(Modifier.fillMaxWidth()) {
-                        if (value.text.isEmpty()) Text("Message…", color = muted, style = seraChatBody(MaterialTheme.typography.bodyLarge))
+                        if (value.text.isEmpty()) Text(stringResource(R.string.message_placeholder), color = muted, style = seraChatBody(MaterialTheme.typography.bodyLarge))
                         inner()
                     }
                 }

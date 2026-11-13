@@ -108,7 +108,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                 top = 73.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item(key="feed-mode") { if(savedOnly)Text("Saved posts",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text("Latest")},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true},label={Text("For you")},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
+            item(key="feed-mode") { if(savedOnly)Text(stringResource(R.string.saved_posts),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=12.dp)) else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!personalized,onClick={personalized=false},label={Text(stringResource(R.string.latest))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer));FilterChip(selected=personalized,onClick={personalized=true},label={Text(stringResource(R.string.for_you))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer))} }
             if(!savedOnly) item(key="home-compose") { SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose) }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
@@ -316,7 +316,7 @@ fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, mo
                         enabled = !reposting,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.weight(1f).heightIn(min = 50.dp)
-                    ) { Text("Cancel") }
+                    ) { Text(stringResource(R.string.cancel)) }
                     Button(
                         onClick = {
                             if (reposting) return@Button
@@ -379,8 +379,8 @@ private fun SeraHomeComposeCard(name:String,avatar:String?,enabled:Boolean,onCom
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled=enabled){onCompose(null)}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 SeraAccountAvatar(name.ifBlank{"SERA member"},avatar,44)
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-                    Text("Share something valuable",fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=colors.onSurface)
-                    Text("Ideas, projects, achievements…",fontSize=12.sp,color=colors.onSurfaceVariant)
+                    Text(stringResource(R.string.share_something),fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=colors.onSurface)
+                    Text(stringResource(R.string.ideas_projects),fontSize=12.sp,color=colors.onSurfaceVariant)
                 }
                 Surface(shape=RoundedCornerShape(12.dp),color=colors.primaryContainer){Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.EditNote,"Create post",tint=colors.onPrimaryContainer)}}
             }

@@ -1,1 +1,33 @@
-<resources><string name="language">ቋንቋ</string><string name="system_language">የስልክ ቋንቋ</string><string name="home">መነሻ</string><string name="network">ግንኙነቶች</string><string name="jobs">ስራዎች</string><string name="inbox">መልዕክቶች</string><string name="profile">መገለጫ</string><string name="create_post">ልጥፍ ፍጠር</string><string name="sign_out">በደህና ውጣ</string><string name="save_draft">ረቂቅ አስቀምጥ</string><string name="publish_comment">አስተያየት ላክ</string><string name="welcome">እንኳን ደህና መጡ</string><string name="sign_in">ግባ</string><string name="signing_in">በመግባት ላይ…</string><string name="email">ኢሜይል</string><string name="password">የይለፍ ቃል</string><string name="comments">አስተያየቶች</string><string name="share">አጋራ</string><string name="conversation">ውይይት</string><string name="retry">እንደገና ሞክር</string><string name="no_comments">እስካሁን አስተያየት የለም።</string><string name="write_comment">አስተያየት ጻፍ</string><string name="publishing">በማተም ላይ…</string><string name="close">ዝጋ</string><string name="reply">ምላሽ</string><string name="feed_title">የሙያ ዓለምዎ</string><string name="refresh_feed">ምግብን አድስ</string><string name="composer_title">የሙያ ልጥፍ ፍጠር</string><string name="composer_placeholder">ምን ማጋራት ይፈልጋሉ?</string><string name="keep_later">ለኋላ አስቀምጥ</string><string name="draft_saved">ረቂቁ በዚህ መሣሪያ ተቀምጧል።</string></resources>
+<resources><string name="language">ቋንቋ</string><string name="system_language">የስልክ ቋንቋ</string><string name="home">መነሻ</string><string name="network">ግንኙነቶች</string><string name="jobs">ስራዎች</string><string name="inbox">መልዕክቶች</string><string name="profile">መገለጫ</string><string name="create_post">ልጥፍ ፍጠር</string><string name="sign_out">በደህና ውጣ</string><string name="save_draft">ረቂቅ አስቀምጥ</string><string name="publish_comment">አስተያየት ላክ</string><string name="welcome">እንኳን ደህና መጡ</string><string name="sign_in">ግባ</string><string name="signing_in">በመግባት ላይ…</string><string name="email">ኢሜይል</string><string name="password">የይለፍ ቃል</string><string name="comments">አስተያየቶች</string><string name="share">አጋራ</string><string name="conversation">ውይይት</string><string name="retry">እንደገና ሞክር</string><string name="no_comments">እስካሁን አስተያየት የለም።</string><string name="write_comment">አስተያየት ጻፍ</string><string name="publishing">በማተም ላይ…</string><string name="close">ዝጋ</string><string name="reply">ምላሽ</string><string name="feed_title">የሙያ ዓለምዎ</string><string name="refresh_feed">ምግብን አድስ</string><string name="composer_title">የሙያ ልጥፍ ፍጠር</string><string name="composer_placeholder">ምን ማጋራት ይፈልጋሉ?</string><string name="keep_later">ለኋላ አስቀምጥ</string><string name="draft_saved">ረቂቁ በዚህ መሣሪያ ተቀምጧል።</string>
+<string name="discover">ያስሱ</string>
+<string name="saved">የተቀመጡ</string>
+<string name="workspace">የሥራ ቦታ</string>
+<string name="settings">ቅንብሮች</string>
+<string name="messages">መልዕክቶች</string>
+<string name="notifications">ማሳወቂያዎች</string>
+<string name="view_profile">መገለጫ ይመልከቱ</string>
+<string name="edit_profile">መገለጫ አርትዕ</string>
+<string name="settings_privacy">ቅንብሮች እና ግላዊነት</string>
+<string name="sign_out_short">ውጣ</string>
+<string name="cancel">ሰርዝ</string>
+<string name="sign_out_question">ከSera መውጣት ይፈልጋሉ?</string>
+<string name="sign_out_explainer">መለያዎን ለመጠቀም እንደገና መግባት ይችላሉ።</string>
+<string name="latest">የቅርብ ጊዜ</string>
+<string name="for_you">ለእርስዎ</string>
+<string name="share_something">ጠቃሚ ነገር ያጋሩ</string>
+<string name="ideas_projects">ሐሳቦች፣ ፕሮጀክቶች፣ ስኬቶች…</string>
+<string name="saved_posts">የተቀመጡ ልጥፎች</string>
+<string name="message_placeholder">መልዕክት…</string>
+<string name="seen">ታይቷል</string>
+<string name="new_messages">አዲስ መልዕክቶች</string>
+<string name="load_earlier">የቀድሞ መልዕክቶችን አምጣ</string>
+<string name="forgot_password">የይለፍ ቃል ረሱ?</string>
+<string name="create_account">መለያ ፍጠር</string>
+<string name="privacy">ግላዊነት</string>
+<string name="terms">ውሎች</string>
+<string name="email_address">ኢሜይል አድራሻ</string>
+<string name="app_updates">የመተግበሪያ ዝመናዎች</string>
+<string name="sign_in_to_sera">ወደ Sera ግባ</string>
+<string name="continue_linkedin">በLinkedIn ይቀጥሉ</string>
+<string name="or_email">ወይም በኢሜይል ይግቡ</string>
+</resources>
