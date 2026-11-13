@@ -3,6 +3,8 @@ package et.sera.nativeapp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.border
@@ -120,8 +122,8 @@ internal fun seraAudioQuality(previous:SeraAudioSample?,current:SeraAudioSample)
             Column(Modifier.weight(1f)){Text(voiceText("Recent calls"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(name,color=c.onSurfaceVariant,fontSize=13.sp,maxLines=1)}
             IconButton(onClick=onClose){Icon(Icons.Outlined.Close,voiceText("Close call history"))}
         }
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
-            listOf("All","Missed","Incoming","Outgoing").forEach{label->FilterChip(selected=filter==label,onClick={filter=label},label={Text(voiceText(label),fontSize=10.sp,maxLines=1)},modifier=Modifier.weight(1f))}
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            listOf("All","Missed","Incoming","Outgoing").forEach{label->FilterChip(selected=filter==label,onClick={filter=label},label={Text(voiceText(label),fontSize=12.sp,maxLines=1)})}
         }
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         else if(filtered.isEmpty())Text(voiceText("No calls in this view"),color=c.onSurfaceVariant,modifier=Modifier.padding(vertical=24.dp))
