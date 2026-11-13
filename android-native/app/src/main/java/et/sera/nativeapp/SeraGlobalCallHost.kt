@@ -71,7 +71,7 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
     }
 }
 
-@Composable internal fun SeraConversationCallEntry(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
+@Composable internal fun SeraConversationCallEntry(token:String,userId:String,conversation:String,name:String,photo:String?,ink:Color,accent:Color,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit,showHistoryIcon:Boolean=true){
     val host=LocalSeraGlobalCall.current
     if(host==null||!BuildConfig.LIVE_CALLING_INCLUDED){
         SeraNativeVoiceCallButton(token,userId,conversation,name,photo,ink,accent,onAudioStart,onHistory)
@@ -84,6 +84,6 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
         IconButton(onClick={host.start(conversation)},modifier=Modifier.size(44.dp)){
             Icon(Icons.Outlined.Call,voiceText(if(host.pinned)"Return to call" else "Voice call"),tint=if(host.pinned)accent else ink)
         }
-        if(!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}
+        if(showHistoryIcon&&!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}
     }
 }

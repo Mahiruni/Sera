@@ -293,7 +293,7 @@ internal fun SeraMessagingWrapper(modifier:Modifier,palette:SeraChatPalette,over
         ){
             Column(Modifier.fillMaxSize().then(if(keyboardVisible)Modifier else Modifier.navigationBarsPadding())){
                 if(!keyboardVisible)Box(
-                    Modifier.fillMaxWidth().height(36.dp)
+                    Modifier.fillMaxWidth().height(28.dp).background(palette.header)
                         .semantics{contentDescription="Resize messages";stateDescription=when{restingFraction<.8f->"Compact";restingFraction<.95f->"Default";else->"Expanded"}}
                         .draggable(
                             state=dragState,orientation=Orientation.Vertical,
@@ -554,7 +554,7 @@ private class InboxController(
 
     @Composable
     fun PresenceAndScroll() {
-        LaunchedEffect(token,selected?.id,lifecycle) { val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
+        LaunchedEffect(token,selected?.id,lifecycle) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(30000)}} }
         val ime = WindowInsets.ime
         val density = LocalDensity.current
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
@@ -856,13 +856,15 @@ private class InboxController(
         val incoming=palette.incoming
         val muted=palette.muted
         val accent=palette.accent
-        Column(modifier.fillMaxSize().background(chatSurface).padding(horizontal = 12.dp)) {
-            Spacer(Modifier.height(4.dp))
+        Column(modifier.fillMaxSize().background(chatSurface)) {
             if (selected == null) {
+                Column(Modifier.fillMaxSize().padding(horizontal=12.dp)){
+                Spacer(Modifier.height(4.dp))
                 TextButton(onClick={global.globalStars=true},modifier=Modifier.align(Alignment.End)){Text("All starred messages")}
                 SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany=onCompany,onSearch={search=it},onRetry={refresh++},token=token,userId=userId,onControlChanged={refresh++},onSelect={conversation->
                     draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
                 })
+                }
             } else {
                 val conversation = selected!!
                 if(thread.detailsOpen){
@@ -875,7 +877,8 @@ private class InboxController(
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true},onSafety={thread.safetyDialog=true})
                 if(thread.safetyDialog)SeraConversationSafetyDialog(conversation.peerName,onDismiss={thread.safetyDialog=false},onBlock={scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_blocks","POST",JSONObject().put("blocker_id",userId).put("blocked_id",conversation.peerId))};if(result.first!=null){withContext(Dispatchers.IO){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(userId)}};thread.safetyDialog=false;messages=emptyList();conversations=conversations.filterNot{it.peerId==conversation.peerId};selected=null;refresh++;onThreadExit?.invoke()}else error=result.second}},onReport={reason,details->scope.launch{val result=withContext(Dispatchers.IO){inboxRequest(token,"professional_reports","POST",JSONObject().put("reporter_id",userId).put("reported_id",conversation.peerId).put("reason",reason).put("details",details))};if(result.first!=null){thread.safetyDialog=false;android.widget.Toast.makeText(context,"Report submitted",android.widget.Toast.LENGTH_SHORT).show()}else error=result.second}})
-                SeraThreadHeaderDivider()
+                HorizontalDivider(color=palette.border,thickness=.7.dp)
+                Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal=12.dp)){
                 val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
                 if(thread.selectedMessages.isNotEmpty()){
                     SeraMultiSelectToolbar(chosen.size,thread.bulkBusy,chosen.all{it.files.isEmpty()},onClose={thread.selectedMessages=emptySet()},onCopy={clipboard.setText(AnnotatedString(chosen.joinToString("\n\n"){it.body}));thread.selectedMessages=emptySet()},onStar={
@@ -895,6 +898,7 @@ private class InboxController(
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
                     onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)},peerPhoto=conversation.photo?:conversations.firstOrNull{it.id==conversation.id}?.photo,onMeetingResponse={m,text->if(draft.isBlank()){reply=m;draft=text;runCatching{savedDrafts?.write(userId,conversation.id,text)}}else error="Finish your existing draft before responding."})
                 if(thread.selectedMessages.isEmpty())key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
+                }
                 }
             }
         }

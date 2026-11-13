@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.VolumeUp
@@ -90,34 +91,56 @@ import java.net.URL
         .testTag("sera_thread_header_divider"))
 }
 
+/** The identity owns flexible space; text wraps rather than cutting off the name. */
+@Composable internal fun SeraThreadIdentity(name:String,activity:String,online:Boolean,ink:Color,muted:Color,accent:Color,modifier:Modifier=Modifier,onDetails:()->Unit={}){
+    Column(modifier.clickable(onClick=onDetails).padding(vertical=4.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){
+        Text(name,style=MaterialTheme.typography.titleMedium.copy(fontSize=16.sp,lineHeight=20.sp),fontWeight=FontWeight.SemiBold,color=ink,softWrap=true,modifier=Modifier.testTag("sera_thread_contact_name"))
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+            if(online)SeraOnlineDot()
+            Text(activity,style=MaterialTheme.typography.bodySmall,color=if(online)accent else muted,softWrap=true,modifier=Modifier.testTag("sera_thread_presence"))
+        }
+    }
+}
+
 @Composable internal fun SeraThreadHeader(conversation:NativeConversation,fallbackPhoto:String?,token:String,userId:String,peerTyping:Boolean,peerActivity:String?,sound:Boolean,inboxInk:Color,inboxSoft:Color,muted:Color,accent:Color,inboxTeal:Color,onBack:()->Unit,onSearch:()->Unit,onSound:()->Unit,onAudioStart:()->Unit,onHistory:(List<SeraCallEvent>)->Unit,onDetails:()->Unit={},onSafety:()->Unit={}){
+    val context=LocalContext.current
+    val host=LocalSeraGlobalCall.current
+    var mutedUntil by remember(userId,conversation.id){mutableLongStateOf(SeraMessageAlerts.mutedUntil(context,userId,conversation.id))}
+    var muteDialog by remember(conversation.id){mutableStateOf(false)}
+    var threadMenu by remember(conversation.id){mutableStateOf(false)}
+    val colors=seraChatColors()
+    Surface(color=colors.header,tonalElevation=0.dp,modifier=Modifier.fillMaxWidth().testTag("sera_thread_header")){
+        BoxWithConstraints(Modifier.fillMaxWidth()){
+            val compact=maxWidth<360.dp
             Row(
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                IconButton(onClick = { onBack() },
-                    modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to conversations",
-                        tint = inboxInk)
+                modifier=Modifier.fillMaxWidth().heightIn(min=64.dp).padding(horizontal=4.dp,vertical=6.dp),
+                verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(3.dp)
+            ){
+                IconButton(onClick=onBack,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back to conversations",tint=inboxInk)}
+                Box(Modifier.size(42.dp).clip(CircleShape).background(inboxSoft).clickable(onClick=onDetails).semantics{contentDescription="Open conversation details"},contentAlignment=Alignment.Center){
+                    Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=17.sp)
+                    (conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}
                 }
-                Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft).clickable(onClick=onDetails).semantics{contentDescription="Open conversation details"},contentAlignment=Alignment.Center){Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=18.sp);(conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}}
-                Column(Modifier.weight(1f).clickable(onClick=onDetails).padding(vertical=4.dp)) {
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
-                        Text(conversation.peerName, modifier=Modifier.weight(1f,fill=false),style=MaterialTheme.typography.titleMedium,color=inboxInk,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        if(peerActivity=="Active now")SeraOnlineDot(Modifier.semantics{this.contentDescription="Active now"})
+                val online=peerActivity=="Active now"
+                SeraThreadIdentity(conversation.peerName,if(peerTyping)"Typing…" else peerActivity?:"Private conversation",peerTyping||online,inboxInk,muted,accent,Modifier.weight(1f).padding(start=4.dp),onDetails)
+                SeraConversationCallEntry(token,userId,conversation.id,conversation.peerName,conversation.photo?:fallbackPhoto,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory,showHistoryIcon=false)
+                if(!compact)IconButton(onClick=onSearch,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
+                Box{
+                    IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)}
+                    DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){
+                        if(compact)DropdownMenuItem(text={Text("Search messages")},leadingIcon={Icon(Icons.Outlined.Search,null)},onClick={threadMenu=false;onSearch()})
+                        if(host!=null&&host.target?.conversation==conversation.id&&host.eligible&&!host.pinned)
+                            DropdownMenuItem(text={Text("Call history")},leadingIcon={Icon(Icons.Outlined.History,null)},onClick={threadMenu=false;host.history(conversation.id)})
+                        DropdownMenuItem(text={Text("Safety and privacy")},onClick={threadMenu=false;onSafety()})
+                        DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false})
+                        DropdownMenuItem(text={Text(if(mutedUntil>System.currentTimeMillis())"Unmute notifications" else "Mute notifications")},onClick={threadMenu=false;if(mutedUntil>System.currentTimeMillis()){mutedUntil=0;SeraMessageAlerts.mute(context,userId,conversation.id,0)}else muteDialog=true})
                     }
-                    Text(if (peerTyping) "Typing…" else peerActivity ?: "Private conversation", style=MaterialTheme.typography.bodySmall, color = if(peerTyping||peerActivity=="Active now")accent else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                SeraConversationCallEntry(token,userId,conversation.id,conversation.peerName,conversation.photo,ink=inboxInk,accent=accent,onAudioStart=onAudioStart,onHistory=onHistory)
-                IconButton(onClick=onSearch,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Search,"Search messages",tint=inboxInk)}
-                val context=LocalContext.current
-                var mutedUntil by remember(userId,conversation.id){mutableLongStateOf(SeraMessageAlerts.mutedUntil(context,userId,conversation.id))}
-                var muteDialog by remember(conversation.id){mutableStateOf(false)}
-                var threadMenu by remember{mutableStateOf(false)}
-                Box{IconButton(onClick={threadMenu=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.MoreVert,"Conversation settings",tint=inboxInk)};DropdownMenu(expanded=threadMenu,onDismissRequest={threadMenu=false}){DropdownMenuItem(text={Text("Safety and privacy")},onClick={threadMenu=false;onSafety()});DropdownMenuItem(text={Text(if(sound)"Mute message sounds" else "Enable message sounds")},onClick={onSound();threadMenu=false});DropdownMenuItem(text={Text(if(mutedUntil>System.currentTimeMillis())"Unmute notifications" else "Mute notifications")},onClick={threadMenu=false;if(mutedUntil>System.currentTimeMillis()){mutedUntil=0;SeraMessageAlerts.mute(context,userId,conversation.id,0)}else muteDialog=true})}}
-                if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text(stringResource(R.string.cancel))}})
             }
+        }
+    }
+    if(muteDialog)AlertDialog(onDismissRequest={muteDialog=false},title={Text("Mute this conversation")},text={Column{listOf("1 hour" to 3600000L,"8 hours" to 28800000L,"24 hours" to 86400000L,"Until I unmute" to Long.MAX_VALUE).forEach{(label,duration)->TextButton(onClick={mutedUntil=if(duration==Long.MAX_VALUE)duration else System.currentTimeMillis()+duration;SeraMessageAlerts.mute(context,userId,conversation.id,mutedUntil);muteDialog=false}){Text(label)}};Text("On this device. Messages still arrive in your inbox.",fontSize=12.sp)}},confirmButton={TextButton(onClick={muteDialog=false}){Text(stringResource(R.string.cancel))}})
 }
 @Composable internal fun SeraThreadTimeline(modifier:Modifier,messageListState:androidx.compose.foundation.lazy.LazyListState,messages:List<NativeMessage>,callEvents:List<SeraCallEvent>,messageSearch:String,historyLimit:Int,menu:String?,peerName:String,token:String,userId:String,playback:SeraChatPlayback,inboxInk:Color,inboxSoft:Color,chatSurface:Color,muted:Color,accent:Color,outgoing:Color,incoming:Color,onLoadEarlier:()->Unit,onMenu:(String?)->Unit,onReply:(NativeMessage)->Unit,onReact:(NativeMessage)->Unit,onForward:(NativeMessage)->Unit,onCopy:(NativeMessage)->Unit,onUnsend:(NativeMessage)->Unit,onReaction:(NativeMessage,String)->Unit,onImage:(NativeChatFile)->Unit,onError:(String)->Unit,pendingTexts:List<NativeQueuedText> = emptyList(),connectionAvailable:Boolean=true,onRetryText:(String)->Unit={},unreadBoundary:String?=null,conversationId:String="",onLibraryChanged:()->Unit={},onQuote:(String)->Unit={},highlightedId:String?=null,selectedIds:Set<String> = emptySet(),onSelectMessage:(String)->Unit={},peerPhoto:String?=null,onMeetingResponse:((NativeMessage,String)->Unit)?=null){
             val maxBubbleWidth=(LocalConfiguration.current.screenWidthDp.dp*.76f).coerceIn(120.dp,340.dp)

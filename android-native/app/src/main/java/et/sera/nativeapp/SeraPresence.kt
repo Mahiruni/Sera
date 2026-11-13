@@ -44,7 +44,7 @@ internal fun peerPresence(token:String,id:String):String?{
  val row=JSONArray(raw).optJSONObject(0)?:return null
  if(row.optString("visibility")!="connections")return null
  val seconds=java.time.Duration.between(java.time.Instant.parse(row.getString("last_seen_at")),java.time.Instant.now()).seconds.coerceAtLeast(0)
- when {seconds<90->"Active now";seconds<3600->"Active ${seconds/60}m ago";seconds<86400->"Active ${seconds/3600}h ago";else->null}
+ seraRelativeActivity(seconds)
  }.getOrNull()
 }
 @Composable internal fun SeraPresenceHeartbeat(token:String,userId:String){
@@ -68,3 +68,10 @@ internal fun peerPresence(token:String,id:String):String?{
  }
 }
 @Composable internal fun SeraOnlineDot(modifier:Modifier=Modifier){Box(modifier.size(12.dp).background(Color.White,CircleShape).padding(2.dp).background(Color(0xFF16A879),CircleShape))}
+
+/** Relative elapsed time only; private/unknown presence remains null in peerPresence. */
+internal fun seraRelativeActivity(seconds:Long):String {
+ val elapsed=seconds.coerceAtLeast(0)
+ fun ago(n:Long,unit:String)="$n $unit${if(n==1L)"" else "s"} ago"
+ return when { elapsed<90->"Active now";elapsed<3600->ago(elapsed/60,"minute");elapsed<86400->ago(elapsed/3600,"hour");elapsed<604800->ago(elapsed/86400,"day");else->ago(elapsed/604800,"week") }
+}
