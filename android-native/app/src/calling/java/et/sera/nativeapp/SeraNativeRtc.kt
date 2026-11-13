@@ -116,6 +116,17 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         if(!sdp.lineSequence().any{it.startsWith("a=candidate:")&&it.contains(" typ relay ")})error("No secure call relay found. Check your network and try again.")
         return sdp
     }
+    suspend fun audioSample():SeraAudioSample?=kotlinx.coroutines.withTimeoutOrNull(2500){
+        suspendCancellableCoroutine{continuation->
+            if(closed){continuation.resume(null);return@suspendCancellableCoroutine}
+            pc.getStats{report->
+                val audio=report.statsMap.values.filter{stat->stat.type=="inbound-rtp"&&(stat.members["kind"]=="audio"||stat.members["mediaType"]=="audio")}
+                val samples=audio.mapNotNull{stat->val received=(stat.members["packetsReceived"] as? Number)?.toLong();val lost=(stat.members["packetsLost"] as? Number)?.toLong();if(received!=null&&lost!=null)SeraAudioSample(received,lost)else null}
+                val sample=if(samples.isEmpty())null else SeraAudioSample(samples.sumOf{it.received},samples.sumOf{it.lost})
+                if(continuation.isActive)continuation.resume(sample)
+            }
+        }
+    }
     fun mute(value:Boolean){if(!closed)track.setEnabled(!value)}
     fun speaker(value:Boolean){
         if(closed)return
