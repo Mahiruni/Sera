@@ -147,13 +147,13 @@ internal object SeraPush {
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val decline=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallDeclineReceiver::class.java).apply{action="et.sera.nativeapp.DECLINE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val answer=PendingIntent.getActivity(context,id.hashCode(),Intent(context,SeraAnswerActivity::class.java).setAction("sera.call.ANSWER").putExtra("call_id",id).putExtra("recipient_id",recipient),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText(context.voiceText("Incoming voice call")).build()
         return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(context.voiceText("Incoming voice call")).setContentText(context.voiceText("Open Sera to answer")).setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
-            .addAction(android.R.drawable.sym_call_incoming,context.voiceText("Open call"),pi)
-            .addAction(android.R.drawable.sym_call_missed,context.voiceText("Decline"),decline)
+            .setStyle(NotificationCompat.CallStyle.forIncomingCall(androidx.core.app.Person.Builder().setName("Sera").build(),decline,answer))
             .addAction(android.R.drawable.ic_lock_silent_mode,context.voiceText("Silence"),silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
     }
     fun dispatch(access:String,kind:String,id:String){
