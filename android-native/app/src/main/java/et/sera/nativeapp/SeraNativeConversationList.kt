@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.compose.foundation.background
@@ -137,7 +138,7 @@ import java.net.URL
                             TextButton(enabled=!busy,onClick={quick(conversation,"mute",true,if(conversation.mutedUntil!=null)0 else 60)}){Text(if(conversation.mutedUntil!=null)"Unmute" else "Mute 1h",fontSize=11.sp)}
                         }
                     }
-                    if(index<filtered.lastIndex)SeraUnifiedInboxDivider()
+                    if(index<filtered.lastIndex)SeraInboxConversationDivider()
                     }
                 }
             }
@@ -145,4 +146,4 @@ import java.net.URL
     }
 }
 
-@Composable private fun SeraUnifiedInboxDivider(){Box(Modifier.fillMaxWidth().padding(start=72.dp,end=12.dp).height(1.dp).clip(CircleShape).background(seraChatColors().border.copy(alpha=.55f)))}
+@Composable internal fun SeraInboxConversationDivider(){Box(Modifier.fillMaxWidth().padding(start=72.dp,end=12.dp).height(1.dp).clip(CircleShape).background(seraChatColors().border.copy(alpha=.55f)).testTag("sera_inbox_conversation_divider"))}
