@@ -118,3 +118,28 @@ html[data-sera-theme=dark] .sera-premium-composer .sera-premium-types button[ari
  .sera-premium-composer .sera-premium-editor,.sera-premium-composer .sera-premium-editor textarea{min-height:100px}
  .sera-social-composer-dialog .sera-compose-dialog-author{padding-block:2px}
 }
+
+/* Writing-first mobile composer: preserve the editor, compress surrounding controls. */
+@media(max-width:600px){
+ .sera-social-composer-dialog:has(textarea:focus){height:calc(var(--sera-sheet-height,100dvh) - 8px);max-height:calc(var(--sera-sheet-height,100dvh) - 8px)!important}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-signature-grip{height:20px;min-height:20px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-head{padding:2px 16px 4px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-head h2{font-size:20px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-author{padding:2px 16px 4px;gap:8px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-author .member-photo{width:32px!important;height:32px!important}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-author strong{font-size:14px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-author small{display:none}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-compose-dialog-content{flex:1;min-height:0;padding:4px 14px 8px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-composer form{gap:7px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-post-audience{padding:3px 8px;font-size:12px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-editor,
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-editor textarea{min-height:220px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-toolbar button{min-height:44px;flex-direction:row;gap:6px;border-radius:12px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-toolbar button svg{width:19px;height:19px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-type-label{font-size:12px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-types{padding-block:0;gap:6px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-types button{min-height:40px;padding:5px 10px;font-size:12px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-extras button{min-height:44px;padding:6px 9px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-footer{padding-top:6px;gap:8px}
+ .sera-social-composer-dialog:has(textarea:focus) .sera-premium-footer button{min-height:44px;font-size:13px}
+}

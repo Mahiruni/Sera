@@ -74,7 +74,7 @@ export function NetworkHome({
   const filters = new URLSearchParams();
   if (kind) filters.set("kind", kind);
   if (mine) filters.set("view", "mine");
-  else if(!personalized&&!kind)filters.set("view","latest");
+  else if(personalized&&!kind)filters.set("view","for-you");
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page sera-editorial-feed">
@@ -189,8 +189,8 @@ export function NetworkHome({
             </Link>
           </nav>
           <nav className="network-feed-tabs" aria-label="Feed view">
-            <Link href="/feed" aria-current={personalized ? "page" : undefined}>For you</Link>
-            <Link href="/feed?view=latest" aria-current={!mine&&!personalized&&!kind?"page":undefined}>Latest</Link>
+            <Link href="/feed" aria-current={!mine&&!personalized&&!kind?"page":undefined}>Latest</Link>
+            <Link href="/feed?view=for-you" aria-current={personalized ? "page" : undefined}>For you</Link>
             <Link
               href="/feed?view=mine"
               aria-current={mine ? "page" : undefined}
