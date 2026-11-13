@@ -7,7 +7,7 @@ import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 
-data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false)
+data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false,val imagePreviewUrl:String?=null)
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -76,6 +76,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
         val likedIds = mutableSetOf<String>()
         val savedIds = mutableSetOf<String>()
         val images = mutableMapOf<String,String>()
+        val previews = mutableMapOf<String,String>()
         val idsForLikes = posts.joinToString(","){it.id}
         val ids = (posts.map{it.id}+sourceIds).distinct().joinToString(",")
         val stateIds=posts.map{it.repostOf?:it.id}.distinct()
@@ -90,7 +91,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             }
             val likes = async(Dispatchers.IO){request(token,"post_likes?select=post_id&post_id=in.($idsForLikes)").first}
             val saves = async(Dispatchers.IO){request(token,"post_saves?select=post_id&post_id=in.($idsForLikes)").first}
-            val media = async(Dispatchers.IO){request(token,"post_images?select=post_id,path&post_id=in.($ids)&order=sort_order.asc").first}
+            val media = async(Dispatchers.IO){request(token,"post_images?select=id,post_id,path&post_id=in.($ids)&order=sort_order.asc").first}
             val states = async(Dispatchers.IO){spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}}
             heads.await().forEach{headlines[it.optString("id")]=it.optString("headline").takeUnless{v->v=="null"}.orEmpty()}
             val (rows,signed)=people.await()
@@ -101,14 +102,14 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             }
             likes.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())likedIds.add(r.getJSONObject(i).optString("post_id"))}
             saves.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())savedIds.add(r.getJSONObject(i).optString("post_id"))}
-            media.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length()){val row=r.getJSONObject(i);val id=row.optString("post_id");val path=row.optString("path");if(path.isNotBlank()&&!images.containsKey(id))images[id]=authenticatedPostMedia(path)}}
+            media.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length()){val row=r.getJSONObject(i);val id=row.optString("post_id");val path=row.optString("path");if(path.isNotBlank()&&!images.containsKey(id)){images[id]=authenticatedPostMedia(path);val mediaId=row.optString("id");if(SeraMessageAlerts.validId(mediaId))previews[id]="https://sera.hisabtech.com/api/post-media/"+mediaId}}}
             badges.await() to states.await()
         }
         val badges=badgesAndStates.first
         val repostStates=badgesAndStates.second
         posts.map { post ->
             post.copy(author = names[post.authorId] ?: "SERA member",
-                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),identityVerified=post.authorId in badges,
+                headline = headlines[post.authorId].orEmpty(), imageUrl = images[post.repostOf ?: post.id], imagePreviewUrl=previews[post.repostOf?:post.id], liked = likedIds.contains(post.id), saved=savedIds.contains(post.id),identityVerified=post.authorId in badges,
                 avatarUrl = avatars[post.authorId],
                 repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } }, originalTime=sourceRows[post.repostOf]?.optString("published_at"), originalTitle=sourceRows[post.repostOf]?.optString("title"), originalBody=sourceRows[post.repostOf]?.optString("body"), originalAvatar=avatars[sourceAuthors[post.repostOf]],originalAuthorId=sourceAuthors[post.repostOf],repostCount=repostStates[post.repostOf?:post.id]?.optInt("repost_count")?:0,reposted=repostStates[post.repostOf?:post.id]?.optBoolean("reposted")?:false)
         } to ""
