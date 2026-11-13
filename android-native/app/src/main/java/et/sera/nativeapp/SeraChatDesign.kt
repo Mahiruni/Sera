@@ -3,7 +3,8 @@ package et.sera.nativeapp
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +34,8 @@ internal fun seraChatPalette(dark:Boolean)=if(dark) SeraChatPalette(
     outgoingLink=Color(0xFF095E59),outgoingQuote=Color(0xFFCCE6E1),read=Color(0xFF096A5B),
     button=Color(0xFF087E83),onButton=Color.White,outgoingBorder=Color(0xFFC6E2DB)
 )
-@Composable internal fun seraChatColors()=seraChatPalette(isSystemInDarkTheme())
+// Follow the active scoped theme, including dark previews and conversation dialogs.
+@Composable internal fun seraChatColors()=seraChatPalette(MaterialTheme.colorScheme.surface.luminance()<.5f)
 internal fun seraChatTypography(base:Typography)=base.copy(
     bodyLarge=seraChatBody(base.bodyLarge),
     bodyMedium=base.bodyMedium.copy(fontFamily=FontFamily.SansSerif,fontSize=14.sp,lineHeight=22.sp,letterSpacing=0.sp,fontWeight=FontWeight.Normal),
