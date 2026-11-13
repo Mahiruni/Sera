@@ -7,9 +7,9 @@ type Stored={id:string;scope:string;iv:ArrayBuffer;data:ArrayBuffer;fileIv?:Arra
 let database:Promise<IDBDatabase>|undefined;
 function db(){
   if(!database)database=new Promise((resolve,reject)=>{
-    const r=indexedDB.open("sera-private-outbox-v1",1);
-    r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore("keys");const s=d.createObjectStore("messages",{keyPath:"id"});s.createIndex("scope","scope");};
-    r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error("Outbox storage blocked"));
+    const r=indexedDB.open("sera-private-outbox-v1",2);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains("keys"))d.createObjectStore("keys");if(!d.objectStoreNames.contains("messages")){const s=d.createObjectStore("messages",{keyPath:"id"});s.createIndex("scope","scope");}if(!d.objectStoreNames.contains("snapshots"))d.createObjectStore("snapshots");};
+    r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();database=undefined;};resolve(r.result);};r.onerror=()=>{database=undefined;reject(r.error);};r.onblocked=()=>reject(new Error("Outbox storage blocked"));
   });
   return database;
 }
@@ -48,4 +48,25 @@ export async function readOutbox(user:string,conversation:string):Promise<Outbox
 }
 export async function removeOutbox(user:string,conversation:string,clientId:string){
   const d=await db();await request(d.transaction("messages","readwrite").objectStore("messages").delete(scope(user,conversation)+":"+clientId));
+}
+
+/** Private draft text, scoped to account and conversation. No plaintext fallback. */
+const draftWrites=new Map<string,Promise<void>>();
+export function saveChatDraft(user:string,conversation:string,body:string){
+  const id=scope(user,conversation)+":draft";
+  const task=(draftWrites.get(id)||Promise.resolve()).catch(()=>{}).then(async()=>{
+    const d=await db();
+    if(!body){await request(d.transaction("snapshots","readwrite").objectStore("snapshots").delete(id));return;}
+    const k=await key(user),encrypted=await encrypt(k,new TextEncoder().encode(body.slice(0,4000)).buffer);
+    await request(d.transaction("snapshots","readwrite").objectStore("snapshots").put({...encrypted,at:Date.now()},id));
+  });
+  draftWrites.set(id,task);void task.finally(()=>{if(draftWrites.get(id)===task)draftWrites.delete(id);}).catch(()=>{});
+  return task;
+}
+export async function readChatDraft(user:string,conversation:string):Promise<string>{
+  const id=scope(user,conversation)+":draft";await draftWrites.get(id)?.catch(()=>{});
+  const d=await db(),row=await request(d.transaction("snapshots","readonly").objectStore("snapshots").get(id)) as {iv:ArrayBuffer;data:ArrayBuffer;at:number}|undefined;
+  if(!row||Date.now()-row.at>30*86400000)return "";
+  const k=await key(user);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:row.iv},k,row.data)).slice(0,4000);
 }
