@@ -24,13 +24,24 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         .setAudioAttributes(android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build())
         .setOnAudioFocusChangeListener { change->if(change==AudioManager.AUDIOFOCUS_LOSS)onState("failed") }.build()
     private var closed=false
+    companion object {
+        private var initialized=false
+        @Synchronized private fun ensureInitialized(context:Context){
+            if(!initialized){
+                PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context.applicationContext).createInitializationOptions())
+                initialized=true
+            }
+        }
+    }
     private val factory:PeerConnectionFactory
     private val source:AudioSource
     private val track:AudioTrack
     private val pc:PeerConnection
     init {
-        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context.applicationContext).createInitializationOptions())
+        android.util.Log.i("SeraRtc","Initializing WebRTC")
+        ensureInitialized(context)
         factory=PeerConnectionFactory.builder().createPeerConnectionFactory()
+        android.util.Log.i("SeraRtc","WebRTC factory ready")
         val servers=config.getJSONArray("iceServers")
         val ice=(0 until servers.length()).map{val s=servers.getJSONObject(it);PeerConnection.IceServer.builder(s.getString("urls")).setUsername(s.getString("username")).setPassword(s.getString("credential")).createIceServer()}
         val rtc=PeerConnection.RTCConfiguration(ice).apply{sdpSemantics=PeerConnection.SdpSemantics.UNIFIED_PLAN;iceTransportsType=PeerConnection.IceTransportsType.RELAY}
@@ -49,11 +60,13 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
             override fun onConnectionChange(state:PeerConnection.PeerConnectionState){onState(when(state){PeerConnection.PeerConnectionState.CONNECTED->"connected";PeerConnection.PeerConnectionState.CONNECTING->"connecting";PeerConnection.PeerConnectionState.DISCONNECTED->"disconnected";PeerConnection.PeerConnectionState.FAILED->"failed";else->"new"})}
         }
         pc=factory.createPeerConnection(rtc,observer)?:error("Voice connection could not initialize.")
+        android.util.Log.i("SeraRtc","Peer connection ready")
         source=factory.createAudioSource(MediaConstraints())
         track=factory.createAudioTrack("sera-voice",source)
         pc.addTrack(track,listOf("sera-audio"))
         manager.mode=AudioManager.MODE_IN_COMMUNICATION
         manager.requestAudioFocus(focusRequest)
+        android.util.Log.i("SeraRtc","Audio track ready")
     }
     private suspend fun description(offer:Boolean):SessionDescription=suspendCancellableCoroutine{c->
         val observer=object:SdpObserver{
@@ -73,7 +86,8 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         }
         if(local)pc.setLocalDescription(observer,s)else pc.setRemoteDescription(observer,s)
     }
-    suspend fun offer():String=withTimeout(35000){set(description(true),true);gather()}
+    suspend fun prepareLocalOffer():String=withTimeout(10000){val offer=description(true);set(offer,true);offer.description}
+    suspend fun offer():String=withTimeout(35000){prepareLocalOffer();gather()}
     suspend fun answer(sdp:String):String=withTimeout(35000){set(SessionDescription(SessionDescription.Type.OFFER,sdp),false);set(description(false),true);gather()}
     suspend fun remoteAnswer(sdp:String)=withTimeout(10000){set(SessionDescription(SessionDescription.Type.ANSWER,sdp),false)}
     private suspend fun gather():String{
