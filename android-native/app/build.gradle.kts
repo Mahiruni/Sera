@@ -77,6 +77,9 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    // The signed instrumentation runner loads Trace through the target app classloader.
+    implementation("androidx.tracing:tracing:1.2.0")
+    androidTestImplementation("androidx.tracing:tracing:1.2.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
