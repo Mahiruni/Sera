@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentUser, serverClient } from "@/lib/supabase/server";
-import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
+import { notifyMessageOnce } from "@/lib/network/push-delivery";
 const uuid = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 export async function startConversation(form: FormData) {
   const user = await currentUser();
@@ -56,18 +56,8 @@ export async function sendProfessionalMessage(form: FormData) {
   // Persist and acknowledge the message without waiting on FCM provider latency.
   // after() runs during the hosting function lifecycle, after the action response.
   const recipient = membership.member_a === user.id ? membership.member_b : membership.member_a;
-  after(async () => {
-    try {
-      await notifyProfessionalDevices(recipient, {
-        title: "New SERA message",
-        body: "You have a new professional message.",
-        url: "/network/messages",
-        kind: "message",
-      });
-    } catch (error) {
-      console.error("Professional message push delivery failed", error instanceof Error ? error.message : "unknown error");
-    }
-  });
+  const messageId=typeof result.data==="string"?result.data:result.data?.id;
+  if(uuid(messageId))after(async()=>{try{await notifyMessageOnce(recipient,conversation,messageId);}catch{console.error("Message push failed");}});
   revalidatePath("/network/messages");
 }
 export async function markProfessionalMessagesRead(form: FormData) {

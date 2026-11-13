@@ -3,7 +3,7 @@ import { createSign } from "node:crypto";
 
 /** FCM HTTP v1 sender. Secrets are server-side only; never use NEXT_PUBLIC_ keys. */
 type ServiceAccount = { project_id: string; client_email: string; private_key: string };
-type PushPayload = { title: string; body: string; url: string; kind: string; callId?:string; recipientId?:string; expiresAt?:string };
+type PushPayload = { title: string; body: string; url: string; kind: string; callId?:string; recipientId?:string; expiresAt?:string; messageId?:string; conversationId?:string };
 type PushResult = { delivered: number; invalidTokens: string[]; failed: number };
 const b64 = (value: string) => Buffer.from(value).toString("base64url");
 let cached: { token: string; expiresAt: number } | null = null;
@@ -70,7 +70,7 @@ export async function sendProfessionalPush(tokens: string[], payload: PushPayloa
           body: JSON.stringify({ message: {
             token: deviceToken,
             ...(nativeAndroid ? {} : { notification: { title: payload.title.slice(0,100), body: payload.body.slice(0,200) } }),
-            data: { url: safeUrl, kind: payload.kind.slice(0, 50), title: payload.title.slice(0, 100), body: payload.body.slice(0, 200), ...(payload.callId?{call_id:payload.callId,recipient_id:payload.recipientId??"",expires_at:payload.expiresAt??""}:{}) },
+            data: { url: safeUrl, kind: payload.kind.slice(0, 50), title: payload.title.slice(0, 100), body: payload.body.slice(0, 200), ...(payload.recipientId?{recipient_id:payload.recipientId}:{}), ...(payload.messageId&&payload.conversationId?{message_id:payload.messageId,conversation_id:payload.conversationId}:{}), ...(payload.callId?{call_id:payload.callId,expires_at:payload.expiresAt??""}:{}) },
             android: { priority: "high", ...(ttl!==null?{ttl:`${Math.min(ttl,45)}s`}:{}) },
             ...(ttl!==null?{webpush:{headers:{TTL:String(Math.min(ttl,45))}}}:{}),
           } }),

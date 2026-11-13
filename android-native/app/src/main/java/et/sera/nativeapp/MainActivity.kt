@@ -350,6 +350,16 @@ fun SeraApp(
         val kind=pushKind?:return@LaunchedEffect
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isBlank())return@LaunchedEffect
+        if(kind.startsWith("message:")){
+            val parts=kind.split(":")
+            val thread=parts.getOrNull(1)
+            val owner=parts.getOrNull(2)
+            if(owner==authenticatedUserId && thread!=null){
+                val peer=withContext(Dispatchers.IO){resolveNativeMessagePeer(token,authenticatedUserId,thread)}
+                if(peer!=null){openCompanyInbox=false;callThread=thread;callPeer=peer;navigateTo("Inbox")}
+            }
+            onPushConsumed();return@LaunchedEffect
+        }
         if(kind.startsWith("voice_call:") && !BuildConfig.LIVE_CALLING_INCLUDED){
             SeraPush.clearCallNotification(context,kind.substringAfter(':'))
             onPushConsumed()
@@ -604,9 +614,9 @@ fun SeraApp(
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier
                                         )
-                                        "Inbox" -> SeraNativeInbox(
+                                        "Inbox" -> key(authenticatedUserId,callThread) { SeraNativeInbox(
                                             accessToken ?: "", authenticatedUserId, if(standaloneThread) Modifier.fillMaxSize() else pageModifier, openCompanyInbox, { openCompanyInbox=false },initialThread=callThread,initialPeer=callPeer,initialName="SERA member",onThreadExit=if(callThread!=null){{callThread=null;callPeer="";inboxThreadOpen=false}}else null,onThreadVisibility={inboxThreadOpen=it},onInboxExit={callThread=null;callPeer="";tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home";inboxThreadOpen=false}
-                                        )
+                                        ) }
                                         else -> Column(
                                             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                                                 .padding(start = 20.dp, end = 20.dp,

@@ -2,7 +2,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { currentUser,serverClient } from "@/lib/supabase/server";
-import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
+import { notifyMessageOnce } from "@/lib/network/push-delivery";
 import { validMessageId,validAttachment,messageFilePath,hasFileSignature,MESSAGE_LIMIT,REACTIONS,isChatMime,type SendInput,type AttachmentMeta } from "@/lib/network/message-contract";
 import { loadMessagePage,refreshMessageViews } from "@/lib/network/message-view";
 const BUCKET="professional-message-files";
@@ -25,8 +25,8 @@ async function uploaded(db:Db,path:string){
   const {data}=await db.storage.from(BUCKET).list(parts.join("/"),{search:name,limit:10});
   return Boolean(data?.some(f=>f.name===name));
 }
-function schedulePush(recipient:string,conversation:string){
-  after(async()=>{try{await notifyProfessionalDevices(recipient,{title:"New SERA message",body:"You have a new professional message.",url:"/network/messages?thread="+conversation,kind:"message"});}catch(e){console.error("Message push failed",e instanceof Error?e.message:"unknown");}});
+function schedulePush(recipient:string,conversation:string,message:string){
+  after(async()=>{try{await notifyMessageOnce(recipient,conversation,message);}catch{console.error("Message push failed");}});
 }
 export async function prepareMessageUpload(conversation:string,clientId:string,file:AttachmentMeta):Promise<{ok:true;url:string|null;alreadySent?:string}|{ok:false;error:string}>{
   if(!validMessageId(clientId)||!validAttachment(file))return {ok:false,error:"Choose a supported file of 5 MB or less."};
@@ -60,7 +60,7 @@ export async function sendMessageV2(input:SendInput):Promise<Result>{
     p_forward_source:null,p_path:path,p_name:file?.name??null,p_mime:file?.mime??null,p_size:file?.size??null,p_duration_ms:file?.durationMs??null,
   });
   if(error||!validMessageId(data))return {ok:false,error:"Message could not be sent. Check the connection and retry."};
-  schedulePush(ctx.recipient,input.conversation);revalidatePath("/network/messages");return {ok:true,id:data};
+  schedulePush(ctx.recipient,input.conversation,data);revalidatePath("/network/messages");return {ok:true,id:data};
 }
 export async function setMessageReaction(message:string,emoji:string|null){
   const user=await currentUser();
@@ -106,7 +106,7 @@ export async function forwardMessage(source:string,destination:string,clientId:s
     p_path:path,p_name:file?.name??null,p_mime:file?.mime??null,p_size:file?.size??null,p_duration_ms:file?.durationMs??null,
   });
   if(error||!validMessageId(data))return {ok:false,error:"Could not forward this message."};
-  schedulePush(ctx.recipient,destination);revalidatePath("/network/messages");return {ok:true,id:data};
+  schedulePush(ctx.recipient,destination,data);revalidatePath("/network/messages");return {ok:true,id:data};
 }
 export async function recordMessageReceipts(conversation:string,ids:string[],read:boolean){
   if(!Array.isArray(ids)||ids.length===0||ids.length>100||!ids.every(validMessageId)||typeof read!=="boolean")return false;
@@ -140,5 +140,5 @@ export async function sendPhotoAlbum(input:{conversation:string;clientId:string;
   }
   const {data,error}=await ctx.db.rpc("sera_send_photo_album",{p_conversation:input.conversation,p_client_id:input.clientId,p_body:input.body.trim(),p_reply_to:input.replyTo,p_files:files});
   if(error||!validMessageId(data))return {ok:false,error:"Album could not be sent. Retry."};
-  schedulePush(ctx.recipient,input.conversation);revalidatePath("/network/messages");return {ok:true,id:data};
+  schedulePush(ctx.recipient,input.conversation,data);revalidatePath("/network/messages");return {ok:true,id:data};
 }

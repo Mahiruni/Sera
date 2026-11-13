@@ -10,7 +10,7 @@ import org.json.JSONObject
 internal val SeraPurple=Color(0xFF7C3AED)
 internal object SeraUnreadRefresh {
  var revision by mutableIntStateOf(0)
- fun changed(){revision++}
+ fun changed(){if(android.os.Looper.myLooper()==android.os.Looper.getMainLooper())revision++ else android.os.Handler(android.os.Looper.getMainLooper()).post{revision++}}
 }
 @Composable internal fun rememberSeraUnreadActivity(token:String,userId:String,section:String):Pair<Int,Int>{
  var counts by remember(token,userId){mutableStateOf(0 to 0)}

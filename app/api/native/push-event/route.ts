@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
 import { after } from "next/server";
-import { notifyProfessionalDevices } from "@/lib/network/push-delivery";
+import { notifyMessageOnce } from "@/lib/network/push-delivery";
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function POST(request: Request) {
@@ -26,9 +26,8 @@ export async function POST(request: Request) {
  const first=t[company?"candidate_id":"member_a"],second=t[company?"employer_id":"member_b"];
  const recipient=first===user.id?second:second===user.id?first:null;
  if(!recipient)return new Response(null,{status:403});
- const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
- const claim=await admin.from("sera_native_push_events").insert({event_id:body.id,kind:body.kind});
- if(claim.error)return new Response(null,{status:claim.error.code==="23505"?204:503});
- after(async()=>{try{await notifyProfessionalDevices(recipient,{title:company?"New company message":"New SERA message",body:"You have a new private message.",url:"/network/messages",kind:body.kind});}catch{console.error("Native push delivery failed");}});
+ const conversation=row[company?"thread_id":"conversation_id"];
+ const messageId=body.id as string;
+ after(async()=>{try{await notifyMessageOnce(recipient,conversation,messageId,company?"company_message":"message");}catch{console.error("Native push delivery failed");}});
  return new Response(null,{status:202});
 }

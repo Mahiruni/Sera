@@ -133,6 +133,12 @@ private fun inboxRequest(token: String, path: String, method: String = "GET", bo
     } finally { conn?.disconnect() }
 }
 
+internal fun resolveNativeMessagePeer(token:String,userId:String,conversation:String):String? {
+    if(!SeraMessageAlerts.validId(conversation))return null
+    val raw=inboxRequest(token,"professional_conversations?select=member_a,member_b&id=eq.$conversation&limit=1").first?:return null
+    return runCatching{val row=JSONArray(raw).optJSONObject(0)?:return null;val a=row.optString("member_a");val b=row.optString("member_b");when(userId){a->b;b->a;else->null}}.getOrNull()
+}
+
 private fun loadNativeConversations(token: String, userId: String): Pair<List<NativeConversation>?, String> {
     val (raw, error) = inboxRequest(token,
         "rpc/sera_inbox_v2","POST",JSONObject().put("p_limit",100))
@@ -231,6 +237,13 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     val outbox=remember(context){runCatching{NativeChatOutbox(context)}.getOrNull()}
     LaunchedEffect(selection.selected?.id) { onThreadVisibility(selection.selected != null) }
     DisposableEffect(Unit) { onDispose { onThreadVisibility(false) } }
+    DisposableEffect(userId,selection.selected?.id,lifecycle){
+        val threadId=selection.selected?.id
+        fun sync(){SeraMessageAlerts.setVisible(context,userId,threadId.takeIf{lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)})}
+        val observer=androidx.lifecycle.LifecycleEventObserver{_,_->sync()}
+        lifecycle.addObserver(observer);sync()
+        onDispose{lifecycle.removeObserver(observer);SeraMessageAlerts.clearVisible(userId,threadId)}
+    }
     val controller = InboxController(global, selection, thread, token, userId, context, savedDrafts, lifecycle, messageListState, scope, playback, outbox, onThreadExit)
     controller.PresenceAndScroll()
     controller.ConnectionAndPlayback()

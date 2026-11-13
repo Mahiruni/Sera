@@ -53,7 +53,7 @@ internal object SeraPush {
         SeraNotificationSounds.createChannels(context)
     }
     private fun prefs(context:Context)=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
-    fun clearLocal(context:Context){registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
+    fun clearLocal(context:Context){SeraMessageAlerts.clearAccount(context);registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
     suspend fun register(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         if(!initialize(context)||userId.isBlank())return@withContext
         if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return@withContext
@@ -74,7 +74,8 @@ internal object SeraPush {
         if(initialize(context))runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().deleteToken(),15,TimeUnit.SECONDS)}
         prefs(context).edit().remove("token").apply()
     }
-    fun active(context:Context)=prefs(context).getString("owner",null)!=null
+    fun owner(context:Context)=prefs(context).getString("owner",null)
+    fun active(context:Context)=owner(context)!=null
     private fun deviceRequest(access:String,token:String,userId:String,remove:Boolean):Boolean{
         var c:HttpURLConnection?=null
         return try{
@@ -160,6 +161,7 @@ class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
+        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){SeraMessageAlerts.receive(this,message.data);return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token)}
