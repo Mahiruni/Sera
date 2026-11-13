@@ -165,16 +165,16 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
                     val samples=values.filter{it.type=="inbound-rtp"&&isAudio(it)}.mapNotNull{stat->
                         val received=(stat.members["packetsReceived"] as? Number)?.toLong()
                         val lost=(stat.members["packetsLost"] as? Number)?.toLong()
-                        if(received!=null&&lost!=null)SeraAudioSample(received,lost)else null
+                        if(received!=null&&lost!=null)SeraAudioSample(received,lost,(stat.members["jitter"] as? Number)?.toDouble())else null
                     }
-                    val sample=if(samples.isEmpty())null else SeraAudioSample(samples.sumOf{it.received},samples.sumOf{it.lost})
+                    val sample=if(samples.isEmpty())null else SeraAudioSample(samples.sumOf{it.received},samples.sumOf{it.lost},samples.mapNotNull{it.jitterSeconds}.maxOrNull())
                     val remote=values.firstOrNull{it.type=="remote-inbound-rtp"&&isAudio(it)}
                     val selectedId=values.firstOrNull{it.type=="transport"}?.members?.get("selectedCandidatePairId") as? String
                     val pair=selectedId?.let{report.statsMap[it]}
                     val loss=(remote?.members?.get("fractionLost") as? Number)?.toDouble()
                     val rtt=(remote?.members?.get("roundTripTime") as? Number)?.toDouble()?: (pair?.members?.get("currentRoundTripTime") as? Number)?.toDouble()
                     val bandwidth=(pair?.members?.get("availableOutgoingBitrate") as? Number)?.toDouble()
-                    if(continuation.isActive)continuation.resume(SpeechStats(sample,SeraSpeechLink(loss,rtt,bandwidth),remote?.timestampUs))
+                    if(continuation.isActive)continuation.resume(SpeechStats(sample?.copy(rttSeconds=rtt),SeraSpeechLink(loss,rtt,bandwidth),remote?.timestampUs))
                 }
             }
         }?:return null
