@@ -73,6 +73,9 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var personalized by remember(token){mutableStateOf(retainedPersonalized)}
     val stream = remember(token,session,personalized,savedOnly) { session?.stream(personalized,savedOnly)?:pagedSeraPosts(token,personalized,savedOnly) }
     val posts = stream.collectAsLazyPagingItems()
+    var cachedPreview by remember(session,personalized,savedOnly){mutableStateOf<List<SeraFeedPreview>>(emptyList())}
+    LaunchedEffect(session,personalized,savedOnly){if(!personalized&&!savedOnly)cachedPreview=withContext(Dispatchers.IO){session?.readPreview().orEmpty()}}
+    val showCached=!personalized&&!savedOnly&&posts.itemCount==0&&posts.loadState.refresh !is LoadState.NotLoading&&cachedPreview.isNotEmpty()
     var previousRevision by remember(token,personalized,savedOnly){mutableIntStateOf(refreshKey)}
     LaunchedEffect(refreshKey,session,personalized,savedOnly){val changed=session?.changed(personalized,savedOnly,refreshKey)?: (previousRevision!=refreshKey);previousRevision=refreshKey;if(changed)posts.refresh()}
     var lastReselect by remember{mutableIntStateOf(homeReselect)}
@@ -224,7 +227,21 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                     }
                 }
             }
-            if (posts.loadState.refresh is LoadState.Loading && posts.itemCount == 0) item { SeraLoadingCards(count = 3) }
+            if(showCached){
+                item(key="cached_feed_notice"){
+                    Text(stringResource(R.string.feed_cached_preview),color=feedMuted,fontSize=12.sp,modifier=Modifier.padding(vertical=8.dp).testTag("sera_cached_feed_notice"))
+                }
+                items(cachedPreview.size,key={index->"cached-"+cachedPreview[index].id}){index->
+                    val preview=cachedPreview[index]
+                    Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                        Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                        if(preview.title.isNotBlank())Text(preview.title,color=feedInk,fontWeight=FontWeight.Medium)
+                        if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=8,overflow=TextOverflow.Ellipsis)
+                        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+            if (posts.loadState.refresh is LoadState.Loading && posts.itemCount == 0 && !showCached) item { SeraLoadingCards(count = 3) }
             if (posts.loadState.append is LoadState.Loading) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }

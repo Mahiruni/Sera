@@ -362,7 +362,8 @@ fun SeraApp(
     var authenticatedUserId by remember { mutableStateOf("") }
     var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
     val globalVoice=remember(authenticatedUserId){SeraGlobalCallState()}
-    val feedSession=remember(accessToken,authenticatedUserId){accessToken?.takeIf{authenticatedUserId.isNotBlank()}?.let{SeraFeedSession(it)}}
+    val pageStateHolder=key(authenticatedUserId){androidx.compose.runtime.saveable.rememberSaveableStateHolder()}
+    val feedSession=remember(accessToken,authenticatedUserId){accessToken?.takeIf{authenticatedUserId.isNotBlank()}?.let{SeraFeedSession(it,context.applicationContext,authenticatedUserId)}}
     DisposableEffect(feedSession){onDispose{feedSession?.close()}}
     val homeFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
     val savedFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
@@ -448,7 +449,7 @@ fun SeraApp(
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    fun signOutSera(){runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
+    fun signOutSera(){feedSession?.clearOnSignOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
         if (authenticatedUserId.isBlank()) {
@@ -637,6 +638,7 @@ fun SeraApp(
                                     ),
                                     label = "section transition"
                                 ) { currentTab ->
+                                    pageStateHolder.SaveableStateProvider(currentTab) {
                                     when (currentTab) {
                                         "Home", "Saved" -> SeraPagedFeed(
                                             accessToken ?: "", refresh,
@@ -673,6 +675,7 @@ fun SeraApp(
                                                 accessToken ?: "", authenticatedUserId, profileAvatarUrl,editProfileRequested,{editProfileRequested=false}
                                             )
                                         }
+                                    }
                                     }
                                 }
                                 SeraChromeOverlays(

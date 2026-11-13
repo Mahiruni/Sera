@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
  * Network-backed paging foundation. A Room RemoteMediator will replace direct
  * network paging once the per-account offline database is migrated and tested.
  */
-class SeraPostPagingSource(private val token: String, private val personalized:Boolean=false,private val savedOnly:Boolean=false) : PagingSource<Int, SeraPost>() {
+class SeraPostPagingSource(private val token: String, private val personalized:Boolean=false,private val savedOnly:Boolean=false,private val onFirstPage:((List<SeraPost>)->Unit)?=null) : PagingSource<Int, SeraPost>() {
     override fun getRefreshKey(state: PagingState<Int, SeraPost>): Int? {
         val anchor = state.anchorPosition ?: return null
         val page = state.closestPageToPosition(anchor)
@@ -23,7 +23,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SeraPost> {
         val page = params.key ?: 0
         return try {
-            val result = withContext(Dispatchers.IO) { loadSeraFeed(token, page, personalized=personalized,savedOnly=savedOnly) }
+            val result = withContext(Dispatchers.IO) { loadSeraFeed(token, page, personalized=personalized,savedOnly=savedOnly).also{if(page==0&&!personalized&&!savedOnly)it.first?.let{rows->onFirstPage?.invoke(rows)}} }
             val posts = result.first ?: return LoadResult.Error(IllegalStateException(result.second))
             LoadResult.Page(
                 data = posts,
@@ -37,20 +37,26 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
     }
 }
 
-fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=false) = Pager(
+fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=false,onFirstPage:((List<SeraPost>)->Unit)?=null) = Pager(
     config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, maxSize = 120, enablePlaceholders = false),
-    pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly) }
+    pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly,onFirstPage) }
 ).flow
 
 /** In-memory account/token-scoped feed generations; cancellation drops all cached pages. */
-internal class SeraFeedSession(private val token:String){
+internal class SeraFeedSession(private val token:String,context:android.content.Context,private val user:String){
+    private val cacheLock=Any()
+    private var closed=false
+    private val cache by lazy{runCatching{SeraFeedPreviewCache(context.applicationContext,user)}.getOrNull()}
+    fun readPreview():List<SeraFeedPreview> = synchronized(cacheLock){if(closed)emptyList() else runCatching{cache?.read().orEmpty()}.getOrDefault(emptyList())}
+    private fun storePreview(rows:List<SeraPost>)=synchronized(cacheLock){if(!closed)runCatching{cache?.write(rows)};Unit}
+    fun clearOnSignOut()=synchronized(cacheLock){closed=true;runCatching{cache?.clear()};Unit}
     private val scope=kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+Dispatchers.Main.immediate)
     private val streams=mutableMapOf<Pair<Boolean,Boolean>,kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<SeraPost>>>()
     private val revisions=mutableMapOf<Pair<Boolean,Boolean>,Int>()
-    fun stream(personalized:Boolean,saved:Boolean)=streams.getOrPut(personalized to saved){pagedSeraPosts(token,personalized,saved).cachedIn(scope)}
+    fun stream(personalized:Boolean,saved:Boolean)=streams.getOrPut(personalized to saved){pagedSeraPosts(token,personalized,saved,::storePreview).cachedIn(scope)}
     fun changed(personalized:Boolean,saved:Boolean,revision:Int):Boolean {
         val previous=revisions.put(personalized to saved,revision)
         return previous!=null&&previous!=revision
     }
-    fun close(){scope.cancel();streams.clear();revisions.clear()}
+    fun close(){synchronized(cacheLock){closed=true};scope.cancel();streams.clear();revisions.clear()}
 }
