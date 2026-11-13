@@ -11,5 +11,6 @@ export function normalizeCloudflareIce(raw:unknown):{urls:string;username:string
    if(!out.some(x=>x.urls===u))out.push({urls:u,username,credential});
   }
  }
- return out.sort((a,b)=>Number(!a.urls.startsWith("turns:"))-Number(!b.urls.startsWith("turns:"))).slice(0,5);
+ const priority=(url:string)=>url==="turns:turn.cloudflare.com:443?transport=tcp"?0:url.startsWith("turns:")?1:url.endsWith("transport=udp")?2:3;
+ return out.sort((a,b)=>priority(a.urls)-priority(b.urls)).slice(0,6);
 }
