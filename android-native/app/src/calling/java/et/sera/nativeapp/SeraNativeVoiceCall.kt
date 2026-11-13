@@ -76,6 +76,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var started by remember(conversation){mutableLongStateOf(0L)}
     var seconds by remember(conversation){mutableLongStateOf(0L)}
     var quality by remember(conversation){mutableStateOf<String?>(null)}
+    var peerGeneration by remember(conversation){mutableIntStateOf(0)}
     var lastAnswer by remember(conversation){mutableStateOf<String?>(null)}
     var showHistory by remember(conversation){mutableStateOf(false)}
     var minimized by remember(conversation){mutableStateOf(false)}
@@ -87,17 +88,40 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var silenced by remember(conversation){mutableStateOf(false)}
     fun finishSummary(title:String,call:CallRow?,detail:String=""){summary=SeraVoiceSummary(title,if(started>0)(SystemClock.elapsedRealtime()-started)/1000 else null,call?.callee==userId,detail=detail)}
     fun payload()=JSONObject().put("p_conversation",conversation)
-    fun cleanup(){rtc?.close();rtc=null;SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
+    fun closePeer(){peerGeneration++;val previous=rtc;rtc=null;previous?.close()}
+    fun cleanup(){closePeer();SeraCallForeground.stop(context,foregroundLease);foregroundLease=null;phase="";muted=false;speaker=false;routeMenu=false;routes=emptyList();routeLabel="Audio";started=0;seconds=0;quality=null;lastAnswer=null;row=null;minimized=false;cancelRequested=false}
     suspend fun end(action:String,message:String="",target:CallRow?=null){
         val call=target?:row;call?.let{SeraPush.clearCallNotification(context,it.id)};if(call!=null||phase.isNotBlank())finishSummary(when(action){"decline"->"Call declined";"fail"->"Connection lost";else->if(started>0)"Call ended" else "Call cancelled"},call,message);cleanup()
         if(call!=null&&call.live)runCatching{callRequest(token,"sera_call_transition",payload().put("p_id",call.id).put("p_action",action));withContext(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",call.id)}}.onFailure{error="Call closed locally. Remote status will expire."}
     }
-    fun peer():SeraNativeRtc{
+    fun peer(c:JSONObject):SeraNativeRtc{
         onAudioStart()
-        val c=config?:error("Calling is unavailable.")
+        val generation=++peerGeneration
         return SeraNativeRtc(context,c){state->scope.launch{
-            if(rtc!=null){when(state){"connected"->{phase="Connected";if(started==0L)started=SystemClock.elapsedRealtime()};"connecting"->if(row?.state=="accepted")phase="Connecting…";"disconnected"->phase="Reconnecting…";"failed"->end("fail","Call connection failed.")}}
+            if(rtc!=null&&generation==peerGeneration&&!cancelRequested){when(state){"connected"->{phase="Connected";if(started==0L)started=SystemClock.elapsedRealtime()};"connecting"->if(row?.state=="accepted")phase="Connecting…";"disconnected"->phase="Reconnecting…";"failed"->if(!busy)end("fail","Call connection failed.")}}
         }}.also{rtc=it}
+    }
+    suspend fun prepareWithFallback(fresh:JSONObject,invitation:CallRow?):String{
+        val attempts=seraRelayAttempts(fresh)
+        if(attempts.isEmpty())throw SeraRelayUnavailable()
+        for((index,attempt) in attempts.withIndex()){
+            if(cancelRequested)throw CancellationException("Call cancelled")
+            val remaining=if(invitation==null)attempt.budgetMs else (callRingWindowMillis(invitation.expiresAt,System.currentTimeMillis())-4000L).coerceAtMost(attempt.budgetMs)
+            if(remaining<2500L)throw SeraRelayUnavailable()
+            phase=attempt.label
+            val engine=peer(attempt.config)
+            val result=try{kotlinx.coroutines.withTimeoutOrNull(remaining){if(invitation==null)engine.offer() else engine.answer(invitation.offer?:error("Call expired."))}}
+                catch(e:SeraRelayUnavailable){null}
+            if(result!=null&&!cancelRequested)return result
+            closePeer()
+            if(cancelRequested)throw CancellationException("Call cancelled")
+            android.util.Log.i("SeraRtc","Secure relay attempt "+(index+1)+" unavailable")
+        }
+        throw SeraRelayUnavailable()
+    }
+    fun cancelPreparation(){
+        cancelRequested=true;phase="Cancelling…";closePeer()
+        // Do not cancel an in-flight signaling write: its response is needed to close any created session.
     }
     fun begin(accept:Boolean){
         if(busy)return;busy=true;summary=null;silenced=false;cancelRequested=false;minimized=false;error="";phase="Preparing call…"
@@ -106,10 +130,10 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             foregroundLease=SeraCallForeground.start(context){val current=row;preparation?.cancel();scope.launch{end("end",target=current)}}
             val fresh=managedCallConfig(token,conversation,true)?:error("Secure call relay unavailable. Try again.")
             if(!fresh.optBoolean("enabled"))error("Secure call relay unavailable. Try again.")
-            if(cancelRequested){cleanup();return@launch};config=fresh;val p=peer()
-            if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));if(cancelRequested){end("decline",target=s);return@launch};val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(cancelRequested){end("end",target=next);return@launch};scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
-            else{val offer=p.offer();if(cancelRequested){cleanup();return@launch};val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;if(cancelRequested){end("end",target=s);return@launch};phase="Calling…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
-        }catch(e:kotlinx.coroutines.TimeoutCancellationException){if(accept)end(if(cancelRequested)"decline" else "fail",if(cancelRequested)"" else "Call preparation timed out.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error="Call preparation timed out."}}catch(e:CancellationException){cleanup();throw e}catch(e:LinkageError){android.util.Log.e("SeraRtc","Native call engine linkage failure",e);if(accept)end("fail","Voice engine could not start. Update Sera.")else{cleanup();error="Voice engine could not start. Update Sera."}}catch(e:Exception){android.util.Log.e("SeraRtc","Call preparation failed: "+e.javaClass.simpleName);if(accept)end("fail",e.message?:"Call unavailable.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error=e.message?:"Call unavailable."}}finally{busy=false}}
+            if(cancelRequested){cleanup();return@launch};config=fresh
+            if(accept){val s=row?:error("Call ended.");val answer=prepareWithFallback(fresh,s);if(cancelRequested){end("decline",target=s);return@launch};val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;if(cancelRequested){end("end",target=next);return@launch};scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
+            else{val offer=prepareWithFallback(fresh,null);if(cancelRequested){cleanup();return@launch};val s=parseCall(callRequest(token,"sera_call_start",payload().put("p_id",UUID.randomUUID().toString()).put("p_offer",offer)))?:error("Call unavailable.");row=s;if(cancelRequested){end("end",target=s);return@launch};phase="Calling…";scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call",s.id)}}
+        }catch(e:kotlinx.coroutines.TimeoutCancellationException){if(accept)end(if(cancelRequested)"decline" else "fail",if(cancelRequested)"" else "Call preparation timed out.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error="Call preparation timed out."}}catch(e:CancellationException){if(cancelRequested){if(accept)end("decline",target=row)else{finishSummary("Call cancelled",row);cleanup()}}else{cleanup();throw e}}catch(e:LinkageError){android.util.Log.e("SeraRtc","Native call engine linkage failure",e);if(accept)end("fail","Voice engine could not start. Update Sera.")else{cleanup();error="Voice engine could not start. Update Sera."}}catch(e:Exception){android.util.Log.e("SeraRtc","Call preparation failed: "+e.javaClass.simpleName);if(accept)end("fail",e.message?:"Call unavailable.")else{val cancelled=cancelRequested;cleanup();if(!cancelled)error=e.message?:"Call unavailable."}}finally{busy=false}}
     }
     var permissionAccept by remember{mutableStateOf(false)}
     var permissionPending by remember{mutableStateOf(false)}
@@ -192,7 +216,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         LaunchedEffect(host.callRequest){if(seenStart!=host.callRequest){seenStart=host.callRequest;host.consumeStart();request(false)}}
         LaunchedEffect(host.returnRequest){if(seenReturn!=host.returnRequest){seenReturn=host.returnRequest;minimized=false}}
         LaunchedEffect(host.historyRequest){if(seenHistory!=host.historyRequest){seenHistory=host.historyRequest;showHistory=true;fetchHistory()}}
-        if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelRequested=true;rtc?.mute(true);phase="Cancelling…"}else scope.launch{end("end")}},canMute=row?.state=="accepted")
+        if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelPreparation()}else scope.launch{end("end")}},canMute=row?.state=="accepted")
     }
     if(!enabled&&summary==null&&!active)return
     if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,if(active)"Return to call" else "Voice call",tint=if(active)accent else ink)}
@@ -220,13 +244,14 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 Spacer(Modifier.size(48.dp))
             }
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                SeraVoiceAvatar(name,photo,teal,incoming||phase=="Calling…"||phase=="Preparing call…")
+                SeraVoiceAvatar(name,photo,teal,incoming||phase=="Calling…"||busy)
                 Spacer(Modifier.height(20.dp))
                 Text(name,color=primary,fontSize=27.sp,fontWeight=FontWeight.SemiBold,maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
                 AnimatedContent(targetState=if(incoming)"Incoming voice call" else phase.ifBlank{"Calling…"},label="call status"){status->
                     Text(status,color=if(status=="Reconnecting…")colors.error else secondary,fontSize=15.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 }
+                if(busy&&!cancelRequested){Spacer(Modifier.height(18.dp));LinearProgressIndicator(Modifier.fillMaxWidth(.65f));Spacer(Modifier.height(8.dp));Text("Secure voice connection",color=secondary,fontSize=12.sp)}
                 if(started>0){Spacer(Modifier.height(10.dp));Text(seraCallDuration(seconds),color=primary,fontSize=28.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Medium,modifier=Modifier.testTag("sera_voice_timer"))}
                 if(muted){Spacer(Modifier.height(8.dp));Text("Microphone muted",color=teal,fontSize=12.sp)}
                 quality?.let{Spacer(Modifier.height(8.dp));Text(it,color=colors.error,fontSize=12.sp)}
@@ -253,7 +278,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                         }
                     }
                     SeraVoiceControl(Icons.Outlined.CallEnd,if(cancelRequested)"Cancelling…" else "End call",destructive=true,enabled=!cancelRequested){
-                        if(busy){cancelRequested=true;rtc?.mute(true);phase="Cancelling…"}else scope.launch{end("end")}
+                        if(busy){cancelPreparation()}else scope.launch{end("end")}
                     }
                 }
                 Text("Sera · Voice call",color=secondary,fontSize=11.sp)
