@@ -84,7 +84,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         preparation=scope.launch{try{
             if(!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))error("Open SERA to begin a call.")
             foregroundLease=SeraCallForeground.start(context){val current=row;preparation?.cancel();scope.launch{end("end",target=current)}}
-            val fresh=callRequest(token,"sera_call_config",payload())?.let{JSONObject(it)}?:error("Calling is unavailable.")
+            val fresh=managedCallConfig(token,conversation,true)?:error("Calling is unavailable.")
             if(!fresh.optBoolean("enabled"))error("Calling is unavailable.")
             config=fresh;val p=peer()
             if(accept){val s=row?:error("Call ended.");val answer=p.answer(s.offer?:error("Call expired."));val next=parseCall(callRequest(token,"sera_call_transition",payload().put("p_id",s.id).put("p_action","accept").put("p_answer",answer)))?:error("Call ended.");if(!next.live)error("Call ended.");row=next;scope.launch(Dispatchers.IO){SeraPush.dispatch(token,"voice_call_dismiss",next.id)};if(started==0L)phase="Connecting…"}
@@ -94,7 +94,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var permissionAccept by remember{mutableStateOf(false)}
     val micPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){if(it)begin(permissionAccept)else error="Microphone permission is required for voice calling."}
     fun request(accept:Boolean){permissionAccept=accept;if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){error="Enable SERA notifications in Android settings before starting a call.";return};if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)begin(accept)else micPermission.launch(Manifest.permission.RECORD_AUDIO)}
-    LaunchedEffect(token,conversation){config=runCatching{callRequest(token,"sera_call_config",payload())?.let{JSONObject(it)}}.getOrNull()}
+    LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull()}
     val enabled=config?.optBoolean("enabled")==true
     LaunchedEffect(enabled,token,conversation,lifecycle){
         if(!enabled)return@LaunchedEffect
@@ -163,3 +163,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     if(error.isNotBlank())AlertDialog(onDismissRequest={error=""},title={Text("Voice call")},text={Text(error)},confirmButton={TextButton(onClick={error=""}){Text("OK")}})
 }
 @Composable private fun CallControl(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,color:Color,onClick:()->Unit){Column(horizontalAlignment=Alignment.CenterHorizontally){FilledIconButton(onClick=onClick,modifier=Modifier.size(62.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=color,contentColor=Color.White)){Icon(icon,label,modifier=Modifier.size(26.dp))};Text(label,color=Color.White,fontSize=12.sp,modifier=Modifier.padding(top=8.dp))}}
+
+private suspend fun managedCallConfig(token:String,conversation:String,issue:Boolean):JSONObject?=withContext(Dispatchers.IO){
+ val c=(java.net.URL("https://sera.hisabtech.com/api/native/call-config").openConnection() as java.net.HttpURLConnection).apply{requestMethod="POST";doOutput=true;instanceFollowRedirects=false;connectTimeout=10000;readTimeout=15000;setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}
+ try{c.outputStream.use{it.write(JSONObject().put("conversation",conversation).put("issue",issue).toString().toByteArray(Charsets.UTF_8))};if(c.responseCode !in 200..299)null else JSONObject(c.inputStream.bufferedReader().use{it.readText()})}finally{c.disconnect()}
+}

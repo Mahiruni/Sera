@@ -1,4 +1,5 @@
 "use server";
+import { callRelayConfig } from "@/lib/network/call-relay";
 import { after } from "next/server";
 import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
 import { currentUser, serverClient } from "@/lib/supabase/server";
@@ -12,8 +13,8 @@ async function dbFor(conversation:string){
   const user=await currentUser();if(!user?.email_confirmed_at)throw new Error("Sign in to call.");
   return serverClient();
 }
-export async function getCallConfig(conversation:string):Promise<CallConfig>{
-  try{const db=await dbFor(conversation);const {data,error}=await db.rpc("sera_call_config",{p_conversation:conversation});return !error&&data?.enabled===true?data:{enabled:false};}catch{return {enabled:false};}
+export async function getCallConfig(conversation:string,issue=false):Promise<CallConfig>{
+  try{const db=await dbFor(conversation);return await callRelayConfig(db,conversation,issue===true);}catch{return {enabled:false};}
 }
 export async function getCallStatus(conversation:string,id:string|null):Promise<CallSession|null>{
   const db=await dbFor(conversation);if(id&&!validMessageId(id))throw new Error("Invalid call.");

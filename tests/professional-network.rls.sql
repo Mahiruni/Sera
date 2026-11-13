@@ -102,7 +102,8 @@ do $$ begin
  end;
 end $$;
 reset role;
--- Register a real storage metadata fixture before attaching it; production rejects dangling paths.
+-- Register a storage bucket and metadata fixture before attaching it.
+insert into storage.buckets(id,name,public) values('professional-message-files','professional-message-files',false) on conflict(id) do nothing;
 insert into storage.objects(bucket_id,name,owner_id,metadata)
 select 'professional-message-files',a::text || '/' || thread::text || '/test.pdf',a::text,jsonb_build_object('size',1024,'mimetype','application/pdf') from network_fixture;
 select set_config('request.jwt.claims',json_build_object('sub',a)::text,true) from network_fixture;

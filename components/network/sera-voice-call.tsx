@@ -34,7 +34,7 @@ export function SeraVoiceCall({conversation,userId,name,photo,onHistory}:{conver
   useEffect(()=>{if(!config.enabled)return;let stopped=false;const refresh=()=>void getCallHistory(conversation).then(events=>{if(!stopped)onHistory(events);}).catch(()=>{});refresh();const timer=setInterval(refresh,10000);return()=>{stopped=true;clearInterval(timer);};},[config.enabled,conversation,onHistory]);
   useEffect(()=>{const timer=setInterval(()=>{if(started.current)setSeconds(Math.floor((Date.now()-started.current)/1000));},1000);return()=>clearInterval(timer);},[]);
   async function createPeer(){
-    const fresh=await getCallConfig(conversation);if(!fresh.enabled||!fresh.iceServers?.length)throw new Error("Calling is not available.");
+    const fresh=await getCallConfig(conversation,true);if(!fresh.enabled||!fresh.iceServers?.length)throw new Error("Calling is not available.");
     if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection)throw new Error("This browser does not support voice calling.");
     const local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
     if(!mounted.current){local.getTracks().forEach(t=>t.stop());throw new Error("Conversation closed.");}
