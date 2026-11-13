@@ -26,10 +26,11 @@ class PremiumMessageUiTest {
     val playback=remember{SeraChatPlayback(context.applicationContext)}
     var menu by remember{mutableStateOf(false)}
     Column{
-     SeraNativeMessageRow(message=message,originalMessage=original,userId="me",peerName="Contact",token="",playback=playback,maxBubbleWidth=300.dp,inboxInk=Color.Black,inboxSoft=Color.LightGray,chatSurface=Color.White,muted=Color.DarkGray,accent=Color(0xFF087E83),outgoing=Color(0xFF087478),incoming=Color(0xFFE7F0EF),menuOpen=menu,onMenu={menu=it},onReply={},onReact={},onForward={},onCopy={},onUnsend={},onReaction={reaction=it},onImage={},onError={},onQuote={quote=it})
+     SeraNativeMessageRow(message=message,originalMessage=original,userId="me",peerName="Contact",token="",playback=playback,maxBubbleWidth=300.dp,inboxInk=Color.Black,inboxSoft=Color.LightGray,chatSurface=Color.White,muted=Color.DarkGray,accent=Color(0xFF087E83),outgoing=Color(0xFF087478),incoming=Color(0xFFE7F0EF),menuOpen=menu,onMenu={menu=it},onReply={},onReact={},onForward={},onCopy={},onUnsend={},onReaction={reaction=it},onImage={},onError={},onQuote={quote=it},showPeerAvatar=true,reservePeerAvatar=true)
     }
    }
   }
+  compose.onNodeWithTag("sera_message_avatar_reply",useUnmergedTree=true).assertExists()
   compose.onNodeWithTag("sera_quote_reply",useUnmergedTree=true).performClick()
   compose.runOnIdle{assertEquals("original",quote)}
   compose.onNodeWithTag("sera_message_reply",useUnmergedTree=true).performSemanticsAction(SemanticsActions.OnLongClick)
