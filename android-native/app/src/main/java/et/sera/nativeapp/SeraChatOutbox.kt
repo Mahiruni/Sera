@@ -48,7 +48,7 @@ internal class NativeChatOutbox(private val context:Context){
         return (0 until rows.length()).map { i ->
             val row=rows.getJSONObject(i)
             NativeQueuedText(row.getString("id"),row.getString("body"),row.optString("reply").takeUnless{it.isBlank()||it=="null"},row.getString("at"),TextSendStage.Ready)
-        }
+        }.sortedBy{it.createdAt}
     }
     @Synchronized fun saveText(user:String,thread:String,p:NativeQueuedText){
         val rows=loadTexts(user,thread)

@@ -423,7 +423,7 @@ private class InboxController(
         set(value) { thread.attachmentStudio = value }
 
     fun chime(){if(sound)runCatching{val tone=ToneGenerator(AudioManager.STREAM_NOTIFICATION,35);tone.startTone(ToneGenerator.TONE_PROP_BEEP,120);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({tone.release()},180)}}
-    fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{messages=it};error=r.second}}}
+    fun reload(){val c=selected?:return;scope.launch{val r=withContext(Dispatchers.IO){loadNativeMessages(token,c.id,historyLimit)};if(selected?.id==c.id){r.first?.let{latest->messages=latest;thread.textAcknowledged=thread.textAcknowledged.filterNot{ack->latest.any{it.id==ack.id}}};error=r.second}}}
     fun react(m:NativeMessage,emoji:String){reaction=null;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}}
 
     @Composable
@@ -473,6 +473,7 @@ private class InboxController(
             }
             thread.textQueue=thread.textQueue.map{if(it.id==entry.id)it.copy(stage=if(result.isSuccess)TextSendStage.Ready else TextSendStage.StorageFailed) else it}
             if(result.isSuccess && selected?.id==conversationId && draft.isEmpty())runCatching{savedDrafts?.clear(userId,conversationId)}
+            if(result.isFailure && selected?.id==conversationId && draft.isEmpty())runCatching{savedDrafts?.write(userId,conversationId,entry.body)}
         }
     }
     private fun enqueueText(conversationId:String,body:String){
@@ -503,7 +504,7 @@ private class InboxController(
             // If storage could not open, preserve the current draft and let the
             // next send surface a storage error rather than pretending it sent.
         }
-        val next=thread.textQueue.firstOrNull{it.stage==TextSendStage.Ready}
+        val next=thread.textQueue.firstOrNull{it.stage==TextSendStage.Saving||it.stage==TextSendStage.Ready}?.takeIf{it.stage==TextSendStage.Ready}
         LaunchedEffect(token,selected?.id,next?.id,connectionAvailable){
             val c=selected?:return@LaunchedEffect
             val p=next?:return@LaunchedEffect
@@ -514,8 +515,8 @@ private class InboxController(
                 // Server ID is authoritative; retain a compact acknowledged echo
                 // until realtime/polling provides the actual server row.
                 thread.textAcknowledged=(thread.textAcknowledged+p.acknowledged(id,userId)).takeLast(100)
-                thread.textQueue=thread.textQueue.filterNot{it.id==p.id}
                 withContext(kotlinx.coroutines.NonCancellable+Dispatchers.IO){runCatching{outbox?.removeText(userId,c.id,p.id)}}
+                thread.textQueue=thread.textQueue.filterNot{it.id==p.id}
                 if(selected?.id==c.id){chime();reload()}
             }else thread.textQueue=thread.textQueue.map{if(it.id==p.id)it.copy(stage=TextSendStage.Failed)else it}
         }
@@ -579,7 +580,7 @@ private class InboxController(
                 snapshotFlow{messageListState.layoutInfo.visibleItemsInfo.map{it.key.toString()} to messages}
                     .collectLatest{(visible,latest)->
                         delay(600)
-                        val ids=latest.filter{it.id in visible&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
+                        val ids=latest.filter{(it.id in visible||messageTimelineKey(it) in visible)&&it.senderId!=userId&&!it.unsent&&(it.readAt.isBlank()||it.readAt=="null")&&it.id !in seen}.map{it.id}.take(100)
                         if(ids.isNotEmpty()){val r=withContext(Dispatchers.IO){chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",c.id).put("p_ids",JSONArray(ids)).put("p_read",true))};if(r.first!=null){seen.addAll(ids);SeraUnreadRefresh.changed()}}
                     }
             }
@@ -657,7 +658,7 @@ private class InboxController(
     
                 val body = draft.trim()
                 val file=attachment
-                if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null) return@SeraNativeComposer
+                if ((body.isBlank() && file == null && album.isEmpty()) || sending || checkingFile || queued!=null || !thread.textLoaded) return@SeraNativeComposer
                 if(file==null&&album.isEmpty()){enqueueText(conversation.id,body);return@SeraNativeComposer}
                 sending = true
                 scope.launch {

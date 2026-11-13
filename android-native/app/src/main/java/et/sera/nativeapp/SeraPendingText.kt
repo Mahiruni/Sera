@@ -17,6 +17,7 @@ internal enum class TextSendStage { Saving, Ready, Failed, StorageFailed }
 internal data class NativeQueuedText(val id:String,val body:String,val replyId:String?,val createdAt:String,val stage:TextSendStage){
     fun acknowledged(serverId:String,userId:String)=NativeMessage(serverId,userId,body,"",createdAt,"",emptyList(),replyId.orEmpty(),clientId=id)
 }
+internal fun messageTimelineKey(m:NativeMessage):String = if(m.clientId.isNotBlank()&&m.clientId!="null") "client-"+m.senderId+"-"+m.clientId else m.id
 internal fun mergeAcknowledgedText(server:List<NativeMessage>,acknowledged:List<NativeMessage>):List<NativeMessage>{
     val ids=server.map{it.id}.toSet()
     val clients=server.map{it.senderId to it.clientId}.toSet()

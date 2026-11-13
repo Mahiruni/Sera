@@ -12,6 +12,7 @@ class OptimisticTextQueueTest {
         assertEquals(listOf(echo),mergeAcknowledgedText(emptyList(),listOf(echo)))
         val confirmed=echo.copy(readAt="2026-11-13T07:01:00Z")
         assertEquals(listOf(confirmed),mergeAcknowledgedText(listOf(confirmed),listOf(echo)))
+        assertEquals("client-user-client",messageTimelineKey(confirmed))
     }
     @Test fun encryptedTextQueueRetainsSeveralMessagesAndIndependentRetries(){
         val context=InstrumentationRegistry.getInstrumentation().targetContext

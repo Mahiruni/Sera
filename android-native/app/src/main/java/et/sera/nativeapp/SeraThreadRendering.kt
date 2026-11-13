@@ -111,7 +111,7 @@ import java.net.URL
                 if(messages.size>=historyLimit && historyLimit<1000)item{TextButton(onClick=onLoadEarlier){Text("Load earlier messages")}}
                 val filteredMessages=messages.filter{messageSearch.isBlank()||it.body.contains(messageSearch,ignoreCase=true)}
                 val timeline=(filteredMessages.map{SeraTimelineItem(it.createdAt,it,null)}+callEvents.filter{messageSearch.isBlank()||"voice call".contains(messageSearch,true)}.map{SeraTimelineItem(it.createdAt,null,it)}).sortedBy{runCatching{java.time.Instant.parse(it.at).toEpochMilli()}.getOrDefault(0)}
-                itemsIndexed(timeline,key={_,item->item.message?.let{m->if(m.clientId.isNotBlank()&&m.clientId!="null")"client-"+m.senderId+"-"+m.clientId else m.id}?:"call-"+item.event?.id}) { index,item ->
+                itemsIndexed(timeline,key={_,item->item.message?.let(::messageTimelineKey)?:"call-"+item.event?.id}) { index,item ->
                     val date=runCatching{java.time.Instant.parse(item.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()
                     val previousDate=timeline.getOrNull(index-1)?.let{runCatching{java.time.Instant.parse(it.at).atZone(java.time.ZoneId.systemDefault()).toLocalDate()}.getOrNull()}
                     if(date!=null&&date!=previousDate)Box(Modifier.fillMaxWidth().padding(vertical=8.dp),contentAlignment=Alignment.Center){Surface(color=inboxSoft,shape=CircleShape){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")),fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=5.dp))}}
