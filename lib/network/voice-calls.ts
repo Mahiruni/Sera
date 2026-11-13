@@ -2,6 +2,7 @@
 import { callRelayConfig } from "@/lib/network/call-relay";
 import { after } from "next/server";
 import { sendIncomingCallPush, dismissIncomingCallPush } from "@/lib/network/call-push";
+import { memberCard } from "@/lib/activity/members";
 import { currentUser, serverClient } from "@/lib/supabase/server";
 import { validMessageId } from "@/lib/network/message-contract";
 export type CallState="ringing"|"accepted"|"declined"|"cancelled"|"ended"|"missed"|"failed";
@@ -44,4 +45,14 @@ export async function restartCallMedia(conversation:string,id:string,action:"rea
  if(!validMessageId(id)||!["ready","request","offer","answer"].includes(action)||!Number.isInteger(generation)||generation<0||generation>3||(sdp!=null&&(typeof sdp!=="string"||sdp.length>65536)))return null;
  const {data,error}=await db.rpc("sera_call_restart",{p_conversation:conversation,p_id:id,p_action:action,p_generation:generation,p_sdp:sdp??null});
  if(error)throw Error("Call recovery signaling unavailable.");return data;
+}
+
+export type PendingIncomingCall={id:string;conversation:string;name:string;photo:string|null;expiresAt:string};
+export async function getPendingIncomingCall():Promise<PendingIncomingCall|null>{
+ const user=await currentUser();if(!user?.email_confirmed_at)return null;
+ const db=await serverClient();
+ const {data,error}=await db.rpc("sera_call_pending_incoming");
+ if(error||!data||!validMessageId(data.id)||!validMessageId(data.conversation_id)||!validMessageId(data.caller)||!Number.isFinite(Date.parse(data.expires_at))||Date.parse(data.expires_at)<=Date.now())return null;
+ const card=await memberCard(data.caller);
+ return {id:data.id,conversation:data.conversation_id,name:card?.name||"Sera member",photo:card?.photo??null,expiresAt:data.expires_at};
 }
