@@ -30,7 +30,7 @@ private fun linkedJobApply(token:String,userId:String,id:String,note:String,atta
     else{
         val payload=JSONObject().put("job_id",id).put("candidate_id",userId).put("cover_note",note.trim())
             .put("candidate_name",profile.optString("full_name")).put("candidate_headline",profile.optString("headline"))
-            .put("skills",profile.opt("skills")?:JSONObject.NULL).put("experience",profile.optString("experience")).put("education",profile.optString("education"))
+            .put("skills",profile.optString("skills").takeUnless{it=="null"}.orEmpty()).put("experience",profile.optString("experience")).put("education",profile.optString("education"))
         if(attachCv){
             val cv=searchRows(token,"account_assets",mapOf("select" to "cv_path,cv_name","user_id" to "eq."+userId,"limit" to "1")).optJSONObject(0)
             if(cv==null||cv.optString("cv_path").isBlank()||cv.isNull("cv_path"))throw IllegalStateException("No CV found.")
@@ -73,7 +73,7 @@ private fun linkedJobApply(token:String,userId:String,id:String,note:String,atta
         }catch(_:Exception){error="Unable to load this job. Please retry."}
         loading=false
     }
-    if(thread!=null){SeraCompanyInbox(token,userId,thread,onBack={thread=null});return}
+    if(thread!=null){androidx.activity.compose.BackHandler{thread=null};SeraCompanyInbox(token,userId,thread,onBack={thread=null});return}
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         TextButton(onClick=onClose){Text("Back")}
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
