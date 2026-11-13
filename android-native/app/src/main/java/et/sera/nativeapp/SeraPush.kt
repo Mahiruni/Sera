@@ -123,20 +123,24 @@ internal object SeraPush {
         if(!callUuid.matches(id)||prefs(context).getString("owner",null)!=recipient)return
         if(callAlerts(context).getLong(id,0)>System.currentTimeMillis()||isCallSilenced(context,id))return
         if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
-        val remaining=runCatching{java.time.Instant.parse(data["expires_at"]).toEpochMilli()-System.currentTimeMillis()}.getOrDefault(0)
+        val remaining=callRingWindowMillis(data["expires_at"],System.currentTimeMillis())
         if(remaining<=0)return
         channel(context)
+        val notification=buildCallNotification(context,id,recipient,remaining)
+        context.getSystemService(NotificationManager::class.java).notify("sera-call:"+id,1,notification)
+    }
+    internal fun buildCallNotification(context:Context,id:String,recipient:String,remaining:Long):android.app.Notification{
+        require(callUuid.matches(id)&&callUuid.matches(recipient)&&remaining in 1..45000)
         val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val silence=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallSilenceReceiver::class.java).apply{action="et.sera.nativeapp.SILENCE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("SERA.et").setContentText("Incoming call").build()
-        val notification=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
+        return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle("Incoming SERA call").setContentText("Open SERA to answer").setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
             .addAction(android.R.drawable.sym_call_incoming,"Open call",pi)
             .addAction(android.R.drawable.ic_lock_silent_mode,"Silence",silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
-        context.getSystemService(NotificationManager::class.java).notify("sera-call:"+id,1,notification)
     }
     fun dispatch(access:String,kind:String,id:String){
         if(!id.matches(Regex("[0-9a-f-]{36}")))return
@@ -158,4 +162,10 @@ class SeraFirebaseService:FirebaseMessagingService(){
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"SERA.et",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token)}
+}
+
+/** Server timestamps are authoritative; never extend a ringing invitation locally. */
+internal fun callRingWindowMillis(expiresAt:String?,now:Long):Long{
+    if(expiresAt.isNullOrBlank())return 0L
+    return runCatching{(java.time.Instant.parse(expiresAt).toEpochMilli()-now).coerceIn(0L,45000L)}.getOrDefault(0L)
 }
