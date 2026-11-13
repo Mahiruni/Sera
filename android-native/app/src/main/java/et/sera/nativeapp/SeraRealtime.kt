@@ -28,7 +28,9 @@ internal class SeraRealtime(private val token: String, private val conversationI
         val endpoint = BuildConfig.SUPABASE_URL.trimEnd('/').replaceFirst("https://","wss://")
         require(endpoint.startsWith("wss://"))
         try {
+            var attempt=0
             while (isActive) {
+                val joined=java.util.concurrent.atomic.AtomicBoolean(false)
                 val disconnected = java.util.concurrent.atomic.AtomicBoolean(false)
                 val request = Request.Builder().url(endpoint + "/realtime/v1/websocket?apikey=" + java.net.URLEncoder.encode(BuildConfig.SUPABASE_ANON_KEY,"UTF-8") + "&vsn=1.0.0").build()
                 socket = client.newWebSocket(request, object : WebSocketListener() {
@@ -40,7 +42,8 @@ internal class SeraRealtime(private val token: String, private val conversationI
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val data = runCatching { JSONObject(text) }.getOrNull() ?: return
                         when(data.optString("event")) {
-                            "postgres_changes", "phx_reply" -> signals.trySend(Unit)
+                            "postgres_changes" -> signals.trySend(Unit)
+                            "phx_reply" -> if(data.optString("topic")==topic&&data.optJSONObject("payload")?.optString("status")=="ok"){joined.set(true);signals.trySend(Unit)}
                             "phx_error", "phx_close" -> { disconnected.set(true); webSocket.cancel(); signals.trySend(Unit) }
                         }
                     }
@@ -51,11 +54,13 @@ internal class SeraRealtime(private val token: String, private val conversationI
                 try {
                     onSync()
                     while (isActive && !disconnected.get()) {
-                        withTimeoutOrNull(15000) { signals.receive() }
-                        onSync()
+                        withTimeoutOrNull(seraMessageFallbackInterval(joined.get())) { signals.receive() }
+                        if(!disconnected.get()){delay(180);onSync()}
                     }
                 } finally { heartbeat.cancel(); socket?.cancel() }
-                delay(2000)
+                if(joined.get())attempt=0
+                delay(seraReconnectDelay(attempt,kotlin.random.Random.nextLong(0,1001)))
+                attempt=(attempt+1).coerceAtMost(5)
             }
         } finally { socket?.cancel(); client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll() }
     }
