@@ -25,6 +25,25 @@ internal class SeraNativeRtc(private val context:Context,config:JSONObject,priva
         .setOnAudioFocusChangeListener { change->if(change==AudioManager.AUDIOFOCUS_LOSS)onState("failed") }.build()
     private var closed=false
     companion object {
+        // Invoked only by the separately signed CI instrumentation; no public UI or network endpoint.
+        // Keep all coroutine execution inside the already-shrunk target APK.
+        @JvmStatic fun verifySignedEngine(context:Context, main:java.util.concurrent.Executor){
+            fun <T> onMain(block:()->T):T {
+                val task=java.util.concurrent.FutureTask<T>{block()}
+                main.execute(task)
+                return task.get(15,java.util.concurrent.TimeUnit.SECONDS)
+            }
+            val config=JSONObject().put("iceServers",org.json.JSONArray().put(JSONObject()
+                .put("urls","turn:127.0.0.1:3478?transport=udp")
+                .put("username","smoke-test").put("credential","smoke-test")))
+            repeat(2){
+                val engine=onMain{SeraNativeRtc(context,config){}}
+                try{
+                    val sdp=kotlinx.coroutines.runBlocking { engine.prepareLocalOffer() }
+                    check(sdp.contains("m=audio ")){"Native WebRTC did not create an audio offer"}
+                }finally{onMain{engine.close()}}
+            }
+        }
         private var initialized=false
         @Synchronized private fun ensureInitialized(context:Context){
             if(!initialized){
