@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertEquals
@@ -52,4 +53,38 @@ class MessageComposerTest {
         compose.runOnIdle { assertEquals("Hello👍", draft); draft = "New draft" }
         compose.onNodeWithTag("sera_message_input").assertTextContains("New draft")
     }
+    @Test fun inlineEmojiKeepsEditorFocusAndReplacesSelectedText() {
+        var draft by mutableStateOf("Hello world")
+        compose.setContent {
+            MaterialTheme {
+                SeraMessageInput(draft, { draft = it }, Color.Black, Color.LightGray, Color.DarkGray, Color(0xFF087E83), false)
+            }
+        }
+        val field = compose.onNodeWithTag("sera_message_input")
+        field.performClick()
+        field.performTextInputSelection(TextRange(6, 11))
+        compose.onNodeWithContentDescription("Insert emoji").performClick()
+        field.assertIsFocused()
+        compose.onNodeWithText("👍").performClick()
+        field.assertIsFocused()
+        compose.runOnIdle { assertEquals("Hello 👍", draft) }
+        field.performTextInput("\nNext line")
+        compose.runOnIdle { assertEquals("Hello 👍\nNext line", draft) }
+    }
+
+    @Test fun oversizedExistingDraftCanBeShortened() {
+        var draft by mutableStateOf("a".repeat(SERA_MESSAGE_LIMIT + 2))
+        compose.setContent {
+            MaterialTheme {
+                SeraMessageInput(draft, { draft = it }, Color.Black, Color.LightGray, Color.DarkGray, Color(0xFF087E83), false)
+            }
+        }
+        val field = compose.onNodeWithTag("sera_message_input")
+        field.performClick()
+        field.performTextReplacement("a".repeat(SERA_MESSAGE_LIMIT + 1))
+        compose.runOnIdle { assertEquals(SERA_MESSAGE_LIMIT + 1, draft.length) }
+        field.performTextReplacement("a".repeat(SERA_MESSAGE_LIMIT))
+        compose.runOnIdle { assertEquals(SERA_MESSAGE_LIMIT, draft.length) }
+    }
+
 }
