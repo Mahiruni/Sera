@@ -1,8 +1,9 @@
 /** Encrypted, account-scoped browser outbox. IndexedDB is optional; the UI keeps
  * a failed message in memory when browser storage is unavailable. */
 import type {AttachmentMeta} from "@/lib/network/message-contract";
-export type OutboxMessage={clientId:string;conversation:string;body:string;replyTo:string|null;replyLabel:string|null;createdAt:string;attachment:AttachmentMeta|null;file:File|null};
-type Stored={id:string;scope:string;iv:ArrayBuffer;data:ArrayBuffer;fileIv?:ArrayBuffer;fileData?:ArrayBuffer};
+export type OutboxPhoto={id:string;meta:AttachmentMeta;file:File};
+export type OutboxMessage={clientId:string;conversation:string;body:string;replyTo:string|null;replyLabel:string|null;createdAt:string;attachment:AttachmentMeta|null;file:File|null;album?:OutboxPhoto[]};
+type Stored={id:string;scope:string;iv:ArrayBuffer;data:ArrayBuffer;fileIv?:ArrayBuffer;fileData?:ArrayBuffer;albumFiles?:{iv:ArrayBuffer;data:ArrayBuffer}[]};
 let database:Promise<IDBDatabase>|undefined;
 function db(){
   if(!database)database=new Promise((resolve,reject)=>{
@@ -23,10 +24,12 @@ async function key(user:string){
 async function encrypt(k:CryptoKey,value:ArrayBuffer){const iv=crypto.getRandomValues(new Uint8Array(12));return {iv:iv.buffer,data:await crypto.subtle.encrypt({name:"AES-GCM",iv},k,value)};}
 const scope=(user:string,conversation:string)=>user+":"+conversation;
 export async function saveOutbox(user:string,message:OutboxMessage){
-  const d=await db(),k=await key(user),{file,...meta}=message;
-  const encrypted=await encrypt(k,new TextEncoder().encode(JSON.stringify(meta)).buffer);
+  const d=await db(),k=await key(user),{file,album,...meta}=message;
+  if(album&&(album.length<2||album.length>4||file))throw new Error("Invalid album");
+  const encrypted=await encrypt(k,new TextEncoder().encode(JSON.stringify({...meta,albumMeta:album?.map(({id,meta})=>({id,meta}))})).buffer);
   const attachment=file?await encrypt(k,await file.arrayBuffer()):null;
-  const row:Stored={id:scope(user,message.conversation)+":"+message.clientId,scope:scope(user,message.conversation),...encrypted,fileIv:attachment?.iv,fileData:attachment?.data};
+  const albumFiles=album?await Promise.all(album.map(async p=>encrypt(k,await p.file.arrayBuffer()))):undefined;
+  const row:Stored={id:scope(user,message.conversation)+":"+message.clientId,scope:scope(user,message.conversation),...encrypted,fileIv:attachment?.iv,fileData:attachment?.data,albumFiles};
   await request(d.transaction("messages","readwrite").objectStore("messages").put(row));
 }
 export async function readOutbox(user:string,conversation:string):Promise<OutboxMessage[]>{
@@ -34,9 +37,12 @@ export async function readOutbox(user:string,conversation:string):Promise<Outbox
   const rows=await request(d.transaction("messages","readonly").objectStore("messages").index("scope").getAll(scope(user,conversation))) as Stored[];
   const result:OutboxMessage[]=[];
   for(const row of rows){try{
-    const meta=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:row.iv},k,row.data))) as Omit<OutboxMessage,"file">;
+    const meta=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:row.iv},k,row.data))) as Omit<OutboxMessage,"file"|"album">&{albumMeta?:{id:string;meta:AttachmentMeta}[]};
     const file=row.fileIv&&row.fileData&&meta.attachment?new File([await crypto.subtle.decrypt({name:"AES-GCM",iv:row.fileIv},k,row.fileData)],meta.attachment.name,{type:meta.attachment.mime}):null;
-    result.push({...meta,file});
+    const {albumMeta,...base}=meta;
+    let album:OutboxPhoto[]|undefined;
+    if(albumMeta){if(albumMeta.length<2||albumMeta.length>4||row.albumFiles?.length!==albumMeta.length||file)throw new Error("Invalid stored album");album=await Promise.all(albumMeta.map(async (p,i)=>{const item=row.albumFiles![i];const bytes=await crypto.subtle.decrypt({name:"AES-GCM",iv:item.iv},k,item.data);if(bytes.byteLength!==p.meta.size)throw new Error("Corrupt photo");return {...p,file:new File([bytes],p.meta.name,{type:p.meta.mime})};}));}
+    result.push({...base,file,album});
   }catch{/* Corrupt local data must never be sent. */}}
   return result.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
 }

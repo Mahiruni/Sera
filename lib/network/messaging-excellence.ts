@@ -124,3 +124,21 @@ export async function refreshOlderMessages(conversation:string,ids:string[]){
   if(!ctx||!Array.isArray(ids)||ids.length>600||!ids.every(validMessageId))return null;
   try{return await refreshMessageViews(ctx.db,conversation,ids);}catch{return null;}
 }
+
+/** Commit all uploaded photos as one ordered message after checking their actual signatures. */
+export async function sendPhotoAlbum(input:{conversation:string;clientId:string;body:string;replyTo:string|null;photos:{id:string;meta:AttachmentMeta}[]}):Promise<Result>{
+  if(!input||!validMessageId(input.clientId)||typeof input.body!=="string"||input.body.trim().length>MESSAGE_LIMIT||(input.replyTo!==null&&!validMessageId(input.replyTo))||!Array.isArray(input.photos)||input.photos.length<2||input.photos.length>4)return {ok:false,error:"Choose two to four photos."};
+  if(!input.photos.every(p=>p&&validMessageId(p.id)&&validAttachment(p.meta)&&p.meta.mime.startsWith("image/")&&p.meta.durationMs==null)||new Set(input.photos.map(p=>p.id)).size!==input.photos.length)return {ok:false,error:"Invalid photo selection."};
+  const ctx=await context(input.conversation);if(!ctx)return {ok:false,error:"This conversation is unavailable."};
+  const prior=await existing(ctx.db,input.conversation,ctx.user.id,input.clientId);if(prior)return {ok:true,id:prior};
+  const files=[];
+  for(const {id,meta} of input.photos){
+    const path=messageFilePath(ctx.user.id,input.conversation,id,meta.mime);
+    const {data,error}=await ctx.db.storage.from(BUCKET).download(path);
+    if(error||!data||data.size!==meta.size||!hasFileSignature(new Uint8Array(await data.slice(0,32).arrayBuffer()),meta.mime))return {ok:false,error:"One photo is unavailable or invalid. Retry the album."};
+    files.push({path,name:meta.name,mime:meta.mime,size:meta.size});
+  }
+  const {data,error}=await ctx.db.rpc("sera_send_photo_album",{p_conversation:input.conversation,p_client_id:input.clientId,p_body:input.body.trim(),p_reply_to:input.replyTo,p_files:files});
+  if(error||!validMessageId(data))return {ok:false,error:"Album could not be sent. Retry."};
+  schedulePush(ctx.recipient,input.conversation);revalidatePath("/network/messages");return {ok:true,id:data};
+}
