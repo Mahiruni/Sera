@@ -70,7 +70,7 @@ internal fun downloadSeraUpdate(context: Context, release: SeraRelease): Long? {
     return try {
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(release.url))
-            .setTitle("SERA.et " + release.versionName)
+            .setTitle("Sera " + release.versionName)
             .setDescription("Downloading verified release package")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
             .setVisibleInDownloadsUi(false)
