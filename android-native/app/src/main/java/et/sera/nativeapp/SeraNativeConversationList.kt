@@ -85,13 +85,13 @@ import java.net.URL
     Column(Modifier.fillMaxSize()){
             Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
                 if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
-                Text("Messages",fontSize=24.sp,fontWeight=FontWeight.Bold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
+                Text("Messages",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
                 if(userId.isNotBlank())IconButton(onClick={controls=true}){Icon(Icons.Outlined.MoreVert,"Messaging settings",tint=accent)}
                 TextButton(onClick=onCompany,contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.WorkOutline,null,tint=accent,modifier=Modifier.size(18.dp));Spacer(Modifier.width(5.dp));Text("Company",fontSize=12.sp,color=accent)}
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=8.dp).height(46.dp).clip(CircleShape).background(inboxSoft).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 Icon(Icons.Outlined.Search,null,tint=muted,modifier=Modifier.size(20.dp))
-                BasicTextField(value=search,onValueChange=onSearch,singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
+                BasicTextField(value=search,onValueChange=onSearch,singleLine=true,textStyle=seraChatBody(MaterialTheme.typography.bodyLarge).copy(color=inboxInk),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",style=MaterialTheme.typography.bodyMedium,color=muted);inner()}})
                 if(search.isNotEmpty())IconButton(onClick={onSearch("")},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=!unreadOnly&&!archivedOnly,onClick={unreadOnly=false;archivedOnly=false},label={Text("All")});FilterChip(selected=unreadOnly,onClick={unreadOnly=true;archivedOnly=false},label={Text("Unread")});FilterChip(selected=archivedOnly,onClick={archivedOnly=true;unreadOnly=false},label={Text("Archived")});Spacer(Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("${if(unreadTotal>99) "99+" else unreadTotal} unread",fontSize=12.sp,color=accent)}

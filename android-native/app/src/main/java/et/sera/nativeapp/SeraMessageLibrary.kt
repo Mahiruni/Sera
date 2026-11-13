@@ -1,6 +1,7 @@
 package et.sera.nativeapp
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,7 +59,7 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
  }
  Column(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
   pins.firstOrNull()?.let{entry->
-   Surface(color=MaterialTheme.colorScheme.primary.copy(alpha=.08f),shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth().clickable{onOpen("pin")}){
+   Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth().clickable{onOpen("pin")}){
     Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
      Icon(Icons.Outlined.PushPin,null,tint=accent,modifier=Modifier.size(20.dp))
      Column(Modifier.weight(1f)){Text(if(pins.size==1)"Pinned message" else "${pins.size}${if(pins.size==30)"+" else ""} pinned messages",color=accent,style=MaterialTheme.typography.labelMedium);Text(entry.body,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodySmall)}
@@ -95,7 +96,7 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
   rows=r.first.orEmpty();more=rows.size==30;error=r.second;loading=false
  }
  Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)){
-  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.surface){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
   Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
    Row(Modifier.fillMaxWidth().heightIn(min=56.dp),verticalAlignment=Alignment.CenterVertically){
     IconButton(onClick=onDismiss){Icon(Icons.Outlined.ArrowBack,"Back")}
@@ -110,9 +111,9 @@ private fun libraryPage(token:String,thread:String?,mode:String,query:String="",
    if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
    if(!loading&&rows.isEmpty()&&error.isBlank())Text(if(mode=="search"&&query.isBlank())"Enter a word or phrase." else "No messages found.")
    LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
-    items(rows,key={it.id}){entry->Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.fillMaxWidth().clickable{onJump(entry)}){Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+    items(rows,key={it.id}){entry->Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),modifier=Modifier.fillMaxWidth().clickable{onJump(entry)}){Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
      Text(if(entry.sender==userId)"You" else "Contact",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
-     Text(seraHighlightedMessage(entry.body,if(mode=="search")query.trim()else "",MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.onPrimaryContainer),style=MaterialTheme.typography.bodyMedium)
+     Text(seraHighlightedMessage(entry.body,if(mode=="search")query.trim()else "",MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.onPrimaryContainer),style=seraChatBody(MaterialTheme.typography.bodyLarge))
      Text(runCatching{Instant.parse(entry.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))}.getOrDefault(entry.at.take(16))+(if(entry.edited)" · Edited" else ""),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
      TextButton(onClick={onJump(entry)}){Text("Go to message")}
     }}}
@@ -185,7 +186,7 @@ internal fun seraHighlightedMessage(body:String,query:String,background:Color,fo
   if(index>=0){withFrameNanos{};list.scrollToItem(index+1)}
  }
  Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)){
-  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.surface){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal=12.dp)){
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("Message history",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=onDismiss){Text("Back")}}
     Text("Browsing a historical conversation window",style=MaterialTheme.typography.bodySmall)
@@ -196,7 +197,8 @@ internal fun seraHighlightedMessage(body:String,query:String,background:Color,fo
      items(rows,key={it.id}){m->
       if(m.id==target)Text("Selected message",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium)
       val colors=MaterialTheme.colorScheme
-      SeraNativeMessageRow(m,rows.firstOrNull{it.id==m.replyId},userId,peerName,token,playback,320.dp,colors.onSurface,colors.surfaceVariant,colors.surface,colors.onSurfaceVariant,colors.primary,Color(0xFF087478),colors.surfaceVariant,false,{},{},{},{},{},{},{},{image=it},{error=it},readOnly=true)
+      val palette=seraChatColors()
+      SeraNativeMessageRow(m,rows.firstOrNull{it.id==m.replyId},userId,peerName,token,playback,320.dp,palette.ink,palette.quote,palette.canvas,palette.muted,palette.accent,palette.outgoing,palette.incoming,false,{},{},{},{},{},{},{},{image=it},{error=it},readOnly=true)
      }
      item{TextButton(enabled=!loading&&rows.lastOrNull{!it.unsent}?.id?.let{it!=anchor}==true,onClick={rows.lastOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Later messages")}}
     }
