@@ -91,7 +91,14 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
 @Composable internal fun SeraVoiceSummaryContent(name:String,photo:String?,summary:SeraVoiceSummary,onAgain:()->Unit,onDone:()->Unit){
     val c=MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().padding(24.dp).testTag("sera_voice_summary"),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
-        SeraVoiceAvatar(name,photo,c.primary,false,Modifier)
+        Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center){
+            SeraVoiceAvatar(name,photo,c.primary,false,Modifier)
+            IconButton(onClick=onDone,modifier=Modifier.align(Alignment.TopEnd).size(44.dp).testTag("sera_voice_summary_close")){
+                Box(Modifier.size(36.dp).background(c.surfaceVariant.copy(alpha=.75f),CircleShape),contentAlignment=Alignment.Center){
+                    Icon(Icons.Outlined.Close,androidx.compose.ui.res.stringResource(R.string.close),tint=c.onSurfaceVariant,modifier=Modifier.size(21.dp))
+                }
+            }
+        }
         Text(voiceText(summary.title),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,color=c.onSurface)
         Text(name,style=MaterialTheme.typography.titleMedium,color=c.onSurface)
         if(summary.connectedSeconds!=null)Text(seraCallDuration(summary.connectedSeconds),fontFamily=FontFamily.Monospace,fontSize=28.sp,color=c.primary,modifier=Modifier.testTag("sera_voice_summary_duration"))
