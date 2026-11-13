@@ -5,3 +5,7 @@
 -keepclassmembers class * implements org.webrtc.SdpObserver { *; }
 # Keep the native call engine accessible to signed-release instrumentation.
 -keep class et.sera.nativeapp.SeraNativeRtc { *; }
+
+# AndroidX Test invokes this class from the signed target APK. R8 cannot see
+# those external references when shrinking the production app.
+-keep class androidx.tracing.** { *; }
