@@ -570,10 +570,21 @@ private class InboxController(
     }
 
     /** One serialized reconciliation path for realtime, manual mutations and reconnect. */
-    private suspend fun syncMessages(conversation:NativeConversation,cache:SeraMessageHistoryCache?){
+    private suspend fun syncMessages(conversation:NativeConversation,cache:SeraMessageHistoryCache?,hint:SeraMessageSyncHint=SeraMessageSyncHint.Full){
         thread.syncMutex.withLock {
             if(selected?.id!=conversation.id||!connectionAvailable)return@withLock
-            val result=withContext(Dispatchers.IO){loadNativeMessages(token,conversation.id,historyLimit,cache=cache,owner=userId)}
+            val existing=messages
+            val limit=historyLimit
+            // Full snapshots on reconnect/timer cover missed events, deletes and private receipts.
+            val ids=(hint as? SeraMessageSyncHint.Rows)?.ids?.takeIf{thread.initialMessagesLoaded&&!thread.cachedHistory&&it.isNotEmpty()&&it.size<=64}
+            val result=withContext(Dispatchers.IO){
+                if(ids!=null){
+                    val delta=loadNativeMessages(token,conversation.id,ids.size,ids.toList())
+                    val rows=delta.first
+                    if(rows!=null&&rows.map{it.id}.toSet()==ids)seraMergeMessageDelta(existing,rows,limit) to ""
+                    else loadNativeMessages(token,conversation.id,limit,cache=cache,owner=userId)
+                }else loadNativeMessages(token,conversation.id,limit,cache=cache,owner=userId)
+            }
             if(selected?.id!=conversation.id)return@withLock
             result.first?.let{latest->
                 if(!thread.initialMessagesLoaded||thread.cachedHistory){
@@ -820,7 +831,7 @@ private class InboxController(
             }
             if(!connectionAvailable)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-                SeraRealtime(token,conversation.id).run { syncMessages(conversation,cache) }
+                SeraRealtime(token,conversation.id).run { hint->syncMessages(conversation,cache,hint) }
             }
         }
     }
