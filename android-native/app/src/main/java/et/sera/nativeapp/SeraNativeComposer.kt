@@ -84,6 +84,8 @@ internal fun SeraNativeComposer(
     onDraftChange:(String)->Unit,onAttach:()->Unit,onRemoveAttachment:()->Unit,onRemovePhoto:(Int)->Unit,onCancelReply:()->Unit,onRetry:()->Unit,onEditQueued:()->Unit,onVoice:(NativeChatSelection)->Unit,onRecording:(Boolean)->Unit,onError:(String)->Unit,onSend:()->Unit
 ){
     val scope=rememberCoroutineScope()
+    var pdfPreview by remember(attachment){mutableStateOf(false)}
+    if(pdfPreview&&attachment?.mime=="application/pdf")SeraPdfPreview(attachment,onDismiss={pdfPreview=false})
     reply?.let{m->
         Surface(color=soft,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){Text("Replying to: "+m.body.take(100),modifier=Modifier.weight(1f),fontSize=12.sp,color=ink);IconButton(onClick=onCancelReply){Icon(Icons.Outlined.Close,"Cancel reply",tint=muted)}}
@@ -107,7 +109,7 @@ internal fun SeraNativeComposer(
                     Box(Modifier.weight(1f)){SeraChatVoicePlayer(playback,"preview:"+System.identityHashCode(file),file.durationMs,accent,label="Voice preview",onPlay={scope.launch{playback.toggle("preview:"+System.identityHashCode(file),file.mime,{file.bytes},onError)}})}
                 }else{
                     SeraAttachmentThumbnail(file,accent);Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)){Text(file.name,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.SemiBold,fontSize=13.sp,color=ink);Text("${file.bytes.size/1024} KB · Ready to send",fontSize=11.sp,color=muted)}
+                    Column(Modifier.weight(1f)){Text(file.name,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.SemiBold,fontSize=13.sp,color=ink);Text("${file.bytes.size/1024} KB · Ready to send",fontSize=11.sp,color=muted);if(file.mime=="application/pdf")TextButton(onClick={pdfPreview=true},contentPadding=PaddingValues(0.dp)){Text("Preview PDF",fontSize=12.sp,color=accent)}}
                 }
                 IconButton(onClick=onRemoveAttachment,enabled=!sending){Icon(Icons.Outlined.Close,"Remove attachment",tint=ink)}
             }

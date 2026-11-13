@@ -300,7 +300,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
         onReact={message,emoji->react(message,emoji)},onChanged={refresh++;reload()},onError={error=it})
 
     var attachmentStudio by remember(selected?.id){mutableStateOf(false)}
-    SeraNativeAttachmentPicker(conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
+    SeraNativeAttachmentPicker(token=token,userId=userId,conversationId=selected?.id,open=attachmentStudio,onDismiss={attachmentStudio=false},
         onChecking={checkingFile=it},onSelected={attachment=it;album=emptyList();error=""},onAlbum={album=it;attachment=null;error=""},onError={error=it})
     LaunchedEffect(messages,mediaViewer){val file=mediaViewer;if(file!=null&&messages.none{m->!m.unsent&&m.files.any{it.path==file.path}})mediaViewer=null}
     mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}

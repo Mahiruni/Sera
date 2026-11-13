@@ -162,3 +162,19 @@ internal fun sendNativePhotoAlbum(token:String,userId:String,conversation:String
         if(id!=null&&id.matches(Regex("[0-9a-f-]{36}"))){runCatching{SeraPush.dispatch(token,"message",id)};id to ""}else null to r.second.ifBlank{"Album not sent. Retry."}
     }catch(_:Exception){null to "Photo album transfer interrupted. Retry to send all photos."}
 }
+
+/** Read only the signed-in account's CV; copy bytes into the private chat outbox on explicit send. */
+internal fun readProfileCvForChat(token:String,userId:String):NativeChatSelection{
+    require(userId.matches(Regex("[0-9a-fA-F-]{36}")))
+    val query=chatConnection(token,"/rest/v1/account_assets?select=cv_path,branded_path,cv_name&user_id=eq.$userId&limit=1","GET")
+    val row=try{check(query.responseCode in 200..299){"Profile CV unavailable."};org.json.JSONArray(query.inputStream.bufferedReader().use{it.readText()}).optJSONObject(0)}finally{query.disconnect()}
+        ?:error("No profile CV. Choose Document to upload a PDF.")
+    fun owned(path:String)=path.startsWith("$userId/")&&!path.contains("..")&&path.matches(Regex("[A-Za-z0-9/_.-]+"))
+    val branded=row.optString("branded_path").takeIf(::owned)
+    val path=branded?:row.optString("cv_path").takeIf(::owned)?:error("No profile CV. Choose Document to upload a PDF.")
+    val c=chatConnection(token,"/storage/v1/object/authenticated/sera-account-private/"+path,"GET")
+    val bytes=try{check(c.responseCode in 200..299){"Profile CV unavailable."};c.inputStream.use{it.readChatBounded()}}finally{c.disconnect()}
+    require(bytes.size in 5..CHAT_LIMIT&&bytes.take(5).toByteArray().contentEquals("%PDF-".toByteArray())){"Profile CV must be a PDF of 5 MB or less."}
+    val name=if(branded!=null)"SERA-CV.pdf"else row.optString("cv_name").takeUnless{it.isBlank()||it=="null"}?.replace(Regex("[\\p{Cntrl}/\\\\]"),"_")?.take(180)?:"CV.pdf"
+    return NativeChatSelection(name,"application/pdf",bytes)
+}

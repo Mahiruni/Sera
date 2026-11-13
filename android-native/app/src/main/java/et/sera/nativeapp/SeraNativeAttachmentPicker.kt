@@ -17,7 +17,7 @@ import java.io.File
 /** Keep picker callbacks and camera lifecycle outside the chat screen's data-flow graph. */
 @Composable
 internal fun SeraNativeAttachmentPicker(
-    conversationId:String?,open:Boolean,onDismiss:()->Unit,onChecking:(Boolean)->Unit,
+    token:String,userId:String,conversationId:String?,open:Boolean,onDismiss:()->Unit,onChecking:(Boolean)->Unit,
     onSelected:(NativeChatSelection)->Unit,onAlbum:(List<NativeChatSelection>)->Unit,onError:(String)->Unit
 ){
     val context=LocalContext.current
@@ -84,6 +84,7 @@ internal fun SeraNativeAttachmentPicker(
         try{
             when(kind){
                 SeraAttachmentKind.PHOTO->{pickerConversation=conversationId;photos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}
+                SeraAttachmentKind.CV->{val owner=conversationId;checkingCallback(true);scope.launch{try{val file=withContext(Dispatchers.IO){readProfileCvForChat(token,userId)};if(currentConversation==owner)selectedCallback(file)}catch(e:CancellationException){throw e}catch(e:Exception){if(currentConversation==owner)errorCallback(e.message?:"Could not load profile CV.")}finally{checkingCallback(false)}}}
                 SeraAttachmentKind.VIDEO->{pickerConversation=conversationId;documents.launch(arrayOf("video/mp4"))}
                 SeraAttachmentKind.DOCUMENT->{pickerConversation=conversationId;documents.launch(arrayOf("application/pdf"))}
                 SeraAttachmentKind.AUDIO->{pickerConversation=conversationId;documents.launch(arrayOf("audio/mp4","audio/webm","audio/ogg","audio/mpeg"))}
