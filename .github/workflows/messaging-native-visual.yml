@@ -28,6 +28,10 @@ on:
       - '.github/workflows/messaging-native-visual.yml'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      live_calling:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -53,7 +57,7 @@ jobs:
           sed -i "s/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx${heap}g -Dfile.encoding=UTF-8/" android-native/gradle.properties
           echo "CI build memory: ${total_gib} GiB host, ${heap} GiB Gradle heap"
       - name: Compile app and instrumentation APK before starting emulator
-        run: gradle -p android-native :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=1
+        run: gradle -p android-native :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=${{ inputs.live_calling || false }}
       - name: Reduce Gradle heap for emulator test execution
         run: sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8/' android-native/gradle.properties
       - name: Enable emulator hardware acceleration
@@ -69,7 +73,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            gradle -p android-native :app:connectedDebugAndroidTest --no-daemon --max-workers=1
+            gradle -p android-native :app:connectedDebugAndroidTest --no-daemon --max-workers=1 -PSERA_ENABLE_LIVE_CALLING=${{ inputs.live_calling || false }}
             mkdir -p native-messaging-qa
             adb exec-out run-as et.sera.nativeapp cat files/messaging-qa/compact-bubbles.png > native-messaging-qa/compact-bubbles.png
             test -s native-messaging-qa/compact-bubbles.png

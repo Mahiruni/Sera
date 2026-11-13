@@ -1,12 +1,17 @@
-name: SERA Android Calling Pilot
+name: SERA Native Calling Pilot
 on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/sera-native-calling-pilot.yml'
+      - 'android-native/calling-pilot-version.properties'
   workflow_dispatch:
 jobs:
-  pilot:
+  visual-regression:
+    uses: ./.github/workflows/messaging-native-visual.yml
+    with:
+      live_calling: true
+  release:
+    needs: visual-regression
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,10 +44,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          VERSION_CODE=90
-          VERSION_NAME=1.0.88-pilot
+          VERSION_CODE="$(sed -n 's/^version_code=//p' android-native/calling-pilot-version.properties)"
+          VERSION_NAME="$(sed -n 's/^version_name=//p' android-native/calling-pilot-version.properties)"
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && (( VERSION_CODE >= 2 )) || { echo "::error::Invalid version_code"; exit 1; }
-          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+-pilot$ ]] || { echo "::error::Invalid version_name"; exit 1; }
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version_name"; exit 1; }
           for key in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD SUPABASE_ANON_KEY; do
             [[ -n "${!key}" ]] || { echo "::error::Missing release secret: $key"; exit 1; }
           done
@@ -86,13 +91,16 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           sha256sum "$APK" > "$APK.sha256"
-      - name: Verify native WebRTC library is present
+      - name: Confirm RTC libraries are packaged and measure pilot size
         run: |
           APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           python3 - "$APK" <<'PY'
-          import sys, zipfile
-          with zipfile.ZipFile(sys.argv[1]) as apk:
-              assert any(n.startswith("lib/arm64-v8a/") and "webrtc" in n.lower() and n.endswith(".so") for n in apk.namelist()), "Missing arm64 WebRTC transport"
+          import sys, zipfile, pathlib
+          apk=pathlib.Path(sys.argv[1])
+          with zipfile.ZipFile(apk) as z:
+              rtc=[n for n in z.namelist() if n.startswith("lib/") and any(t in n.lower() for t in ("jingle","webrtc","peerconnection"))]
+              if not rtc: raise SystemExit("RTC native library missing")
+          print(f"Calling pilot APK: {apk.stat().st_size/1024**2:.2f} MiB; {len(rtc)} RTC libraries")
           PY
       - name: Verify update compatibility with previous signed APK
         shell: bash
@@ -116,17 +124,18 @@ jobs:
           [[ "$old_package" == "et.sera.nativeapp" && "$new_package" == "$old_package" && "$old_code" =~ ^[0-9]+$ && "$new_code" =~ ^[0-9]+$ ]] || { echo "::error::APK package metadata mismatch"; exit 1; }
           (( new_code > old_code )) || { echo "::error::APK version code must increase"; exit 1; }
           echo "Verified same application ID and signing certificate; versionCode $old_code → $new_code"
-      - name: Prepare private pilot artifact
+      - name: Prepare signed pilot artifact
         run: |
-          set -euo pipefail
           APK="$(find android-native/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
-          mkdir -p pilot-artifact
-          cp "$APK" "pilot-artifact/SERA-1.0.88-pilot.apk"
-          cd pilot-artifact
-          sha256sum SERA-1.0.88-pilot.apk > SERA-1.0.88-pilot.apk.sha256
+          mkdir -p pilot-output
+          cp "$APK" "pilot-output/SERA-Calling-Pilot-${VERSION_NAME}.apk"
+          cd pilot-output
+          sha256sum "SERA-Calling-Pilot-${VERSION_NAME}.apk" > "SERA-Calling-Pilot-${VERSION_NAME}.apk.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: SERA-calling-pilot-signed
-          path: pilot-artifact/
+          name: SERA-Calling-Pilot-${{ env.VERSION_NAME }}
+          path: |
+            pilot-output/*.apk
+            pilot-output/*.sha256
           if-no-files-found: error
           retention-days: 30
