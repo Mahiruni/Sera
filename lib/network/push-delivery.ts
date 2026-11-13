@@ -1,7 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { shouldSuppressMessage } from "@/lib/network/message-control-model";
-import { messagePushPayload } from "@/lib/network/message-push-model";
+import { enqueueAndDispatchMessage } from "@/lib/network/message-push-recovery";
 import { sendProfessionalPush } from "@/lib/network/firebase-push";
 
 type Notification = { title: string; body: string; url: string; kind: string; callId?:string; recipientId?:string; expiresAt?:string; messageId?:string; conversationId?:string };
@@ -24,24 +23,7 @@ export async function notifyProfessionalDevices(recipientId: string, notificatio
   }
 }
 
-/** Both native and web send paths share the existing service-only claim table.
- * A claim prevents duplicate alerts, not a guarantee that a device received one.
- * Message delivery/read receipts remain independent of FCM.
- */
+/** Shared native/web dispatch; queue claim and device jobs are committed atomically. */
 export async function notifyMessageOnce(recipient:string, conversation:string, message:string, kind:"message"|"company_message"="message") {
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key=process.env.SERA_SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key||!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return;
-  const payload=messagePushPayload(recipient,conversation,message,kind);
-  if(!payload)return;
-  const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-  const [prefs,thread]=await Promise.all([
-    admin.from("sera_message_preferences").select("notifications_enabled,quiet_enabled,quiet_start,quiet_end,quiet_timezone").eq("user_id",recipient).maybeSingle(),
-    kind==="message"?admin.from("sera_conversation_preferences").select("muted_until").eq("user_id",recipient).eq("conversation_id",conversation).maybeSingle():Promise.resolve({data:null,error:null}),
-  ]);
-  if(prefs.error||thread.error)throw new Error("Message notification preferences unavailable");
-  if(shouldSuppressMessage(prefs.data,thread.data?.muted_until??null,new Date()))return;
-  const claim=await admin.from("sera_native_push_events").insert({event_id:message,kind});
-  if(claim.error){if(claim.error.code==="23505")return;throw new Error("Message push claim unavailable");}
-  await notifyProfessionalDevices(recipient,payload);
+  await enqueueAndDispatchMessage(recipient,conversation,message,kind);
 }
