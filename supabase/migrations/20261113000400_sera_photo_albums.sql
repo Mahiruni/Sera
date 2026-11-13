@@ -18,7 +18,7 @@ begin
    if mime is null or mime not in ('image/jpeg','image/png','image/webp') or bytes not between 1 and 5242880 or fname is null or char_length(fname) not between 1 and 180 then raise exception 'Invalid photo'; end if;
    if path is null or path not like u::text||'/'||p_conversation::text||'/%' or array_length(string_to_array(path,'/'),1)<>3
       or split_part(path,'/',3) !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'
-      or split_part(path,'.',2) is distinct from case mime when 'image/jpeg' then 'jpg' when 'image/png' then 'png' else 'webp' end
+      or split_part(path,'.',2) is distinct from (case mime when 'image/jpeg' then 'jpg' when 'image/png' then 'png' else 'webp' end)
       or path=any(seen) then raise exception 'Invalid or duplicate photo path'; end if;
    seen:=array_append(seen,path);
    select metadata into meta from storage.objects where bucket_id='professional-message-files' and name=path and owner_id=u::text;
