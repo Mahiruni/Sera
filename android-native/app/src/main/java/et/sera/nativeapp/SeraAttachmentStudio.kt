@@ -1,11 +1,14 @@
 package et.sera.nativeapp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Description
@@ -25,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV }
+internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV,PROFESSIONAL,LOCATION }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SeraAttachmentStudio(onDismiss:()->Unit,onChoose:(SeraAttachmentKind)->Unit){
     val dark=androidx.compose.foundation.isSystemInDarkTheme()
@@ -35,7 +38,7 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV }
     val muted=if(dark)Color(0xFFA8C3C5)else Color(0xFF617B7C)
     val accent=if(dark)Color(0xFF6DE0D8)else Color(0xFF087E83)
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=surface,contentColor=ink,shape=RoundedCornerShape(topStart=28.dp,topEnd=28.dp)){
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start=20.dp,end=20.dp,bottom=20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,bottom=20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){Text("Share something",fontSize=23.sp,fontWeight=FontWeight.Bold,color=ink);Text("Choose an attachment",fontSize=13.sp,color=muted)}
                 IconButton(onClick=onDismiss){Icon(Icons.Outlined.Close,"Close attachment studio",tint=muted)}
@@ -51,6 +54,10 @@ internal enum class SeraAttachmentKind { PHOTO,CAMERA,DOCUMENT,AUDIO,VIDEO,CV }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 AttachmentTile("Video","MP4 · up to 5 MB",Icons.Outlined.Videocam,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.VIDEO)}
                 AttachmentTile("Profile CV","Choose saved CV",Icons.Outlined.Description,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.CV)}
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                AttachmentTile("SERA content","Profile, portfolio or job",Icons.Outlined.Description,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.PROFESSIONAL)}
+                AttachmentTile("Location","Enter a map pin",Icons.Outlined.Place,tile,ink,muted,accent,Modifier.weight(1f)){onChoose(SeraAttachmentKind.LOCATION)}
             }
             Text("Private conversation · Up to 5 MB per file",fontSize=12.sp,color=muted)
         }
