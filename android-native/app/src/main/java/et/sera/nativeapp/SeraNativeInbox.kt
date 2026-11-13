@@ -372,47 +372,9 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
         Spacer(Modifier.height(4.dp))
         if (selected == null) {
-            Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
-                if(onInboxExit!=null)IconButton(onClick=onInboxExit,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back",tint=inboxInk)}
-                Text("Messages",fontSize=24.sp,fontWeight=FontWeight.Bold,color=inboxInk,modifier=Modifier.weight(1f).padding(start=if(onInboxExit==null)6.dp else 2.dp))
-                TextButton(onClick={companyInbox=true},contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.WorkOutline,null,tint=accent,modifier=Modifier.size(18.dp));Spacer(Modifier.width(5.dp));Text("Company",fontSize=12.sp,color=accent)}
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=8.dp).height(46.dp).clip(CircleShape).background(inboxSoft).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                Icon(Icons.Outlined.Search,null,tint=muted,modifier=Modifier.size(20.dp))
-                BasicTextField(value=search,onValueChange={search=it},singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(color=inboxInk,fontSize=14.sp),cursorBrush=SolidColor(accent),modifier=Modifier.weight(1f),decorationBox={inner->Box{if(search.isEmpty())Text("Search conversations",fontSize=14.sp,color=muted);inner()}})
-                if(search.isNotEmpty())IconButton(onClick={search=""},modifier=Modifier.size(36.dp)){Icon(Icons.Outlined.Close,"Clear search",tint=muted,modifier=Modifier.size(18.dp))}
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Text("All messages",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=muted,modifier=Modifier.weight(1f));val unreadTotal=conversations.sumOf{it.unread};if(unreadTotal>0)Text("$unreadTotal unread",fontSize=12.sp,color=accent)}
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (error.isNotBlank()) Row(verticalAlignment=Alignment.CenterVertically){Text(error,modifier=Modifier.weight(1f),color=MaterialTheme.colorScheme.error,fontSize=12.sp);TextButton(onClick={refresh++}){Text("Retry")}}
-            if (!loading && conversations.isEmpty() && error.isBlank())
-                Text("No conversations yet. Start a conversation from SERA Network.", modifier = Modifier.padding(top = 20.dp))
-            val filtered = conversations.filter { it.peerName.contains(search.trim(), ignoreCase = true)||it.preview.contains(search.trim(),ignoreCase=true) }.sortedByDescending{it.lastAt}
-            if (search.isNotBlank() && filtered.isEmpty() && !loading) Text("No matching conversations.", modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray)
-            LazyColumn(Modifier.weight(1f),verticalArrangement = Arrangement.spacedBy(1.dp),contentPadding=PaddingValues(bottom=12.dp)) {
-                items(filtered, key = { it.id }) { conversation ->
-                    Card(onClick = {
-                        draft = savedDrafts?.read(userId, conversation.id).orEmpty()
-                        selected = conversation; messages = emptyList(); error = ""; typingPulse = 0; peerTyping = false
-                    },
-                        shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = if(conversation.unread>0) inboxSoft else chatSurface)) {
-                        Row(Modifier.padding(horizontal=12.dp,vertical=12.dp), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft),
-                                contentAlignment = Alignment.Center) {
-                                Text(conversation.peerName.take(1).uppercase(), color = inboxTeal, fontWeight = FontWeight.Bold)
-                                conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize())}
-                            }
-                            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                                Text(conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
-                            }
-                            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else conversation.unread.toString(),fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
-                        }
-                    }
-                }
-            }
+            SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany={companyInbox=true},onSearch={search=it},onRetry={refresh++},onSelect={conversation->
+                draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
+            })
         } else {
             val conversation = selected!!
             Row(
