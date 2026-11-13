@@ -329,6 +329,9 @@ private class InboxThreadState {
     var detailsOpen by mutableStateOf(false)
     var libraryMode by mutableStateOf<String?>(null)
     var scheduledOpen by mutableStateOf(false)
+    var selectedMessages by mutableStateOf<Set<String>>(emptySet())
+    var bulkForward by mutableStateOf(false)
+    var bulkBusy by mutableStateOf(false)
     var scheduleDraft by mutableStateOf<String?>(null)
     var libraryRevision by mutableIntStateOf(0)
     var jumpMessageId by mutableStateOf<String?>(null)
@@ -491,6 +494,13 @@ private class InboxController(
         }
     }
 
+    fun toggleSelected(id:String){
+        if(messages.none{it.id==id&&!it.unsent})return
+        if(id in thread.selectedMessages)thread.selectedMessages=thread.selectedMessages-id
+        else if(thread.selectedMessages.size<50)thread.selectedMessages=thread.selectedMessages+id
+        else error="Select up to 50 messages at a time."
+        menu=null
+    }
     fun openQuotedMessage(id:String){
         val c=selected?:return
         if(!SeraMessageAlerts.validId(id))return
@@ -649,7 +659,7 @@ private class InboxController(
         mediaViewer?.let{file->SeraPrivateImageViewer(token,file,onDismiss={mediaViewer=null})}
         // The system keyboard owns Back while visible; do not close the thread.
         val imeVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
-        BackHandler(selected != null && !imeVisible) { if(thread.detailsOpen)thread.detailsOpen=false else if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
+        BackHandler(selected != null && !imeVisible) { if(thread.selectedMessages.isNotEmpty())thread.selectedMessages=emptySet() else if(thread.detailsOpen)thread.detailsOpen=false else if(onThreadExit!=null)onThreadExit() else {selected = null; messages = emptyList(); error = ""} }
     }
 
     @Composable
@@ -773,7 +783,14 @@ private class InboxController(
                     onBack={if(onThreadExit!=null)onThreadExit() else {selected=null;messages=emptyList();error=""}},onSearch={thread.libraryMode="search"},
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
-                SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it},onScheduled={thread.scheduledOpen=true})
+                val chosen=messages.filter{it.id in thread.selectedMessages&&!it.unsent}
+                if(thread.selectedMessages.isNotEmpty()){
+                    SeraMultiSelectToolbar(chosen.size,thread.bulkBusy,chosen.all{it.files.isEmpty()},onClose={thread.selectedMessages=emptySet()},onCopy={clipboard.setText(AnnotatedString(chosen.joinToString("\n\n"){it.body}));thread.selectedMessages=emptySet()},onStar={
+                        thread.bulkBusy=true
+                        scope.launch{try{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_bulk_star_messages",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(chosen.map{it.id})))};if(r.first!=null){thread.selectedMessages=emptySet();thread.libraryRevision++}else error=r.second}finally{thread.bulkBusy=false}}
+                    },onForward={thread.bulkForward=true})
+                }else SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it},onScheduled={thread.scheduledOpen=true})
+                if(thread.bulkForward)SeraBulkForwardDialog(token,conversation.id,chosen,conversations,onDismiss={thread.bulkForward=false},onSuccess={thread.bulkForward=false;thread.selectedMessages=emptySet();refresh++;reload()})
                 if(thread.scheduledOpen)SeraScheduledMessagesScreen(token,conversation.id,conversation.peerName,thread.scheduleDraft,onDismiss={thread.scheduledOpen=false;thread.scheduleDraft=null},onCreated={body->if(thread.scheduleDraft!=null&&draft==body){draft="";runCatching{savedDrafts?.clear(userId,conversation.id)}};thread.scheduleDraft=null})
                 thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
@@ -782,8 +799,8 @@ private class InboxController(
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
                 val pending = (thread.textQueue + listOfNotNull(legacy)).filterNot{p->shown.any{it.senderId==userId&&it.clientId==p.id}}
                 SeraThreadTimeline(Modifier.weight(1f),messageListState,shown,callEvents,messageSearch,historyLimit,menu,conversation.peerName,token,userId,playback,inboxInk,inboxSoft,chatSurface,muted,accent,outgoing,incoming,
-                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId)
-                key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
+                    onLoadEarlier={historyLimit=(historyLimit+100).coerceAtMost(1000)},onMenu={menu=it},onReply={reply=it},onReact={reaction=it},onForward={forwarding=it;forwardClient=UUID.randomUUID().toString()},onCopy={clipboard.setText(AnnotatedString(it.body))},onUnsend={remove=it},onReaction={m,e->react(m,e)},onImage={mediaViewer=it},onError={error=it},pendingTexts=pending,connectionAvailable=connectionAvailable,onRetryText={retryText(it)},unreadBoundary=thread.unreadBoundary,conversationId=conversation.id,onLibraryChanged={thread.libraryRevision++;reload()},onQuote={openQuotedMessage(it)},highlightedId=thread.highlightedId,selectedIds=thread.selectedMessages,onSelectMessage={toggleSelected(it)})
+                if(thread.selectedMessages.isEmpty())key(conversation.id) { RenderComposer(conversation, inboxInk, inboxSoft, muted, accent) }
                 }
             }
         }
