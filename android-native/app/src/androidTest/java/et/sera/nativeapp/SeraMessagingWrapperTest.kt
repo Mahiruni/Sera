@@ -16,7 +16,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 class SeraMessagingWrapperTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun overlayKeepsSourcePageAndFillsBottom(){
+    @Test fun overlayStartsFullHeightAndKeepsSourcePageMounted(){
         compose.setContent {
             MaterialTheme {
                 var open by remember{mutableStateOf(true)}
@@ -29,14 +29,21 @@ class SeraMessagingWrapperTest {
         compose.onNodeWithTag("source-post").assertExists()
         val root=compose.onNodeWithTag("source-page").fetchSemanticsNode().boundsInRoot
         val sheet=compose.onNodeWithContentDescription("Messages sheet",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
-        assertTrue("The original page remains visible above the sheet",sheet.top>root.top)
+        assertEquals("Sheet starts at the top of the usable viewport",root.top,sheet.top,2f)
         assertEquals(root.bottom,sheet.bottom,2f)
         assertEquals(root.width,sheet.width,2f)
         compose.onNodeWithText("Inbox content").assertExists()
+        compose.onNodeWithContentDescription("Resize messages").performClick()
+        compose.waitForIdle()
+        val collapsed=compose.onNodeWithContentDescription("Messages sheet",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+        assertTrue("Manual collapse still works",collapsed.top>root.top)
+        compose.onNodeWithContentDescription("Resize messages").performClick()
+        compose.waitForIdle()
+        assertEquals(root.top,compose.onNodeWithContentDescription("Messages sheet",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot.top,2f)
     }
 
-    @Test fun messagingOccupiesNinetyPercentWithKeyboardClosed() {
-        assertEquals(.90f,seraMessagingHeightFraction(false),.001f)
+    @Test fun messagingOccupiesFullHeightWithKeyboardClosed() {
+        assertEquals(1f,seraMessagingHeightFraction(false),.001f)
     }
     @Test fun messagingUsesEntireUsableViewportWithKeyboardOpen() {
         assertEquals(1f,seraMessagingHeightFraction(true),.001f)
