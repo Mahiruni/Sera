@@ -8,6 +8,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -21,56 +31,67 @@ import java.time.Instant
 internal fun seraCanEdit(created:String,now:Instant=Instant.now()):Boolean=runCatching{
  val sent=Instant.parse(created);!sent.isAfter(now)&&sent.plusSeconds(900).isAfter(now)
 }.getOrDefault(false)
-internal data class SeraLibraryEntry(val id:String,val sender:String,val body:String,val at:String,val edited:Boolean)
-private fun libraryPage(token:String,thread:String,mode:String,query:String="",before:SeraLibraryEntry?=null):Pair<List<SeraLibraryEntry>?,String>{
- val request=JSONObject().put("p_conversation",thread).put("p_mode",mode).put("p_query",query).put("p_limit",30)
+internal data class SeraLibraryEntry(val id:String,val sender:String,val body:String,val at:String,val edited:Boolean,val conversationId:String)
+private fun libraryPage(token:String,thread:String?,mode:String,query:String="",before:SeraLibraryEntry?=null,sender:String="all",from:String="",until:String=""):Pair<List<SeraLibraryEntry>?,String>{
+ val request=JSONObject().put("p_conversation",thread?:JSONObject.NULL).put("p_mode",mode).put("p_query",query).put("p_limit",30).put("p_sender",sender)
+ if(from.isNotBlank())request.put("p_from",java.time.LocalDate.parse(from).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toString())
+ if(until.isNotBlank())request.put("p_until",java.time.LocalDate.parse(until).plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toString())
  if(before!=null)request.put("p_before",before.at).put("p_before_id",before.id)
- val (raw,error)=chatRpc(token,"sera_message_library",request)
+ val (raw,error)=chatRpc(token,"sera_message_library_v2",request)
  if(raw==null)return null to error
- return runCatching{val rows=JSONArray(raw);(0 until rows.length()).map{val x=rows.getJSONObject(it);SeraLibraryEntry(x.getString("id"),x.getString("sender_id"),x.optString("body"),x.getString("created_at"),!x.isNull("edited_at"))} to ""}.getOrElse{null to "Could not load messages."}
+ return runCatching{val rows=JSONArray(raw);(0 until rows.length()).map{val x=rows.getJSONObject(it);SeraLibraryEntry(x.getString("id"),x.getString("sender_id"),x.optString("body"),x.getString("created_at"),!x.isNull("edited_at"),x.getString("conversation_id"))} to ""}.getOrElse{null to "Could not load messages."}
 }
 @Composable internal fun SeraMessageLibraryBar(token:String,thread:String,revision:Int,accent:Color,onOpen:(String)->Unit){
- val pin by produceState<SeraLibraryEntry?>(null,token,thread,revision){
-  value=null
-  while(true){val result=withContext(Dispatchers.IO){libraryPage(token,thread,"pin")};if(result.first!=null)value=result.first?.firstOrNull();delay(15000)}
+ val pins by produceState<List<SeraLibraryEntry>>(emptyList(),token,thread,revision){
+  value=emptyList()
+  while(true){val result=withContext(Dispatchers.IO){libraryPage(token,thread,"pin")};if(result.first!=null)value=result.first.orEmpty();delay(15000)}
  }
  Column(Modifier.fillMaxWidth()){
-  pin?.let{entry->TextButton(onClick={onOpen("pin")},modifier=Modifier.fillMaxWidth()){Column(Modifier.fillMaxWidth()){Text("Pinned message",color=accent,style=MaterialTheme.typography.labelMedium);Text(entry.body,maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurface)}}}
+  pins.firstOrNull()?.let{entry->TextButton(onClick={onOpen("pin")},modifier=Modifier.fillMaxWidth()){Column(Modifier.fillMaxWidth()){Text(if(pins.size==1)"Pinned message" else "${pins.size}${if(pins.size==30)"+" else ""} pinned messages",color=accent,style=MaterialTheme.typography.labelMedium);Text(entry.body,maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurface)}}}
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){TextButton(onClick={onOpen("star")}){Text("Starred messages")};TextButton(onClick={onOpen("search")}){Text("Search history")}}
  }
 }
-@Composable internal fun SeraMessageLibraryDialog(token:String,thread:String,userId:String,mode:String,onDismiss:()->Unit,onJump:(String)->Boolean){
+@Composable internal fun SeraMessageLibraryDialog(token:String,thread:String?,userId:String,mode:String,onDismiss:()->Unit,onJump:(SeraLibraryEntry)->Unit){
  var query by remember{mutableStateOf("")}
+ var sender by remember{mutableStateOf("all")}
+ var from by remember{mutableStateOf("")}
+ var until by remember{mutableStateOf("")}
+ val datesValid=runCatching{val start=from.takeIf{it.isNotBlank()}?.let(java.time.LocalDate::parse);val end=until.takeIf{it.isNotBlank()}?.let(java.time.LocalDate::parse);(start==null||end==null||!start.isAfter(end))}.getOrDefault(false)
  var rows by remember{mutableStateOf<List<SeraLibraryEntry>>(emptyList())}
  var loading by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
  var more by remember{mutableStateOf(false)}
  var generation by remember{mutableIntStateOf(0)}
  val scope=rememberCoroutineScope()
- LaunchedEffect(token,thread,mode,query,generation){
+ LaunchedEffect(token,thread,mode,query,generation,sender,from,until){
   rows=emptyList();more=false;error=""
+  if(!datesValid){loading=false;error="Enter valid dates (YYYY-MM-DD) in chronological order.";return@LaunchedEffect}
   if(mode=="search"&&query.isBlank()){loading=false;return@LaunchedEffect}
   loading=true
   if(mode=="search")delay(300)
-  val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,query.trim())}
+  val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,query.trim(),sender=sender,from=from,until=until)}
   rows=r.first.orEmpty();more=rows.size==30;error=r.second;loading=false
  }
- AlertDialog(onDismissRequest=onDismiss,title={Text(when(mode){"star"->"Starred messages";"pin"->"Pinned message";else->"Search conversation"})},text={
+ AlertDialog(onDismissRequest=onDismiss,title={Text(when(mode){"star"->"Starred messages";"pin"->"Pinned messages";else->"Search conversation"})},text={
   Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-   if(mode=="search")OutlinedTextField(query,{query=it.take(120)},label={Text("Search entire history")},singleLine=true,modifier=Modifier.fillMaxWidth())
+   if(mode=="search"){
+    OutlinedTextField(query,{query=it.take(120)},label={Text("Search entire history")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("all" to "Everyone","you" to "You","contact" to "Contact").forEach{(key,label)->FilterChip(selected=sender==key,onClick={sender=key},label={Text(label)})}}
+    Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(from,{from=it.take(10)},label={Text("From date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f));OutlinedTextField(until,{until=it.take(10)},label={Text("To date")},placeholder={Text("YYYY-MM-DD")},singleLine=true,modifier=Modifier.weight(1f))}
+   }
    if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
    if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
    if(!loading&&rows.isEmpty()&&error.isBlank())Text(if(mode=="search"&&query.isBlank())"Enter a word or phrase." else "No messages found.")
    LazyColumn(Modifier.heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
     items(rows,key={it.id}){entry->Surface(shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surfaceVariant){Column(Modifier.fillMaxWidth().padding(10.dp)){
      Text(if(entry.sender==userId)"You" else "Contact",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
-     Text(entry.body,style=MaterialTheme.typography.bodyMedium)
+     Text(seraHighlightedMessage(entry.body,if(mode=="search")query.trim()else "",MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.onPrimaryContainer),style=MaterialTheme.typography.bodyMedium)
      Text(entry.at.take(16).replace("T"," ")+(if(entry.edited)" · Edited" else ""),style=MaterialTheme.typography.labelSmall)
-     TextButton(onClick={if(!onJump(entry.id))error="This older message is available here, but is outside the loaded chat timeline."}){Text("Go to message")}
+     TextButton(onClick={onJump(entry)}){Text("Go to message")}
     }}}
     if(more)item{TextButton(enabled=!loading,onClick={
-     val cursor=rows.lastOrNull()?:return@TextButton;val q=query;val g=generation
-     loading=true;scope.launch{val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,q.trim(),cursor)};if(query==q&&generation==g){if(r.first!=null){rows=(rows+r.first.orEmpty()).distinctBy{it.id};more=r.first?.size==30}else error=r.second;loading=false}}
+     val cursor=rows.lastOrNull()?:return@TextButton;val q=query;val g=generation;val who=sender;val start=from;val end=until
+     loading=true;scope.launch{val r=withContext(Dispatchers.IO){libraryPage(token,thread,mode,q.trim(),cursor,who,start,end)};if(query==q&&generation==g&&sender==who&&from==start&&until==end){if(r.first!=null){rows=(rows+r.first.orEmpty()).distinctBy{it.id};more=r.first?.size==30}else error=r.second;loading=false}}
     }){Text("Load more")}}
    }
   }
@@ -106,4 +127,51 @@ private fun libraryPage(token:String,thread:String,mode:String,query:String="",b
  fun change(rpc:String,payload:JSONObject){scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,rpc,payload)};if(r.first!=null){onChanged();onClose()}else{onError(r.second);onClose()}}}
  DropdownMenuItem(text={Text(if(starred==true)"Remove star" else "Star message")},enabled=starred!=null,onClick={change("sera_set_message_star",JSONObject().put("p_message",message.id).put("p_star",starred!=true))})
  DropdownMenuItem(text={Text(if(pinned==true)"Unpin message" else "Pin for everyone")},enabled=pinned!=null,onClick={change("sera_set_message_pin",JSONObject().put("p_conversation",thread).put("p_message",message.id).put("p_pin",pinned!=true))})
+}
+
+internal fun seraHighlightedMessage(body:String,query:String,background:Color,foreground:Color):AnnotatedString=buildAnnotatedString{
+ if(query.isBlank()){append(body);return@buildAnnotatedString}
+ var offset=0
+ while(offset<body.length){
+  val index=body.indexOf(query,offset,ignoreCase=true)
+  if(index<0){append(body.substring(offset));break}
+  append(body.substring(offset,index))
+  withStyle(SpanStyle(background=background,color=foreground,fontWeight=FontWeight.SemiBold)){append(body.substring(index,index+query.length))}
+  offset=index+query.length
+ }
+}
+@Composable internal fun SeraHistoricalMessageDialog(token:String,userId:String,thread:String,target:String,playback:SeraChatPlayback,peerName:String,onDismiss:()->Unit,onImage:(NativeChatFile)->Unit){
+ var rows by remember(thread,target){mutableStateOf<List<NativeMessage>>(emptyList())}
+ var loading by remember(thread,target){mutableStateOf(true)}
+ var error by remember(thread,target){mutableStateOf("")}
+ var anchor by remember(thread,target){mutableStateOf(target)}
+ var image by remember(thread,target){mutableStateOf<NativeChatFile?>(null)}
+ image?.let{SeraPrivateImageViewer(token,it,onDismiss={image=null})}
+ val list=rememberLazyListState()
+ LaunchedEffect(token,thread,anchor){
+  loading=true;error=""
+  val r=withContext(Dispatchers.IO){loadNativeMessageContext(token,thread,anchor)}
+  rows=r.first.orEmpty();error=r.second;loading=false
+  val index=rows.indexOfFirst{it.id==anchor}
+  if(index>=0){withFrameNanos{};list.scrollToItem(index+1)}
+ }
+ Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.surface){
+   Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal=12.dp)){
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("Message history",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=onDismiss){Text("Back")}}
+    Text("Browsing a historical conversation window",style=MaterialTheme.typography.bodySmall)
+    if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
+    if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+    LazyColumn(Modifier.weight(1f),state=list,verticalArrangement=Arrangement.spacedBy(6.dp),contentPadding=PaddingValues(vertical=8.dp)){
+     item{TextButton(enabled=!loading&&rows.size>1,onClick={rows.firstOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Earlier messages")}}
+     items(rows,key={it.id}){m->
+      if(m.id==target)Text("Selected message",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium)
+      val colors=MaterialTheme.colorScheme
+      SeraNativeMessageRow(m,rows.firstOrNull{it.id==m.replyId},userId,peerName,token,playback,320.dp,colors.onSurface,colors.surfaceVariant,colors.surface,colors.onSurfaceVariant,colors.primary,Color(0xFF087478),colors.surfaceVariant,false,{},{},{},{},{},{},{},{image=it},{error=it},readOnly=true)
+     }
+     item{TextButton(enabled=!loading&&rows.size>1,onClick={rows.lastOrNull{!it.unsent}?.let{anchor=it.id}}){Text("Later messages")}}
+    }
+   }
+  }
+ }
 }

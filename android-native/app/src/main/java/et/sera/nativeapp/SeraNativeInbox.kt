@@ -176,9 +176,9 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
     } catch (_: Exception) { null to "Unable to display conversations." }
 }
 
-private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100): Pair<List<NativeMessage>?, String> {
+private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null): Pair<List<NativeMessage>?, String> {
     val (raw, error) = inboxRequest(token,
-        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit")
+        "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}?:""))
     if (raw == null) return null to error
     return try {
         val rows = JSONArray(raw)
@@ -189,6 +189,16 @@ private fun loadNativeMessages(token: String, conversationId: String, limit:Int=
             NativeMessage(item.optString("id"), item.optString("sender_id"), item.optString("body"), item.optString("read_at"), item.optString("created_at"), item.optString("delivered_at"), files,item.optString("reply_to_id").takeUnless{it=="null"}.orEmpty(),item.optBoolean("is_forwarded"),!item.isNull("unsent_at"),item.optString("client_message_id"),(item.optJSONArray("professional_message_reactions")?:JSONArray()).let{rs->(0 until rs.length()).map{rs.getJSONObject(it)}.filter{!it.isNull("emoji")}.map{it.optString("member_id") to it.optString("emoji")}},privateReadAt=item.optJSONObject("sera_private_message_reads")?.optString("read_at")?:item.optJSONArray("sera_private_message_reads")?.optJSONObject(0)?.optString("read_at").orEmpty(),editedAt=item.optString("edited_at").takeUnless{it=="null"}.orEmpty())
         }.asReversed() to ""
     } catch (_: Exception) { null to "Unable to display messages." }
+}
+
+internal fun loadNativeMessageContext(token:String,thread:String,target:String):Pair<List<NativeMessage>?,String>{
+    if(!SeraMessageAlerts.validId(thread)||!SeraMessageAlerts.validId(target))return null to "Message unavailable."
+    val r=chatRpc(token,"sera_message_context",JSONObject().put("p_conversation",thread).put("p_message",target).put("p_radius",20))
+    if(r.first==null)return null to r.second
+    val ids=runCatching{val a=JSONArray(r.first);(0 until a.length()).map{a.getJSONObject(it).getString("id")}.filter{SeraMessageAlerts.validId(it)}}.getOrDefault(emptyList())
+    if(target !in ids)return null to "Message unavailable or removed."
+    val result=loadNativeMessages(token,thread,ids.size,ids)
+    return if(result.first?.any{it.id==target&&!it.unsent}==true)result else null to (result.second.ifBlank{"Message unavailable or removed."})
 }
 
 private fun markNativeMessagesRead(token: String, conversationId: String, userId: String) {
@@ -266,6 +276,8 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
 // into separate composable functions to bound Kotlin FIR data-flow analysis.
 private class InboxGlobalState(context: Context) {
     var conversations by mutableStateOf<List<NativeConversation>>(emptyList())
+    var globalStars by mutableStateOf(false)
+    var historicalTarget by mutableStateOf<Pair<String,String>?>(null)
     var messages by mutableStateOf<List<NativeMessage>>(emptyList())
     var error by mutableStateOf("")
     var sending by mutableStateOf(false)
@@ -670,9 +682,9 @@ private class InboxController(
 
     @Composable
     fun ReadReceipts() {
-        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen){
+        LaunchedEffect(token,selected?.id,lifecycle,thread.detailsOpen,thread.libraryMode,global.historicalTarget){
             val c=selected?:return@LaunchedEffect
-            if(thread.detailsOpen)return@LaunchedEffect
+            if(thread.detailsOpen||thread.libraryMode!=null||global.historicalTarget!=null)return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 val seen=mutableSetOf<String>()
                 snapshotFlow{val layout=messageListState.layoutInfo;layout.visibleItemsInfo.filter{isReceiptVisible(it.offset,it.size,layout.viewportStartOffset,layout.viewportEndOffset)}.map{it.key.toString()}.toSet() to messages}
@@ -720,6 +732,8 @@ private class InboxController(
 
     @Composable
     fun Render(modifier: Modifier, onInboxExit: (() -> Unit)?, onCompany: () -> Unit) {
+        if(global.globalStars)SeraMessageLibraryDialog(token,null,userId,"star",onDismiss={global.globalStars=false},onJump={entry->global.globalStars=false;global.historicalTarget=entry.conversationId to entry.id})
+        global.historicalTarget?.let{(chat,id)->SeraHistoricalMessageDialog(token,userId,chat,id,playback,conversations.firstOrNull{it.id==chat}?.peerName?:"Contact",onDismiss={playback.stop();global.historicalTarget=null},onImage={mediaViewer=it})}
         val clipboard = LocalClipboardManager.current
         val dark = androidx.compose.foundation.isSystemInDarkTheme()
         val inboxInk = if(dark) Color(0xFFE6F2F1) else Color(0xFF183B40)
@@ -732,6 +746,7 @@ private class InboxController(
         Column(modifier.fillMaxSize().background(chatSurface).imePadding().navigationBarsPadding().padding(horizontal = 12.dp)) {
             Spacer(Modifier.height(4.dp))
             if (selected == null) {
+                TextButton(onClick={global.globalStars=true},modifier=Modifier.align(Alignment.End)){Text("All starred messages")}
                 SeraNativeConversationList(conversations,search,loading,error,inboxInk,inboxSoft,chatSurface,muted,accent,inboxTeal,onInboxExit,onCompany=onCompany,onSearch={search=it},onRetry={refresh++},token=token,userId=userId,onControlChanged={refresh++},onSelect={conversation->
                     draft=savedDrafts?.read(userId,conversation.id).orEmpty();selected=conversation;messages=emptyList();error="";typingPulse=0;peerTyping=false
                 })
@@ -747,7 +762,7 @@ private class InboxController(
                     onSound={sound=!sound;context.getSharedPreferences("sera_chat_settings",0).edit().putBoolean("sound",sound).apply()},
                     onAudioStart={playback.pause()},onHistory={callEvents=it},onDetails={thread.detailsOpen=true})
                 SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it})
-                thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={id->if(messages.any{it.id==id}){thread.libraryMode=null;thread.suppressImeAnchor=true;thread.jumpMessageId=id;messageSearch="";showSearch=false;true}else false})}
+                thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                 val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
