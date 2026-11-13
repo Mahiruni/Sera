@@ -1,6 +1,6 @@
 package et.sera.nativeapp
 
-internal data class SeraCallEvent(val id:String,val caller:String,val state:String,val createdAt:String){
+internal data class SeraCallEvent(val id:String,val caller:String,val state:String,val createdAt:String,val connectedSeconds:Long?=null){
     fun incoming(userId:String)=caller!=userId
     fun outcome(userId:String)=when(state){
         "missed"->if(incoming(userId))"Missed call" else "No answer"
