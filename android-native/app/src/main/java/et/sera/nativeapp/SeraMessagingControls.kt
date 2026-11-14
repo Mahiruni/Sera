@@ -1,5 +1,9 @@
 package et.sera.nativeapp
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,28 +48,93 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
  LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "full");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
- AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Messaging control center")},text={
- Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
- Text("Account-wide push preferences. Messages continue arriving in your inbox.",fontSize=12.sp)
- Row(verticalAlignment=Alignment.CenterVertically){Text("Message notifications",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=enabled,onCheckedChange={enabled=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Text("Quiet hours",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=quiet,onCheckedChange={quiet=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Text("Show typing activity",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=typing,onCheckedChange={typing=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Share read receipts");Text("Keep new reads private when off.",fontSize=12.sp)};Switch(enabled=loaded&&!busy,checked=receipts,onCheckedChange={receipts=it})}
- Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),style=MaterialTheme.typography.titleMedium)
- listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy);Text(androidx.compose.ui.res.stringResource(label))}}
- Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),fontSize=12.sp)
- OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
- OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
- OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
- SeraPresenceSettings(token,userId)
- if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
- }
- },confirmButton={TextButton(enabled=loaded&&!busy,onClick={
+ Dialog(onDismissRequest={if(!busy)onDismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false)){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
+   Column(Modifier.fillMaxSize().safeDrawingPadding()){
+    Surface(tonalElevation=2.dp){
+     Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
+      Column(Modifier.weight(1f)){
+       Text("Messaging control center",style=MaterialTheme.typography.titleLarge)
+       Text("Your conversations. Your rules.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      IconButton(enabled=!busy,onClick=onDismiss){Icon(Icons.Outlined.Close,contentDescription="Close messaging control center")}
+     }
+    }
+    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
+     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),shape=RoundedCornerShape(24.dp)){
+      Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+       Text("YOUR MESSAGE EXPERIENCE",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+       Text("Stay connected. Stay in control.",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+       Text("Manage your alerts and privacy across devices. Messages keep arriving in your inbox.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+      }
+     }
+     if(!loaded&&error.isBlank())LinearProgressIndicator(Modifier.fillMaxWidth())
+     ControlSection("Notifications","Choose when you receive message alerts."){
+      ControlToggle("Message notifications","Receive new message push alerts.",enabled,loaded&&!busy){enabled=it}
+      HorizontalDivider()
+      ControlToggle("Quiet hours","Pause alerts on your schedule.",quiet,loaded&&!busy){quiet=it}
+      if(quiet){
+       Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        OutlinedTextField(start,{start=it},Modifier.weight(1f),label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
+        OutlinedTextField(end,{end=it},Modifier.weight(1f),label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
+       }
+       OutlinedTextField(zone,{zone=it},Modifier.fillMaxWidth(),label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
+       Text("Overnight hours are supported.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+     }
+     ControlSection("Privacy & activity","Choose what other people can see."){
+      ControlToggle("Show typing activity","Let others see when you type.",typing,loaded&&!busy){typing=it}
+      HorizontalDivider()
+      ControlToggle("Share read receipts","Keep new reads private when off.",receipts,loaded&&!busy){receipts=it}
+      HorizontalDivider()
+      SeraPresenceSettings(token,userId)
+     }
+     ControlSection(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),"Choose what appears in private notifications."){
+      listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->
+       Surface(shape=RoundedCornerShape(14.dp),color=if(previewMode==mode)MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.35f)){
+        Row(Modifier.fillMaxWidth().padding(end=12.dp),verticalAlignment=Alignment.CenterVertically){
+         RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy)
+         Text(androidx.compose.ui.res.stringResource(label),style=MaterialTheme.typography.bodyMedium)
+        }
+       }
+      }
+      Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+     }
+     if(error.isNotBlank())Surface(color=MaterialTheme.colorScheme.errorContainer,shape=RoundedCornerShape(16.dp)){Text(error,Modifier.fillMaxWidth().padding(14.dp),color=MaterialTheme.colorScheme.onErrorContainer)}
+    }
+    Surface(tonalElevation=3.dp){
+     Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically){
+      OutlinedButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}
+      Button(modifier=Modifier.weight(1f).heightIn(min=48.dp),enabled=loaded&&!busy,onClick={
  val a=parseClock(start);val z=parseClock(end)
- if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@TextButton}
+ if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@Button}
  busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null){SeraMessageAlerts.clearPrivateAlerts(context,userId);onDismiss()}else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
- }){Text(if(busy)"Saving…" else "Save")}},dismissButton={TextButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}})
+      }){Text(if(busy)"Saving…" else "Save preferences")}
+     }
+    }
+   }
+  }
+ }
 }
+@Composable private fun ControlSection(title:String,subtitle:String,content:@Composable ColumnScope.()->Unit){
+ OutlinedCard(shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth()){
+  Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+   Text(title,style=MaterialTheme.typography.titleMedium)
+   Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+   content()
+  }
+ }
+}
+@Composable private fun ControlToggle(title:String,subtitle:String,checked:Boolean,enabled:Boolean,onChange:(Boolean)->Unit){
+ Row(Modifier.fillMaxWidth().heightIn(min=56.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically){
+  Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+   Text(title,style=MaterialTheme.typography.bodyLarge)
+   Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+  }
+  Switch(checked=checked,onCheckedChange=onChange,enabled=enabled)
+ }
+}
+
 @Composable internal fun SeraConversationControlMenu(token:String,conversation:NativeConversation,onChanged:()->Unit){
  val scope=rememberCoroutineScope();var open by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
  fun change(action:String,value:Boolean,minutes:Int=0){open=false;busy=true;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_conversation_preference",JSONObject().put("p_conversation",conversation.id).put("p_action",action).put("p_value",value).put("p_mute_minutes",minutes))};busy=false;if(r.first!=null)onChanged()else error=r.second}}
