@@ -39,7 +39,7 @@ internal object SeraMessageAlerts {
     fun setForeground(value:Boolean){foreground=value;if(!value)banner=null}
     fun dismissBanner(){banner=null}
     fun enabled(context:Context,owner:String)=prefs(context).getBoolean("enabled:$owner",true)
-    fun setEnabled(context:Context,owner:String,value:Boolean){prefs(context).edit().putBoolean("enabled:$owner",value).apply();if(!value){dismissBanner();manager(context).activeNotifications.filter{it.tag?.startsWith("sera-message:$owner:")==true}.forEach{manager(context).cancel(it.tag,it.id)}}}
+    fun setEnabled(context:Context,owner:String,value:Boolean){prefs(context).edit().putBoolean("enabled:$owner",value).apply();if(!value){SeraActivityPush.clearAlerts(context,owner);dismissBanner();manager(context).activeNotifications.filter{it.tag?.startsWith("sera-message:$owner:")==true}.forEach{manager(context).cancel(it.tag,it.id)}}}
     fun mutedUntil(context:Context,owner:String,thread:String)=prefs(context).getLong("mute:$owner:$thread",0)
     fun mute(context:Context,owner:String,thread:String,until:Long){prefs(context).edit().putLong("mute:$owner:$thread",until).apply();if(until>System.currentTimeMillis()){manager(context).cancel(tag(owner,thread),1);if(banner?.thread==thread)dismissBanner()}}
     private fun showBanner(context:Context,event:SeraMessageBannerEvent){

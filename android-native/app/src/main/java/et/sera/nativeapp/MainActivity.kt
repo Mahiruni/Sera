@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         callback.value = intent?.data?.takeIf { isSeraOAuthCallback(it) }
-        pushKind.value = seraLaunchDestination(intent)
+        pushKind.value = SeraActivityPush.launchDestination(intent)?:seraLaunchDestination(intent)
         SeraPush.channel(this)
         SeraPush.initialize(this)
         // A warm start, configuration change, process restoration or OAuth
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         callback.value = intent.data?.takeIf { isSeraOAuthCallback(it) }
-        pushKind.value = seraLaunchDestination(intent)
+        pushKind.value = SeraActivityPush.launchDestination(intent)?:seraLaunchDestination(intent)
     }
 }
 
@@ -418,6 +418,20 @@ fun SeraApp(
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isBlank())return@LaunchedEffect
         if(kind=="voice_call_active"){globalVoice.restore();onPushConsumed();return@LaunchedEffect}
+        if(kind.startsWith("activity:")){
+            val event=SeraActivityPush.parseOpen(kind)
+            if(event!=null&&event.owner==authenticatedUserId){
+                // Resolve the actual target using the authenticated session before opening.
+                if(event.kind=="space_message"){
+                    val member=withContext(Dispatchers.IO){spaceRows(spaceCall(token,"sera_list_spaces").first).any{it.optString("id")==event.target&&it.optString("status")=="active"}}
+                    if(member&&accessToken==token&&authenticatedUserId==event.owner){notificationSpace=event.target;navigateTo("Notifications");scope.launch{if(withContext(Dispatchers.IO){SeraActivityPush.markOpened(context,token,event)})SeraUnreadRefresh.changed()}}
+                }else{
+                    val peer=withContext(Dispatchers.IO){resolveNativeMessagePeer(token,event.owner,event.target)}
+                    if(peer!=null&&accessToken==token&&authenticatedUserId==event.owner){openCompanyInbox=false;callThread=event.target;callPeer=peer;navigateTo("Inbox");scope.launch{if(withContext(Dispatchers.IO){SeraActivityPush.markOpened(context,token,event)})SeraUnreadRefresh.changed()}}
+                }
+            }
+            onPushConsumed();return@LaunchedEffect
+        }
         if(kind.startsWith("space_message:")){
             val parts=kind.split(":");val space=parts.getOrNull(1);val owner=parts.getOrNull(2)
             if(owner==authenticatedUserId&&space!=null&&SeraMessageAlerts.validId(space)){notificationSpace=space;navigateTo("Notifications")}
