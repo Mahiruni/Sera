@@ -85,7 +85,9 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
     val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
     var search by rememberSaveable(userId) { mutableStateOf("") }
     val jobsListState=rememberLazyListState()
-    var jobs by remember { mutableStateOf<List<NativeJob>>(emptyList()) }
+    var jobs by remember(userId,token) { mutableStateOf<List<NativeJob>>(emptyList()) }
+    var cachedJobs by remember(userId,token){mutableStateOf(false)}
+    var liveJobs by remember(userId,token){mutableStateOf(false)}
     var selected by remember { mutableStateOf<NativeJob?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
@@ -96,12 +98,21 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
     var contactError by remember { mutableStateOf("") }
     val scope=rememberCoroutineScope()
     if(companyChat!=null){ Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,companyChat,onBack={companyChat=null})}; return }
-    LaunchedEffect(token, reload) {
-        loading = true
-        val result = withContext(Dispatchers.IO) { fetchOpenJobs(token) }
-        result.first?.let { jobs = it }
-        error = result.second
-        loading = false
+    LaunchedEffect(token,userId,reload) {
+        loading=true;liveJobs=false
+        if(userId.isBlank()||token.isBlank()){jobs=emptyList();loading=false;return@LaunchedEffect}
+        val cache=SeraScreenCache(context,userId)
+        val generation=cache.generation()
+        if(jobs.isEmpty())withContext(Dispatchers.IO){cache.readJobs()}?.let{jobs=it;cachedJobs=it.isNotEmpty()}
+        val result=withContext(Dispatchers.IO){fetchOpenJobs(token)}
+        if(result.first!=null){
+            jobs=result.first!!;cachedJobs=false;liveJobs=true
+            withContext(Dispatchers.IO){runCatching{cache.writeJobs(result.first!!,generation)}}
+        }else if(result.second.contains("HTTP 401")||result.second.contains("HTTP 403")){
+            jobs=emptyList();selected=null;cachedJobs=false
+            withContext(Dispatchers.IO){runCatching{cache.clearJobs()}}
+        }
+        error=result.second;loading=false
     }
     val filtered = remember(jobs, search) {
         jobs.filter {
@@ -148,6 +159,7 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
             Text("${filtered.size} opportunities", color = Color(0xFF087E83), fontWeight = FontWeight.SemiBold)
             TextButton(onClick = { reload++ }, enabled = !loading) { Text("Refresh") }
         }
+        if(cachedJobs)Text("Saved opportunities · checking availability",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         if (loading && jobs.isEmpty()) SeraLoadingCards(count = 3, modifier = Modifier.padding(vertical = 12.dp))
         else if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error.isNotBlank()) {
@@ -213,8 +225,9 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
                 }
                 Text("Listings are submitted by employers. Never pay to apply.", fontSize = 12.sp, color = Color.Gray)
                 if(contactError.isNotBlank()) Text(contactError,color=MaterialTheme.colorScheme.error)
-                FilledTonalButton(onClick={contacting=true;contactError="";scope.launch{val (id,e)=withContext(Dispatchers.IO){startCompanyJobChat(token,job.id)};contacting=false;if(id!=null){selected=null;companyChat=id}else contactError=e}},enabled=!contacting && userId.isNotBlank(),modifier=Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)){Text(if(contacting)"Opening conversation…" else "Message company") }
+                FilledTonalButton(onClick={contacting=true;contactError="";scope.launch{val (id,e)=withContext(Dispatchers.IO){startCompanyJobChat(token,job.id)};contacting=false;if(id!=null){selected=null;companyChat=id}else contactError=e}},enabled=!contacting && userId.isNotBlank()&&liveJobs,modifier=Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)){Text(if(contacting)"Opening conversation…" else "Message company") }
                 Button(
+                    enabled=liveJobs,
                     onClick = {
                         selected=null;linkHandler.openUri("https://sera.hisabtech.com/jobs/" + Uri.encode(job.id))
                     },

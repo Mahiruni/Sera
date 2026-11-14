@@ -197,8 +197,10 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                             val postBody: @Composable () -> Unit = {
                                 SeraFeedCopy(title,body,expandedPosts[post.id]==true,{expandedPosts[post.id]=it},postId=post.id)
                                 post.imageUrl?.let { url ->
-                                    SeraMediaImage(url=url,description=stringResource(R.string.post_image),widthPx=1080,heightPx=720,accessToken=token,previewUrl=post.imagePreviewUrl,
-                                        modifier=Modifier.fillMaxWidth().padding(top=8.dp).heightIn(min=160.dp,max=340.dp).clip(RoundedCornerShape(14.dp)).clickable{expandedImage=url})
+                                    val imageModifier=Modifier.fillMaxWidth().padding(top=8.dp).heightIn(min=160.dp,max=340.dp).clip(RoundedCornerShape(14.dp)).clickable{expandedImage=url}
+                                    if(post.audience=="public"&&post.repostOf==null&&post.imagePreviewUrl!=null&&currentUserId.isNotBlank())
+                                        SeraCachedPublicThumbnail(currentUserId,token,post.id,post.imagePreviewUrl,post.editedAt.orEmpty(),url,imageModifier)
+                                    else SeraMediaImage(url=url,description=stringResource(R.string.post_image),widthPx=1080,heightPx=720,accessToken=token,previewUrl=post.imagePreviewUrl,modifier=imageModifier)
                                 }
                             }
                             if(post.repostOf!=null){
@@ -254,13 +256,8 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                 }
                 items(previews.size,key={index->"cached-"+previews[index].id}){index->
                     val preview=previews[index]
-                    Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-                        Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
-                        if(preview.headline.isNotBlank())Text(preview.headline,color=feedMuted,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        if(preview.title.isNotBlank())Text(preview.title,color=feedInk,fontWeight=FontWeight.Medium)
-                        if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=12,overflow=TextOverflow.Ellipsis)
-                        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
-                    }
+                    SeraCachedPostCard(preview)
+                    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 }
             }
             if(refreshing&&posts.size==0&&slowLoad) item(key="feed-slow") { SeraFeedLoadingNotice(onRetry=::retryFeed) }

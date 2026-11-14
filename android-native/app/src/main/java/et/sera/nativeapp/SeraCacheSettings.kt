@@ -34,6 +34,7 @@ import kotlinx.coroutines.withContext
             val result=withContext(Dispatchers.IO){runCatching{
                 SeraFeedPreviewCache(context,user).clear()
                 SeraMessageHistoryCache(context).clear(user)
+                SeraLocalCache.get(context).clear(user)
                 SeraNetworkMemory.clear();SeraAvatarMemory.clear()
             }}
             busy=false

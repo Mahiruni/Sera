@@ -20,6 +20,8 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
     private val prefs=app.getSharedPreferences("sera_cache_budget",Context.MODE_PRIVATE)
     private val alias="sera_local_cache_aes_v1"
     private val guard=Any()
+    private val generations=mutableMapOf<String,Long>()
+    fun generation(owner:String):Long=synchronized(guard){generations[owner]?:0L}
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE snapshots (owner TEXT NOT NULL, bucket TEXT NOT NULL, item TEXT NOT NULL, written INTEGER NOT NULL, expires INTEGER NOT NULL, touched INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(owner,bucket,item))")
         db.execSQL("CREATE INDEX snapshots_lru ON snapshots(owner,touched)")
@@ -60,7 +62,8 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
         else db.update("snapshots",ContentValues().apply{put("touched",now)},where,a)
         result
     }
-    fun write(owner:String,bucket:String,item:String,value:String,now:Long,ttl:Long,maxEntries:Int):Boolean=synchronized(guard){
+    fun write(owner:String,bucket:String,item:String,value:String,now:Long,ttl:Long,maxEntries:Int,expectedGeneration:Long=generation(owner)):Boolean=synchronized(guard){
+        if(expectedGeneration!=(generations[owner]?:0L))return@synchronized false
         if(!SeraMessageAlerts.validId(owner)||ttl<=0||maxEntries<1||value.toByteArray(Charsets.UTF_8).size>600000)return@synchronized false
         val a=args(owner,bucket,item);val expires=now+ttl
         val encrypted=seal(value,aad(a[0],bucket,a[2],now,expires))
@@ -88,6 +91,7 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
     }
     fun remove(owner:String,bucket:String,item:String)=synchronized(guard){writableDatabase.delete("snapshots",where,args(owner,bucket,item));Unit}
     fun clear(owner:String,bucket:String?=null)=synchronized(guard){
+        generations[owner]=(generations[owner]?:0L)+1
         if(bucket==null)writableDatabase.delete("snapshots","owner=?",arrayOf(hash(owner)))
         else writableDatabase.delete("snapshots","owner=? AND bucket=?",arrayOf(hash(owner),bucket))
         Unit

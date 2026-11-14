@@ -35,10 +35,17 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
     LaunchedEffect(editRequested){if(editRequested){editing=true;onEditConsumed()}}
     var changingPassword by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
-    var details by remember(userId) { mutableStateOf<NativeProfileFields?>(null) }
+    val context=androidx.compose.ui.platform.LocalContext.current
+    var details by remember(userId,token) { mutableStateOf<NativeProfileFields?>(null) }
+    var savedDetails by remember(userId,token){mutableStateOf(false)}
     LaunchedEffect(token, userId, reload) {
         if (token.isNotBlank() && userId.isNotBlank()) {
-            details = withContext(Dispatchers.IO) { loadNativeProfile(token, userId).first }
+            val cache=SeraScreenCache(context,userId)
+            val generation=cache.generation()
+            if(details==null)withContext(Dispatchers.IO){cache.readProfile()}?.let{details=it;savedDetails=true}
+            val result=withContext(Dispatchers.IO){loadNativeProfile(token,userId)}
+            if(result.first!=null){details=result.first;savedDetails=false;withContext(Dispatchers.IO){runCatching{cache.writeProfile(result.first!!,generation)}}}
+            else if(result.second.contains("HTTP 401")||result.second.contains("HTTP 403")||result.second.contains("Profile not found")){details=null;savedDetails=false;withContext(Dispatchers.IO){runCatching{cache.clearProfile()}}}
         }
     }
     if (changingPassword && token.isNotBlank()) SeraNativeChangePassword(token, onDismiss = { changingPassword = false })
@@ -77,6 +84,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
         }
         Surface(shape = RoundedCornerShape(22.dp), color = Color.White, border = BorderStroke(1.dp, profileLine)) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if(savedDetails)Text("Saved profile · checking for updates",style=MaterialTheme.typography.bodySmall,color=profileMuted)
                 Text("Professional identity", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = profileInk)
                 Text("About", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = profileTeal)
                 Text(details?.summary?.takeIf { it.isNotBlank() } ?: "Introduce yourself and share what you bring to your work.", color = profileMuted, fontSize = 14.sp, lineHeight = 21.sp)
