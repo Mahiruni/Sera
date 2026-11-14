@@ -107,6 +107,7 @@ fun SeraNativeJobs(token: String, userId: String, modifier: Modifier = Modifier)
         val result=withContext(Dispatchers.IO){fetchOpenJobs(token)}
         if(result.first!=null){
             jobs=result.first!!;cachedJobs=false;liveJobs=true
+            selected=selected?.let{old->jobs.firstOrNull{it.id==old.id}}
             withContext(Dispatchers.IO){runCatching{cache.writeJobs(result.first!!,generation)}}
         }else if(result.second.contains("HTTP 401")||result.second.contains("HTTP 403")){
             jobs=emptyList();selected=null;cachedJobs=false

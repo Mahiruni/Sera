@@ -19,7 +19,9 @@ import okhttp3.Request
  val context=LocalContext.current.applicationContext
  var bitmap by remember(owner,token,postId,previewUrl,version){mutableStateOf<Bitmap?>(null)}
  var fallback by remember(owner,token,postId,previewUrl,version){mutableStateOf(false)}
+ var denied by remember(owner,token,postId,previewUrl,version){mutableStateOf(false)}
  LaunchedEffect(owner,token,postId,previewUrl,version){
+  var rejected=false
   val result=withContext(Dispatchers.IO){
    runCatching{
     if(!Regex("https://sera[.]hisabtech[.]com/api/post-media/[0-9a-fA-F-]{36}").matches(previewUrl))return@runCatching null
@@ -30,6 +32,7 @@ import okhttp3.Request
     if(cached!=null)BitmapFactory.decodeByteArray(cached,0,cached.size)?.let{return@runCatching it}
     val request=Request.Builder().url(previewUrl+"?w=480").header("Authorization","Bearer "+token).header("Accept","image/*").build()
     SeraHttp.client.newCall(request).execute().use{r->
+     if(r.code in listOf(401,403,404)){rejected=true;store.remove(owner,"thumbnail",item);return@use null}
      if(!r.isSuccessful||r.body==null)return@use null
      val body=r.body!!
      if(body.contentLength()>400000)return@use null
@@ -46,10 +49,10 @@ import okhttp3.Request
     }
    }.getOrNull()
   }
-  bitmap=result;fallback=result==null
+  bitmap=result;denied=rejected;fallback=result==null&&!rejected
  }
  val image=bitmap
  if(image!=null)Image(image.asImageBitmap(),contentDescription=stringResource(R.string.post_image),modifier=modifier,contentScale=ContentScale.Crop)
  else if(fallback)SeraMediaImage(originalUrl,stringResource(R.string.post_image),1080,720,modifier,accessToken=token,previewUrl=previewUrl)
- else Box(modifier.heightIn(min=160.dp))
+ else if(!denied)Box(modifier.heightIn(min=160.dp))
 }

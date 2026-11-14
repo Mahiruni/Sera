@@ -49,7 +49,7 @@ fun SeraProfile(identity: String, loading: Boolean, error: String, onRetry: () -
         }
     }
     if (changingPassword && token.isNotBlank()) SeraNativeChangePassword(token, onDismiss = { changingPassword = false })
-    if (editing && token.isNotBlank() && userId.isNotBlank()) SeraNativeProfileEditor(token, userId, onDismiss = { editing = false }, onSaved = { editing = false; reload++; onRetry() })
+    if (editing && token.isNotBlank() && userId.isNotBlank()) SeraNativeProfileEditor(token, userId, onDismiss = { editing = false }, onSaved = { editing = false; details=null; savedDetails=false; reload++; onRetry() })
     val name = details?.fullName?.takeIf { it.isNotBlank() } ?: identity.lineSequence().firstOrNull().orEmpty().ifBlank { "SERA member" }
     val email = identity.lineSequence().drop(1).firstOrNull().orEmpty()
     val canEdit = token.isNotBlank() && userId.isNotBlank()
