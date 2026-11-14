@@ -4,19 +4,7 @@ set -euo pipefail
 : "${SERA_E2E_OWNER_EMAIL:?Missing dedicated QA email}"
 : "${SERA_E2E_OWNER_PASSWORD:?Missing dedicated QA password}"
 : "${SERA_SUPABASE_ANON_KEY:?Missing Supabase publishable key}"
-refresh="$(python3 - <<'PY'
-import json, os, urllib.request
-url="https://okegwojigrtxadvgxpwm.supabase.co/auth/v1/token?grant_type=password"
-req=urllib.request.Request(url,data=json.dumps({"email":os.environ["SERA_E2E_OWNER_EMAIL"],"password":os.environ["SERA_E2E_OWNER_PASSWORD"]}).encode(),headers={"apikey":os.environ["SERA_SUPABASE_ANON_KEY"],"Content-Type":"application/json"})
-try:
-    with urllib.request.urlopen(req,timeout=20) as response:
-        token=json.load(response)["refresh_token"]
-        assert token and all(c.isalnum() or c in "-_." for c in token)
-        print(token)
-except Exception:
-    raise SystemExit("Dedicated feed QA authentication failed")
-PY
-)"
+refresh="$(python3 android-native/scripts/feed_qa_auth.py)"
 echo "::add-mask::$refresh"
 adb shell am force-stop et.sera.nativeapp
 adb shell pm grant et.sera.nativeapp android.permission.POST_NOTIFICATIONS || true

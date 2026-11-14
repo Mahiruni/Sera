@@ -23,6 +23,7 @@ jobs:
   feed-qa-preflight:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Require dedicated feed QA credentials before building
         shell: bash
         env:
@@ -36,6 +37,12 @@ jobs:
               exit 1
             fi
           done
+      - name: Verify QA sign-in and real post access before building
+        env:
+          SERA_E2E_OWNER_EMAIL: ${{ secrets.SERA_E2E_OWNER_EMAIL }}
+          SERA_E2E_OWNER_PASSWORD: ${{ secrets.SERA_E2E_OWNER_PASSWORD }}
+          SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+        run: python3 android-native/scripts/feed_qa_auth.py --preflight
   visual-regression:
     needs: feed-qa-preflight
     uses: ./.github/workflows/messaging-native-visual.yml
