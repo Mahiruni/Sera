@@ -36,7 +36,7 @@ internal object SeraNotificationActions {
         val input=RemoteInput.Builder(INPUT).setLabel("Write a reply").build()
         builder.addAction(NotificationCompat.Action.Builder(android.R.drawable.ic_menu_send,"Reply",reply)
             .addRemoteInput(input).setAllowGeneratedReplies(true).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY).build())
-        builder.addAction(NotificationCompat.Action.Builder(android.R.drawable.ic_menu_view,"Mark latest read",read)
+        builder.addAction(NotificationCompat.Action.Builder(android.R.drawable.ic_menu_view,"Mark as read",read)
             .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ).build())
     }
 
@@ -53,10 +53,10 @@ internal object SeraNotificationActions {
         val store=if(reply)runCatching{NativeChatOutbox(context)}.getOrNull() else null
         if(reply){
             val saved=runCatching{check(store!=null);store.saveText(owner,thread,NativeQueuedText(id,text!!,message,java.time.Instant.now().toString(),TextSendStage.Ready))}
-            if(saved.isFailure){showResult(context,owner,thread,"Reply not saved. Open SERA to try again.");return}
+            if(saved.isFailure){showResult(context,owner,thread,"Reply not saved. Open Sera to try again.");return}
         }
         val access=runCatching{SessionStore(context).actionAccess(owner)}.getOrNull()
-        if(access.isNullOrBlank()){showResult(context,owner,thread,if(reply)"Reply saved. Open SERA to send." else "Open SERA to mark this message read.");return}
+        if(access.isNullOrBlank()){showResult(context,owner,thread,if(reply)"Reply saved. Open Sera to send." else "Open Sera to mark this message read.");return}
         if(SeraPush.owner(context)!=owner)return
         val payload=JSONObject().put("action",if(reply)"reply" else "read").put("owner",owner).put("conversation",thread).put("message",message).put("clientId",id)
         if(reply)payload.put("body",text)
@@ -68,9 +68,9 @@ internal object SeraNotificationActions {
         if(SeraPush.owner(context)!=owner)return
         if(ok){
             if(reply)runCatching{store?.removeText(owner,thread,id)}
-            SeraMessageAlerts.clearThreadAlert(context,owner,thread)
+            SeraMessageAlerts.clearThreadAlert(context,owner,thread,message)
             SeraUnreadRefresh.changed()
-        }else showResult(context,owner,thread,if(reply)"Reply saved. Open SERA to retry." else "Could not mark as read. Open SERA.")
+        }else showResult(context,owner,thread,if(reply)"Reply saved. Open Sera to retry." else "Could not mark as read. Open Sera.")
     }
 
     private fun showResult(context:Context,owner:String,thread:String,body:String){
@@ -79,7 +79,7 @@ internal object SeraNotificationActions {
             .putExtra("sera_kind","message:$thread:$owner").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val pi=PendingIntent.getActivity(context,0,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val n=NotificationCompat.Builder(context,SeraNotificationSounds.SILENT).setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("SERA.et").setContentText(body).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setContentTitle("Sera").setContentText(body).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOnlyAlertOnce(true).setAutoCancel(true).setContentIntent(pi).build()
         runCatching{context.getSystemService(NotificationManager::class.java).notify("sera-message:$owner:$thread",1,n)}
     }

@@ -3,7 +3,7 @@ export function messagePushPayload(recipient:string,conversation:string,message:
  if(![recipient,conversation,message].every(v=>typeof v==="string"&&uuid.test(v)))return null;
  // Private content is deliberately never included in the provider payload.
  return {recipientId:recipient,conversationId:conversation,messageId:message,kind,
- title:kind==="company_message"?"New company message":"New SERA message",
+ title:kind==="company_message"?"New company message":"Sera",
  body:"You have a new private message.",
  url:kind==="message"?"/network/messages?thread="+conversation:"/network/messages"};
 }

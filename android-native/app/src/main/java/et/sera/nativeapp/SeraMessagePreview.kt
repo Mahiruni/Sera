@@ -6,12 +6,12 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-internal data class SeraNotificationPreview(val title:String,val body:String)
+internal data class SeraNotificationPreview(val title:String,val body:String,val senderId:String?=null,val avatar:String?=null,val createdAt:Long=0L,val mode:String="hidden")
 /** Fetch only from the authorized SERA endpoint. No private text in FCM or local preferences.
  * Called on Firebase's worker thread, never while holding the UI alert lock.
  */
 internal object SeraMessagePreview{
-    private val client=OkHttpClient.Builder().callTimeout(1800,TimeUnit.MILLISECONDS).build()
+    private val client=OkHttpClient.Builder().callTimeout(2500,TimeUnit.MILLISECONDS).build()
     fun fetch(context:Context,data:Map<String,String>):SeraNotificationPreview?{
         if(data["kind"]!="message")return null
         val owner=data["recipient_id"]?:return null
@@ -27,7 +27,10 @@ internal object SeraMessagePreview{
                 val json=JSONObject(response.body?.string().orEmpty())
                 val title=json.optString("title").take(160)
                 val body=json.optString("body").take(280)
-                if(title.isBlank()||body.isBlank())null else SeraNotificationPreview(title,body)
+                val sender=json.optString("senderId").takeIf{SeraMessageAlerts.validId(it)}
+                val avatar=json.optString("avatar").takeUnless{it.isBlank()||it=="null"}
+                val at=runCatching{java.time.Instant.parse(json.optString("createdAt")).toEpochMilli()}.getOrDefault(0L)
+                if(title.isBlank()||body.isBlank())null else SeraNotificationPreview(title,body,sender,avatar,at,json.optString("mode","hidden"))
             }
         }.getOrNull()
     }

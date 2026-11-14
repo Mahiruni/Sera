@@ -230,7 +230,7 @@ class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
-        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);return}
+        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);if(preview?.senderId!=null&&preview.avatar!=null){val owner=message.data["recipient_id"];if(owner!=null){val image=SeraNotificationAvatars.load(this,owner,preview.senderId,preview.avatar);SeraMessageAlerts.enrichAvatar(this,message.data,preview,image)}};return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"Sera",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token);SeraPush.refreshToken(this,token)}
