@@ -13,7 +13,8 @@ export function attachmentPreview(mime:unknown):string{
 export type NotificationPreviewMode="full"|"sender"|"hidden";
 export function notificationPreviewMode(mode:unknown,legacy?:boolean):NotificationPreviewMode{
  if(mode==="full"||mode==="sender"||mode==="hidden")return mode;
- return legacy===true?"full":legacy===false?"hidden":"sender";
+ // Missing preference means the product default. An explicit legacy opt-out still wins.
+ return legacy===false?"hidden":"full";
 }
 
 const notificationWords:Record<string,[string,string]> = {

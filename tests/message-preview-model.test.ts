@@ -3,6 +3,8 @@ import {cleanPreviewText,attachmentPreview,notificationPreviewMode,notificationT
 test("notification text is bounded, single-line and strips bidi controls",()=>{assert.equal(cleanPreviewText("  hello\nworld\u202e  "),"hello world");assert.equal(cleanPreviewText("😀😀😀",2),"😀😀");assert.equal(cleanPreviewText(null),"");});
 test("safe attachment labels contain no file names or paths",()=>{assert.equal(attachmentPreview("image/jpeg"),"Sent you a photo");assert.equal(attachmentPreview("application/pdf"),"Shared a PDF document");assert.equal(attachmentPreview(null),"Shared an attachment");});
 
-test("preview mode preserves existing privacy and defaults new accounts to sender only",()=>{assert.equal(notificationPreviewMode(undefined,false),"hidden");assert.equal(notificationPreviewMode(undefined,true),"full");assert.equal(notificationPreviewMode(undefined),"sender");assert.equal(notificationPreviewMode("sender",false),"sender");});
+test("preview mode preserves existing privacy and defaults new accounts to full previews",()=>{assert.equal(notificationPreviewMode(undefined,false),"hidden");assert.equal(notificationPreviewMode(undefined,true),"full");assert.equal(notificationPreviewMode(undefined),"full");assert.equal(notificationPreviewMode("sender",false),"sender");});
 
 test("notification copy localizes only system labels",()=>{assert.notEqual(notificationText("am","Sent you a message"),"Sent you a message");assert.notEqual(notificationText("om","Sent you a message"),"Sent you a message");assert.equal(notificationText("am","Hello from the sender"),"Hello from the sender");});
+
+test("explicit privacy selections override the friendly default",()=>{assert.equal(notificationPreviewMode("hidden",true),"hidden");assert.equal(notificationPreviewMode("sender",true),"sender");assert.equal(notificationPreviewMode("full",false),"full");assert.equal(notificationPreviewMode(null),"full");});

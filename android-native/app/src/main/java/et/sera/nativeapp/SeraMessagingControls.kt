@@ -37,13 +37,13 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  var quiet by remember{mutableStateOf(false)}
  var typing by remember{mutableStateOf(true)}
  var receipts by remember{mutableStateOf(true)}
- var previewMode by remember{mutableStateOf("sender")}
+ var previewMode by remember{mutableStateOf("full")}
  var start by remember{mutableStateOf("22:00")}
  var end by remember{mutableStateOf("07:00")}
  var zone by remember{mutableStateOf("Africa/Addis_Ababa")}
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
- LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "sender");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
+ LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "full");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
  AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Messaging control center")},text={
  Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
  Text("Account-wide push preferences. Messages continue arriving in your inbox.",fontSize=12.sp)
