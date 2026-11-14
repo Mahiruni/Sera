@@ -30,4 +30,7 @@
 <string name="sign_in_to_sera">Sign in to SERA</string>
 <string name="continue_linkedin">Continue with LinkedIn</string>
 <string name="or_email">or sign in with email</string>
-<string name="new_feed_posts">New posts ↑</string><string name="feed_cached_preview">Saved feed preview · syncing</string></resources>
+<string name="new_feed_posts">New posts ↑</string><string name="feed_cached_preview">Saved feed preview · syncing</string>
+<string name="feed_loading_slow">Posts are loading slowly. Please retry.</string>
+<string name="feed_live_preview">Post preview · syncing</string>
+</resources>

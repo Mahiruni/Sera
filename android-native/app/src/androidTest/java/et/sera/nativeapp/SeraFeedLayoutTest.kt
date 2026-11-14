@@ -38,6 +38,14 @@ class SeraFeedLayoutTest {
         compose.onNodeWithText("Read more").assertExists()
     }
 
+    @Test fun slowFeedOffersRetryInsteadOfPermanentSkeleton(){
+        var retried=false
+        compose.setContent{MaterialTheme{SeraFeedLoadingNotice{retried=true}}}
+        compose.onNodeWithTag("sera_feed_slow").assertExists()
+        compose.onNodeWithTag("sera_feed_retry").performClick()
+        compose.runOnIdle{org.junit.Assert.assertTrue(retried)}
+    }
+
     @Test fun shortPostDoesNotShowReadMore(){
         compose.setContent{MaterialTheme{SeraFeedCopy("","A short update.",false,{})}}
         compose.onNodeWithTag("sera_feed_expand").assertDoesNotExist()

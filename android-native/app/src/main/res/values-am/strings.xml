@@ -30,4 +30,7 @@
 <string name="sign_in_to_sera">ወደ Sera ግባ</string>
 <string name="continue_linkedin">በLinkedIn ይቀጥሉ</string>
 <string name="or_email">ወይም በኢሜይል ይግቡ</string>
-<string name="new_feed_posts">አዲስ ልጥፎች ↑</string><string name="feed_cached_preview">የተቀመጡ ልጥፎች · በማዘመን ላይ</string></resources>
+<string name="new_feed_posts">አዲስ ልጥፎች ↑</string><string name="feed_cached_preview">የተቀመጡ ልጥፎች · በማዘመን ላይ</string>
+<string name="feed_loading_slow">ልጥፎች በዝግታ እየጫኑ ነው። እባክዎ እንደገና ይሞክሩ።</string>
+<string name="feed_live_preview">የልጥፎች ቅድመ እይታ · በማዘመን ላይ</string>
+</resources>

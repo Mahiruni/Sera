@@ -27,7 +27,7 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
     } catch (e: Exception) { null to "Network unavailable. Please retry." }
 }
 
-fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false,savedOnly:Boolean=false): Pair<List<SeraPost>?, String> {
+fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false,savedOnly:Boolean=false,onBasePosts:((List<SeraPost>)->Unit)?=null): Pair<List<SeraPost>?, String> {
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
     val savedJoin=if(savedOnly)",post_saves!inner(post_id)" else ""
@@ -50,6 +50,8 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 repostOf = item.optString("repost_of").takeIf { it.isNotBlank() && it != "null" }, repostNote = item.optString("repost_note").takeUnless{it=="null"}.orEmpty(), audience=item.optString("audience","public"),editedAt=item.optString("edited_at").takeUnless{it.isBlank()||it=="null"}
             )
         }
+        // Publish an authenticated public-text preview before optional enrichment requests.
+        onBasePosts?.invoke(posts)
         if (posts.isEmpty()) return emptyList<SeraPost>() to ""
         val sourceAuthors = mutableMapOf<String, String>()
         val sourceRows = mutableMapOf<String, JSONObject>()

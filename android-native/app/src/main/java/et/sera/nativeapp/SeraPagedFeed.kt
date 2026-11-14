@@ -76,7 +76,18 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     val posts = stream.collectAsLazyPagingItems()
     var cachedPreview by remember(session,personalized,savedOnly){mutableStateOf<List<SeraFeedPreview>>(emptyList())}
     LaunchedEffect(session,personalized,savedOnly){if(!personalized&&!savedOnly)cachedPreview=withContext(Dispatchers.IO){session?.readPreview().orEmpty()}}
-    val showCached=!personalized&&!savedOnly&&posts.itemCount==0&&posts.loadState.refresh !is LoadState.NotLoading&&cachedPreview.isNotEmpty()
+    val emptyPreview=remember{ kotlinx.coroutines.flow.MutableStateFlow<List<SeraFeedPreview>?>(null) }
+    val freshPreview by (if(!personalized&&!savedOnly)session?.preview?:emptyPreview else emptyPreview).collectAsState()
+    val previews=freshPreview?:cachedPreview
+    val showPreview=!personalized&&!savedOnly&&posts.itemCount==0&&posts.loadState.refresh !is LoadState.NotLoading&&previews.isNotEmpty()
+    val refreshing=posts.loadState.refresh is LoadState.Loading
+    var retryAttempt by remember(stream){mutableIntStateOf(0)}
+    var slowLoad by remember(stream){mutableStateOf(false)}
+    LaunchedEffect(stream,refreshing,retryAttempt){
+        slowLoad=false
+        if(refreshing){kotlinx.coroutines.delay(8_000L);slowLoad=true}
+    }
+    fun retryFeed(){retryAttempt++;slowLoad=false;if(posts.loadState.refresh is LoadState.Error)posts.retry() else posts.refresh()}
     var previousRevision by remember(token,personalized,savedOnly){mutableIntStateOf(refreshKey)}
     LaunchedEffect(refreshKey,session,personalized,savedOnly){val changed=session?.changed(personalized,savedOnly,refreshKey)?: (previousRevision!=refreshKey);previousRevision=refreshKey;if(changed)posts.refresh()}
     var lastReselect by remember{mutableIntStateOf(homeReselect)}
@@ -114,8 +125,8 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var reactionError by remember { mutableStateOf("") }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     PullToRefreshBox(
-        isRefreshing = posts.loadState.refresh is LoadState.Loading,
-        onRefresh = { if(posts.loadState.refresh !is LoadState.Loading)posts.refresh() },
+        isRefreshing = refreshing&&!slowLoad,
+        onRefresh = { if(!refreshing||slowLoad)retryFeed() },
         modifier = modifier.fillMaxSize()
     ) {
         Box(Modifier.fillMaxSize()){
@@ -228,21 +239,22 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                     }
                 }
             }
-            if(showCached){
+            if(showPreview){
                 item(key="cached_feed_notice"){
-                    Text(stringResource(R.string.feed_cached_preview),color=feedMuted,fontSize=12.sp,modifier=Modifier.padding(vertical=8.dp).testTag("sera_cached_feed_notice"))
+                    Text(stringResource(if(freshPreview!=null)R.string.feed_live_preview else R.string.feed_cached_preview),color=feedMuted,fontSize=12.sp,modifier=Modifier.padding(vertical=8.dp).testTag("sera_cached_feed_notice"))
                 }
-                items(cachedPreview.size,key={index->"cached-"+cachedPreview[index].id}){index->
-                    val preview=cachedPreview[index]
+                items(previews.size,key={index->"cached-"+previews[index].id}){index->
+                    val preview=previews[index]
                     Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-                        Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                        if(freshPreview==null||preview.author!="SERA member")Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
                         if(preview.title.isNotBlank())Text(preview.title,color=feedInk,fontWeight=FontWeight.Medium)
                         if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=8,overflow=TextOverflow.Ellipsis)
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }
-            if (posts.loadState.refresh is LoadState.Loading && posts.itemCount == 0 && !showCached) item { SeraLoadingCards(count = 3) }
+            if(refreshing&&posts.itemCount==0&&slowLoad) item(key="feed-slow") { SeraFeedLoadingNotice(onRetry=::retryFeed) }
+            if (refreshing && posts.itemCount == 0 && !showPreview && !slowLoad) item { SeraLoadingCards(count = 3) }
             if (posts.loadState.append is LoadState.Loading) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
@@ -251,7 +263,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
             if (error != null) item {
                 Column {
                     Text(error.message ?: "Unable to load feed.", color = MaterialTheme.colorScheme.error)
-                    OutlinedButton(onClick = { posts.retry() }) { Text(stringResource(R.string.retry)) }
+                    OutlinedButton(onClick = { retryFeed() }) { Text(stringResource(R.string.retry)) }
                 }
             }
             if (posts.loadState.refresh is LoadState.NotLoading && posts.itemCount == 0) item {
@@ -440,5 +452,14 @@ internal fun seraFeedCopyParts(title:String,body:String):Pair<String,String>{
         if(heading.isNotBlank())Text(heading,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,fontSize=14.sp,lineHeight=20.sp,maxLines=if(copy.isBlank()&&!expanded)5 else Int.MAX_VALUE,overflow=TextOverflow.Ellipsis,onTextLayout={if(copy.isBlank()&&!expanded)overflowed=it.hasVisualOverflow})
         if(copy.isNotBlank())Text(copy,color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp,lineHeight=20.sp,maxLines=if(expanded)Int.MAX_VALUE else 5,overflow=TextOverflow.Ellipsis,onTextLayout={if(!expanded)overflowed=it.hasVisualOverflow})
         if(overflowed||expanded)Box(Modifier.heightIn(min=36.dp).clip(RoundedCornerShape(8.dp)).clickable(role=Role.Button){onExpanded(!expanded)}.padding(end=16.dp).testTag("sera_feed_expand"),contentAlignment=Alignment.CenterStart){Text(if(expanded)"Show less" else "Read more",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold,fontSize=12.sp)}
+    }
+}
+
+/** A recoverable state, not a permanent loading skeleton. */
+@Composable
+internal fun SeraFeedLoadingNotice(onRetry:()->Unit){
+    Column(Modifier.fillMaxWidth().padding(vertical=18.dp,horizontal=4.dp).testTag("sera_feed_slow"),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Text(stringResource(R.string.feed_loading_slow),color=MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick=onRetry,modifier=Modifier.testTag("sera_feed_retry")){Text(stringResource(R.string.retry))}
     }
 }
