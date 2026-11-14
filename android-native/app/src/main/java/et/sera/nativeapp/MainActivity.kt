@@ -690,7 +690,10 @@ fun SeraApp(
                                             canCompose=authenticatedUserId.isNotBlank(),onCompose={kind->composerInitialKind=kind;showComposer=true},session=feedSession,retainedListState=if(currentTab=="Saved")savedFeedState else homeFeedState,homeReselect=homeReselect,activeCall=globalVoice.pinned,retainedPersonalized=if(currentTab=="Saved")false else homePersonalized,onPersonalized={if(currentTab=="Home")homePersonalized=it}
                                         )
                                         "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
-                                        "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
+                                        "Settings" -> Column(pageModifier.fillMaxSize()){
+                                            SeraCacheSettings(authenticatedUserId,onClear={feedSession?.invalidatePreview();refresh++})
+                                            SeraContentSettings(accessToken ?: "",Modifier.weight(1f)){navigateTo("Profile")}
+                                        }
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Explore" -> SeraExplore(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)

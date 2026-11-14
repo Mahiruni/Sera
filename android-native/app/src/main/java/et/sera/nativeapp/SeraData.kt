@@ -59,7 +59,7 @@ private fun requestNativeFeed(token:String,page:Int,personalized:Boolean,pageSiz
             else {
                 val message=runCatching{JSONObject(body).optString("error")}.getOrNull()
                     ?.takeIf{it.isNotBlank()}?:"Unable to load posts. Please retry."
-                null to message
+                null to if(status==401||status==403)"Feed access denied (HTTP $status)." else message
             }
         }
     }catch(e:Exception){

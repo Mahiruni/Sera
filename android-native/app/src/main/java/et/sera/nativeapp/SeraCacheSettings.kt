@@ -1,0 +1,38 @@
+package et.sera.nativeapp
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** Clear only reconstructable caches; never touch drafts, uploads, sessions or user files. */
+@Composable internal fun SeraCacheSettings(user:String,onClear:()->Unit){
+    val context=LocalContext.current.applicationContext
+    val scope=rememberCoroutineScope()
+    var confirm by remember{mutableStateOf(false)}
+    var busy by remember{mutableStateOf(false)}
+    var message by remember{mutableStateOf("")}
+    Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)){
+        Text("Storage and performance",style=MaterialTheme.typography.titleMedium)
+        Text("Recent posts, conversations and profile previews are saved to help Sera open faster.",style=MaterialTheme.typography.bodySmall)
+        TextButton(onClick={confirm=true},enabled=!busy&&user.isNotBlank()){Text(if(busy)"Clearing…" else "Clear saved previews")}
+        if(message.isNotBlank())Text(message,style=MaterialTheme.typography.bodySmall)
+    }
+    if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Clear saved previews?")},text={Text("Sera will download fresh content when needed. Your posts, messages, drafts, uploads and account stay safe.")},confirmButton={TextButton(onClick={
+        confirm=false;busy=true;message=""
+        scope.launch{
+            val result=withContext(Dispatchers.IO){runCatching{
+                SeraFeedPreviewCache(context,user).clear()
+                SeraMessageHistoryCache(context).clear(user)
+                SeraNetworkMemory.clear();SeraAvatarMemory.clear()
+            }}
+            busy=false
+            if(result.isSuccess){onClear();message="Saved previews cleared."}else message="Could not clear previews. Please retry."
+        }
+    }){Text("Clear")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancel")}})
+}

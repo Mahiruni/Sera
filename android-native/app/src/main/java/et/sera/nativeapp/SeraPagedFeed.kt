@@ -190,7 +190,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                         Text(details+(if(post.editedAt!=null)" · Edited" else ""), color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
-                                SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ feed.refresh() }
+                                SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ cachedPreview=emptyList();session?.invalidatePreview();feed.refresh() }
                             }
                             val title = (if(post.repostOf!=null)post.originalTitle.orEmpty() else post.title).trim()
                             val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
