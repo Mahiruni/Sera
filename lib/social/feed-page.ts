@@ -5,8 +5,8 @@ type FeedRow = Record<string, unknown>;
 
 /**
  * The authenticated page query shared by the web feed and the native feed API.
- * RLS stays enabled for both callers; the fallback only verifies/retries the
- * same viewer-scoped query when an empty response conflicts with a visible head.
+ * RLS stays enabled for both callers. Empty first pages are verified against
+ * an exact RLS-scoped count before they can become a quiet-feed state.
  */
 export async function querySocialFeedPage(
   db: SupabaseClient,
@@ -33,7 +33,7 @@ export async function querySocialFeedPage(
   let rows = (result.data || []) as FeedRow[];
 
   // The ranking RPC can fail or return no rows while published posts exist.
-  // Keep For you useful by falling back to the same viewer-scoped Latest query.
+  // Keep For you useful by falling back to the viewer-scoped Latest query.
   if (personalized && offset === 0 && (result.error || rows.length === 0)) {
     result = await latest();
     if (result.error) return { rows: [], error: result.error };
@@ -42,8 +42,8 @@ export async function querySocialFeedPage(
 
   if (result.error) return { rows: [], error: result.error };
 
-  // Only show the quiet-feed state after authenticated exact-count checks
-  // confirm there are no published posts visible under this viewer's RLS rules.
+  // Never report a quiet feed unless authenticated exact-count checks confirm
+  // there are no published posts visible under this viewer's RLS rules.
   if (offset === 0 && rows.length === 0) {
     const countVisiblePosts = () =>
       db.from("posts").select("id", { count: "exact", head: true }).eq("status", "published");
