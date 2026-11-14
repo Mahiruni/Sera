@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
-import {readPublicFeed,savePublicFeed,type PublicFeedPreview} from "@/lib/social/public-feed-cache";
+import {clearPublicFeed,readPublicFeed,savePublicFeed,type PublicFeedPreview} from "@/lib/social/public-feed-cache";
 export function SaveFeedPreview({owner,rows}:{owner:string;rows:PublicFeedPreview[]}){
   useEffect(()=>{void savePublicFeed(owner,rows).catch(()=>{});},[owner,rows]);
   return null;
@@ -16,3 +16,5 @@ export function CachedFeedPreview({owner,failed=false,href="/feed"}:{owner:strin
     {failed&&<a href={href}>Retry</a>}
   </div>;
 }
+
+export function ClearSignedOutFeed(){useEffect(()=>{void clearPublicFeed().catch(()=>{});},[]);return null;}

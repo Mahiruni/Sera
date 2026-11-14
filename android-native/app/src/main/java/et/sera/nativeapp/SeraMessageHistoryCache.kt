@@ -20,7 +20,9 @@ internal class SeraMessageHistoryCache(context:Context){
         if(age !in 0L..SERA_MESSAGE_CACHE_RETENTION_MS){prefs.edit().remove(k).apply();return@synchronized null}
         row.optJSONArray("rows")?.toString()
     }
-    fun write(user:String,thread:String,raw:String)=synchronized(lock){
+    fun generation(user:String):Long=synchronized(lock){generations[user]?:0L}
+    fun write(user:String,thread:String,raw:String,expectedGeneration:Long=generation(user))=synchronized(lock){
+        if(expectedGeneration!=(generations[user]?:0L))return@synchronized
         if(!SeraMessageAlerts.validId(user)||!SeraMessageAlerts.validId(thread))return@synchronized
         val source=JSONArray(raw);val rows=JSONArray()
         for(i in 0 until minOf(source.length(),SERA_INITIAL_MESSAGE_WINDOW)){
@@ -48,7 +50,7 @@ internal class SeraMessageHistoryCache(context:Context){
         val rows=row.optJSONArray("rows")?:return@synchronized emptyList()
         (0 until rows.length()).mapNotNull{i->runCatching{val c=rows.getJSONObject(i);NativeConversation(c.getString("id"),c.getString("peer"),c.getString("name"),c.optString("preview"),c.optInt("unread"),null,c.optString("at"),c.optBoolean("pinned"),c.optBoolean("archived"),c.optBoolean("marked"),c.optString("muted").takeUnless{it=="null"||it.isBlank()})}.getOrNull()}
     }
-    fun invalidateThread(user:String,thread:String)=synchronized(lock){prefs.edit().remove(key(user,thread)).apply()}
-    fun clear(user:String)=synchronized(lock){val editor=prefs.edit();prefs.all.keys.filter{it.startsWith("history:$user:")}.forEach{editor.remove(it)};editor.commit()}
-    companion object{private val lock=Any()}
+    fun invalidateThread(user:String,thread:String)=synchronized(lock){generations[user]=(generations[user]?:0L)+1;prefs.edit().remove(key(user,thread)).apply()}
+    fun clear(user:String)=synchronized(lock){generations[user]=(generations[user]?:0L)+1;val editor=prefs.edit();prefs.all.keys.filter{it.startsWith("history:$user:")}.forEach{editor.remove(it)};editor.commit()}
+    companion object{private val lock=Any();private val generations=mutableMapOf<String,Long>()}
 }

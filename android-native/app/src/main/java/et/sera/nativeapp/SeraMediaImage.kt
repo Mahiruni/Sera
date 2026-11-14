@@ -32,7 +32,18 @@ fun SeraMediaImage(url: String, description: String, widthPx: Int, heightPx: Int
         .data(selectedUrl).size(Size(widthPx,heightPx)).crossfade(true)
         .apply {
             val privateSigned=selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/sign/")
-            if(privateSigned){diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED)}
+            if(privateSigned){
+                diskCachePolicy(CachePolicy.DISABLED)
+                // Avatar paths change with each uploaded photo; reuse only within
+                // a short account/token-scoped memory window, never on disk.
+                val avatar=selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/sign/sera-account-private/")&&selectedUrl.substringBefore('?').contains("/avatar/")
+                if(avatar&&!accessToken.isNullOrBlank()){
+                    val owner=java.security.MessageDigest.getInstance("SHA-256").digest(accessToken.toByteArray()).joinToString(""){"%02x".format(it)}
+                    val window=android.os.SystemClock.elapsedRealtime()/60000L
+                    memoryCacheKey("sera-avatar:$owner:$window:"+selectedUrl.substringBefore('?')+":$widthPx:$heightPx")
+                    memoryCachePolicy(CachePolicy.ENABLED)
+                }else memoryCachePolicy(CachePolicy.DISABLED)
+            }
             if(accessToken!=null && (selectedUrl==preview||selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/"))){
                 httpHeaders(NetworkHeaders.Builder().set("Authorization","Bearer $accessToken").set("apikey",BuildConfig.SUPABASE_ANON_KEY).build())
                 diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED)

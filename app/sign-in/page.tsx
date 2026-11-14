@@ -1,3 +1,4 @@
+import {ClearSignedOutFeed} from "@/components/social/cached-feed-preview";
 import { PremiumAuth } from "@/components/auth/premium";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
@@ -12,7 +13,7 @@ export default async function Page({
 }) {
   const status = await searchParams;
   return (
-    <PremiumAuth
+    <><ClearSignedOutFeed/><PremiumAuth
       mode="signin"
       destination={status.next}
       notice={
@@ -22,6 +23,6 @@ export default async function Page({
             ? "signed-out"
             : undefined
       }
-    />
+    /></>
   );
 }

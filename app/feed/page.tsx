@@ -14,7 +14,8 @@ type FeedPromise=ReturnType<typeof loadSocialFeed>;
 type SidebarPromise=ReturnType<typeof loadNetworkSidebars>;
 
 async function FeedResults({result,userId,page,href,cacheable}:{result:FeedPromise;userId:string;page:number;href:string;cacheable:boolean}){
-  const feed=await result.catch(()=>null);
+  const response=await result.catch(()=>null);
+  const feed=response?.userId===userId?response:null;
   if(!feed&&cacheable)return <CachedFeedPreview owner={userId} failed href={href}/>;
   if(!feed)return <div className="social-empty" role="alert"><h2>Unable to load your feed</h2><p>Check your connection, then refresh to try again.</p><a href={href}>Retry</a></div>;
   return <>{cacheable&&<SaveFeedPreview owner={userId} rows={publicFeedPreviews(feed.posts)}/>}<PostList posts={feed.posts} userId={userId}/><SocialPagination page={page} hasMore={feed.hasMore} href={href}/></>;

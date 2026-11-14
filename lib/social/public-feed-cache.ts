@@ -4,7 +4,7 @@ export type PublicFeedPreview={id:string;author:string;headline:string;title:str
 type Source={id:string;audience?:string;repost_of?:string|null;title:string;body:string;published_at:string;author:{full_name:string;headline:string}};
 export function publicFeedPreviews(posts:Source[]):PublicFeedPreview[]{
   return posts.filter(p=>p.audience==="public"&&!p.repost_of&&p.id).slice(0,20).map(p=>({
-    id:p.id,author:p.author.full_name.slice(0,120),headline:p.author.headline.slice(0,300),title:p.title.slice(0,300),body:p.body.slice(0,4000),publishedAt:p.published_at,
+    id:p.id,author:p.author.full_name.slice(0,120),headline:p.author.headline.slice(0,300),title:(p.title||"").slice(0,300),body:(p.body||"").slice(0,4000),publishedAt:p.published_at,
   }));
 }
 type Snapshot={owner:string;at:number;rows:PublicFeedPreview[]};
@@ -39,5 +39,13 @@ export async function readPublicFeed(owner:string):Promise<PublicFeedPreview[]>{
       }else resolve(row.rows);
     };
     request.onerror=()=>reject(request.error);
+  });}finally{database.close();}
+}
+
+export async function clearPublicFeed(){
+  const database=await db();
+  try{await new Promise<void>((resolve,reject)=>{
+    const tx=database.transaction("feed","readwrite");tx.objectStore("feed").clear();
+    tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
   });}finally{database.close();}
 }

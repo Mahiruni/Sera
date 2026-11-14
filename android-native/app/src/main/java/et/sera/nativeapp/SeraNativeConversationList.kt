@@ -120,7 +120,7 @@ import java.net.URL
                             Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft),
                                 contentAlignment = Alignment.Center) {
                                 Text(conversation.peerName.take(1).uppercase(), color = inboxTeal, fontWeight = FontWeight.Bold)
-                                conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize())}
+                                conversation.photo?.let{SeraMediaImage(it,"Profile photo",128,128,Modifier.fillMaxSize(),accessToken=token)}
                             }
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                                 Text((if(conversation.pinned)"⌖ " else "")+conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)

@@ -181,11 +181,12 @@ private suspend fun loadNativeConversations(token: String, userId: String, prior
 }
 
 private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null,cache:SeraMessageHistoryCache?=null,owner:String=""): Pair<List<NativeMessage>?, String> {
+    val generation=cache?.generation(owner)
     val (raw, error) = inboxRequest(token,
         "professional_messages?select=id,sender_id,body,read_at,created_at,delivered_at,reply_to_id,is_forwarded,unsent_at,client_message_id,edited_at,sera_private_message_reads(read_at),professional_message_reactions(member_id,emoji),professional_message_attachments(file_name,mime_type,storage_path,byte_size,duration_ms,position)&conversation_id=eq.$conversationId&order=created_at.desc,id.desc&limit=$limit"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}?:""))
     if (raw == null) return null to error
     val parsed=parseNativeMessageRows(raw)
-    if(parsed.first!=null&&ids==null)runCatching{cache?.write(owner,conversationId,raw)}
+    if(parsed.first!=null&&ids==null&&generation!=null)runCatching{cache?.write(owner,conversationId,raw,generation)}
     return parsed
 }
 private fun parseNativeMessageRows(raw:String):Pair<List<NativeMessage>?,String>{
@@ -342,6 +343,7 @@ private fun SeraNativeInboxContent(token:String,userId:String,modifier:Modifier,
     controller.TextEffects()
     controller.Dialogs()
     controller.ConversationPolling()
+    controller.PrefetchRecentConversation()
     controller.MessagePolling()
     controller.ReadReceipts()
     controller.TypingEffects()
@@ -841,6 +843,27 @@ private class InboxController(
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
                     delay(seraSecondarySyncDelay(link,activeCall,30000L))
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun PrefetchRecentConversation(){
+        val link=LocalSeraLink.current
+        val activeCall=LocalSeraGlobalCall.current?.pinned==true
+        val candidate=conversations.firstOrNull{!it.archived}?.id
+        val cache=remember(context){runCatching{SeraMessageHistoryCache(context.applicationContext)}.getOrNull()}
+        LaunchedEffect(token,userId,candidate,selected?.id,loading,connectionAvailable,activeCall,link.networkId){
+            if(candidate==null||selected!=null||loading||activeCall||!connectionAvailable||!SeraMessageAlerts.validId(userId))return@LaunchedEffect
+            delay(1500)
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+                withContext(Dispatchers.IO){
+                    val cm=context.getSystemService(android.net.ConnectivityManager::class.java)
+                    val caps=runCatching{cm.getNetworkCapabilities(cm.activeNetwork)}.getOrNull()
+                    val wifi=caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)==true&&caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)&&caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    if(wifi&&cache!=null&&cache.read(userId,candidate)==null)
+                        loadNativeMessages(token,candidate,SERA_INITIAL_MESSAGE_WINDOW,cache=cache,owner=userId)
                 }
             }
         }

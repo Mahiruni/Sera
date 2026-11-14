@@ -120,7 +120,7 @@ import java.net.URL
                 IconButton(onClick=onBack,modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.ArrowBack,"Back to conversations",tint=inboxInk)}
                 Box(Modifier.size(42.dp).clip(CircleShape).background(inboxSoft).clickable(onClick=onDetails).semantics{contentDescription="Open conversation details"},contentAlignment=Alignment.Center){
                     Text(conversation.peerName.take(1).uppercase(),color=inboxTeal,fontWeight=FontWeight.Bold,fontSize=17.sp)
-                    (conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize())}
+                    (conversation.photo?:fallbackPhoto)?.let{SeraMediaImage(it,"Profile photo",112,112,Modifier.fillMaxSize(),accessToken=token)}
                 }
                 val online=peerActivity=="Active now"
                 SeraThreadIdentity(conversation.peerName,if(peerTyping)"Typing…" else peerActivity?:"Private conversation",peerTyping||online,inboxInk,muted,accent,Modifier.weight(1f).padding(start=4.dp),onDetails)
