@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_title">Sera qopheessi</string>
+    <string name="setup_step">Sadarkaa %1$d keessaa %2$d</string>
+    <string name="setup_notifications">Beeksisoota</string>
+    <string name="setup_notifications_desc">Bilbiloota dhufan, ergaawwan fi beeksisoota barbaachisoo fudhadhu.</string>
+    <string name="setup_microphone">Maayikiroofonii</string>
+    <string name="setup_microphone_desc">Bilbila sagalee fi viidiyoo irratti dubbadhu; ergaa sagalee waraabi.</string>
+    <string name="setup_camera">Kaameraa</string>
+    <string name="setup_camera_desc">Bilbila viidiyoo fi tajaajiloota kaameraa fayyadami.</string>
+    <string name="setup_optional">Kana darbuu fi hayyama booda qindaa’ina Android keessatti jijjiiruu dandeessa. Yeroo qophii maayikiroofonii fi kaameraan hin banaman.</string>
+    <string name="setup_allow">Hayyami</string>
+    <string name="setup_not_now">Amma miti</string>
+    <string name="setup_skip_all">Qophii darbi</string>
+</resources>

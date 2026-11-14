@@ -133,6 +133,17 @@ fun SeraApp(
     var password by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf<String?>(null) }
     var restoring by remember { mutableStateOf(true) }
+    val permissionPrefs=remember(context){context.getSharedPreferences("sera_first_launch_permissions",Context.MODE_PRIVATE)}
+    var permissionSetupDone by remember { mutableStateOf(permissionPrefs.getBoolean("completed",false)) }
+    val freshInstallation=remember(context){
+        runCatching{context.packageManager.getPackageInfo(context.packageName,0).let{it.firstInstallTime==it.lastUpdateTime}}.getOrDefault(false)
+    }
+    fun finishPermissionSetup(){
+        permissionPrefs.edit().putBoolean("completed",true).apply()
+        // Do not re-prompt on sign-in after the user has made a setup choice.
+        context.getSharedPreferences("sera_push_permission",Context.MODE_PRIVATE).edit().putBoolean("asked",true).apply()
+        permissionSetupDone=true
+    }
     LaunchedEffect(Unit) {
         if (oauthCallback != null) { restoring = false; return@LaunchedEffect }
         val refresh = session.readRefreshToken()
@@ -500,6 +511,8 @@ fun SeraApp(
                     Text("Sera",style=MaterialTheme.typography.headlineLarge,color=teal,fontWeight=FontWeight.Bold)
                     Spacer(Modifier.height(24.dp));CircularProgressIndicator(color=teal);Spacer(Modifier.height(16.dp));Text("Connecting securely…",style=MaterialTheme.typography.titleMedium);Text("Preparing your workspace",style=MaterialTheme.typography.bodySmall)
                 }
+            } else if (accessToken == null && freshInstallation && !permissionSetupDone && oauthCallback==null && pushKind==null) {
+                SeraPermissionSetup(onComplete={finishPermissionSetup()},onLanguage={showLanguagePicker=true})
             } else if (accessToken == null) {
                 SeraGuestEntry(
                     email = email,

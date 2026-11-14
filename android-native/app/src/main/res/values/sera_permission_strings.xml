@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_title">Get Sera ready</string>
+    <string name="setup_step">Step %1$d of %2$d</string>
+    <string name="setup_notifications">Notifications</string>
+    <string name="setup_notifications_desc">Receive incoming calls, messages and important updates.</string>
+    <string name="setup_microphone">Microphone</string>
+    <string name="setup_microphone_desc">Speak during voice and video calls and record voice messages.</string>
+    <string name="setup_camera">Camera</string>
+    <string name="setup_camera_desc">Use video calls and supported camera features.</string>
+    <string name="setup_optional">You can skip this and change permissions later in Android settings. Your microphone and camera are not activated during setup.</string>
+    <string name="setup_allow">Allow</string>
+    <string name="setup_not_now">Not now</string>
+    <string name="setup_skip_all">Skip setup</string>
+</resources>
