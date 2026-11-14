@@ -9,3 +9,9 @@ export function attachmentPreview(mime:unknown):string{
  if(mime.startsWith("video/"))return "Sent you a video";
  return mime==="application/pdf"?"Shared a PDF document":"Shared an attachment";
 }
+
+export type NotificationPreviewMode="full"|"sender"|"hidden";
+export function notificationPreviewMode(mode:unknown,legacy?:boolean):NotificationPreviewMode{
+ if(mode==="full"||mode==="sender"||mode==="hidden")return mode;
+ return legacy===true?"full":legacy===false?"hidden":"sender";
+}

@@ -36,13 +36,13 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  var quiet by remember{mutableStateOf(false)}
  var typing by remember{mutableStateOf(true)}
  var receipts by remember{mutableStateOf(true)}
- var previews by remember{mutableStateOf(false)}
+ var previewMode by remember{mutableStateOf("sender")}
  var start by remember{mutableStateOf("22:00")}
  var end by remember{mutableStateOf("07:00")}
  var zone by remember{mutableStateOf("Africa/Addis_Ababa")}
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
- LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previews=p.optBoolean("notification_previews",false);start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
+ LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "sender");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
  AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Messaging control center")},text={
  Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
  Text("Account-wide push preferences. Messages continue arriving in your inbox.",fontSize=12.sp)
@@ -50,7 +50,9 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  Row(verticalAlignment=Alignment.CenterVertically){Text("Quiet hours",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=quiet,onCheckedChange={quiet=it})}
  Row(verticalAlignment=Alignment.CenterVertically){Text("Show typing activity",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=typing,onCheckedChange={typing=it})}
  Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Share read receipts");Text("Keep new reads private when off.",fontSize=12.sp)};Switch(enabled=loaded&&!busy,checked=receipts,onCheckedChange={receipts=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Show message previews");Text("Sender and text on supported private notifications.",fontSize=12.sp)};Switch(enabled=loaded&&!busy,checked=previews,onCheckedChange={previews=it})}
+ Text("Notifications & privacy",style=MaterialTheme.typography.titleMedium)
+ listOf("full" to "Show sender and message","sender" to "Show sender only","hidden" to "Hide sensitive content").forEach{(mode,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy);Text(label)}}
+ Text("Locked-screen public notifications stay private.",fontSize=12.sp)
  OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
@@ -60,7 +62,7 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  },confirmButton={TextButton(enabled=loaded&&!busy,onClick={
  val a=parseClock(start);val z=parseClock(end)
  if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@TextButton}
- busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_previews",JSONObject().put("p_enabled",previews))};busy=false;if(previewResult.first!=null)onDismiss()else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
+ busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null)onDismiss()else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
  }){Text(if(busy)"Saving…" else "Save")}},dismissButton={TextButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}})
 }
 @Composable internal fun SeraConversationControlMenu(token:String,conversation:NativeConversation,onChanged:()->Unit){

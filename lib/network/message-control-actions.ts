@@ -42,7 +42,8 @@ export async function saveReadReceiptVisibility(form:FormData){
 
 export async function saveNotificationPreviews(form:FormData){
  const user=await currentUser();if(!user?.email_confirmed_at)return;
- const db=await serverClient();const {error}=await db.rpc("sera_set_notification_previews",{p_enabled:form.get("previews")==="on"});
+ const mode=form.get("previewMode");if(mode!=="full"&&mode!=="sender"&&mode!=="hidden")throw new Error("Choose a notification privacy mode.");
+ const db=await serverClient();const {error}=await db.rpc("sera_set_notification_preview_mode",{p_mode:mode});
  if(error)throw new Error("Could not save notification previews.");
  revalidatePath("/settings/messaging");
 }
