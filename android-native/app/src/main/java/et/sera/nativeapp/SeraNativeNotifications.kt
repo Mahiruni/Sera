@@ -46,19 +46,19 @@ private fun notificationCall(token:String,path:String,patch:Boolean=false):Pair<
 }
 private data class NotificationPerson(val name:String,val avatar:String?)
 private data class NotificationBatch(val rows:List<JSONObject>?,val people:Map<String,NotificationPerson>,val jobs:Map<String,JSONObject>,val enabled:Boolean,val error:String)
-private val notificationTabs=listOf("All","Unread","Social","Network","Opportunities","Collaboration")
-private val notificationKinds=mapOf("Social" to listOf("like","comment","share","repost","reply"),"Network" to listOf("follow","connection_request","connection_accepted"),"Opportunities" to listOf("job_match","application_update","opportunity_match"),"Collaboration" to listOf("space_invitation","community_invitation","project_invitation"))
+private val notificationTabs=listOf("All","Unread","Social","Network","Opportunities","Collaboration","Calls")
+private val notificationKinds=mapOf("Social" to listOf("like","comment","share","repost","reply"),"Network" to listOf("follow","connection_request","connection_accepted"),"Opportunities" to listOf("job_match","application_update","opportunity_match"),"Collaboration" to listOf("space_invitation","community_invitation","project_invitation","space_message"),"Calls" to listOf("missed_call"))
 private fun JSONObject.field(k:String)=optString(k).takeUnless{it=="null"}.orEmpty()
 private fun loadNotifications(token:String,userId:String,tab:String,page:Int):NotificationBatch{
  val filter=if(tab=="Unread")"&read_at=is.null" else notificationKinds[tab]?.let{"&kind=in.("+it.joinToString(",")+")"}.orEmpty()
- val path="professional_notifications?select=id,actor_id,kind,post_id,job_id,match_reasons,created_at,read_at&recipient_id=eq."+userId+filter+"&order=created_at.desc,id.desc&limit=31&offset="+((page-1)*30)
+ val path="professional_notifications?select=id,actor_id,kind,post_id,job_id,match_reasons,created_at,read_at,space_id,conversation_id&recipient_id=eq."+userId+filter+"&order=created_at.desc,id.desc&limit=31&offset="+((page-1)*30)
  val r=notificationCall(token,path)
  if(r.first==null)return NotificationBatch(null,emptyMap(),emptyMap(),false,r.second)
  val rows=runCatching{val a=JSONArray(r.first);(0 until a.length()).map{a.getJSONObject(it)}}.getOrElse{return NotificationBatch(null,emptyMap(),emptyMap(),false,"Unable to read notifications.")}
  val ids=rows.filter{it.field("kind")!="job_match"}.map{it.field("actor_id")}.filter{it.isNotBlank()}.distinct()
  val people=if(ids.isEmpty())emptyMap() else spaceRows(spaceCall(token,"member_cards",JSONObject().put("ids",JSONArray(ids))).first).associate{card->
   val path=card.field("avatar_path").takeIf{it.isNotBlank()}
-  card.field("id") to NotificationPerson(card.field("full_name").ifBlank{"SERA member"},path?.let{signedPostImage(token,it,"sera-account-private")})
+  card.field("id") to NotificationPerson(card.field("full_name").ifBlank{"Sera member"},path?.let{signedPostImage(token,it,"sera-account-private")})
  }
  val jobIds=rows.filter{it.field("kind")=="job_match"}.map{it.field("job_id")}.filter{it.isNotBlank()}.distinct()
  val jobs=if(jobIds.isEmpty())emptyMap() else spaceRows(notificationCall(token,"jobs?select=id,title,company,location,work_type&status=eq.open&id=in.("+jobIds.joinToString(",")+")").first).associateBy{it.field("id")}
@@ -73,7 +73,7 @@ private fun groupNativeNotifications(rows:List<JSONObject>):List<NativeNotificat
   if(!seen.add(r.field("id")))return@forEach
   val g=groups.lastOrNull();val p=g?.latest
   val span=runCatching{java.time.Duration.between(Instant.parse(r.field("created_at")),Instant.parse(p?.field("created_at").orEmpty())).seconds}.getOrDefault(-1)
-  if(g!=null&&p!=null&&r.field("kind") in listOf("like","comment","share","repost")&&r.field("kind")==p.field("kind")&&r.field("post_id").isNotBlank()&&r.field("post_id")==p.field("post_id")&&span in 0..21600&&notificationDay(r)==notificationDay(p)){
+  if(g!=null&&p!=null&&r.field("kind")==p.field("kind")&&((r.field("kind") in listOf("like","comment","share","repost")&&r.field("post_id").isNotBlank()&&r.field("post_id")==p.field("post_id"))||(r.field("kind")=="space_message"&&r.field("space_id").isNotBlank()&&r.field("space_id")==p.field("space_id")))&&span in 0..21600&&notificationDay(r)==notificationDay(p)){
    g.events.add(r);if(r.field("actor_id") !in g.actors)g.actors.add(r.field("actor_id"))
   }else groups.add(NativeNotificationGroup(r,mutableListOf(r),mutableListOf(r.field("actor_id"))))
  }
@@ -81,11 +81,11 @@ private fun groupNativeNotifications(rows:List<JSONObject>):List<NativeNotificat
 }
 private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneId.of("Africa/Addis_Ababa"));return when(notificationDay(r)){now->"Today";now.minusDays(1)->"Yesterday";else->"Earlier"}}
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable internal fun SeraNativeNotifications(token:String,userId:String,modifier:Modifier=Modifier){
+@Composable internal fun SeraNativeNotifications(token:String,userId:String,modifier:Modifier=Modifier,onOpenConversation:(String)->Unit={}){
  var tab by remember(token,userId){mutableStateOf("All")};var page by remember(token,userId){mutableIntStateOf(1)}
  var rows by remember(token,userId){mutableStateOf<List<JSONObject>>(emptyList())};var people by remember(token,userId){mutableStateOf<Map<String,NotificationPerson>>(emptyMap())};var jobs by remember(token,userId){mutableStateOf<Map<String,JSONObject>>(emptyMap())}
  var enabled by remember(token,userId){mutableStateOf(false)};var error by remember(token,userId){mutableStateOf("")};var loading by remember(token,userId){mutableStateOf(true)};var refresh by remember(token,userId){mutableIntStateOf(0)}
- var selectedPost by remember(token,userId){mutableStateOf<String?>(null)};var selectedJob by remember(token,userId){mutableStateOf<SearchHit?>(null)};var marking by remember(token,userId){mutableStateOf(false)};var sounds by remember{mutableStateOf(false)}
+ var selectedPost by remember(token,userId){mutableStateOf<String?>(null)};var selectedSpace by remember(token,userId){mutableStateOf<String?>(null)};var selectedJob by remember(token,userId){mutableStateOf<SearchHit?>(null)};var marking by remember(token,userId){mutableStateOf(false)};var sounds by remember{mutableStateOf(false)}
  val context=androidx.compose.ui.platform.LocalContext.current
  var savedActivity by remember(token,userId){mutableStateOf(false)}
  var liveActivity by remember(token,userId){mutableStateOf(false)}
@@ -115,12 +115,13 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
     withContext(Dispatchers.IO){cache.writeNotifications(tab,page,result.rows,result.people.mapValues{it.value.name},result.jobs,result.enabled,generation)}
    }else{
     liveActivity=false;savedActivity=rows.isNotEmpty()
-    if(seraCacheDenied(result.error)){rows=emptyList();people=emptyMap();jobs=emptyMap();savedActivity=false;selectedPost=null;selectedJob=null;withContext(Dispatchers.IO){cache.clear("notifications")}}
+    if(seraCacheDenied(result.error)){rows=emptyList();people=emptyMap();jobs=emptyMap();savedActivity=false;selectedPost=null;selectedJob=null;selectedSpace=null;withContext(Dispatchers.IO){cache.clear("notifications")}}
    }
    error=result.error;loading=false;delay(30000)
   }}
  }
  val unread=rememberSeraUnreadActivity(token,userId,"Notifications").first
+ selectedSpace?.let{id->SeraCollaboration(token,userId,modifier,initialSpace=id,initialChat=true){selectedSpace=null;refresh++};return}
  if(sounds){SeraSoundSettings(modifier,userId){sounds=false};return}
  selectedJob?.let{hit->SearchResultDetail(token,userId,hit,modifier){selectedJob=null;refresh++};return}
  val groups=groupNativeNotifications(rows.take(30))
@@ -139,14 +140,16 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
     val n=g.latest;val day=dateGroup(n);if(index==0||dateGroup(groups[index-1].latest)!=day)item(key="day-"+day){Text(day,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}
     item(key=n.field("id")){
      val unreadIds=g.events.filter{it.isNull("read_at")}.map{it.field("id")};val isUnread=liveActivity&&unreadIds.isNotEmpty();val actor=people[n.field("actor_id")];val post=n.field("post_id").takeIf{it.isNotBlank()};val job=jobs[n.field("job_id")];val isJob=n.field("kind")=="job_match"
-     val names=g.actors.map{people[it]?.name?:"SERA member"};val name=if(names.size<=2)names.joinToString(" and ")else names.take(2).joinToString(", ")+" and "+(names.size-2)+" other"+if(names.size==3)"" else "s"
-     val action=when(n.field("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";else->"interacted with you"}
-     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable(enabled=liveActivity){if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"))}){
+     val names=g.actors.map{people[it]?.name?:"Sera member"};val name=if(names.size<=2)names.joinToString(" and ")else names.take(2).joinToString(", ")+" and "+(names.size-2)+" other"+if(names.size==3)"" else "s"
+     val action=when(n.field("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";"space_message"->"sent a message in your space";"missed_call"->"called you while you were away";else->"interacted with you"}
+     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable(enabled=liveActivity){if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"));if(n.field("kind")=="space_message"&&SeraMessageAlerts.validId(n.field("space_id")))selectedSpace=n.field("space_id");if(n.field("kind")=="missed_call"&&SeraMessageAlerts.validId(n.field("conversation_id")))onOpenConversation(n.field("conversation_id"))}){
       Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
        if(!isJob&&actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(40.dp).clip(CircleShape),accessToken=token)else Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(if(isJob)"J" else name.take(1),fontWeight=FontWeight.Bold)}
        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
         Text(if(isJob)job?.field("title")?:"Opportunity no longer available" else "$name $action",fontWeight=FontWeight.SemiBold,fontSize=14.sp)
         if(isJob&&job!=null){Text(job.field("company"),style=MaterialTheme.typography.bodySmall);val arr=n.optJSONArray("match_reasons");if(arr!=null)Text("Matches: "+(0 until arr.length()).map{arr.optString(it)}.joinToString(", "),color=teal,style=MaterialTheme.typography.labelSmall)}
+        if(n.field("kind")=="missed_call")Text("Open conversation to call back",color=teal,style=MaterialTheme.typography.labelSmall)
+        if(n.field("kind")=="space_message")Text("Open team conversation",color=teal,style=MaterialTheme.typography.labelSmall)
         if(g.events.size>1)Text("${g.events.size} activities"+if(isUnread)" · ${unreadIds.size} unread"else "",style=MaterialTheme.typography.labelSmall)
         Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.field("created_at")))}.getOrDefault(""),style=MaterialTheme.typography.labelSmall)
        }

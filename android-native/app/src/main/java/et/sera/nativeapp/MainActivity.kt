@@ -696,7 +696,7 @@ fun SeraApp(
                                         }
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Explore" -> SeraExplore(accessToken ?: "", authenticatedUserId, pageModifier)
-                                        "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)
+                                        "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier,onOpenConversation={thread->val token=accessToken; if(token!=null)scope.launch{val peer=withContext(Dispatchers.IO){resolveNativeMessagePeer(token,authenticatedUserId,thread)};if(peer!=null&&accessToken==token){openCompanyInbox=false;callThread=thread;callPeer=peer;navigateTo("Inbox")}}})
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier
