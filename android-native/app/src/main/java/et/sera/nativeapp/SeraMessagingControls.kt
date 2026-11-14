@@ -51,9 +51,9 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  Row(verticalAlignment=Alignment.CenterVertically){Text("Quiet hours",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=quiet,onCheckedChange={quiet=it})}
  Row(verticalAlignment=Alignment.CenterVertically){Text("Show typing activity",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=typing,onCheckedChange={typing=it})}
  Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Share read receipts");Text("Keep new reads private when off.",fontSize=12.sp)};Switch(enabled=loaded&&!busy,checked=receipts,onCheckedChange={receipts=it})}
- Text("Notifications & privacy",style=MaterialTheme.typography.titleMedium)
- listOf("full" to "Show sender and message","sender" to "Show sender only","hidden" to "Hide sensitive content").forEach{(mode,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy);Text(label)}}
- Text("Locked-screen public notifications stay private.",fontSize=12.sp)
+ Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),style=MaterialTheme.typography.titleMedium)
+ listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy);Text(androidx.compose.ui.res.stringResource(label))}}
+ Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),fontSize=12.sp)
  OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
  OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)

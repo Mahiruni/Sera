@@ -1,7 +1,7 @@
 import {createClient} from "@supabase/supabase-js";
 import {serverClient} from "@/lib/supabase/server";
 import {validMessageId} from "@/lib/network/message-contract";
-import {attachmentPreview,cleanPreviewText,notificationPreviewMode} from "@/lib/network/message-preview-model";
+import {attachmentPreview,cleanPreviewText,notificationPreviewMode,notificationText} from "@/lib/network/message-preview-model";
 import {shouldSuppressMessage} from "@/lib/network/message-control-model";
 export const runtime="nodejs";
 const headers={"Cache-Control":"private, no-store"};
@@ -11,6 +11,8 @@ export async function GET(request:Request){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
  if(!url||!key)return empty(503);
  if(bearer&&!/^Bearer [A-Za-z0-9._~-]+$/.test(bearer))return empty(401);
+ const locale=(request.headers.get("cookie")?.match(/(?:^|;\s*)sera-language=(am|om|en)(?:;|$)/)?.[1]??request.headers.get("accept-language")??"en");
+ const tr=(value:string)=>notificationText(locale,value);
  const params=new URL(request.url).searchParams;
  const owner=params.get("owner"),conversation=params.get("conversation"),id=params.get("message");
  if(!validMessageId(owner)||!validMessageId(conversation)||!validMessageId(id))return empty(400);
@@ -28,16 +30,16 @@ export async function GET(request:Request){
  const {data:privateRead,error:privateError}=await db.from("sera_private_message_reads").select("message_id").eq("message_id",id).eq("recipient_id",owner).maybeSingle();
  if(privateError||privateRead)return empty(204);
  const mode=notificationPreviewMode(pref?.notification_preview_mode,pref?.notification_previews);
- if(mode==="hidden")return Response.json({mode,title:"Sera",body:"You have a new private message.",createdAt:message.created_at},{headers});
+ if(mode==="hidden")return Response.json({mode,title:"Sera",body:tr("You have a new private message."),createdAt:message.created_at},{headers});
  const {data:cards,error:cardError}=await db.rpc("member_cards",{ids:[peer]});
  const card=cards?.[0];
  if(cardError||!card||card.id!==peer)return empty(204);
- const title=cleanPreviewText(card.full_name,80)||"Sera member";
- let body="Sent you a message",bodyKind="message";
+ const title=cleanPreviewText(card.full_name,80)||tr("Sera member");
+ let body=tr("Sent you a message"),bodyKind="message";
  if(mode==="full"){
    body=cleanPreviewText(message.body);
    bodyKind="text";
-   if(!body){const {data:files}=await db.from("professional_message_attachments").select("mime_type").eq("message_id",id).limit(5);body=files&&files.length>1?"Sent you multiple attachments":attachmentPreview(files?.[0]?.mime_type);bodyKind="attachment";}
+   if(!body){const {data:files}=await db.from("professional_message_attachments").select("mime_type").eq("message_id",id).limit(5);body=tr(files&&files.length>1?"Sent you multiple attachments":attachmentPreview(files?.[0]?.mime_type));bodyKind="attachment";}
  }
  const path=typeof card.avatar_path==="string"?card.avatar_path:null;
  const avatar=path?(await db.storage.from("sera-account-private").createSignedUrl(path,120)).data?.signedUrl??null:null;

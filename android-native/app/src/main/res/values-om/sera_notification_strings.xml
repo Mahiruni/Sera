@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sera_notification_private">Ergaa dhuunfaa haaraa qabda.</string>
+    <string name="sera_notification_activity">Sochii dhuunfaa haaraa</string>
+    <string name="sera_notification_open">Haasawa bani</string>
+    <string name="sera_notification_you">Ati</string>
+    <string name="sera_notification_sent">Ergaa siif erge</string>
+    <string name="sera_notification_write_reply">Deebii barreessi</string>
+    <string name="sera_notification_reply">Deebisi</string>
+    <string name="sera_notification_read">Akka dubbifametti mallatteessi</string>
+    <string name="sera_notification_privacy">Beeksisootaa fi iccitii</string>
+    <string name="sera_notification_full">Ergaa fi nama erge agarsiisi</string>
+    <string name="sera_notification_sender">Nama erge qofa agarsiisi</string>
+    <string name="sera_notification_hidden">Qabiyyee dhuunfaa dhoksi</string>
+    <string name="sera_notification_lock">Beeksisoonni iskiriinii cufame irratti iccitii ta’u.</string>
+    <plurals name="sera_notification_count"><item quantity="one">Ergaa dhuunfaa haaraa %d</item><item quantity="other">Ergaawwan dhuunfaa haaraa %d</item></plurals>
+</resources>

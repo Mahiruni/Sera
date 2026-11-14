@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sera_notification_private">You have a new private message.</string>
+    <string name="sera_notification_activity">New private activity</string>
+    <string name="sera_notification_open">Open conversation</string>
+    <string name="sera_notification_you">You</string>
+    <string name="sera_notification_sent">Sent you a message</string>
+    <string name="sera_notification_write_reply">Write a reply</string>
+    <string name="sera_notification_reply">Reply</string>
+    <string name="sera_notification_read">Mark as read</string>
+    <string name="sera_notification_privacy">Notifications &amp; privacy</string>
+    <string name="sera_notification_full">Show sender and message</string>
+    <string name="sera_notification_sender">Show sender only</string>
+    <string name="sera_notification_hidden">Hide sensitive content</string>
+    <string name="sera_notification_lock">Locked-screen public notifications stay private.</string>
+    <plurals name="sera_notification_count"><item quantity="one">%d new private message</item><item quantity="other">%d new private messages</item></plurals>
+</resources>

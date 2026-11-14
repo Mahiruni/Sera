@@ -29,7 +29,7 @@ internal data class SeraMessageBannerEvent(val owner:String,val thread:String,va
             Row(Modifier.fillMaxWidth().padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                 SeraAccountAvatar(event.preview?.title?:"Sera",event.preview?.avatar,44)
                 TextButton(onClick={SeraMessageAlerts.dismissBanner();onOpen(event.destination())},modifier=Modifier.weight(1f)){
-                    Column(Modifier.fillMaxWidth()){Text(event.preview?.title?:"Sera",color=MaterialTheme.colorScheme.onSurface,maxLines=1);Text(event.preview?.body?:"Open your private conversation",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)}
+                    Column(Modifier.fillMaxWidth()){Text(event.preview?.title?:"Sera",color=MaterialTheme.colorScheme.onSurface,maxLines=1);Text(event.preview?.body?:androidx.compose.ui.res.stringResource(R.string.sera_notification_private),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)}
                 }
                 IconButton(onClick={SeraMessageAlerts.dismissBanner()}){Icon(Icons.Outlined.Close,"Dismiss message notification")}
             }

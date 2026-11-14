@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sera_notification_private">አዲስ የግል መልዕክት አለዎት።</string>
+    <string name="sera_notification_activity">አዲስ የግል እንቅስቃሴ</string>
+    <string name="sera_notification_open">ውይይቱን ክፈት</string>
+    <string name="sera_notification_you">እርስዎ</string>
+    <string name="sera_notification_sent">መልዕክት ልኮልዎታል</string>
+    <string name="sera_notification_write_reply">መልስ ጻፍ</string>
+    <string name="sera_notification_reply">መልስ</string>
+    <string name="sera_notification_read">እንደተነበበ ምልክት አድርግ</string>
+    <string name="sera_notification_privacy">ማሳወቂያዎች እና ግላዊነት</string>
+    <string name="sera_notification_full">ላኪውን እና መልዕክቱን አሳይ</string>
+    <string name="sera_notification_sender">ላኪውን ብቻ አሳይ</string>
+    <string name="sera_notification_hidden">የግል ይዘትን ደብቅ</string>
+    <string name="sera_notification_lock">በተቆለፈ ማያ ገጽ ላይ የግል ይዘት አይታይም።</string>
+    <plurals name="sera_notification_count"><item quantity="one">%d አዲስ የግል መልዕክት</item><item quantity="other">%d አዳዲስ የግል መልዕክቶች</item></plurals>
+</resources>

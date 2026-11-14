@@ -112,20 +112,20 @@ internal object SeraMessageAlerts {
         val preview=latest?.preview
         val named=preview?.senderId!=null&&preview.mode!="hidden"
         val title=if(named)preview!!.title else "Sera"
-        val body=if(named)preview!!.body else if(count>1)"$count new private messages" else "You have a new private message."
-        val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(R.drawable.ic_sera_notification).setContentTitle("Sera").setContentText("New private activity").build()
+        val body=if(named)preview!!.body else if(count>1)context.resources.getQuantityString(R.plurals.sera_notification_count,count,count) else context.getString(R.string.sera_notification_private)
+        val public=NotificationCompat.Builder(context,SeraPush.CHANNEL).setSmallIcon(R.drawable.ic_sera_notification).setContentTitle("Sera").setContentText(context.getString(R.string.sera_notification_activity)).build()
         val builder=NotificationCompat.Builder(context,SeraNotificationSounds.channelFor(context,kind))
             .setSmallIcon(R.drawable.ic_sera_notification).setColor(ContextCompat.getColor(context,R.color.sera_teal)).setContentTitle(title).setContentText(body)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public)
             .setNumber(count).setWhen(latest?.at?:System.currentTimeMillis()).setOnlyAlertOnce(silent).setAutoCancel(true).setContentIntent(pi)
-            .addAction(android.R.drawable.ic_menu_view,"Open conversation",pi)
+            .addAction(android.R.drawable.ic_menu_view,context.getString(R.string.sera_notification_open),pi)
         if(named){
             val sender=preview!!.senderId!!
             val image=avatar?:SeraNotificationAvatars.cached(owner,sender)?:SeraNotificationAvatars.initials(title)
             val person=Person.Builder().setName(title).setKey(sender).setIcon(IconCompat.createWithBitmap(image)).build()
-            val me=Person.Builder().setName("You").setKey(owner).build()
+            val me=Person.Builder().setName(context.getString(R.string.sera_notification_you)).setKey(owner).build()
             val style=NotificationCompat.MessagingStyle(me).setGroupConversation(false)
-            entries.forEach{entry->style.addMessage(entry.preview?.body?:"Sent you a message",entry.at,person)}
+            entries.forEach{entry->style.addMessage(entry.preview?.body?:context.getString(R.string.sera_notification_sent),entry.at,person)}
             builder.setLargeIcon(image).setStyle(style)
         }
         if(kind=="message")SeraNotificationActions.addActions(context,builder,owner,thread,id)
