@@ -152,14 +152,16 @@ import java.net.URL
                                         Text(inboxActivityText(status),fontSize=11.sp,color=if(active)if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF6EE7B7) else Color(0xFF137A4D) else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                                     }
                                 }
-                                Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                                    Text(conversation.preview.ifBlank{"Start a conversation"},Modifier.weight(1f),fontSize=13.sp,color=muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                    if(conversation.unread>0||conversation.markedUnread)Box(Modifier.size(20.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}
+                                }
                             }
                             if(userId.isNotBlank())SeraConversationControlMenu(token,conversation,onControlChanged)
                             Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(2.dp)){
                                 IconButton(onClick={confirmCall=conversation},modifier=Modifier.size(48.dp).testTag("sera_inbox_call_${conversation.id}")){
                                     Icon(Icons.Outlined.Call,stringResource(R.string.sera_inbox_call_person,conversation.peerName),tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFFC4B5FD) else Color(0xFF4C1D95),modifier=Modifier.size(24.dp))
                                 }
-                                if(conversation.unread>0||conversation.markedUnread)Box(Modifier.size(20.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}
                             }
                         }
                     }
