@@ -21,7 +21,7 @@ internal class SeraMessageHistoryCache(context:Context){
     fun write(user:String,thread:String,raw:String)=synchronized(lock){
         if(!SeraMessageAlerts.validId(user)||!SeraMessageAlerts.validId(thread))return@synchronized
         val source=JSONArray(raw);val rows=JSONArray()
-        for(i in 0 until minOf(source.length(),60)){
+        for(i in 0 until minOf(source.length(),SERA_INITIAL_MESSAGE_WINDOW)){
             val item=source.getJSONObject(i)
             if(!item.isNull("unsent_at")){item.put("body","Message unsent");item.remove("professional_message_attachments");item.remove("professional_message_reactions")}
             rows.put(item)

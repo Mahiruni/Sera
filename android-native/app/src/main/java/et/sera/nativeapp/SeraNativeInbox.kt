@@ -78,6 +78,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -151,19 +153,38 @@ internal fun resolveNativeMessagePeer(token:String,userId:String,conversation:St
     return runCatching{val row=JSONArray(raw).optJSONObject(0)?:return null;val a=row.optString("member_a");val b=row.optString("member_b");when(userId){a->b;b->a;else->null}}.getOrNull()
 }
 
-private fun loadNativeConversations(token: String, userId: String): Pair<List<NativeConversation>?, String> {
+private suspend fun loadNativeConversations(token: String, userId: String, prior:List<NativeConversation>, onCore:suspend (List<NativeConversation>)->Unit): Pair<List<NativeConversation>?, String> = coroutineScope {
+    val controlsRequest=async(Dispatchers.IO){inboxRequest(token,"sera_conversation_preferences?select=conversation_id,pinned,archived,marked_unread,muted_until&user_id=eq.$userId")}
     val (raw, error) = inboxRequest(token,
         "rpc/sera_inbox_v2","POST",JSONObject().put("p_limit",100))
-    if (raw == null) return null to error
-    return try {
+    if (raw == null){controlsRequest.cancel();return@coroutineScope null to error}
+    try {
         val rows = JSONArray(raw)
         val peers = (0 until rows.length()).map { rows.getJSONObject(it) }
         val ids = peers.map { if (it.optString("member_a") == userId) it.optString("member_b") else it.optString("member_a") }
         val names = mutableMapOf<String, String>()
         val paths = mutableMapOf<String, String>()
         val photos = mutableMapOf<String, String>()
+        val cardRequest=async(Dispatchers.IO){if(ids.isEmpty()) "[]" to "" else inboxRequest(token,"rpc/member_cards","POST",JSONObject().put("ids",JSONArray(ids.distinct())))}
+        val controlResult=controlsRequest.await()
+        val priorById=prior.associateBy{it.id}
+        val controls=controlResult.first?.let{rawControls->runCatching{val rows=JSONArray(rawControls);(0 until rows.length()).map{rows.getJSONObject(it)}.associateBy{it.getString("conversation_id")}}.getOrNull()}
+        // Only authorized inbox rows are published; retain previously known names and preferences.
+        fun buildRows():List<NativeConversation> = peers.map { row ->
+            val id=if(row.optString("member_a")==userId)row.optString("member_b") else row.optString("member_a")
+            val old=priorById[row.optString("id")]?.takeIf{it.peerId==id}
+            val control=controls?.get(row.optString("id"))
+            NativeConversation(row.optString("id"),id,names[id]?.takeIf{it.isNotBlank()&&it!="null"}?:old?.peerName?:"Sera member",
+                row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"),photos[id]?:old?.photo,
+                row.optString("last_created_at").takeUnless{it=="null"}.orEmpty(),
+                control?.optBoolean("pinned")?:if(controls==null)old?.pinned?:false else false,
+                control?.optBoolean("archived")?:if(controls==null)old?.archived?:false else false,
+                control?.optBoolean("marked_unread")?:if(controls==null)old?.markedUnread?:false else false,
+                if(controls==null)old?.mutedUntil else control?.optString("muted_until")?.takeUnless{it=="null"||it.isBlank()})
+        }
+        onCore(buildRows())
         if (ids.isNotEmpty()) {
-            val (cards, _) = inboxRequest(token, "rpc/member_cards", "POST", JSONObject().put("ids", JSONArray(ids)))
+            val (cards, _) = cardRequest.await()
             if (cards != null) {
                 val entries = JSONArray(cards)
                 for (i in 0 until entries.length()) {
@@ -173,18 +194,15 @@ private fun loadNativeConversations(token: String, userId: String): Pair<List<Na
                 }
             }
         }
+        onCore(buildRows())
         if(paths.isNotEmpty()) runCatching {
             val base=BuildConfig.SUPABASE_URL.trimEnd('/')
             val connection=(URL(base+"/storage/v1/object/sign/sera-account-private").openConnection() as HttpURLConnection).apply{requestMethod="POST";doOutput=true;connectTimeout=10000;readTimeout=10000;setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY);setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}
             try{connection.outputStream.use{it.write(JSONObject().put("paths",JSONArray(paths.values.toList())).put("expiresIn",300).toString().toByteArray())};if(connection.responseCode in 200..299){val signed=JSONArray(connection.inputStream.bufferedReader().use{it.readText()});for(i in 0 until signed.length()){val item=signed.getJSONObject(i);val path=item.optString("path");val url=item.optString("signedURL").ifBlank{item.optString("signedUrl")};if(url.startsWith("/object/sign/")){paths.entries.filter{it.value==path}.forEach{photos[it.key]=base+"/storage/v1"+url}}}}}finally{connection.disconnect()}
         }
-        val controls=runCatching{val raw=inboxRequest(token,"sera_conversation_preferences?select=conversation_id,pinned,archived,marked_unread,muted_until&user_id=eq.$userId").first;val rows=JSONArray(raw?:"[]");(0 until rows.length()).map{rows.getJSONObject(it)}.associateBy{it.getString("conversation_id")}}.getOrDefault(emptyMap())
-        peers.map { row ->
-            val id = if (row.optString("member_a") == userId) row.optString("member_b") else row.optString("member_a")
-            val control=controls[row.optString("id")]
-            NativeConversation(row.optString("id"), id, names[id]?.takeIf { it.isNotBlank() && it != "null" } ?: "SERA professional",row.optString("last_body").takeUnless{it=="null"}.orEmpty(),row.optInt("unread_count"),photos[id],row.optString("last_created_at").takeUnless{it=="null"}.orEmpty(),control?.optBoolean("pinned")?:false,control?.optBoolean("archived")?:false,control?.optBoolean("marked_unread")?:false,control?.optString("muted_until")?.takeUnless{it=="null"||it.isBlank()})
-        } to ""
-    } catch (_: Exception) { null to "Unable to display conversations." }
+        buildRows() to ""
+    } catch (cancelled:kotlinx.coroutines.CancellationException){throw cancelled}
+    catch (_: Exception) { null to "Unable to display conversations." }
 }
 
 private fun loadNativeMessages(token: String, conversationId: String, limit:Int=100, ids:List<String>?=null,cache:SeraMessageHistoryCache?=null,owner:String=""): Pair<List<NativeMessage>?, String> {
@@ -384,6 +402,7 @@ private class InboxSelectionState(initialThread: String?, initialPeer: String, i
 
 private class InboxThreadState {
     val syncMutex=Mutex()
+    val deliveryInFlight=mutableSetOf<String>()
     var manualSyncJob:kotlinx.coroutines.Job?=null
     var manualSyncRequested=false
     var callEvents by mutableStateOf<List<SeraCallEvent>>(emptyList())
@@ -399,7 +418,7 @@ private class InboxThreadState {
     var reaction by mutableStateOf<NativeMessage?>(null)
     var remove by mutableStateOf<NativeMessage?>(null)
     var forwarding by mutableStateOf<NativeMessage?>(null)
-    var historyLimit by mutableIntStateOf(100)
+    var historyLimit by mutableIntStateOf(SERA_INITIAL_MESSAGE_WINDOW)
     var messageSearch by mutableStateOf("")
     var showSearch by mutableStateOf(false)
     var sendFailed by mutableStateOf(false)
@@ -606,7 +625,11 @@ private class InboxController(
                 val serverIds=latest.mapTo(hashSetOf()){it.id}
                 thread.textAcknowledged=thread.textAcknowledged.filterNot{it.id in serverIds}
                 val undelivered=latest.filter{isUnreadIncoming(it,userId)&&(it.deliveredAt.isBlank()||it.deliveredAt=="null")}
-                if(undelivered.isNotEmpty())withContext(Dispatchers.IO){undelivered.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch.map{it.id})).put("p_read",false))}}
+                val pendingDelivery=undelivered.map{it.id}.filter{thread.deliveryInFlight.add(it)}
+                if(pendingDelivery.isNotEmpty())scope.launch{
+                    try{withContext(Dispatchers.IO){pendingDelivery.chunked(100).forEach{batch->chatRpc(token,"sera_message_receipt",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(batch)).put("p_read",false))}}}
+                    finally{thread.deliveryInFlight.removeAll(pendingDelivery.toSet())}
+                }
             }
             if(selected?.id==conversation.id)error=result.second
         }
@@ -617,7 +640,7 @@ private class InboxController(
     fun PresenceAndScroll() {
         val link=LocalSeraLink.current
         val activeCall=LocalSeraGlobalCall.current?.pinned==true
-        LaunchedEffect(token,selected?.id,lifecycle,link,activeCall) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; if(!link.available)return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(seraSecondarySyncDelay(link,activeCall,30000L))}} }
+        LaunchedEffect(token,selected?.id,lifecycle,link,activeCall,thread.initialMessagesLoaded) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; if(!link.available||!thread.initialMessagesLoaded)return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(seraSecondarySyncDelay(link,activeCall,30000L))}} }
         val ime = WindowInsets.ime
         val density = LocalDensity.current
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
@@ -818,13 +841,16 @@ private class InboxController(
             if(userId.isBlank())return@LaunchedEffect
             if(conversations.isEmpty()){val saved=withContext(Dispatchers.IO){runCatching{cache?.readInbox(userId).orEmpty()}.getOrDefault(emptyList())};if(saved.isNotEmpty()){conversations=saved;loading=false}}
             if(!connectionAvailable){loading=false;return@LaunchedEffect}
+            if(selected!=null&&selected?.peerId?.isNotBlank()==true&&selected?.peerName !in listOf("SERA member","Sera member","SERA professional",""))return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
-                    val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId)}
-                    result.first?.let{rows->conversations=rows;withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}};val current=selected;if(current!=null&&current.peerName=="SERA member")rows.firstOrNull{it.id==current.id}?.let{selected=it}}
+                    val prior=conversations
+                    fun publish(rows:List<NativeConversation>){conversations=rows;loading=false;val current=selected;if(current!=null&&(current.peerId.isBlank()||current.peerName in listOf("SERA member","Sera member","SERA professional","")))rows.firstOrNull{it.id==current.id}?.let{selected=it}}
+                    val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId,prior){rows->withContext(Dispatchers.Main){publish(rows)}}}
+                    result.first?.let{rows->publish(rows);withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}}}
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
-                    delay(seraSecondarySyncDelay(link,activeCall,20000L))
+                    delay(seraSecondarySyncDelay(link,activeCall,30000L))
                 }
             }
         }
@@ -869,8 +895,8 @@ private class InboxController(
     fun TypingEffects() {
         val link=LocalSeraLink.current
         val activeCall=LocalSeraGlobalCall.current?.pinned==true
-        LaunchedEffect(token, selected?.id, lifecycle,link,activeCall) {
-            if(!link.available){peerTyping=false;return@LaunchedEffect}
+        LaunchedEffect(token, selected?.id, lifecycle,link,activeCall,thread.initialMessagesLoaded) {
+            if(!link.available||!thread.initialMessagesLoaded){peerTyping=false;return@LaunchedEffect}
             val conversation = selected ?: return@LaunchedEffect
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 while (true) {
@@ -945,12 +971,13 @@ private class InboxController(
                         thread.bulkBusy=true
                         scope.launch{try{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_bulk_star_messages",JSONObject().put("p_conversation",conversation.id).put("p_ids",JSONArray(chosen.map{it.id})))};if(r.first!=null){thread.selectedMessages=emptySet();thread.libraryRevision++}else error=r.second}finally{thread.bulkBusy=false}}
                     },onForward={thread.bulkForward=true})
-                }else SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it},onScheduled={thread.scheduledOpen=true})
+                }else SeraMessageLibraryBar(token,conversation.id,thread.libraryRevision,accent,onOpen={thread.libraryMode=it},onScheduled={thread.scheduledOpen=true},loadPins=thread.initialMessagesLoaded)
                 if(thread.bulkForward)SeraBulkForwardDialog(token,conversation.id,chosen,conversations,onDismiss={thread.bulkForward=false},onSuccess={thread.bulkForward=false;thread.selectedMessages=emptySet();refresh++;reload()})
                 if(thread.scheduledOpen)SeraScheduledMessagesScreen(token,conversation.id,conversation.peerName,thread.scheduleDraft,onDismiss={thread.scheduledOpen=false;thread.scheduleDraft=null},onCreated={body->if(thread.scheduleDraft!=null&&draft==body){draft="";runCatching{savedDrafts?.clear(userId,conversation.id)}};thread.scheduleDraft=null})
                 thread.libraryMode?.let{mode->SeraMessageLibraryDialog(token,conversation.id,userId,mode,onDismiss={thread.libraryMode=null},onJump={entry->thread.libraryMode=null;if(messages.any{it.id==entry.id}){thread.suppressImeAnchor=true;thread.jumpMessageId=entry.id;messageSearch="";showSearch=false}else global.historicalTarget=entry.conversationId to entry.id})}
                 HorizontalDivider(color=inboxSoft,thickness=1.dp)
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                if(!thread.initialMessagesLoaded&&error.isBlank())LinearProgressIndicator(Modifier.fillMaxWidth())
                 if(thread.cachedHistory)Text("Saved messages · syncing…",fontSize=11.sp,color=muted,modifier=Modifier.padding(horizontal=12.dp,vertical=4.dp))
                 val shown = mergeAcknowledgedText(messages,thread.textAcknowledged)
                 val legacy = queued?.takeIf{it.file==null&&it.album.isEmpty()}?.let{NativeQueuedText(it.clientId,it.body,it.replyId,java.time.Instant.now().toString(),if(sendFailed)TextSendStage.Failed else TextSendStage.Ready)}
