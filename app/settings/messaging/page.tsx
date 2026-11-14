@@ -8,6 +8,8 @@ import {serverClient} from "@/lib/supabase/server";
 import {saveMessagingPreferences,saveTypingVisibility,saveMessagingActivity,saveReadReceiptVisibility,saveNotificationPreviews} from "@/lib/network/message-control-actions";
 import {clockValue,defaultMessagePreferences} from "@/lib/network/message-control-model";
 import styles from "./control-center.module.css";
+import {LiveNotificationPreview} from "./live-notification-preview";
+import {notificationPreviewMode} from "@/lib/network/message-preview-model";
 export const metadata={title:"Messaging control center | Sera",robots:{index:false,follow:false}};
 function Toggle({name,checked,title,description}:{name:string;checked:boolean;title:string;description:string}){
  return <label className={styles.toggle}><span><strong>{title}</strong><small>{description}</small></span><input type="checkbox" name={name} defaultChecked={checked} className={styles.switch}/></label>;
@@ -39,7 +41,7 @@ export default async function MessagingSettings(){
  </Panel>
  <Panel id="previews" title={tr("Notifications & privacy")} description="Decide what appears on your device." icon={<Eye size={21}/>}>
  <div className={styles.device}><strong>Browser notifications</strong><p id="sera-browser-notification-status" role="status">Allow notifications in this browser to receive message alerts.</p><div className={styles.actions}><button type="button" className={styles.secondary} data-sera-web-push="enable">{tr("Enable browser notifications")}</button><button type="button" className={styles.secondary} data-sera-web-push="disable">{tr("Turn off browser notifications")}</button></div></div>
- {!error&&<form action={saveNotificationPreviews} className={styles.form}><label className={styles.field}>{tr("Message previews")}<select name="previewMode" defaultValue={data?.notification_preview_mode??"full"}><option value="full">{tr("Show sender and message")}</option><option value="sender">{tr("Show sender only")}</option><option value="hidden">{tr("Hide sensitive content")}</option></select></label><div className={styles.note}><MessageCircle size={18}/><span>Android’s public lock-screen version remains generic. Clear existing alerts after changing privacy.</span></div><button className={styles.save} type="submit">{tr("Save preview preference")}</button></form>}
+ {!error&&<form action={saveNotificationPreviews} className={styles.form}><LiveNotificationPreview initialMode={notificationPreviewMode(data?.notification_preview_mode,data?.notification_previews)} locale={locale}/><div className={styles.note}><MessageCircle size={18}/><span>Android’s public lock-screen version remains generic. Clear existing alerts after changing privacy.</span></div><button className={styles.save} type="submit">{tr("Save preview preference")}</button></form>}
  </Panel>
  <Panel id="organization" title="Conversation organization" description="Keep important conversations within reach." icon={<Archive size={21}/>}>
  <div className={styles.organize}><p><CheckCheck size={18}/> Pin important conversations</p><p><Bell size={18}/> Mute distracting alerts</p><p><Archive size={18}/> Archive or mark unread for follow-up</p></div><p className={styles.note}>Manage each conversation from its settings menu. Your existing read receipts stay unchanged.</p><Link href="/network/messages" className={styles.open}>Open messages <ArrowUpRight size={18}/></Link>

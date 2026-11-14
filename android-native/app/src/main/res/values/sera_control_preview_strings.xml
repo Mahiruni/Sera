@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sera_control_live_preview">Live notification preview</string>
+    <string name="sera_control_example">Example only</string>
+    <string name="sera_control_sample_sender">Hana</string>
+    <string name="sera_control_sample_message">Your project looks great!</string>
+</resources>

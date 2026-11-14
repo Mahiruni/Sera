@@ -1,6 +1,8 @@
 package et.sera.nativeapp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -91,13 +93,14 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
      }
      ControlSection(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),"Choose what appears in private notifications."){
       listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->
-       Surface(shape=RoundedCornerShape(14.dp),color=if(previewMode==mode)MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.35f)){
+       Surface(shape=RoundedCornerShape(14.dp),color=if(previewMode==mode)MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.35f)){
         Row(Modifier.fillMaxWidth().padding(end=12.dp),verticalAlignment=Alignment.CenterVertically){
          RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy)
          Text(androidx.compose.ui.res.stringResource(label),style=MaterialTheme.typography.bodyMedium)
         }
        }
       }
+      ControlNotificationPreview(previewMode)
       Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
      }
      if(error.isNotBlank())Surface(color=MaterialTheme.colorScheme.errorContainer,shape=RoundedCornerShape(16.dp)){Text(error,Modifier.fillMaxWidth().padding(14.dp),color=MaterialTheme.colorScheme.onErrorContainer)}
@@ -111,6 +114,28 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null){SeraMessageAlerts.clearPrivateAlerts(context,userId);onDismiss()}else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
       }){Text(if(busy)"Saving…" else "Save preferences")}
      }
+    }
+   }
+  }
+ }
+}
+@Composable private fun ControlNotificationPreview(mode:String){
+ val scheme=MaterialTheme.colorScheme
+ val hidden=mode=="hidden"
+ val body=when(mode){"full"->androidx.compose.ui.res.stringResource(R.string.sera_control_sample_message);"sender"->androidx.compose.ui.res.stringResource(R.string.sera_notification_sent);else->androidx.compose.ui.res.stringResource(R.string.sera_notification_private)}
+ Surface(shape=RoundedCornerShape(18.dp),color=scheme.tertiaryContainer,modifier=Modifier.fillMaxWidth()){
+  Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+   Text(androidx.compose.ui.res.stringResource(R.string.sera_control_live_preview),style=MaterialTheme.typography.labelLarge,color=scheme.onTertiaryContainer)
+   Text(androidx.compose.ui.res.stringResource(R.string.sera_control_example),style=MaterialTheme.typography.labelSmall,color=scheme.onTertiaryContainer)
+   Surface(shape=RoundedCornerShape(14.dp),color=scheme.surface){
+    Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically){
+     Surface(shape=CircleShape,color=Color(0xFF7C3AED),modifier=Modifier.size(42.dp)){Box(contentAlignment=Alignment.Center){Text(if(hidden)"S" else "H",color=Color.White,style=MaterialTheme.typography.titleMedium)}}
+     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+      Text(if(hidden)"Sera" else androidx.compose.ui.res.stringResource(R.string.sera_control_sample_sender),style=MaterialTheme.typography.titleSmall,color=scheme.onSurface)
+      Text(body,style=MaterialTheme.typography.bodySmall,color=scheme.onSurface)
+      Text("Sera",style=MaterialTheme.typography.labelSmall,color=scheme.onSurfaceVariant)
+     }
+     Surface(shape=CircleShape,color=Color(0xFF7C3AED),modifier=Modifier.size(9.dp)){}
     }
    }
   }
