@@ -23,9 +23,9 @@ async function firebaseSession(){
  current={messaging,getToken,deleteToken,onMessage,registration,vapidKey};
  return current;
 }
-function banner(preview,thread){
+function banner(preview,thread,kind="message"){
  const old=document.getElementById("sera-web-message-banner");old?.remove();
- const a=document.createElement("a");a.id="sera-web-message-banner";a.href="/network/messages?thread="+encodeURIComponent(thread);
+ const a=document.createElement("a");a.id="sera-web-message-banner";a.href=(kind==="space_message"?"/collaboration?space=":"/network/messages?thread=")+encodeURIComponent(thread);
  a.setAttribute("role","status");Object.assign(a.style,{position:"fixed",top:"16px",left:"50%",transform:"translateX(-50%)",width:"min(440px, calc(100% - 24px))",zIndex:"10000",display:"flex",gap:"12px",alignItems:"center",padding:"14px",borderRadius:"18px",background:"var(--sera-surface, #fff)",color:"var(--sera-ink, #153b40)",boxShadow:"0 8px 32px #123a4033",border:"1px solid #087e8333",textDecoration:"none"});
  const avatar=document.createElement("span");Object.assign(avatar.style,{width:"44px",height:"44px",borderRadius:"50%",display:"grid",placeItems:"center",flexShrink:"0",background:"#087e83",color:"white",overflow:"hidden"});
  avatar.textContent=String(preview.title||"Sera").trim().split(/\s+/).slice(0,2).map(s=>s[0]).join("").toUpperCase();
@@ -35,10 +35,11 @@ function banner(preview,thread){
 function listen(session){
  if(offMessage)return;
  offMessage=session.onMessage(session.messaging,async payload=>{
-  const d=payload.data;if(d?.kind!=="message"||d.recipient_id!==owner()||document.visibilityState!=="visible")return;
-  if(location.pathname==="/network/messages"&&new URLSearchParams(location.search).get("thread")===d.conversation_id)return;
-  const q=new URLSearchParams({owner:d.recipient_id,conversation:d.conversation_id,message:d.message_id});
-  try{const r=await fetch("/api/native/message-preview?"+q,{credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(5000)});if(r.status===200&&d.recipient_id===owner())banner(await r.json(),d.conversation_id);}catch{/* Do not show unauthorized previews. */}
+  const d=payload.data;if(!["message","space_message","missed_call"].includes(d?.kind)||d.recipient_id!==owner()||document.visibilityState!=="visible")return;
+  if(d.kind==="space_message"&&location.pathname==="/collaboration"&&new URLSearchParams(location.search).get("space")===d.conversation_id)return;
+  if(d.kind!=="space_message"&&location.pathname==="/network/messages"&&new URLSearchParams(location.search).get("thread")===d.conversation_id)return;
+  const q=new URLSearchParams({owner:d.recipient_id,conversation:d.conversation_id,message:d.message_id,kind:d.kind});const endpoint=d.kind==="message"?"/api/native/message-preview":"/api/native/activity-preview";
+  try{const r=await fetch(endpoint+"?"+q,{credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(5000)});if(r.status===200&&d.recipient_id===owner())banner(await r.json(),d.conversation_id,d.kind);}catch{/* Do not show unauthorized previews. */}
  });
 }
 async function enable(){

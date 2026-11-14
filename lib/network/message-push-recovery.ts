@@ -1,27 +1,55 @@
 import "server-only";
 import {createClient} from "@supabase/supabase-js";
 import {sendProfessionalPush} from "@/lib/network/firebase-push";
-import {messagePushPayload} from "@/lib/network/message-push-model";
+import {messagePushPayload,activityPushPayload} from "@/lib/network/message-push-model";
 import {shouldSuppressMessage} from "@/lib/network/message-control-model";
 
-type Job={event_id:string;kind:"message"|"company_message";recipient_id:string;conversation_id:string;device_id:string;lease_id:string;expires_at:string};
+type Job={event_id:string;kind:"message"|"company_message"|"space_message"|"missed_call";recipient_id:string;conversation_id:string;device_id:string;lease_id:string;expires_at:string};
 function adminClient(){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SERA_SUPABASE_SERVICE_ROLE_KEY;
  if(!url||!key||!process.env.FIREBASE_SERVICE_ACCOUNT_JSON)throw new Error("Push recovery unavailable");
  return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 }
 type Db=ReturnType<typeof adminClient>;
+async function deliverActivity(db:Db,j:Job,token:string,platform:string):Promise<"accepted"|"skipped"|"retry">{
+ const {data:n,error}=await db.from("professional_notifications").select("id,kind,recipient_id,actor_id,space_id,conversation_id,source_event_id,read_at").eq("id",j.event_id).eq("recipient_id",j.recipient_id).eq("kind",j.kind).maybeSingle();
+ if(error)throw new Error("Activity lookup failed");
+ if(!n||n.read_at)return "skipped";
+ const target=j.kind==="space_message"?n.space_id:n.conversation_id;
+ if(target!==j.conversation_id)return "skipped";
+ const block=await db.from("professional_blocks").select("blocker_id").or("and(blocker_id.eq."+n.actor_id+",blocked_id.eq."+j.recipient_id+"),and(blocker_id.eq."+j.recipient_id+",blocked_id.eq."+n.actor_id+")").limit(1);
+ if(block.error)throw new Error("Activity block lookup failed");
+ if(block.data?.length)return "skipped";
+ if(j.kind==="space_message"){
+  const [membership,source]=await Promise.all([db.from("sera_collaboration_members").select("member_id").eq("space_id",target).eq("member_id",j.recipient_id).eq("status","active").maybeSingle(),db.from("sera_space_messages").select("id").eq("id",n.source_event_id).eq("space_id",target).eq("sender_id",n.actor_id).maybeSingle()]);
+  if(membership.error||source.error)throw new Error("Space access lookup failed");
+  if(!membership.data||!source.data)return "skipped";
+ }else{
+  const {data:thread,error:threadError}=await db.from("professional_conversations").select("member_a,member_b").eq("id",target).maybeSingle();
+  if(threadError)throw new Error("Call access lookup failed");
+  if(!thread||!((thread.member_a===j.recipient_id&&thread.member_b===n.actor_id)||(thread.member_b===j.recipient_id&&thread.member_a===n.actor_id)))return "skipped";
+ }
+ if(j.kind!=="space_message"&&j.kind!=="missed_call")return "skipped";
+ const payload=activityPushPayload(j.recipient_id,target,j.event_id,j.kind);if(!payload)return "skipped";
+ const result=await sendProfessionalPush([token],{...payload,expiresAt:j.expires_at},platform==="android");
+ if(result.delivered===1)return "accepted";
+ if(result.invalidTokens.includes(token)){const update=await db.from("professional_push_devices").update({enabled:false,updated_at:new Date().toISOString()}).eq("id",j.device_id).eq("user_id",j.recipient_id).eq("token",token);if(update.error)throw new Error("Token cleanup failed");return "skipped";}
+ return "retry";
+}
 async function processJob(db:Db,j:Job):Promise<void>{
  let outcome:"accepted"|"skipped"|"retry"="retry";
  try{
   const [device,prefs,control]=await Promise.all([
    db.from("professional_push_devices").select("token,platform,enabled,user_id").eq("id",j.device_id).maybeSingle(),
    db.from("sera_message_preferences").select("notifications_enabled,quiet_enabled,quiet_start,quiet_end,quiet_timezone").eq("user_id",j.recipient_id).maybeSingle(),
-   j.kind==="message"?db.from("sera_conversation_preferences").select("muted_until").eq("user_id",j.recipient_id).eq("conversation_id",j.conversation_id).maybeSingle():Promise.resolve({data:null,error:null})
+   (j.kind==="message"||j.kind==="missed_call")?db.from("sera_conversation_preferences").select("muted_until").eq("user_id",j.recipient_id).eq("conversation_id",j.conversation_id).maybeSingle():Promise.resolve({data:null,error:null})
   ]);
   if(device.error||prefs.error||control.error)throw new Error("Notification policy lookup failed");
   const d=device.data;
   if(!d||!d.enabled||d.user_id!==j.recipient_id||shouldSuppressMessage(prefs.data,control.data?.muted_until??null,new Date())||Date.parse(j.expires_at)<=Date.now())outcome="skipped";
+  else if(j.kind==="space_message"||j.kind==="missed_call"){
+   outcome=await deliverActivity(db,j,d.token,d.platform);
+  }
   else{
    // Revalidate membership and message state before every retry.
    const company=j.kind==="company_message";

@@ -7,3 +7,8 @@ export function messagePushPayload(recipient:string,conversation:string,message:
  body:"You have a new private message.",
  url:kind==="message"?"/network/messages?thread="+conversation:"/network/messages"};
 }
+
+export function activityPushPayload(recipient:string,target:string,event:string,kind:"space_message"|"missed_call"){
+ if(![recipient,target,event].every(v=>typeof v==="string"&&uuid.test(v)))return null;
+ return {recipientId:recipient,conversationId:target,messageId:event,kind,title:"Sera",body:kind==="missed_call"?"You missed a call.":"You have a new team message.",url:kind==="missed_call"?"/network/messages?thread="+target:"/collaboration?space="+target};
+}

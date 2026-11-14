@@ -33,7 +33,11 @@ const notificationWords:Record<string,[string,string]> = {
  "Turn off browser notifications":["የአሳሽ ማሳወቂያዎችን አጥፋ","Beeksisoota biraawzaraa cufi"],
  "Message previews":["የመልዕክት ቅድመ እይታ","Mul’ata ergaa"],
  "Save preview preference":["የቅድመ እይታ ምርጫን አስቀምጥ","Filannoo mul’ataa olkaa’i"],
- "Sera member":["የSera አባል","Miseensa Sera"]
+ "Sera member":["የSera አባል","Miseensa Sera"],
+ "You missed a call.":["ያመለጠዎት ጥሪ አለ።","Bilbila tokko dabarsite."],
+ "Missed call":["ያመለጠ ጥሪ","Bilbila darbe"],
+ "You have a new team message.":["አዲስ የቡድን መልዕክት አለዎት።","Ergaa garee haaraa qabda."],
+ "Team conversation":["የቡድን ውይይት","Haasawa garee"]
 };
 export function notificationText(locale:string,value:string):string{
  const words=notificationWords[value];const language=locale.toLowerCase().split(/[-,;]/)[0];

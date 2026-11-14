@@ -71,10 +71,10 @@ export async function sendProfessionalPush(tokens: string[], payload: PushPayloa
           headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
           body: JSON.stringify({ message: {
             token: deviceToken,
-            ...(nativeAndroid || payload.kind==="message"&&webPushConfig() ? {} : { notification: { title: payload.title.slice(0,100), body: payload.body.slice(0,200) } }),
+            ...(nativeAndroid || ["message","space_message","missed_call"].includes(payload.kind)&&webPushConfig() ? {} : { notification: { title: payload.title.slice(0,100), body: payload.body.slice(0,200) } }),
             data: { url: safeUrl, kind: payload.kind.slice(0, 50), title: payload.title.slice(0, 100), body: payload.body.slice(0, 200), ...(payload.recipientId?{recipient_id:payload.recipientId}:{}), ...(payload.messageId&&payload.conversationId?{message_id:payload.messageId,conversation_id:payload.conversationId}:{}), ...(payload.callId?{call_id:payload.callId,expires_at:payload.expiresAt??""}:{}) },
             android: { priority: "high", ...(ttl!==null?{ttl:`${Math.min(ttl,ttlCap)}s`}:{}) },
-            ...(ttl!==null||payload.messageId?{webpush:{...(ttl!==null?{headers:{TTL:String(Math.min(ttl,ttlCap))}}:{}),...(payload.messageId&&!(payload.kind==="message"&&webPushConfig())?{notification:{tag:"sera-message-"+payload.conversationId}}:{})}}:{}),
+            ...(ttl!==null||payload.messageId?{webpush:{...(ttl!==null?{headers:{TTL:String(Math.min(ttl,ttlCap))}}:{}),...(payload.messageId&&!(["message","space_message","missed_call"].includes(payload.kind)&&webPushConfig())?{notification:{tag:"sera-"+payload.kind+"-"+(payload.kind==="missed_call"?payload.messageId:payload.conversationId)}}:{})}}:{}),
           } }),
           signal: AbortSignal.timeout(10000), cache: "no-store",
         },
