@@ -114,7 +114,8 @@ internal fun loadSeraFeedChecked(token:String,page:Int,personalized:Boolean,save
     // A positive RLS count means an empty page is suspect. Retry Latest once,
     // then confirm the count again before publishing a genuinely empty result.
     val retry=loadSeraFeedBase(token,page,personalized=false,savedOnly=false,pageSize=pageSize)
-    if(retry.first==null||retry.first.isNotEmpty())return retry
+    val retryRows=retry.first
+    if(retryRows==null||retryRows.isNotEmpty())return retry
     val confirmed=seraLatestFeedVisibleCount(token)
     if(confirmed.second.isNotBlank())return null to confirmed.second
     if(confirmed.first==0)return retry

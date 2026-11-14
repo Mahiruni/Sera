@@ -68,32 +68,4 @@ export async function querySocialFeedPage(
   }
 
   return { rows, error: null };
-  }
-
-  if (result.error) return { rows: [], error: result.error };
-
-  // Never turn a transient empty page into a false "quiet feed" state.
-  if (!personalized && offset === 0 && rows.length === 0) {
-    const head = await db
-      .from("posts")
-      .select("id")
-      .eq("status", "published")
-      .order("published_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(1);
-    if (head.error) return { rows: [], error: head.error };
-    if (head.data?.length) {
-      result = await latest();
-      if (result.error) return { rows: [], error: result.error };
-      rows = (result.data || []) as FeedRow[];
-      if (rows.length === 0) {
-        return {
-          rows: [],
-          error: new Error("Published posts are available but could not be loaded."),
-        };
-      }
-    }
-  }
-
-  return { rows, error: null };
 }
