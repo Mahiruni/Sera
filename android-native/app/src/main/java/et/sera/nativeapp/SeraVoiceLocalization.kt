@@ -58,6 +58,8 @@ private fun voiceResource(value:String):Int?=when(value){
     "Tap to return to your call"->R.string.sv_tap_return
     "Enable SERA notifications in Android settings before starting a call."->R.string.sv_notifications
     "Microphone permission is required for voice calling."->R.string.sv_mic_permission
+    "Open microphone settings"->R.string.sv_mic_settings
+    "Close"->R.string.close
     "No secure call relay found. Switch Wi-Fi or mobile data and try again."->R.string.sv_relay_error
     "Secure calling access unavailable. Try again later."->R.string.sv_access_error
     "Messages"->R.string.messages

@@ -53,4 +53,5 @@
     <string name="sv_mic_permission">Bilbila sagaleetiif hayyamni maayikiroofonii barbaachisa.</string>
     <string name="sv_relay_error">Walqunnamtiin nageenya qabu hin argamne. Wi-Fi yookaan daataa bilbilaa jijjiirii irra deebi’ii yaali.</string>
     <string name="sv_access_error">Tajaajilli bilbilaa hin jiru. Booda yaali.</string>
+    <string name="sv_mic_settings">Qindaa’ina maayikiroofonii bani</string>
 </resources>

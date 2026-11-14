@@ -201,9 +201,20 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     }
     var permissionAccept by remember{mutableStateOf(false)}
     var permissionPending by remember{mutableStateOf(false)}
+    val audioPrefs=remember(context){context.getSharedPreferences("sera_call_audio_permissions",android.content.Context.MODE_PRIVATE)}
+    var micGranted by remember{mutableStateOf(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)}
+    val incomingMicPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
+        permissionPending=false
+        micGranted=granted
+        // Permission only: an incoming call is never answered by this callback.
+    }
+    fun openAudioSettings(){
+        runCatching{context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+context.packageName)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))}
+    }
     val callPermissions=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){
         permissionPending=false
         val mic=ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED
+        micGranted=mic
         if(cameraWanted&&ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){cameraWanted=false;error="Camera unavailable. Your audio call continues."}
         if(mic&&(!permissionAccept||row?.state=="ringing"))begin(permissionAccept)else if(!mic)error="Microphone permission is required for voice calling."
     }
@@ -228,7 +239,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         videoCap=if(accept)"standard" else requestedQuality
         videoPicker=false
         val missing=buildList{if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)add(Manifest.permission.RECORD_AUDIO);if(cameraWanted&&ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)add(Manifest.permission.CAMERA)}
-        if(missing.isEmpty())begin(accept)else{permissionPending=true;callPermissions.launch(missing.toTypedArray())}
+        if(missing.isEmpty())begin(accept)else{if(Manifest.permission.RECORD_AUDIO in missing)audioPrefs.edit().putBoolean("asked",true).apply();permissionPending=true;callPermissions.launch(missing.toTypedArray())}
     }
     LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull();if(config?.optBoolean("enabled")!=true)host?.completeDiscovery(host.pendingIncomingId)}
     val enabled=config?.optBoolean("enabled")==true
@@ -310,7 +321,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     val latestPhase by rememberUpdatedState(phase)
     DisposableEffect(lifecycle,conversation){
         val observer=androidx.lifecycle.LifecycleEventObserver{_,event->
-            if(event==Lifecycle.Event.ON_RESUME)resumed=true
+            if(event==Lifecycle.Event.ON_RESUME){resumed=true;micGranted=ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED}
             if(event==Lifecycle.Event.ON_PAUSE){resumed=false;if(cameraOn||cameraWanted){cameraWanted=false;rtc?.camera(false);cameraOn=false}}
             if(event==Lifecycle.Event.ON_STOP){
                 val current=latestRow
@@ -322,9 +333,17 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         lifecycle.addObserver(observer)
         onDispose{lifecycle.removeObserver(observer);preparation?.cancel();rtc?.close();SeraCallForeground.stop(context,foregroundLease)}
     }
-    LaunchedEffect(incoming,resumed,row?.id,host?.pendingAnswerId){
+    LaunchedEffect(incoming,resumed,row?.id,host?.pendingAnswerId,permissionPending){
         val id=row?.id
-        if(incoming&&resumed&&id!=null&&host?.consumeAnswer(id)==true)request(true)
+        if(incoming&&resumed&&id!=null&&!permissionPending&&host?.consumeAnswer(id)==true)request(true)
+    }
+    // On the first visible incoming call, ask the OS for permission without recording or answering.
+    LaunchedEffect(incoming,resumed,row?.id,host?.pendingAnswerId,permissionPending,micGranted){
+        if(incoming&&resumed&&row!=null&&host?.pendingAnswerId==null&&!permissionPending&&!micGranted&&!audioPrefs.getBoolean("asked",false)){
+            audioPrefs.edit().putBoolean("asked",true).apply()
+            permissionPending=true
+            incomingMicPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
     LaunchedEffect(incoming,resumed,row?.id){if(incoming&&resumed)row?.let{SeraPush.clearCallNotification(context,it.id)}}
     DisposableEffect(incoming,resumed,row?.id,silenced){
@@ -417,6 +436,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
             Column(Modifier.fillMaxWidth().padding(bottom=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(incoming){
+                    if(!micGranted&&!permissionPending){Text(voiceText("Microphone permission is required for voice calling."),color=secondary,fontSize=12.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center);TextButton(onClick={openAudioSettings()}){Text(voiceText("Open microphone settings"))}}
                     TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){AndroidMaterialIcon(Icons.Rounded.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(voiceText(if(silenced)"Ringtone silenced" else "Silence ringtone"))}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
                         SeraVoiceControl(Icons.Rounded.CallEnd,"Decline",destructive=true){scope.launch{end("decline")}}
@@ -463,7 +483,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
         }
     }
-    if(error.isNotBlank())AlertDialog(onDismissRequest={error=""},title={Text(voiceText("Voice call"))},text={Text(voiceText(error))},confirmButton={TextButton(onClick={error=""}){Text(voiceText("OK"))}})
+    if(error.isNotBlank())AlertDialog(onDismissRequest={error=""},title={Text(voiceText("Voice call"))},text={Text(voiceText(error))},confirmButton={TextButton(onClick={if(error=="Microphone permission is required for voice calling.")openAudioSettings();error=""}){Text(voiceText(if(error=="Microphone permission is required for voice calling.")"Open microphone settings" else "OK"))}},dismissButton={if(error=="Microphone permission is required for voice calling.")TextButton(onClick={error=""}){Text(voiceText("Close"))}})
 }
 private suspend fun managedCallConfig(token:String,conversation:String,issue:Boolean):JSONObject?=withContext(Dispatchers.IO){
  val c=(java.net.URL("https://sera.hisabtech.com/api/native/call-config").openConnection() as java.net.HttpURLConnection).apply{requestMethod="POST";doOutput=true;instanceFollowRedirects=false;connectTimeout=10000;readTimeout=15000;setRequestProperty("Authorization","Bearer $token");setRequestProperty("Content-Type","application/json")}

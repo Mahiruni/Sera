@@ -235,6 +235,7 @@ const voiceWords:Record<string,[string,string]>={
     "የጥሪ ሁኔታ ዝጋ",
     "Haala bilbilaa cufi"
   ],
+  "Allow microphone access when you answer, if prompted.": ["ጥሪውን ሲመልሱ ከተጠየቁ የማይክሮፎን ፈቃድ ይስጡ።","Yeroo bilbila deebiftu yoo gaafatamte hayyama maayikiroofonii kenni."],
   "Enable call audio": [
     "የጥሪ ድምፅ አብራ",
     "Sagalee bilbilaa bani"
