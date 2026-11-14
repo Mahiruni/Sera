@@ -1,6 +1,7 @@
 import fs from "node:fs";
 const tokens=JSON.parse(fs.readFileSync("brand/sera-tokens.json","utf8"));
-const css=Object.entries(tokens.semantic).map(([mode,roles])=>`.signature-system[data-theme="${mode}"]{${Object.entries(roles).map(([k,v])=>`--sig-${k.replace(/[A-Z]/g,x=>"-"+x.toLowerCase())}:${v};`).join("")}}`).join("\n")+"\n";
+let css=Object.entries(tokens.semantic).map(([mode,roles])=>`.signature-system[data-theme="${mode}"]{${Object.entries(roles).map(([k,v])=>`--sig-${k.replace(/[A-Z]/g,x=>"-"+x.toLowerCase())}:${v};`).join("")}}`).join("\n")+"\n";
+css+=`.signature-system{--sig-gap:${tokens.metrics.space[1]}px;--sig-padding:${tokens.metrics.space[3]}px;--sig-radius:${tokens.metrics.radius.medium}px;--sig-large-radius:${tokens.metrics.radius.large}px;--sig-target:${tokens.metrics.target.web}px;--sig-body:${tokens.metrics.type.body}px;--sig-meta:${tokens.metrics.type.metadata}px;--sig-heading:${tokens.metrics.type.heading}px;--sig-motion:${tokens.metrics.motion.fast}ms}\n`;
 const kt=`package et.sera.nativeapp
 
 import androidx.compose.ui.graphics.Color
