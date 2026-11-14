@@ -34,7 +34,7 @@ internal object SeraNotificationSounds {
     fun socialSound(context:Context)=prefs(context).getBoolean("social_sound",false)
     fun setSocialSound(context:Context,enabled:Boolean){prefs(context).edit().putBoolean("social_sound",enabled).apply()}
     private fun key(kind:String)=when(kind){
-        "message","company_message"->"pulse"
+        "message","company_message","space_message"->"pulse"
         "job_match","application_update","opportunity_match"->"opportunity"
         "connection_request","connection_accepted","follow","space_invitation","community_invitation","project_invitation"->"connect"
         "like","comment","share","repost","reply","social"->"social"

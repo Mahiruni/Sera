@@ -409,6 +409,7 @@ fun SeraApp(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){accessToken?.let{token->scope.launch{SeraPush.register(context,token,authenticatedUserId)}}}
     var openCompanyInbox by remember { mutableStateOf(false) }
+    var notificationSpace by remember(authenticatedUserId){mutableStateOf<String?>(null)}
     var callThread by remember(authenticatedUserId){mutableStateOf<String?>(null)}
     var callPeer by remember(authenticatedUserId){mutableStateOf("")}
     fun closeInbox(){callThread=null;callPeer="";openCompanyInbox=false;inboxThreadOpen=false;tab=if(tabHistory.isNotEmpty())tabHistory.removeAt(tabHistory.lastIndex)else "Home"}
@@ -417,6 +418,11 @@ fun SeraApp(
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isBlank())return@LaunchedEffect
         if(kind=="voice_call_active"){globalVoice.restore();onPushConsumed();return@LaunchedEffect}
+        if(kind.startsWith("space_message:")){
+            val parts=kind.split(":");val space=parts.getOrNull(1);val owner=parts.getOrNull(2)
+            if(owner==authenticatedUserId&&space!=null&&SeraMessageAlerts.validId(space)){notificationSpace=space;navigateTo("Notifications")}
+            onPushConsumed();return@LaunchedEffect
+        }
         if(kind.startsWith("message:")){
             val parts=kind.split(":")
             val thread=parts.getOrNull(1)
@@ -696,7 +702,7 @@ fun SeraApp(
                                         }
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Explore" -> SeraExplore(accessToken ?: "", authenticatedUserId, pageModifier)
-                                        "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier,onOpenConversation={thread->val token=accessToken; if(token!=null)scope.launch{val peer=withContext(Dispatchers.IO){resolveNativeMessagePeer(token,authenticatedUserId,thread)};if(peer!=null&&accessToken==token){openCompanyInbox=false;callThread=thread;callPeer=peer;navigateTo("Inbox")}}})
+                                        "Notifications" -> if(notificationSpace!=null){SeraCollaboration(accessToken ?: "",authenticatedUserId,pageModifier,initialSpace=notificationSpace,initialChat=true){notificationSpace=null}}else SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier,onOpenConversation={thread->val token=accessToken; if(token!=null)scope.launch{val peer=withContext(Dispatchers.IO){resolveNativeMessagePeer(token,authenticatedUserId,thread)};if(peer!=null&&accessToken==token){openCompanyInbox=false;callThread=thread;callPeer=peer;navigateTo("Inbox")}}})
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
                                             accessToken ?: "", authenticatedUserId, pageModifier

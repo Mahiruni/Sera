@@ -18,6 +18,8 @@ import org.json.JSONObject
  var messages by remember(token,spaceId){mutableStateOf<List<JSONObject>>(emptyList())};var draft by remember(spaceId){mutableStateOf("")};var error by remember{mutableStateOf("")};var loading by remember{mutableStateOf(true)};var sending by remember{mutableStateOf(false)};var refresh by remember{mutableIntStateOf(0)};var older by remember(spaceId){mutableStateOf<List<JSONObject>>(emptyList())};var hasOlder by remember{mutableStateOf(false)};val scope=rememberCoroutineScope();val listState=rememberLazyListState()
  androidx.activity.compose.BackHandler(onBack=onBack)
  LaunchedEffect(token,spaceId,refresh){while(true){val r=withContext(Dispatchers.IO){spaceCall(token,"sera_list_space_messages",JSONObject().put("p_space",spaceId))};if(r.first!=null){messages=spaceRows(r.first).reversed();hasOlder=messages.size==100;error=""}else{messages=emptyList();older=emptyList();error=r.second};loading=false;delay(5000)}}
+ val context=androidx.compose.ui.platform.LocalContext.current
+ DisposableEffect(userId,spaceId){SeraActivityPush.setVisibleSpace(context,userId,spaceId);onDispose{SeraActivityPush.clearVisibleSpace(userId,spaceId)}}
  val all=(older+messages).distinctBy{it.optString("id")}
  LaunchedEffect(all.lastOrNull()?.optString("id")){if(all.isNotEmpty())listState.scrollToItem(all.lastIndex)}
  Column(modifier.fillMaxSize().imePadding().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){

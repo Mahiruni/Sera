@@ -57,7 +57,7 @@ internal object SeraPush {
         SeraNotificationSounds.createChannels(context)
     }
     private fun prefs(context:Context)=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
-    fun clearLocal(context:Context){SeraMessageAlerts.clearAccount(context);registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
+    fun clearLocal(context:Context){SeraMessageAlerts.clearAccount(context);SeraActivityPush.clearAccount(context);registrationGeneration.incrementAndGet();prefs(context).edit().remove("owner").apply();context.getSystemService(NotificationManager::class.java).cancelAll()}
     suspend fun register(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         if(!initialize(context)||userId.isBlank())return@withContext
         // Data messages can refresh the foreground inbox even without OS notification permission.
@@ -237,6 +237,7 @@ private fun boundedRequest(url:String,token:String,payload:JSONObject,supabase:B
 class SeraApplication:Application(){override fun onCreate(){super.onCreate();SeraPush.initialize(this);SeraPush.channel(this)}}
 class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
+        if(message.data["kind"] in listOf("space_message","missed_call")){SeraActivityPush.receive(this,message.data);return}
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
         if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);val owner=message.data["recipient_id"];val id=message.data["call_id"];if(owner!=null&&id!=null){val preview=SeraMessagePreview.incomingCall(this,owner,id);if(preview!=null){val image=preview.avatar?.let{url->preview.senderId?.let{SeraNotificationAvatars.load(this,owner,it,url)}};SeraPush.enrichCall(this,message.data,preview,image)}};return}
         if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val result=SeraMessagePreview.fetch(this,message.data);if(result.suppressed)return;val preview=result.preview;SeraMessageAlerts.receive(this,message.data,preview);if(preview?.senderId!=null&&preview.avatar!=null){val owner=message.data["recipient_id"];if(owner!=null){val image=SeraNotificationAvatars.load(this,owner,preview.senderId,preview.avatar);SeraMessageAlerts.enrichAvatar(this,message.data,preview,image)}};return}

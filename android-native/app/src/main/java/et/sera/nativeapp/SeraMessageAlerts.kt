@@ -35,6 +35,7 @@ internal object SeraMessageAlerts {
     @Volatile private var foreground=false
     var banner by androidx.compose.runtime.mutableStateOf<SeraMessageBannerEvent?>(null)
         private set
+    fun isForeground()=foreground
     fun setForeground(value:Boolean){foreground=value;if(!value)banner=null}
     fun dismissBanner(){banner=null}
     fun enabled(context:Context,owner:String)=prefs(context).getBoolean("enabled:$owner",true)
@@ -58,7 +59,7 @@ internal object SeraMessageAlerts {
     @Synchronized private fun isVisible(owner:String,thread:String)=visible==(owner to thread)
     @Synchronized fun clearVisible(owner:String,thread:String?){if(visible==(owner to thread))visible=null}
     @Synchronized fun clearAccount(context:Context){visible=null;sounded.clear();histories.clear();SeraNotificationAvatars.clear();dismissBanner();val store=prefs(context);val editor=store.edit();store.all.keys.filter{it.startsWith("seen:")||it.startsWith("count:")||it.startsWith("latest:")}.forEach{editor.remove(it)};editor.apply()}
-    @Synchronized fun clearPrivateAlerts(context:Context,owner:String){histories.keys.filter{it.startsWith("sera-message:$owner:")}.forEach{histories.remove(it)};SeraNotificationAvatars.clear();manager(context).activeNotifications.filter{it.tag?.startsWith("sera-message:$owner:")==true}.forEach{manager(context).cancel(it.tag,it.id)};dismissBanner()}
+    @Synchronized fun clearPrivateAlerts(context:Context,owner:String){SeraActivityPush.clearAlerts(context,owner);histories.keys.filter{it.startsWith("sera-message:$owner:")}.forEach{histories.remove(it)};SeraNotificationAvatars.clear();manager(context).activeNotifications.filter{it.tag?.startsWith("sera-message:$owner:")==true}.forEach{manager(context).cancel(it.tag,it.id)};dismissBanner()}
     @Synchronized fun clearThreadAlert(context:Context,owner:String,thread:String,message:String?=null){val key=tag(owner,thread);val latest=prefs(context).getString("latest:$owner:$thread",null);if(message!=null&&latest!=null&&latest!=message)return;manager(context).cancel(key,1);histories.remove(key);prefs(context).edit().remove("count:$owner:$thread").remove("latest:$owner:$thread").apply()}
     @Synchronized fun receive(context:Context,data:Map<String,String>,preview:SeraNotificationPreview?=null){
         val owner=data["recipient_id"]?:return
