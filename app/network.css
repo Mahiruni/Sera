@@ -296,10 +296,10 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 }
 .network-artwork {
   height: 260px;
-  background: #d8f0fa;
+  background: #E5F4F2;
   position: relative;
   overflow: hidden;
-  color: #12394e;
+  color: #16363A;
 }
 .network-artwork-caption {
   position: absolute;
@@ -339,12 +339,12 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   right: -34px;
   top: 40px;
   transform: rotate(-32deg);
-  box-shadow: 0 20px 45px #075c7820;
+  box-shadow: 0 20px 45px #0D7C8620;
 }
 .network-orbit.two {
   width: 170px;
   height: 170px;
-  border: 26px solid #8bd8f4;
+  border: 26px solid #7C3AED;
   right: 14px;
   top: 74px;
 }
