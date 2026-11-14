@@ -2,6 +2,7 @@ import "@fontsource-variable/plus-jakarta-sans";
 import "@fontsource-variable/noto-sans-ethiopic";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import Script from "next/script";
 import { Provider } from "@/components/store";
 import { SeraVoiceProvider } from "@/components/network/sera-voice-call";
 import { memberCard } from "@/lib/activity/members";
@@ -77,6 +78,7 @@ export default async function RootLayout({
       </head>
       <body>
         <WebsiteData />
+        {user?.email_confirmed_at&&<><span hidden id="sera-web-push-account" data-owner={user.id}/><Script src="/sera-web-notifications.js" type="module" strategy="afterInteractive"/></>}
         <Provider initialLocale={language}>
           <SeraVoiceProvider key={user?.email_confirmed_at?user.id:"guest"} userId={user?.email_confirmed_at?user.id:""}>
           <Shell

@@ -27,7 +27,9 @@ export async function POST(request: Request) {
       });
   const { error } = await operation;
   if (error) return Response.json({ error: "Unable to register device" }, { status: 503 });
-  return Response.json({ registered: true }, { headers: { "Cache-Control": "no-store" } });
+  const response=Response.json({ registered: true }, { headers: { "Cache-Control": "no-store" } });
+  if(body.platform==="web")response.headers.append("Set-Cookie","sera-web-push-token="+encodeURIComponent(body.token)+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000");
+  return response;
 }
 
 export async function DELETE(request: Request) {
@@ -39,5 +41,7 @@ export async function DELETE(request: Request) {
   const { error } = await db.from("professional_push_devices")
     .delete().eq("token", body.token).eq("user_id", user.id);
   if (error) return Response.json({ error: "Unable to unregister device" }, { status: 503 });
-  return Response.json({ unregistered: true }, { headers: { "Cache-Control": "no-store" } });
+  const response=Response.json({ unregistered: true }, { headers: { "Cache-Control": "no-store" } });
+  response.headers.append("Set-Cookie","sera-web-push-token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+  return response;
 }

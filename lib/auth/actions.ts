@@ -193,6 +193,8 @@ export async function saveProfile(
 export async function signOut() {
   if (authConfigured()) {
     const client = await serverClient();
+    const {data:{user}}=await client.auth.getUser();
+    if(user){const {cookies}=await import("next/headers");const jar=await cookies();const token=jar.get("sera-web-push-token")?.value;if(token){await client.from("professional_push_devices").delete().eq("user_id",user.id).eq("platform","web").eq("token",token);jar.delete("sera-web-push-token");}}
     const { error } = await client.auth.signOut();
     if (error) redirect("/settings?error=signout");
   }
