@@ -105,8 +105,8 @@ internal class SeraDirectFeed(
     private val personalized:Boolean,
     private val savedOnly:Boolean,
     private val onFirstPage:((List<SeraPost>)->Unit)?=null,
-    private val fetch:(Int)->Pair<List<SeraPost>?,String>={page->loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=SERA_ANDROID_FEED_PAGE_SIZE)},
-    private val enrich:(List<SeraPost>)->List<SeraPost>?={rows->enrichSeraFeed(token,rows).first}
+    private val fetch: (Int) -> Pair<List<SeraPost>?, String> = {page->loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=SERA_ANDROID_FEED_PAGE_SIZE)},
+    private val enrich: (List<SeraPost>) -> List<SeraPost>? = {rows->enrichSeraFeed(token,rows).first}
 ){
     private val mutable=MutableStateFlow(SeraFeedState())
     val state=mutable.asStateFlow()
