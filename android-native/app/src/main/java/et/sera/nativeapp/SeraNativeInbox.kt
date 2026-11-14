@@ -837,9 +837,10 @@ private class InboxController(
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
                 while(true){
                     val prior=conversations
+                    val cacheGeneration=cache?.generation(userId)
                     fun publish(rows:List<NativeConversation>){conversations=rows;loading=false;val current=selected;if(current!=null&&(current.peerId.isBlank()||current.peerName in listOf("SERA member","Sera member","SERA professional","")))rows.firstOrNull{it.id==current.id}?.let{selected=it}}
                     val result=withContext(Dispatchers.IO){loadNativeConversations(token,userId,prior){rows->withContext(Dispatchers.Main){publish(rows)}}}
-                    result.first?.let{rows->publish(rows);withContext(Dispatchers.IO){runCatching{cache?.writeInbox(userId,rows)}}}
+                    result.first?.let{rows->publish(rows);withContext(Dispatchers.IO){runCatching{if(cacheGeneration!=null)cache?.writeInbox(userId,rows,cacheGeneration)}}}
                     if(selected==null)error=result.second;loading=false
                     if(selected!=null)break
                     delay(seraSecondarySyncDelay(link,activeCall,30000L))
