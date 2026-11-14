@@ -133,6 +133,8 @@ fun SeraApp(
     var password by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf<String?>(null) }
     var restoring by remember { mutableStateOf(true) }
+    var restoreError by remember { mutableStateOf("") }
+    var restoreAttempt by remember { mutableIntStateOf(0) }
     val permissionPrefs=remember(context){context.getSharedPreferences("sera_first_launch_permissions",Context.MODE_PRIVATE)}
     var permissionSetupDone by remember { mutableStateOf(permissionPrefs.getBoolean("completed",false)) }
     val freshInstallation=remember(context){
@@ -144,15 +146,17 @@ fun SeraApp(
         context.getSharedPreferences("sera_push_permission",Context.MODE_PRIVATE).edit().putBoolean("asked",true).apply()
         permissionSetupDone=true
     }
-    LaunchedEffect(Unit) {
-        if (oauthCallback != null) { restoring = false; return@LaunchedEffect }
-        val refresh = session.readRefreshToken()
-        if (refresh != null) {
-            val result = withContext(Dispatchers.IO) { authenticate("refresh_token", refresh) }
-            if (result.first != null) { accessToken = result.first; result.third?.let { session.saveRefreshToken(it) } }
-            else session.clear()
+    LaunchedEffect(restoreAttempt) {
+        if(oauthCallback!=null){restoring=false;return@LaunchedEffect}
+        restoring=true;restoreError=""
+        val refresh=withContext(Dispatchers.IO){session.readRefreshToken()}
+        if(refresh!=null){
+            val result=withContext(Dispatchers.IO){authenticate("refresh_token",refresh)}
+            if(result.first!=null){accessToken=result.first;result.third?.let{session.saveRefreshToken(it)}}
+            else if(result.second==SERA_EXPIRED_SESSION){session.clear()}
+            else restoreError=result.second
         }
-        restoring = false
+        restoring=false
     }
     LaunchedEffect(restoring) {
         if (!restoring) onInitialDestinationReady()
@@ -161,6 +165,7 @@ fun SeraApp(
     // This is a separate IO coroutine so the dashboard never waits for SMTP.
     LaunchedEffect(accessToken) {
         val token = accessToken ?: return@LaunchedEffect
+        delay(2000)
         withContext(Dispatchers.IO) { requestSeraWelcome(token) }
     }
 
@@ -461,14 +466,18 @@ fun SeraApp(
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId,networkLink.available)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    fun signOutSera(){feedSession?.clearOnSignOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
+    fun signOutSera(){SeraAccountSnapshot.clear();feedSession?.clearOnSignOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
+    LaunchedEffect(accessToken,authenticatedUserId){
+        val token=accessToken?:return@LaunchedEffect
+        if(authenticatedUserId.isNotBlank())return@LaunchedEffect
+        repeat(3){attempt->
+            val result=withContext(Dispatchers.IO){loadSeraUserId(token)}
+            if(result.first!=null){authenticatedUserId=result.first!!;return@LaunchedEffect}
+            if(attempt<2)delay(1000L*(attempt+1))
+        }
+    }
     LaunchedEffect(accessToken, tab, refresh) {
         val token = accessToken ?: return@LaunchedEffect
-        if (authenticatedUserId.isBlank()) {
-            val userIdResult = withContext(Dispatchers.IO) { loadSeraUserId(token) }
-            if (userIdResult.first != null) authenticatedUserId = userIdResult.first!!
-        }
-        // The paged homepage already loads its own feed. Do not issue a duplicate full feed request.
         if (tab != "Profile") return@LaunchedEffect
         dataLoading = true
         dataError = ""
@@ -505,6 +514,13 @@ fun SeraApp(
             if (restoring) {
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
+                }
+            } else if(restoreError.isNotBlank()&&accessToken==null){
+                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+                    Text("Connection unavailable",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                    Text("Your saved session is safe. Reconnect to continue.",modifier=Modifier.padding(vertical=12.dp))
+                    Button(onClick={restoreAttempt++}){Text("Retry")}
+                    TextButton(onClick={session.clear();SeraAccountSnapshot.clear();restoreError=""}){Text("Sign in instead")}
                 }
             } else if (oauthProcessing) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
@@ -803,6 +819,7 @@ private fun BoxScope.SeraChromeOverlays(
 
 private fun signIn(email: String, password: String): Triple<String?, String, String?> = authenticate("password", password, email)
 
+private const val SERA_EXPIRED_SESSION="Session expired. Please sign in again."
 private fun authenticate(grantType: String, credential: String, email: String = ""): Triple<String?, String, String?> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
         return Triple(null, "Supabase public configuration is missing from the build.", null)
@@ -820,8 +837,14 @@ private fun authenticate(grantType: String, credential: String, email: String = 
             ?.bufferedReader()?.use { it.readText() } ?: ""
         if (connection.responseCode in 200..299) {
             val data = JSONObject(response)
-            Triple(data.optString("access_token").takeIf { it.isNotEmpty() }, "Signed in successfully", data.optString("refresh_token").takeIf { it.isNotEmpty() })
-        } else Triple(null, JSONObject(response).optString("msg").ifBlank { "Sign-in failed" }, null)
+            val access=data.optString("access_token").takeIf{it.isNotEmpty()}
+            if(access!=null)SeraAccountSnapshot.seed(access,data.optJSONObject("user"))
+            Triple(access, "Signed in successfully", data.optString("refresh_token").takeIf { it.isNotEmpty() })
+        } else {
+            val code=runCatching{JSONObject(response).optString("error_code")}.getOrDefault("")
+            val msg=if(grantType=="refresh_token"&&seraRefreshDefinitivelyExpired(code))SERA_EXPIRED_SESSION else if(connection.responseCode>=500||connection.responseCode==429)"Authentication is temporarily unavailable. Please retry." else runCatching{JSONObject(response).optString("msg")}.getOrDefault("").ifBlank{"Sign-in failed"}
+            Triple(null,msg,null)
+        }
     } catch (e: Exception) { Triple(null, "Connection failed. Please retry.", null) }
 }
 

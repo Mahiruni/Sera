@@ -22,6 +22,7 @@ import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import kotlinx.coroutines.sync.withLock
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -31,6 +32,9 @@ internal object SeraPush {
     private val callUuid=Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     private const val PREFS="sera_push"
     private val registrationGeneration=java.util.concurrent.atomic.AtomicInteger(0)
+    private val registerMutex=kotlinx.coroutines.sync.Mutex()
+    private var lastRegistrationAt=0L
+    private var lastRegistrationOwner=""
     fun initialize(context:Context):Boolean {
         if(FirebaseApp.getApps(context).isNotEmpty())return true
         val raw=BuildConfig.FIREBASE_CLIENT_JSON
@@ -57,20 +61,25 @@ internal object SeraPush {
     suspend fun register(context:Context,access:String,userId:String)=withContext(Dispatchers.IO){
         if(!initialize(context)||userId.isBlank())return@withContext
         // Data messages can refresh the foreground inbox even without OS notification permission.
-        val generation=registrationGeneration.get()
-        val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token,15,TimeUnit.SECONDS)}.getOrNull()?:return@withContext
-        if(generation!=registrationGeneration.get())return@withContext
-        registerToken(context,access,userId,token,generation)
+        registerMutex.withLock{
+            val generation=registrationGeneration.get()
+            val now=android.os.SystemClock.elapsedRealtime()
+            if(lastRegistrationOwner==userId&&owner(context)==userId&&now-lastRegistrationAt in 0L..300000L)return@withLock
+            val token=runCatching{com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token,15,TimeUnit.SECONDS)}.getOrNull()?:return@withLock
+            if(generation!=registrationGeneration.get())return@withLock
+            if(registerToken(context,access,userId,token,generation)){lastRegistrationOwner=userId;lastRegistrationAt=android.os.SystemClock.elapsedRealtime()}
+        }
     }
-    private fun registerToken(context:Context,access:String,userId:String,token:String,generation:Int){
-        if(generation!=registrationGeneration.get())return
+    private fun registerToken(context:Context,access:String,userId:String,token:String,generation:Int):Boolean{
+        if(generation!=registrationGeneration.get())return false
         val old=prefs(context).getString("token",null)
         val oldOwner=prefs(context).getString("owner",null)
         if(old!=null&&old!=token&&oldOwner==userId)deviceRequest(access,old,userId,true)
         if(deviceRequest(access,token,userId,false)) {
-            if(generation==registrationGeneration.get())prefs(context).edit().putString("token",token).putString("owner",userId).apply()
+            if(generation==registrationGeneration.get()){prefs(context).edit().putString("token",token).putString("owner",userId).apply();return true}
             else deviceRequest(access,token,userId,true)
         }
+        return false
     }
     fun refreshToken(context:Context,token:String){
         val generation=registrationGeneration.get()

@@ -38,15 +38,9 @@ private val searchTabs=listOf("All","People","Jobs","Posts","Projects","Companie
 private fun cleanSearch(s:String)=s.take(80).replace(Regex("[^\\p{L}\\p{N}\\s-]")," ").replace(Regex("\\s+")," ").trim()
 internal fun searchRows(token:String,table:String,params:Map<String,String>):JSONArray {
     val query=params.entries.joinToString("&"){Uri.encode(it.key)+"="+Uri.encode(it.value)}
-    val connection=(URL(BuildConfig.SUPABASE_URL.trimEnd('/')+"/rest/v1/"+table+"?"+query).openConnection() as HttpURLConnection)
-    try {
-        connection.connectTimeout=10000;connection.readTimeout=12000
-        connection.setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY)
-        connection.setRequestProperty("Authorization","Bearer "+token)
-        connection.setRequestProperty("Cache-Control","no-store")
-        if(connection.responseCode !in 200..299) throw IllegalStateException("Search unavailable")
-        return JSONArray(connection.inputStream.bufferedReader().use{it.readText()})
-    } finally {connection.disconnect()}
+    val response=SeraHttp.rest(token,table+"?"+query)
+    val body=response.body?:throw IllegalStateException(response.error)
+    return JSONArray(body)
 }
 private fun readSearch(token:String,query:String,tab:String,location:String,work:String,skill:String,days:String):Pair<List<SearchHit>,Boolean>{
     val q=cleanSearch(query);val loc=cleanSearch(location);val tag=cleanSearch(skill)

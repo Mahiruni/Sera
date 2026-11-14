@@ -13,10 +13,7 @@ import java.util.concurrent.TimeUnit
 data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false,val imagePreviewUrl:String?=null)
 
 // Bound the entire HTTP exchange, including reading the response body. Never log credentials.
-private val seraFeedHttp=OkHttpClient.Builder()
-    .connectTimeout(7,TimeUnit.SECONDS).readTimeout(12,TimeUnit.SECONDS)
-    .callTimeout(18,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false)
-    .build()
+private val seraFeedHttp=SeraHttp.client
 
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
@@ -196,14 +193,34 @@ internal fun signedPostImage(token: String, path: String, bucket: String = "sera
 
 internal fun authenticatedPostMedia(path:String):String=BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/"+path.split('/').joinToString("/"){android.net.Uri.encode(it)}
 
+/** Cache only a server-validated account snapshot for this access token.
+ * The server remains authoritative for every protected data operation. */
+internal object SeraAccountSnapshot {
+    private val lock=Any()
+    private var token:String?=null
+    private var user:JSONObject?=null
+    private var at=0L
+    fun seed(access:String,account:JSONObject?){
+        if(account==null||account.optString("id").isBlank())return
+        synchronized(lock){token=access;user=account;at=android.os.SystemClock.elapsedRealtime()}
+    }
+    fun clear(){synchronized(lock){token=null;user=null;at=0}}
+    fun read(access:String):Pair<JSONObject?,String> = synchronized(lock){
+        if(token==access&&user!=null&&android.os.SystemClock.elapsedRealtime()-at in 0L..120000L)return@synchronized user to ""
+        val result=request(access,"user",true)
+        val body=result.first?:return@synchronized null to result.second
+        val account=runCatching{JSONObject(body)}.getOrNull()
+        if(account==null||account.optString("id").isBlank())return@synchronized null to "Unable to read your account."
+        token=access;user=account;at=android.os.SystemClock.elapsedRealtime()
+        account to ""
+    }
+}
+
 fun loadSeraIdentity(token: String): Pair<String?, String> {
-    val result = request(token, "user", true)
-    val body = result.first ?: return null to result.second
-    return try {
-        val user = JSONObject(body)
-        val name = user.optJSONObject("user_metadata")?.optString("full_name")?.takeIf { it.isNotBlank() } ?: "SERA member"
-        (name + "\n" + user.optString("email")) to ""
-    } catch (e: Exception) { null to "Unable to read your account." }
+    val result=SeraAccountSnapshot.read(token)
+    val user=result.first?:return null to result.second
+    val name=user.optJSONObject("user_metadata")?.optString("full_name")?.takeIf{it.isNotBlank()}?:"Sera member"
+    return (name+"\n"+user.optString("email")) to ""
 }
 
 fun setSeraLike(token: String, postId: String, liked: Boolean): Pair<Boolean, String> = setSeraPostInteraction(token,postId,liked,"post_likes")
@@ -239,10 +256,9 @@ private fun setSeraPostInteraction(token:String,postId:String,liked:Boolean,tabl
 }
 
 fun loadSeraUserId(token: String): Pair<String?, String> {
-    val response = request(token, "user", true)
-    val body = response.first ?: return null to response.second
-    return try { JSONObject(body).optString("id").takeIf { it.isNotBlank() } to "" }
-    catch (e: Exception) { null to "Unable to identify signed-in user." }
+    val response=SeraAccountSnapshot.read(token)
+    val user=response.first?:return null to response.second
+    return user.optString("id").takeIf{it.isNotBlank()} to ""
 }
 
 /** Resolve the authenticated member's existing avatar without public storage access. */

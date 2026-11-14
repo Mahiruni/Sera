@@ -117,34 +117,9 @@ internal data class NativeMessage(val id: String, val senderId: String, val body
 private fun inboxRequest(token: String, path: String, method: String = "GET", body: JSONObject? = null): Pair<String?, String> {
     if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_ANON_KEY.isBlank())
         return null to "Inbox is not configured."
-    var conn: HttpURLConnection? = null
-    return try {
-        conn = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/" + path)
-            .openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = 12000
-            readTimeout = 16000
-            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("Accept", "application/json")
-            if (body != null) {
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json")
-                setRequestProperty("Prefer", if (path == "professional_messages" && method == "POST") "return=representation" else "return=minimal")
-            }
-        }
-        if (body != null) conn.outputStream.use { it.write(body.toString().toByteArray()) }
-        val status = conn.responseCode
-        if (status !in 200..299) {
-            return null to when (status) {
-                401, 403 -> "Your session cannot access this conversation."
-                else -> "Request failed (HTTP $status). Please retry."
-            }
-        }
-        (conn.inputStream?.bufferedReader()?.use { it.readText() } ?: "[]") to ""
-    } catch (_: Exception) {
-        null to "Connection failed. Check your network and retry."
-    } finally { conn?.disconnect() }
+    val result=SeraHttp.rest(token,path,method,body,if(body!=null)if(path=="professional_messages"&&method=="POST")"return=representation" else "return=minimal" else null)
+    if(result.body!=null)return result.body.ifBlank{"[]"} to ""
+    return null to if(result.status in listOf(401,403))"Your session cannot access this conversation." else result.error
 }
 
 internal fun resolveNativeMessagePeer(token:String,userId:String,conversation:String):String? {

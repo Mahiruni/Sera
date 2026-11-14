@@ -8,3 +8,6 @@ internal fun seraFeedProbeInterval(activeCall:Boolean):Long = if(activeCall) 120
 
 /** Small initial history page keeps opening chat independent of older history. */
 internal const val SERA_INITIAL_MESSAGE_WINDOW=40
+
+/** A timeout or unknown response must not erase a saved session. */
+internal fun seraRefreshDefinitivelyExpired(code:String)=code in setOf("refresh_token_not_found","refresh_token_already_used","session_not_found","session_expired")
