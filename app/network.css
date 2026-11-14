@@ -2299,3 +2299,9 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-network-person-identity .sera-network-person-reason{color:var(--net-deep);font-size:11px}
 .sera-hub-limit{font-size:12px;color:var(--net-muted);margin:0}
 .sera-relationship-hub .sera-connection-action:disabled{opacity:.55;cursor:wait}
+
+/* Homepage: neutral soft-white backdrop, light mode only. */
+html:not([data-sera-theme="dark"]) .network-public .network-hero-stage,
+html:not([data-sera-theme="dark"]) .network-public .network-artwork {
+  background-color: #F2F2F2;
+}
