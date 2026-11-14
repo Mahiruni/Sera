@@ -1,0 +1,99 @@
+name: Sera Signed Performance Comparison
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sera-performance-comparison.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sera-performance-comparison
+  cancel-in-progress: false
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
+      SERA_E2E_OWNER_EMAIL: ${{ secrets.SERA_E2E_OWNER_EMAIL }}
+      SERA_E2E_OWNER_PASSWORD: ${{ secrets.SERA_E2E_OWNER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Verify authenticated QA feed access
+        run: python3 android-native/scripts/feed_qa_auth.py --preflight
+      - name: Prepare SDK and build memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+          total=$(awk '/MemTotal/ {print int($2/1048576)}' /proc/meminfo)
+          heap=$((total - 4)); if (( heap > 12 )); then heap=12; fi
+          (( heap >= 2 ))
+          sed -i "s/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx${heap}g -Dfile.encoding=UTF-8/" android-native/gradle.properties
+      - name: Build two identically minified and QA-signed variants
+        working-directory: android-native
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          dir="$RUNNER_TEMP/sera-performance"; mkdir -p "$dir"
+          key="$RUNNER_TEMP/sera-perf-key.jks"
+          trap 'rm -f "$key"' EXIT
+          # Ephemeral CI-only certificate: never publish these APKs.
+          export SERA_RELEASE_KEYSTORE="$key"
+          export SERA_RELEASE_KEY_ALIAS=qa
+          export SERA_RELEASE_STORE_PASSWORD="$(openssl rand -hex 24)"
+          export SERA_RELEASE_KEY_PASSWORD="$SERA_RELEASE_STORE_PASSWORD"
+          echo "::add-mask::$SERA_RELEASE_STORE_PASSWORD"
+          keytool -genkeypair -keystore "$key" -storepass:env SERA_RELEASE_STORE_PASSWORD -keypass:env SERA_RELEASE_KEY_PASSWORD -alias qa -keyalg RSA -keysize 2048 -validity 2 -dname "CN=Sera Performance QA" >/dev/null 2>&1
+          code="$(sed -n 's/^version_code=//p' release-version.properties)"
+          name="$(sed -n 's/^version_name=//p' release-version.properties)"
+          for variant in lite full; do
+            calling=false; split=false
+            if [[ "$variant" == full ]]; then calling=true; split=true; fi
+            gradle --no-daemon :app:clean :app:assembleRelease :app:assembleReleaseAndroidTest --max-workers=1 \
+              -PSERA_ENABLE_LIVE_CALLING="$calling" -PSERA_SPLIT_RELEASE="$split" -PSERA_SIGNED_CALL_SMOKE=true \
+              -PSERA_VERSION_CODE="$code" -PSERA_VERSION_NAME="$name" \
+              -PSERA_SUPABASE_URL=https://okegwojigrtxadvgxpwm.supabase.co -PSERA_SUPABASE_ANON_KEY="$SERA_SUPABASE_ANON_KEY"
+            if [[ "$variant" == full ]]; then apk=app/build/outputs/apk/release/app-x86_64-release.apk; else apk=app/build/outputs/apk/release/app-release.apk; fi
+            test -s "$apk"; cp "$apk" "$dir/$variant.apk"
+            testapk="$(find app/build/outputs/apk/androidTest/release -name '*.apk' -print -quit)"
+            test -s "$testapk"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$key" --ks-key-alias qa --ks-pass env:SERA_RELEASE_STORE_PASSWORD --key-pass env:SERA_RELEASE_KEY_PASSWORD --out "$dir/$variant-test.apk" "$testapk"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$dir/$variant.apk"
+          done
+          python3 scripts/check_lightweight_apk.py "$dir/lite.apk"
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Compare authenticated cold-start feed rendering
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: bash android-native/scripts/benchmark_feed_variants.sh
+      - name: Upload timing and lifecycle evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sera-performance-evidence
+          path: |
+            ${{ runner.temp }}/sera-performance/results.csv
+            ${{ runner.temp }}/sera-performance/*.log
+          if-no-files-found: warn
+          retention-days: 7

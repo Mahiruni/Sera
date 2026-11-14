@@ -34,12 +34,14 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
         for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null){try{if(scrollFeed(child))return true;}finally{child.recycle();}}}
         return false;
     }
-    private void verifyFeed(Context target,String refresh) throws Exception {
+    private void verifyFeed(Context target,String refresh,Bundle metrics) throws Exception {
         Class<?> session=target.getClassLoader().loadClass("et.sera.nativeapp.SessionStore");
         Object store=session.getConstructor(Context.class).newInstance(target);
         session.getMethod("saveRefreshToken",String.class).invoke(store,refresh);
         try {
             Intent launch=new Intent(Intent.ACTION_MAIN).setClassName(target.getPackageName(),"et.sera.nativeapp.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            long started=SystemClock.elapsedRealtime();
+            long cpuStarted=android.os.Process.getElapsedCpuTime();
             startActivitySync(launch);
             android.app.UiAutomation ui=getUiAutomation();
             AccessibilityServiceInfo info=ui.getServiceInfo();info.flags|=AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;ui.setServiceInfo(info);
@@ -47,7 +49,7 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
             long nextScroll=SystemClock.elapsedRealtime()+12000;
             while(SystemClock.elapsedRealtime()<deadline){
                 AccessibilityNodeInfo root=ui.getRootInActiveWindow();
-                if(root!=null){try{if(hasPost(root))return;if(SystemClock.elapsedRealtime()>=nextScroll){scrollFeed(root);nextScroll=SystemClock.elapsedRealtime()+5000;}}finally{root.recycle();}}
+                if(root!=null){try{if(hasPost(root)){metrics.putString("sera_feed_ms",Long.toString(SystemClock.elapsedRealtime()-started));metrics.putString("sera_feed_cpu_ms",Long.toString(android.os.Process.getElapsedCpuTime()-cpuStarted));metrics.putString("sera_feed_pss_kb",Long.toString(android.os.Debug.getPss()));return;}if(SystemClock.elapsedRealtime()>=nextScroll){scrollFeed(root);nextScroll=SystemClock.elapsedRealtime()+5000;}}finally{root.recycle();}}
                 SystemClock.sleep(500);
             }
             throw new AssertionError("Authenticated signed Android home did not render a real post within 75 seconds");
@@ -58,6 +60,16 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
         Bundle result = new Bundle();
         try {
             Context target = getTargetContext();
+            // Benchmark only: isolate normal Home startup without initializing the RTC engine.
+            // Production signed release still executes its separate mandatory RTC smoke.
+            if(options!=null&&"true".equals(options.getString("feed_only"))){
+                String refresh=options.getString("feed_refresh");
+                if(refresh==null||refresh.isEmpty())throw new IllegalArgumentException("Missing QA session");
+                verifyFeed(target,refresh,result);
+                result.putString("sera_feed_smoke","passed");
+                finish(Activity.RESULT_OK,result);
+                return;
+            }
             Class<?> engine = target.getClassLoader().loadClass("et.sera.nativeapp.SeraNativeRtc");
             Executor main = command -> runOnMainSync(command);
             engine.getMethod("verifySignedEngine", Context.class, Executor.class)
@@ -68,7 +80,7 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
                 result.putString("sera_relay_recovery", "passed");
             }
             if(options!=null&&options.getString("feed_refresh")!=null){
-                verifyFeed(target,options.getString("feed_refresh"));
+                verifyFeed(target,options.getString("feed_refresh"),result);
                 result.putString("sera_feed_smoke","passed");
             }
             result.putString("sera_call_smoke", "passed");
