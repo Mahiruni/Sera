@@ -64,7 +64,7 @@ html[data-sera-theme=dark] .sera-chat-page {
 .sera-chat-page .sera-chat-list-item.is-selected { background: var(--chat-selected); box-shadow: inset 3px 0 var(--chat-accent); }
 .sera-chat-page .sera-chat-list-item:hover:not(.is-selected) { background: var(--chat-quote); }
 .sera-chat-page .sera-chat-list-meta { font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.sera-chat-page .sera-chat-unread { background: var(--chat-button); color: var(--chat-on-button); font-weight: 650; }
+.sera-chat-page .sera-chat-unread { background: #7C3AED; color: #fff; font-weight: 650; }
 .sera-chat-page .sera-chat-new > summary { background: var(--chat-button)!important; color: var(--chat-on-button); }
 .sera-chat-page .sera-chat-list-search { background: var(--chat-quote); border: 1px solid transparent; }
 .sera-chat-page .sera-chat-list-search:focus-within { border-color: var(--chat-accent); outline: none; }

@@ -1,5 +1,11 @@
 package et.sera.nativeapp
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -10,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,6 +40,9 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  val scope=rememberCoroutineScope()
  val context=androidx.compose.ui.platform.LocalContext.current
  var loaded by remember{mutableStateOf(false)}
+ var reload by remember{mutableIntStateOf(0)}
+ val loadError=stringResource(R.string.sera_cc_load_error)
+ val invalidHours=stringResource(R.string.sera_cc_invalid)
  var enabled by remember{mutableStateOf(true)}
  var quiet by remember{mutableStateOf(false)}
  var typing by remember{mutableStateOf(true)}
@@ -43,29 +53,117 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  var zone by remember{mutableStateOf("Africa/Addis_Ababa")}
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
- LaunchedEffect(token,userId){val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error="Could not load preferences." else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "full");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
- AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Messaging control center")},text={
- Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
- Text("Account-wide push preferences. Messages continue arriving in your inbox.",fontSize=12.sp)
- Row(verticalAlignment=Alignment.CenterVertically){Text("Message notifications",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=enabled,onCheckedChange={enabled=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Text("Quiet hours",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=quiet,onCheckedChange={quiet=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Text("Show typing activity",Modifier.weight(1f));Switch(enabled=loaded&&!busy,checked=typing,onCheckedChange={typing=it})}
- Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Share read receipts");Text("Keep new reads private when off.",fontSize=12.sp)};Switch(enabled=loaded&&!busy,checked=receipts,onCheckedChange={receipts=it})}
- Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),style=MaterialTheme.typography.titleMedium)
- listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy);Text(androidx.compose.ui.res.stringResource(label))}}
- Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),fontSize=12.sp)
- OutlinedTextField(start,{start=it},label={Text("Start (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
- OutlinedTextField(end,{end=it},label={Text("End (HH:mm)")},singleLine=true,enabled=loaded&&!busy)
- OutlinedTextField(zone,{zone=it},label={Text("Time zone")},singleLine=true,enabled=loaded&&!busy)
- SeraPresenceSettings(token,userId)
- if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
- }
- },confirmButton={TextButton(enabled=loaded&&!busy,onClick={
+ LaunchedEffect(token,userId,reload){loaded=false;error="";val p=withContext(Dispatchers.IO){loadControlPreferences(token,userId)};if(p==null)error=loadError else{enabled=p.optBoolean("notifications_enabled",true);quiet=p.optBoolean("quiet_enabled",false);typing=p.optBoolean("typing_visible",true);receipts=p.optBoolean("read_receipts_visible",true);previewMode=p.optString("notification_preview_mode",if(p.has("notification_previews"))if(p.optBoolean("notification_previews"))"full" else "hidden" else "full");start=clockValue(p.optInt("quiet_start",1320));end=clockValue(p.optInt("quiet_end",420));zone=p.optString("quiet_timezone","Africa/Addis_Ababa");loaded=true}}
+ Dialog(onDismissRequest={if(!busy)onDismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false)){
+  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
+   Column(Modifier.fillMaxSize().safeDrawingPadding()){
+    Surface(tonalElevation=2.dp){
+     Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
+      Column(Modifier.weight(1f)){
+       Text(stringResource(R.string.sera_cc_title),style=MaterialTheme.typography.titleLarge)
+       Text(stringResource(R.string.sera_cc_tagline),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      IconButton(enabled=!busy,onClick=onDismiss){Icon(Icons.Outlined.Close,contentDescription=stringResource(R.string.sera_cc_close))}
+     }
+    }
+    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
+     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),shape=RoundedCornerShape(24.dp)){
+      Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+       Text(stringResource(R.string.sera_cc_experience),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+       Text(stringResource(R.string.sera_cc_stay),style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+       Text(stringResource(R.string.sera_cc_account),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+      }
+     }
+     if(!loaded&&error.isBlank())LinearProgressIndicator(Modifier.fillMaxWidth())
+     ControlSection(stringResource(R.string.sera_cc_notifications),stringResource(R.string.sera_cc_notification_desc)){
+      ControlToggle(stringResource(R.string.sera_cc_message_notifications),stringResource(R.string.sera_cc_receive),enabled,loaded&&!busy){enabled=it}
+      HorizontalDivider()
+      ControlToggle(stringResource(R.string.sera_cc_quiet),stringResource(R.string.sera_cc_quiet_desc),quiet,loaded&&!busy){quiet=it}
+      if(quiet){
+       Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        OutlinedTextField(start,{start=it},Modifier.weight(1f),label={Text(stringResource(R.string.sera_cc_start))},singleLine=true,enabled=loaded&&!busy)
+        OutlinedTextField(end,{end=it},Modifier.weight(1f),label={Text(stringResource(R.string.sera_cc_end))},singleLine=true,enabled=loaded&&!busy)
+       }
+       OutlinedTextField(zone,{zone=it},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.sera_cc_zone))},singleLine=true,enabled=loaded&&!busy)
+       Text(stringResource(R.string.sera_cc_overnight),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+     }
+     ControlSection(stringResource(R.string.sera_cc_activity),stringResource(R.string.sera_cc_activity_desc)){
+      ControlToggle(stringResource(R.string.sera_cc_typing),stringResource(R.string.sera_cc_typing_desc),typing,loaded&&!busy){typing=it}
+      HorizontalDivider()
+      ControlToggle(stringResource(R.string.sera_cc_receipts),stringResource(R.string.sera_cc_receipts_desc),receipts,loaded&&!busy){receipts=it}
+      HorizontalDivider()
+      SeraPresenceSettings(token,userId)
+     }
+     ControlSection(androidx.compose.ui.res.stringResource(R.string.sera_notification_privacy),stringResource(R.string.sera_cc_preview_desc)){
+      listOf("full" to R.string.sera_notification_full,"sender" to R.string.sera_notification_sender,"hidden" to R.string.sera_notification_hidden).forEach{(mode,label)->
+       Surface(shape=RoundedCornerShape(14.dp),color=if(previewMode==mode)MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.35f)){
+        Row(Modifier.fillMaxWidth().padding(end=12.dp),verticalAlignment=Alignment.CenterVertically){
+         RadioButton(selected=previewMode==mode,onClick={previewMode=mode},enabled=loaded&&!busy)
+         Column(Modifier.weight(1f)){Text(stringResource(label),style=MaterialTheme.typography.bodyMedium);if(mode=="full")Text(stringResource(R.string.sera_cc_default),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary)}
+        }
+       }
+      }
+      ControlNotificationPreview(previewMode)
+      Text(androidx.compose.ui.res.stringResource(R.string.sera_notification_lock),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+     }
+     if(error.isNotBlank())Surface(color=MaterialTheme.colorScheme.errorContainer,shape=RoundedCornerShape(16.dp)){Column(Modifier.fillMaxWidth().padding(14.dp)){Text(error,color=MaterialTheme.colorScheme.onErrorContainer);if(!loaded)TextButton(onClick={reload++}){Text(stringResource(R.string.sera_cc_retry))}}}
+    }
+    Surface(tonalElevation=3.dp){
+     Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically){
+      OutlinedButton(enabled=!busy,onClick=onDismiss){Text(stringResource(R.string.sera_cc_cancel))}
+      Button(modifier=Modifier.weight(1f).heightIn(min=48.dp),enabled=loaded&&!busy,onClick={
  val a=parseClock(start);val z=parseClock(end)
- if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@TextButton}
+ if(a==null||z==null||a==z||zone.isBlank()){error=invalidHours;return@Button}
  busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null){SeraMessageAlerts.clearPrivateAlerts(context,userId);onDismiss()}else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
- }){Text(if(busy)"Saving…" else "Save")}},dismissButton={TextButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}})
+      }){Text(if(busy)stringResource(R.string.sera_cc_saving) else stringResource(R.string.sera_cc_save))}
+     }
+    }
+   }
+  }
+ }
 }
+@Composable private fun ControlNotificationPreview(mode:String){
+ val scheme=MaterialTheme.colorScheme
+ val hidden=mode=="hidden"
+ val body=when(mode){"full"->androidx.compose.ui.res.stringResource(R.string.sera_control_sample_message);"sender"->androidx.compose.ui.res.stringResource(R.string.sera_notification_sent);else->androidx.compose.ui.res.stringResource(R.string.sera_notification_private)}
+ Surface(shape=RoundedCornerShape(18.dp),color=scheme.tertiaryContainer,modifier=Modifier.fillMaxWidth()){
+  Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+   Text(androidx.compose.ui.res.stringResource(R.string.sera_control_live_preview),style=MaterialTheme.typography.labelLarge,color=scheme.onTertiaryContainer)
+   Text(androidx.compose.ui.res.stringResource(R.string.sera_control_example),style=MaterialTheme.typography.labelSmall,color=scheme.onTertiaryContainer)
+   Surface(shape=RoundedCornerShape(14.dp),color=scheme.surface){
+    Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically){
+     Surface(shape=CircleShape,color=Color(0xFF7C3AED),modifier=Modifier.size(42.dp)){Box(contentAlignment=Alignment.Center){Text(if(hidden)"S" else "H",color=Color.White,style=MaterialTheme.typography.titleMedium)}}
+     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+      Text(if(hidden)"Sera" else androidx.compose.ui.res.stringResource(R.string.sera_control_sample_sender),style=MaterialTheme.typography.titleSmall,color=scheme.onSurface)
+      Text(body,style=MaterialTheme.typography.bodySmall,color=scheme.onSurface)
+      Text("Sera",style=MaterialTheme.typography.labelSmall,color=scheme.onSurfaceVariant)
+     }
+     Surface(shape=CircleShape,color=Color(0xFF7C3AED),modifier=Modifier.size(9.dp)){}
+    }
+   }
+  }
+ }
+}
+@Composable private fun ControlSection(title:String,subtitle:String,content:@Composable ColumnScope.()->Unit){
+ OutlinedCard(shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth()){
+  Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+   Text(title,style=MaterialTheme.typography.titleMedium)
+   Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+   content()
+  }
+ }
+}
+@Composable private fun ControlToggle(title:String,subtitle:String,checked:Boolean,enabled:Boolean,onChange:(Boolean)->Unit){
+ Row(Modifier.fillMaxWidth().heightIn(min=56.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically){
+  Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+   Text(title,style=MaterialTheme.typography.bodyLarge)
+   Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+  }
+  Switch(checked=checked,onCheckedChange=onChange,enabled=enabled)
+ }
+}
+
 @Composable internal fun SeraConversationControlMenu(token:String,conversation:NativeConversation,onChanged:()->Unit){
  val scope=rememberCoroutineScope();var open by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
  fun change(action:String,value:Boolean,minutes:Int=0){open=false;busy=true;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_conversation_preference",JSONObject().put("p_conversation",conversation.id).put("p_action",action).put("p_value",value).put("p_mute_minutes",minutes))};busy=false;if(r.first!=null)onChanged()else error=r.second}}
