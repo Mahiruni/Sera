@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <string name="sera_inbox_call_title">Bilbila sagalee jalqabdaa?</string>
+ <string name="sera_inbox_call_question">%1$s bilbiluu barbaaddaa?</string>
+ <string name="sera_inbox_call_person">%1$s bilbili</string>
+ <string name="sera_inbox_call_no">Lakki</string>
+ <string name="sera_inbox_call_yes">Eeyyee, bilbili</string>
+ <string name="sera_inbox_call_unavailable">Amma bilbiluun hin danda’amu. Irra deebi’ii yaali.</string>
+ <string name="sera_inbox_call_ok">Tole</string>
+ <string name="sera_inbox_active_now">Amma online</string>
+ <plurals name="sera_inbox_minutes"><item quantity="one">Daqiiqaa %d dura</item><item quantity="other">Daqiiqaa %d dura</item></plurals>
+ <plurals name="sera_inbox_hours"><item quantity="one">Sa’aatii %d dura</item><item quantity="other">Sa’aatii %d dura</item></plurals>
+ <plurals name="sera_inbox_days"><item quantity="one">Guyyaa %d dura</item><item quantity="other">Guyyaa %d dura</item></plurals>
+ <plurals name="sera_inbox_weeks"><item quantity="one">Torban %d dura</item><item quantity="other">Torban %d dura</item></plurals>
+</resources>

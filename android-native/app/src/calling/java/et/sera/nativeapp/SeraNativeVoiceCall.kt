@@ -69,6 +69,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     var foregroundLease by remember(conversation){mutableStateOf<String?>(null)}
     var preparation by remember(conversation){mutableStateOf<kotlinx.coroutines.Job?>(null)}
     var config by remember(conversation){mutableStateOf<JSONObject?>(null)}
+    var configLoaded by remember(conversation){mutableStateOf(false)}
     var videoAccess by remember(conversation){mutableStateOf<JSONObject?>(null)}
     var videoPicker by remember(conversation){mutableStateOf(false)}
     var videoMode by remember(conversation){mutableStateOf(false)}
@@ -241,7 +242,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val missing=buildList{if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)add(Manifest.permission.RECORD_AUDIO);if(cameraWanted&&ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)add(Manifest.permission.CAMERA)}
         if(missing.isEmpty())begin(accept)else{if(Manifest.permission.RECORD_AUDIO in missing)audioPrefs.edit().putBoolean("asked",true).apply();permissionPending=true;callPermissions.launch(missing.toTypedArray())}
     }
-    LaunchedEffect(token,conversation){config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull();if(config?.optBoolean("enabled")!=true)host?.completeDiscovery(host.pendingIncomingId)}
+    LaunchedEffect(token,conversation){configLoaded=false;config=runCatching{managedCallConfig(token,conversation,false)}.getOrNull();configLoaded=true;if(config?.optBoolean("enabled")!=true)host?.completeDiscovery(host.pendingIncomingId)}
     val enabled=config?.optBoolean("enabled")==true
     LaunchedEffect(token,conversation,lifecycle){lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){try{videoAccess=callRequest(token,"sera_call_video_access",payload())?.let{JSONObject(it)}}catch(e:CancellationException){throw e}catch(_:Exception){};delay(20000)}}}
     LaunchedEffect(enabled,token,conversation,lifecycle){
@@ -362,7 +363,8 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
     val active=row!=null||phase.isNotBlank()
     if(host!=null){
         val discoveryPending=host.pendingIncomingId!=null
-        SideEffect{host.report(conversation,active||busy||permissionPending||summary!=null||discoveryPending||videoPicker,enabled);host.reportVideo(conversation,videoAccess?.optBoolean("enabled")==true)}
+        SideEffect{host.report(conversation,active||busy||permissionPending||summary!=null||discoveryPending||videoPicker||error.isNotBlank(),enabled);host.reportVideo(conversation,videoAccess?.optBoolean("enabled")==true)}
+        LaunchedEffect(configLoaded,host.inboxStartPending){if(configLoaded&&host.consumeInboxStart(conversation)){if(enabled)request(false)else error="Calling access unavailable. Try again."}}
         var seenVideo by remember{mutableIntStateOf(host.videoRequest)}
         LaunchedEffect(host.videoRequest){if(seenVideo!=host.videoRequest){seenVideo=host.videoRequest;videoPicker=true}}
         var seenStart by remember{mutableIntStateOf(host.callRequest)}
@@ -373,7 +375,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         LaunchedEffect(host.historyRequest){if(seenHistory!=host.historyRequest){seenHistory=host.historyRequest;showHistory=true;fetchHistory()}}
         if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelPreparation()}else scope.launch{end("end")}},canMute=row?.state=="accepted")
     }
-    if(!enabled&&summary==null&&!active)return
+    if(!enabled&&summary==null&&!active&&error.isBlank())return
     if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,voiceText(if(active)"Return to call" else "Voice call"),tint=if(MaterialTheme.colorScheme.surface.luminance()<.5f)Color(0xFFC4B5FD) else Color(0xFF4C1D95))}
     if(host==null&&videoAccess?.optBoolean("enabled")==true&&!active)IconButton(onClick={videoPicker=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Videocam,voiceText("Video call"),tint=ink)}
     if(videoPicker&&!active){

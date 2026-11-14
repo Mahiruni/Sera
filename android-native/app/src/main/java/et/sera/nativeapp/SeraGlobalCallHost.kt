@@ -58,6 +58,17 @@ internal class SeraGlobalCallState {
         if(id!=null&&pendingIncomingId==id){pendingIncomingId=null;pendingIncomingDeadline=0L}
     }
     private var pendingStart=false
+    var inboxStartPending by mutableStateOf(false)
+        private set
+    fun startInbox(value:SeraCallTarget):Boolean{
+        if(pinned)return false
+        target=value;eligible=false;videoEligible=false;inboxStartPending=true;pinned=true
+        return true
+    }
+    fun consumeInboxStart(conversation:String):Boolean{
+        if(!inboxStartPending||target?.conversation!=conversation)return false
+        inboxStartPending=false;return true
+    }
     private var historySink:((List<SeraCallEvent>)->Unit)?=null
     private var audioStart:(()->Unit)?=null
     fun select(value:SeraCallTarget,onAudio:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
@@ -74,7 +85,7 @@ internal class SeraGlobalCallState {
     }
     fun report(conversation:String,keep:Boolean,enabled:Boolean){
         if(target?.conversation!=conversation)return
-        pinned=keep||pendingStart||pendingIncomingId!=null;eligible=enabled
+        pinned=keep||pendingStart||inboxStartPending||pendingIncomingId!=null;eligible=enabled
         if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false;videoEligible=false}
     }
     fun start(conversation:String){

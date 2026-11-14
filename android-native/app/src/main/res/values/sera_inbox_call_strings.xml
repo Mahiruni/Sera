@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <string name="sera_inbox_call_title">Start a voice call?</string>
+ <string name="sera_inbox_call_question">Do you want to call %1$s?</string>
+ <string name="sera_inbox_call_person">Call %1$s</string>
+ <string name="sera_inbox_call_no">No</string>
+ <string name="sera_inbox_call_yes">Yes, call</string>
+ <string name="sera_inbox_call_unavailable">Calling is unavailable right now. Please try again.</string>
+ <string name="sera_inbox_call_ok">OK</string>
+ <string name="sera_inbox_active_now">Active now</string>
+ <plurals name="sera_inbox_minutes"><item quantity="one">%d minute ago</item><item quantity="other">%d minutes ago</item></plurals>
+ <plurals name="sera_inbox_hours"><item quantity="one">%d hour ago</item><item quantity="other">%d hours ago</item></plurals>
+ <plurals name="sera_inbox_days"><item quantity="one">%d day ago</item><item quantity="other">%d days ago</item></plurals>
+ <plurals name="sera_inbox_weeks"><item quantity="one">%d week ago</item><item quantity="other">%d weeks ago</item></plurals>
+</resources>

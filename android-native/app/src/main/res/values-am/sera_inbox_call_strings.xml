@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <string name="sera_inbox_call_title">የድምፅ ጥሪ ይጀምሩ?</string>
+ <string name="sera_inbox_call_question">ለ%1$s መደወል ይፈልጋሉ?</string>
+ <string name="sera_inbox_call_person">ለ%1$s ደውል</string>
+ <string name="sera_inbox_call_no">አይ</string>
+ <string name="sera_inbox_call_yes">አዎ፣ ደውል</string>
+ <string name="sera_inbox_call_unavailable">አሁን መደወል አይቻልም። ደግመው ይሞክሩ።</string>
+ <string name="sera_inbox_call_ok">እሺ</string>
+ <string name="sera_inbox_active_now">አሁን ንቁ</string>
+ <plurals name="sera_inbox_minutes"><item quantity="one">ከ%d ደቂቃ በፊት</item><item quantity="other">ከ%d ደቂቃዎች በፊት</item></plurals>
+ <plurals name="sera_inbox_hours"><item quantity="one">ከ%d ሰዓት በፊት</item><item quantity="other">ከ%d ሰዓታት በፊት</item></plurals>
+ <plurals name="sera_inbox_days"><item quantity="one">ከ%d ቀን በፊት</item><item quantity="other">ከ%d ቀናት በፊት</item></plurals>
+ <plurals name="sera_inbox_weeks"><item quantity="one">ከ%d ሳምንት በፊት</item><item quantity="other">ከ%d ሳምንታት በፊት</item></plurals>
+</resources>
