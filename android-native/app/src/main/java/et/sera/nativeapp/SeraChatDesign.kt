@@ -23,16 +23,16 @@ internal data class SeraChatPalette(
 )
 internal fun seraChatPalette(dark:Boolean)=if(dark) SeraChatPalette(
     canvas=Color(0xFF142125),surface=Color(0xFF152326),incoming=Color(0xFF293B40),outgoing=Color(0xFF18544F),
-    ink=Color(0xFFE8F1EF),muted=Color(0xFFA9BDBB),accent=Color(0xFF8AD7CA),border=Color(0xFF364B4E),
+    ink=Color(0xFFE8F1EF),muted=Color(0xFFA9BDBB),accent=Color(0xFF43D5CC),border=Color(0xFF364B4E),
     quote=Color(0xFF1B2B2E),selection=Color(0xFF244B48),onOutgoing=Color(0xFFEFFBF8),outgoingMeta=Color(0xFFB7D6CE),
     outgoingLink=Color(0xFFA4F0DC),outgoingQuote=Color(0xFF123F3E),read=Color(0xFF99ECD6),
-    button=Color(0xFF83D7CA),onButton=Color(0xFF103633),outgoingBorder=Color(0xFF2F635F),header=Color(0xFF0D191D)
+    button=Color(0xFF43D5CC),onButton=Color(0xFF103633),outgoingBorder=Color(0xFF2F635F),header=Color(0xFF0D191D)
 ) else SeraChatPalette(
     canvas=Color(0xFFF5F9F8),surface=Color.White,incoming=Color.White,outgoing=Color(0xFFD4EFEB),
-    ink=Color(0xFF20363A),muted=Color(0xFF5B7073),accent=Color(0xFF086E70),border=Color(0xFFDCE7E3),
+    ink=Color(0xFF20363A),muted=Color(0xFF5B7073),accent=Color(0xFF0D7C86),border=Color(0xFFDCE7E3),
     quote=Color(0xFFEDF3F1),selection=Color(0xFFD4EAE4),onOutgoing=Color(0xFF16443F),outgoingMeta=Color(0xFF476C64),
     outgoingLink=Color(0xFF095E59),outgoingQuote=Color(0xFFCCE6E1),read=Color(0xFF096A5B),
-    button=Color(0xFF087E83),onButton=Color.White,outgoingBorder=Color(0xFFC6E2DB),header=Color(0xFFE0EEEB)
+    button=Color(0xFF0D7C86),onButton=Color.White,outgoingBorder=Color(0xFFC6E2DB),header=Color(0xFFE0EEEB)
 )
 // Follow the active scoped theme, including dark previews and conversation dialogs.
 @Composable internal fun seraChatColors()=seraChatPalette(MaterialTheme.colorScheme.surface.luminance()<.5f)

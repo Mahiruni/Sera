@@ -127,7 +127,7 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
  val groups=groupNativeNotifications(rows.take(30))
  Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
   Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){
-   Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"$unread unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=teal)}
+   Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"$unread unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.tertiary)}
    TextButton(onClick={sounds=true}){Text("Sounds")};TextButton(onClick={mark(null)},enabled=unread>0&&!marking&&liveActivity){Text("Read all")}
   }
   Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){notificationTabs.forEach{t->FilterChip(selected=tab==t,onClick={if(tab!=t){tab=t;page=1;rows=emptyList();liveActivity=false;loading=true}},label={Text(t)})}}
@@ -142,7 +142,7 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
      val unreadIds=g.events.filter{it.isNull("read_at")}.map{it.field("id")};val isUnread=liveActivity&&unreadIds.isNotEmpty();val actor=people[n.field("actor_id")];val post=n.field("post_id").takeIf{it.isNotBlank()};val job=jobs[n.field("job_id")];val isJob=n.field("kind")=="job_match"
      val names=g.actors.map{people[it]?.name?:"Sera member"};val name=if(names.size<=2)names.joinToString(" and ")else names.take(2).joinToString(", ")+" and "+(names.size-2)+" other"+if(names.size==3)"" else "s"
      val action=when(n.field("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";"space_message"->"sent a message in your space";"missed_call"->"called you while you were away";else->"interacted with you"}
-     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable(enabled=liveActivity){if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"));if(n.field("kind")=="space_message"&&SeraMessageAlerts.validId(n.field("space_id")))selectedSpace=n.field("space_id");if(n.field("kind")=="missed_call"&&SeraMessageAlerts.validId(n.field("conversation_id")))onOpenConversation(n.field("conversation_id"))}){
+     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable(enabled=liveActivity){if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"));if(n.field("kind")=="space_message"&&SeraMessageAlerts.validId(n.field("space_id")))selectedSpace=n.field("space_id");if(n.field("kind")=="missed_call"&&SeraMessageAlerts.validId(n.field("conversation_id")))onOpenConversation(n.field("conversation_id"))}){
       Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
        if(!isJob&&actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(40.dp).clip(CircleShape),accessToken=token)else Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(if(isJob)"J" else name.take(1),fontWeight=FontWeight.Bold)}
        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
@@ -153,7 +153,7 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
         if(g.events.size>1)Text("${g.events.size} activities"+if(isUnread)" · ${unreadIds.size} unread"else "",style=MaterialTheme.typography.labelSmall)
         Text(runCatching{DateTimeFormatter.ofPattern("d MMM · HH:mm",Locale.getDefault()).withZone(ZoneId.systemDefault()).format(Instant.parse(n.field("created_at")))}.getOrDefault(""),style=MaterialTheme.typography.labelSmall)
        }
-       if(isUnread)Box(Modifier.size(8.dp).background(teal,CircleShape))
+       if(isUnread)Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.tertiary,CircleShape))
       }
      }
     }

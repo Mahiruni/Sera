@@ -374,7 +374,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         if(active&&minimized)SeraOngoingCallStrip(name,photo,if(started>0)seraCallDuration(seconds) else phase.ifBlank{"Calling…"},muted,onRestore={minimized=false},onMute={muted=!muted;rtc?.mute(muted)},onEnd={if(busy){cancelPreparation()}else scope.launch{end("end")}},canMute=row?.state=="accepted")
     }
     if(!enabled&&summary==null&&!active)return
-    if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,voiceText(if(active)"Return to call" else "Voice call"),tint=if(active)accent else ink)}
+    if(host==null)IconButton(onClick={if(active)minimized=false else request(false)},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Call,voiceText(if(active)"Return to call" else "Voice call"),tint=if(MaterialTheme.colorScheme.surface.luminance()<.5f)Color(0xFFC4B5FD) else Color(0xFF4C1D95))}
     if(host==null&&videoAccess?.optBoolean("enabled")==true&&!active)IconButton(onClick={videoPicker=true},modifier=Modifier.size(44.dp)){Icon(Icons.Outlined.Videocam,voiceText("Video call"),tint=ink)}
     if(videoPicker&&!active){
         val premium=videoAccess?.optBoolean("premium")==true;val ready=videoAccess?.optBoolean("peer_ready")==true

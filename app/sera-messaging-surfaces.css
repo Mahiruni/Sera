@@ -6,7 +6,7 @@
   --chat-own: #dff1ed;
   --chat-ink: #20363a;
   --chat-muted: #5b7073;
-  --chat-accent: #086e70;
+  --chat-accent: #0D7C86;
   --chat-line: #dce7e3;
   --chat-quote: #edf3f1;
   --chat-selected: #d4eae4;
@@ -16,7 +16,7 @@
   --chat-own-quote: #cce6e1;
   --chat-own-line: #c6e2db;
   --chat-read: #096a5b;
-  --chat-button: #087e83;
+  --chat-button: #0D7C86;
   --chat-on-button: #fff;
   --chat-danger: #ae3041;
   --chat-shadow: 0 12px 40px #183c3810;
@@ -64,7 +64,7 @@ html[data-sera-theme=dark] .sera-chat-page {
 .sera-chat-page .sera-chat-list-item.is-selected { background: var(--chat-selected); box-shadow: inset 3px 0 var(--chat-accent); }
 .sera-chat-page .sera-chat-list-item:hover:not(.is-selected) { background: var(--chat-quote); }
 .sera-chat-page .sera-chat-list-meta { font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.sera-chat-page .sera-chat-unread { background: var(--chat-button); color: var(--chat-on-button); font-weight: 650; }
+.sera-chat-page .sera-chat-unread { background: var(--sera-activity-badge); color: #FFFFFF; font-weight: 650; }
 .sera-chat-page .sera-chat-new > summary { background: var(--chat-button)!important; color: var(--chat-on-button); }
 .sera-chat-page .sera-chat-list-search { background: var(--chat-quote); border: 1px solid transparent; }
 .sera-chat-page .sera-chat-list-search:focus-within { border-color: var(--chat-accent); outline: none; }
@@ -206,7 +206,7 @@ html[data-sera-theme=dark] .sera-chat-page {
  .sera-chat-resize-handle span{display:block;width:38px;height:5px;border-radius:999px;background:currentColor;opacity:.55}
  .sera-chat-wrapper-90[data-keyboard=true] .sera-chat-resize-handle{display:none}
  .sera-chat-page .sera-chat-wrapper-90 .sera-chat-sidebar,.sera-chat-page .sera-chat-wrapper-90 .sera-chat-thread{height:auto!important;min-height:0}
- .sera-chat-resize-handle:focus-visible{outline:2px solid var(--chat-accent,#087e83);outline-offset:-3px}
+ .sera-chat-resize-handle:focus-visible{outline:2px solid var(--chat-accent,#0D7C86);outline-offset:-3px}
 }
 @media(prefers-reduced-motion:reduce){.sera-chat-page .sera-chat-wrapper-90{transition:none}}
 

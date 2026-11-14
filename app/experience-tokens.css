@@ -20,9 +20,9 @@
   --sera-border: #dce8ef;
   --sera-text: #172d3b;
   --sera-text-secondary: #536c7b;
-  --sera-accent: #087f9f;
-  --sera-accent-hover: #066985;
-  --sera-focus: #0c8eb3;
+  --sera-accent: #0D7C86;
+  --sera-accent-hover: #0A5E66;
+  --sera-focus: #0D7C86;
   --sera-shadow: 0 8px 28px rgba(21, 61, 79, .07);
 }
 html[data-sera-theme="dark"] {
@@ -31,9 +31,9 @@ html[data-sera-theme="dark"] {
   --sera-border: #35515e;
   --sera-text: #e9f4f8;
   --sera-text-secondary: #bdd1dc;
-  --sera-accent: #67d2ed;
-  --sera-accent-hover: #8ee3f5;
-  --sera-focus: #8ee3f5;
+  --sera-accent: #43D5CC;
+  --sera-accent-hover: #91E8DF;
+  --sera-focus: #91E8DF;
   --sera-shadow: 0 8px 28px rgba(0, 0, 0, .24);
 }
 :where(.social-page,.network-page,.sera-member-page) :where(button,input,select,textarea) {
@@ -120,7 +120,7 @@ html[data-sera-theme="dark"] {
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--sera-surface-soft, #e9f7fc);
-  color: var(--sera-accent, #087f9f);
+  color: var(--sera-accent, #0D7C86);
   border: 1px solid var(--sera-border, #dce8ef);
   font-weight: 750;
   font-size: clamp(11px, 1.2vw, 15px);
@@ -191,7 +191,7 @@ html[data-sera-theme="dark"] {
 .sera-inbox .sera-conversation-name { min-width: 0; overflow-wrap: anywhere; }
 .sera-inbox .sera-conversation-unread {
   margin-left: auto; flex: none; border-radius: 99px; padding: 3px 9px;
-  background: var(--sera-accent); color: white; font-size: 12px;
+  background: var(--sera-activity-badge); color: white; font-size: 12px;
 }
 .sera-inbox .sera-inbox-composer { display: grid; gap: 10px; }
 .sera-inbox .sera-inbox-composer textarea {
