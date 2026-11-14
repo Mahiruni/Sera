@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sera_control_live_preview">የማሳወቂያ ቅድመ እይታ</string>
+    <string name="sera_control_example">ምሳሌ ብቻ</string>
+    <string name="sera_control_sample_sender">ሃና</string>
+    <string name="sera_control_sample_message">ፕሮጀክትዎ በጣም ጥሩ ነው!</string>
+</resources>
