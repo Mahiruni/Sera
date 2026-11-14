@@ -73,8 +73,8 @@ internal fun seraCallShouldAnimate(started:Long,cancelling:Boolean,active:Boolea
 @Composable internal fun SeraCallBackdrop(photo:String?,bg:Color,halo:Color,modifier:Modifier=Modifier){
     Box(modifier.clip(RoundedCornerShape(0.dp)).background(Brush.verticalGradient(listOf(bg,halo,bg))).testTag("sera_call_backdrop")){
         if(!photo.isNullOrBlank()&&android.os.Build.VERSION.SDK_INT>=31){
-            SeraMediaImage(photo,"",384,640,Modifier.fillMaxSize().blur(14.dp).alpha(.78f))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.62f),bg.copy(alpha=.28f),bg.copy(alpha=.68f)))))
+            SeraMediaImage(photo,"",384,640,Modifier.fillMaxSize().blur(20.dp).alpha(.58f))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.62f),bg.copy(alpha=.46f),bg.copy(alpha=.70f)))))
         }
     }
 }
