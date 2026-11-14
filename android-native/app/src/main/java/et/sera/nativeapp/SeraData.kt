@@ -75,11 +75,21 @@ internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,person
     val filter=postId?.let{"&id=eq.$it"}?:""
     val savedJoin=if(savedOnly)",post_saves!inner(post_id)" else ""
     val nativeFeed=postId==null&&!savedOnly
-    val result = if(nativeFeed) requestNativeFeed(token,page,personalized,pageSize)
-        else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=$pageSize&offset=${page * pageSize}$filter")
+    var nativeFeedResponse=nativeFeed
+    val directPostPath="posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=$pageSize&offset=${page * pageSize}$filter"
+    val result = if(nativeFeed){
+        val primary=requestNativeFeed(token,page,personalized,pageSize)
+        val denied=primary.second.contains("HTTP 401")||primary.second.contains("HTTP 403")
+        if(primary.first!=null||personalized||denied)primary
+        else{
+            android.util.Log.w("SeraFeed","Native Latest endpoint unavailable; retrying authenticated RLS query")
+            nativeFeedResponse=false
+            request(token,directPostPath)
+        }
+    }else request(token,directPostPath)
     val body = result.first ?: return null to result.second
     return try {
-        val array = if(nativeFeed) JSONObject(body).optJSONArray("posts") ?: return null to "Unable to read the feed response." else JSONArray(body)
+        val array = if(nativeFeedResponse) JSONObject(body).optJSONArray("posts") ?: return null to "Unable to read the feed response." else JSONArray(body)
         val posts = (0 until array.length()).map {
             val item = array.getJSONObject(it)
             SeraPost(
