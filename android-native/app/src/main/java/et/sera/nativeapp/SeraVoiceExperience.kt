@@ -3,6 +3,11 @@ package et.sera.nativeapp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,38 +44,36 @@ internal fun seraCallDuration(seconds:Long):String {
 }
 internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?,val incoming:Boolean,val endedAt:Long=System.currentTimeMillis(),val detail:String="")
 
-/** A gentle double heartbeat, drawn in a fixed footprint so the name and controls never jump. */
+/** Only an unanswered call animates; a connected or reconnecting call stays still. */
+internal fun seraCallShouldAnimate(started:Long,cancelling:Boolean,active:Boolean)=started==0L&&!cancelling&&active
+
+/** The contact photo stays fixed; a single soft orbit signals dialing. */
 @Composable internal fun SeraVoiceAvatar(name:String,photo:String?,accent:Color,pulsing:Boolean,modifier:Modifier=Modifier){
     val colors=MaterialTheme.colorScheme
     val animate=pulsing&&ValueAnimator.areAnimatorsEnabled()
-    val beat=if(animate){
-        val transition=rememberInfiniteTransition(label="voice heartbeat")
-        transition.animateFloat(
-            initialValue=0f,targetValue=0f,
-            animationSpec=infiniteRepeatable(keyframes{
-                durationMillis=1500
-                0f at 0 using FastOutSlowInEasing
-                1f at 190 using FastOutSlowInEasing
-                .12f at 360 using FastOutSlowInEasing
-                .65f at 520 using FastOutSlowInEasing
-                0f at 780
-                0f at 1500
-            },RepeatMode.Restart),label="double heartbeat"
-        )
+    val angle=if(animate){
+        val transition=rememberInfiniteTransition(label="call orbit")
+        transition.animateFloat(0f,360f,infiniteRepeatable(tween(2300,easing=LinearEasing),RepeatMode.Restart),label="ring angle")
     }else rememberUpdatedState(0f)
-    // Reserve the largest pulse size; the photo stays circular and centred.
     Box(modifier.size(176.dp).testTag("sera_voice_avatar_footprint"),contentAlignment=Alignment.Center){
-        Box(Modifier.size(156.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.10f*v;scaleY=scaleX;alpha=.65f+.35f*v
-        }.border(1.dp,accent.copy(alpha=.55f),CircleShape))
-        Box(Modifier.size(136.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.075f*v;scaleY=scaleX
-        }.background(accent.copy(alpha=.07f),CircleShape).border(1.dp,accent.copy(alpha=.40f),CircleShape))
-        Box(Modifier.size(112.dp).graphicsLayer{
-            val v=beat.value;scaleX=1f+.06f*v;scaleY=scaleX
-        }.clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
+        Box(Modifier.size(156.dp).border(1.dp,accent.copy(alpha=.15f),CircleShape))
+        if(animate)Canvas(Modifier.size(156.dp).testTag("sera_call_orbit")){
+            drawArc(color=accent.copy(alpha=.85f),startAngle=angle.value-90f,sweepAngle=96f,useCenter=false,style=Stroke(width=2.5.dp.toPx(),cap=StrokeCap.Round))
+        }
+        Box(Modifier.size(136.dp).border(1.dp,accent.copy(alpha=.24f),CircleShape))
+        Box(Modifier.size(112.dp).clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
             Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
             if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** Bounded, privacy-conscious photo wash; no full-resolution or unblurred fallback. */
+@Composable internal fun SeraCallBackdrop(photo:String?,bg:Color,halo:Color,modifier:Modifier=Modifier){
+    Box(modifier.clip(RoundedCornerShape(0.dp)).background(Brush.verticalGradient(listOf(bg,halo,bg))).testTag("sera_call_backdrop")){
+        if(!photo.isNullOrBlank()&&android.os.Build.VERSION.SDK_INT>=31){
+            SeraMediaImage(photo,"",192,320,Modifier.fillMaxSize().blur(34.dp).alpha(.26f))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.72f),bg.copy(alpha=.42f),bg.copy(alpha=.82f)))))
         }
     }
 }

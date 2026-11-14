@@ -14,6 +14,17 @@ import org.junit.Test
 
 class SeraVoiceExperienceTest {
     @get:Rule val compose=createComposeRule()
+    @Test fun callAnimationStopsOnceConnected(){
+        assertEquals(true,seraCallShouldAnimate(0L,false,true))
+        assertEquals(false,seraCallShouldAnimate(100L,false,true))
+        assertEquals(false,seraCallShouldAnimate(0L,true,true))
+        assertEquals(false,seraCallShouldAnimate(0L,false,false))
+    }
+    @Test fun connectedAvatarHasNoOrbit(){
+        compose.setContent{MaterialTheme{SeraVoiceAvatar("Test member",null,MaterialTheme.colorScheme.primary,false)}}
+        compose.onNodeWithTag("sera_voice_avatar_footprint").assertExists()
+        compose.onNodeWithTag("sera_call_orbit").assertDoesNotExist()
+    }
     @Test fun packetLossWarningRequiresMeasuredAudio(){
         assertEquals(null,seraAudioQuality(null,SeraAudioSample(100,3)))
         assertEquals("Unstable connection",seraAudioQuality(null,SeraAudioSample(100,3,jitterSeconds=.08)))

@@ -385,7 +385,9 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         val primary=colors.onSurface
         val secondary=colors.onSurfaceVariant
         val teal=colors.primary
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg,halo,bg))).systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
+        Box(Modifier.fillMaxSize()){
+        SeraCallBackdrop(photo,bg,halo,Modifier.matchParentSize())
+        Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                 if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,voiceText("Minimize call"),tint=primary)}else Spacer(Modifier.size(48.dp))
                 Text(if(videoMode)"Sera Video" else "Sera Voice",color=teal,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
@@ -398,7 +400,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                         if(remote!=null)SeraCallVideoView(remote,egl,false,Modifier.fillMaxSize())
                         if(cameraOn&&local!=null)SeraCallVideoView(local,egl,true,Modifier.align(Alignment.BottomEnd).padding(8.dp).width(88.dp).height(116.dp))
                     }
-                }else SeraVoiceAvatar(name,photo,teal,!cancelRequested&&(incoming||active))
+                }else SeraVoiceAvatar(name,photo,teal,seraCallShouldAnimate(started,cancelRequested,incoming||active))
                 Spacer(Modifier.height(20.dp))
                 Text(name,color=primary,fontSize=27.sp,fontWeight=FontWeight.SemiBold,maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
@@ -449,6 +451,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                 }
                 Text(if(videoMode)"Sera · Video call" else voiceText("Sera · Voice call"),color=secondary,fontSize=11.sp)
             }
+        }
         }
     }
     summary?.takeIf{!active}?.let{result->

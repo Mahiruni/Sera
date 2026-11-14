@@ -19,7 +19,7 @@ import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 import org.json.JSONArray
 
-internal data class SeraCallTarget(val conversation:String,val name:String,val photo:String?)
+internal data class SeraCallTarget(val conversation:String,val name:String,val photo:String?,val photoPath:String?=null)
 internal class SeraGlobalCallState {
     var target by mutableStateOf<SeraCallTarget?>(null)
         private set
@@ -80,6 +80,7 @@ internal class SeraGlobalCallState {
         if(target?.conversation!=conversation||!eligible)return
         if(pinned)returnRequest++ else {pendingStart=true;pinned=true;callRequest++}
     }
+    fun updatePhoto(conversation:String,path:String,url:String){val current=target?:return;if(current.conversation==conversation&&current.photoPath==path&&current.photo.isNullOrBlank())target=current.copy(photo=url)}
     fun consumeStart(){pendingStart=false}
     fun restore(){if(pinned)returnRequest++}
     fun history(conversation:String){if(target?.conversation==conversation&&eligible)historyRequest++}
@@ -109,7 +110,8 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
                                 else {
                                     val cards=runCatching{chatRpc(token,"member_cards",JSONObject().put("ids",JSONArray().put(caller))).first?.let{JSONArray(it)}}.getOrNull()
                                     val name=cards?.optJSONObject(0)?.optString("full_name")?.takeIf{it.isNotBlank()}?:"Sera member"
-                                    Triple(SeraCallTarget(conversation,name,null),id,expires)
+                                    val path=cards?.optJSONObject(0)?.optString("avatar_path")?.takeUnless{it.isBlank()||it=="null"}
+                                    Triple(SeraCallTarget(conversation,name,null,path),id,expires)
                                 }
                             }
                         }
@@ -126,6 +128,10 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
         state.completeDiscovery(id)
     }
     val target=state.target ?: return
+    LaunchedEffect(token,target.conversation,target.photoPath){
+        val path=target.photoPath?:return@LaunchedEffect
+        if(target.photo.isNullOrBlank())withContext(Dispatchers.IO){signedPostImage(token,path,"sera-account-private")}?.let{state.updatePhoto(target.conversation,path,it)}
+    }
     val c=MaterialTheme.colorScheme
     key(userId,target.conversation){
         SeraNativeVoiceCallButton(token,userId,target.conversation,target.name,target.photo,c.onSurface,c.primary,
