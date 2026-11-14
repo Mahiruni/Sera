@@ -583,7 +583,7 @@ private class InboxController(
                 if(ids!=null){
                     val delta=loadNativeMessages(token,conversation.id,ids.size,ids.toList())
                     val rows=delta.first
-                    if(rows!=null&&rows.map{it.id}.toSet()==ids)seraMergeMessageDelta(existing,rows,limit) to ""
+                    if(rows!=null&&rows.map{it.id}.toSet()==ids){cache?.invalidateThread(userId,conversation.id);seraMergeMessageDelta(existing,rows,limit) to ""}
                     else loadNativeMessages(token,conversation.id,limit,cache=cache,owner=userId)
                 }else loadNativeMessages(token,conversation.id,limit,cache=cache,owner=userId)
             }
@@ -608,7 +608,13 @@ private class InboxController(
                     finally{thread.deliveryInFlight.removeAll(pendingDelivery.toSet())}
                 }
             }
-            if(selected?.id==conversation.id)error=result.second
+            if(selected?.id==conversation.id){
+                if(result.first==null&&result.second.contains("session cannot access",ignoreCase=true)){
+                    withContext(Dispatchers.IO){cache?.invalidateThread(userId,conversation.id)}
+                    messages=emptyList();thread.cachedHistory=false;thread.initialMessagesLoaded=false
+                }
+                error=result.second
+            }
         }
     }
     fun react(m:NativeMessage,emoji:String){reaction=null;if(!thread.reactionBusy.add(m.id))return;scope.launch{try{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_message_reaction",JSONObject().put("p_message",m.id).put("p_emoji",if(m.reactions.any{it.first==userId&&it.second==emoji})JSONObject.NULL else emoji))};if(r.first==null)error=r.second else reload()}finally{thread.reactionBusy.remove(m.id)}}}

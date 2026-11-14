@@ -31,9 +31,19 @@ import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
 
-private data class SeraProfessional(
+internal data class SeraProfessional(
     val id: String, val name: String, val headline: String, val location: String, val avatarPath:String?=null,val matchedSkills:String="",val identityVerified:Boolean=false
 )
+
+/** Session-only list cache. Directory permissions are rechecked by the next load. */
+internal object SeraNetworkMemory {
+    private data class Entry(val owner:String,val token:String,val discover:Boolean,val people:List<SeraProfessional>,val relations:SeraNetworkRelations,val at:Long)
+    private var entry:Entry?=null
+    @Synchronized internal fun read(owner:String,token:String,discover:Boolean):Pair<List<SeraProfessional>,SeraNetworkRelations>? =
+        entry?.takeIf{it.owner==owner&&it.token==token&&it.discover==discover&&android.os.SystemClock.elapsedRealtime()-it.at in 0L..60000L}?.let{it.people to it.relations}
+    @Synchronized internal fun write(owner:String,token:String,discover:Boolean,people:List<SeraProfessional>,relations:SeraNetworkRelations){if(owner.isNotBlank())entry=Entry(owner,token,discover,people,relations,android.os.SystemClock.elapsedRealtime())}
+    @Synchronized fun clear(){entry=null}
+}
 
 private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList(),discover:Boolean=true):Pair<List<SeraProfessional>?,String>{
  if(BuildConfig.SUPABASE_URL.isBlank()||BuildConfig.SUPABASE_ANON_KEY.isBlank())return null to "Professional directory is not configured."
@@ -76,7 +86,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         actionError = ""
         scope.launch {
             val result = withContext(Dispatchers.IO) { operation() }
-            if (result.isNotBlank()) actionError = result else reload++
+            if (result.isNotBlank()) actionError = result else {SeraNetworkMemory.clear();reload++}
             actionPeer = null
         }
     }
@@ -84,13 +94,15 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(token,userId,reload,view=="Discover") {
         loading = true
+        SeraNetworkMemory.read(userId,token,view=="Discover")?.let{(savedPeople,savedRelations)->people=savedPeople;relations=savedRelations}
+        actionError=""
         if (userId.isNotBlank()) {
             val relationships = withContext(Dispatchers.IO) { loadSeraRelations(token, userId) }
             relationships.first?.let { relations = it }
             if (relationships.second.isNotBlank()) actionError = relationships.second
         }
         val related=relations.follows.toList()+relations.followers.toList()+relations.requests.map{if(it.requester==userId)it.recipient else it.requester}
-        val result=withContext(Dispatchers.IO){loadProfessionals(token,related,view=="Discover")};result.first?.let{people=it};error=result.second
+        val result=withContext(Dispatchers.IO){loadProfessionals(token,related,view=="Discover")};result.first?.let{people=it;if(actionError.isBlank())SeraNetworkMemory.write(userId,token,view=="Discover",it,relations)};error=result.second
         loading = false
     }
     val connected=relations.requests.filter{it.status=="accepted"}.map{if(it.requester==userId)it.recipient else it.requester}.toSet()
@@ -115,7 +127,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                 val request=invitations.firstOrNull{it.requester==person.id||it.recipient==person.id}
                 Column(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                        val avatar by produceState<String?>(null,token,person.avatarPath){value=person.avatarPath?.let{path->withContext(Dispatchers.IO){signedPostImage(token,path,"sera-account-private")}}}
+                        val avatar by produceState<String?>(null,token,person.avatarPath){value=person.avatarPath?.let{path->withContext(Dispatchers.IO){SeraAvatarMemory.get(token,path)?:signedPostImage(token,path,"sera-account-private")?.also{SeraAvatarMemory.put(token,path,it)}}}}
                         if(avatar!=null)SeraMediaImage(avatar!!,"Professional photo",128,128,Modifier.size(48.dp).clip(CircleShape)) else Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(person.name.take(1),color=teal,fontWeight=FontWeight.Bold)}
                         Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false));if(person.identityVerified)SeraIdentityBadge()};if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis);if(view=="Discover"&&person.matchedSkills.isNotBlank())Text("Shared skills: "+person.matchedSkills,style=MaterialTheme.typography.labelSmall,color=teal,maxLines=2,overflow=TextOverflow.Ellipsis)}
                         if(person.id in connected||followed||person.id in relations.followers)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}

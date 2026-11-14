@@ -7,6 +7,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Short-lived account/thread-scoped snapshots. Never stores attachment bytes or tokens. */
+internal const val SERA_MESSAGE_CACHE_RETENTION_MS=15*60*1000L
+internal const val SERA_MESSAGE_CACHE_THREADS=20
 internal class SeraMessageHistoryCache(context:Context){
     private val prefs=EncryptedSharedPreferences.create(context,"sera_message_history_v1",MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
     private fun key(user:String,thread:String)="history:$user:$thread"
@@ -15,7 +17,7 @@ internal class SeraMessageHistoryCache(context:Context){
         val k=key(user,thread)
         val row=runCatching{JSONObject(prefs.getString(k,null)?:return@synchronized null)}.getOrNull()?:return@synchronized null
         val age=System.currentTimeMillis()-row.optLong("at")
-        if(age !in 0L..600000L){prefs.edit().remove(k).apply();return@synchronized null}
+        if(age !in 0L..SERA_MESSAGE_CACHE_RETENTION_MS){prefs.edit().remove(k).apply();return@synchronized null}
         row.optJSONArray("rows")?.toString()
     }
     fun write(user:String,thread:String,raw:String)=synchronized(lock){
@@ -31,7 +33,7 @@ internal class SeraMessageHistoryCache(context:Context){
         val editor=prefs.edit()
         val k=key(user,thread)
         val others=prefs.all.filterKeys{it.startsWith("history:$user:")&&it!=k&&it!="history:$user:inbox"}.entries.sortedByDescending{runCatching{JSONObject(it.value as String).optLong("at")}.getOrDefault(0L)}
-        others.drop(7).forEach{editor.remove(it.key)}
+        others.drop(SERA_MESSAGE_CACHE_THREADS-1).forEach{editor.remove(it.key)}
         editor.putString(k,value).apply()
     }
     fun writeInbox(user:String,items:List<NativeConversation>)=synchronized(lock){
@@ -42,10 +44,11 @@ internal class SeraMessageHistoryCache(context:Context){
     fun readInbox(user:String):List<NativeConversation> = synchronized(lock){
         if(!SeraMessageAlerts.validId(user))return@synchronized emptyList()
         val key="history:$user:inbox";val row=runCatching{JSONObject(prefs.getString(key,null)?:return@synchronized emptyList())}.getOrNull()?:return@synchronized emptyList()
-        if(System.currentTimeMillis()-row.optLong("at") !in 0L..600000L){prefs.edit().remove(key).apply();return@synchronized emptyList()}
+        if(System.currentTimeMillis()-row.optLong("at") !in 0L..SERA_MESSAGE_CACHE_RETENTION_MS){prefs.edit().remove(key).apply();return@synchronized emptyList()}
         val rows=row.optJSONArray("rows")?:return@synchronized emptyList()
         (0 until rows.length()).mapNotNull{i->runCatching{val c=rows.getJSONObject(i);NativeConversation(c.getString("id"),c.getString("peer"),c.getString("name"),c.optString("preview"),c.optInt("unread"),null,c.optString("at"),c.optBoolean("pinned"),c.optBoolean("archived"),c.optBoolean("marked"),c.optString("muted").takeUnless{it=="null"||it.isBlank()})}.getOrNull()}
     }
+    fun invalidateThread(user:String,thread:String)=synchronized(lock){prefs.edit().remove(key(user,thread)).apply()}
     fun clear(user:String)=synchronized(lock){val editor=prefs.edit();prefs.all.keys.filter{it.startsWith("history:$user:")}.forEach{editor.remove(it)};editor.commit()}
     companion object{private val lock=Any()}
 }

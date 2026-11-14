@@ -81,8 +81,9 @@ internal class SeraFeedSession(private val token:String,context:android.content.
     private val details=mutableMapOf<Pair<Boolean,Boolean>,SeraFeedEnrichment>()
     private val revisions=mutableMapOf<Pair<Boolean,Boolean>,Int>()
     private val directFeeds=mutableMapOf<Pair<Boolean,Boolean>,SeraDirectFeed>()
-    fun direct(personalized:Boolean,saved:Boolean)=directFeeds.getOrPut(personalized to saved){SeraDirectFeed(token,personalized,saved,::storePreview)}
+    fun direct(personalized:Boolean,saved:Boolean)=directFeeds.getOrPut(personalized to saved){SeraDirectFeed(token,personalized,saved,::storePreview,onAccessLost=::invalidatePreview)}
     fun enrichment(personalized:Boolean,saved:Boolean)=details.getOrPut(personalized to saved){SeraFeedEnrichment()}
+    fun invalidatePreview(){scope.launch(Dispatchers.IO){synchronized(cacheLock){if(!closed)runCatching{cache?.clear()};Unit}}}
     private fun storePreview(rows:List<SeraPost>){scope.launch(Dispatchers.IO){synchronized(cacheLock){if(!closed)runCatching{cache?.write(rows)};Unit}}}
     fun stream(personalized:Boolean,saved:Boolean)=streams.getOrPut(personalized to saved){pagedSeraPosts(token,personalized,saved,::storePreview,enrichment(personalized,saved)).cachedIn(scope)}
     fun changed(personalized:Boolean,saved:Boolean,revision:Int):Boolean{val previous=revisions.put(personalized to saved,revision);return previous!=null&&previous!=revision}
@@ -107,7 +108,8 @@ internal class SeraDirectFeed(
     private val savedOnly:Boolean,
     private val onFirstPage:((List<SeraPost>)->Unit)?=null,
     private val fetch: (Int) -> Pair<List<SeraPost>?, String> = {page->loadSeraFeedChecked(token,page,personalized,savedOnly,SERA_ANDROID_FEED_PAGE_SIZE)},
-    private val enrich: (List<SeraPost>) -> List<SeraPost>? = {rows->enrichSeraFeed(token,rows).first}
+    private val enrich: (List<SeraPost>) -> List<SeraPost>? = {rows->enrichSeraFeed(token,rows).first},
+    private val onAccessLost:()->Unit={}
 ){
     private val mutable=MutableStateFlow(SeraFeedState())
     val state=mutable.asStateFlow()
@@ -167,7 +169,7 @@ internal class SeraDirectFeed(
         return true
     }
     @Synchronized private fun fail(expected:Long,page:Int,message:String){
-        if(!closed&&expected==generation){failedPage=page;mutable.value=mutable.value.copy(refreshing=false,appending=false,error=message)}
+        if(!closed&&expected==generation){failedPage=page;val denied=message.contains("HTTP 401")||message.contains("HTTP 403");if(denied)onAccessLost();mutable.value=mutable.value.copy(rows=if(denied)emptyList() else mutable.value.rows,details=if(denied)emptyMap() else mutable.value.details,refreshing=false,appending=false,error=message)}
     }
     @Synchronized private fun scheduleDetails(expected:Long,page:Int,rows:List<SeraPost>){
         if(closed||expected!=generation||rows.isEmpty())return

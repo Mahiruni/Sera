@@ -85,7 +85,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var cachedPreview by remember(session,personalized,savedOnly){mutableStateOf<List<SeraFeedPreview>>(emptyList())}
     LaunchedEffect(session,personalized,savedOnly){if(!personalized&&!savedOnly)cachedPreview=withContext(Dispatchers.IO){session?.readPreview().orEmpty()}}
     val previews=cachedPreview
-    val showPreview=!personalized&&!savedOnly&&posts.size==0&&(feedState.refreshing||feedState.error.isNotBlank())&&previews.isNotEmpty()
+    val showPreview=!feedState.error.contains("HTTP 401")&&!feedState.error.contains("HTTP 403")&&!personalized&&!savedOnly&&posts.size==0&&(feedState.refreshing||feedState.error.isNotBlank())&&previews.isNotEmpty()
     val refreshing=feedState.refreshing
     var retryAttempt by remember(feed){mutableIntStateOf(0)}
     var slowLoad by remember(feed){mutableStateOf(false)}
@@ -256,8 +256,9 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                     val preview=previews[index]
                     Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
                         Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                        if(preview.headline.isNotBlank())Text(preview.headline,color=feedMuted,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                         if(preview.title.isNotBlank())Text(preview.title,color=feedInk,fontWeight=FontWeight.Medium)
-                        if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=8,overflow=TextOverflow.Ellipsis)
+                        if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=12,overflow=TextOverflow.Ellipsis)
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                     }
                 }

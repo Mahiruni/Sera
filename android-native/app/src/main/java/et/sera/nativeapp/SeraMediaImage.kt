@@ -31,6 +31,8 @@ fun SeraMediaImage(url: String, description: String, widthPx: Int, heightPx: Int
     val request=remember(context,selectedUrl,widthPx,heightPx,accessToken){ImageRequest.Builder(context)
         .data(selectedUrl).size(Size(widthPx,heightPx)).crossfade(true)
         .apply {
+            val privateSigned=selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/sign/")
+            if(privateSigned){diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED)}
             if(accessToken!=null && (selectedUrl==preview||selectedUrl.startsWith(BuildConfig.SUPABASE_URL.trimEnd('/')+"/storage/v1/object/authenticated/sera-post-media/"))){
                 httpHeaders(NetworkHeaders.Builder().set("Authorization","Bearer $accessToken").set("apikey",BuildConfig.SUPABASE_ANON_KEY).build())
                 diskCachePolicy(CachePolicy.DISABLED);memoryCachePolicy(CachePolicy.DISABLED)
