@@ -5,8 +5,8 @@
   --net-ink: #172e42;
   --net-muted: #6a7d8e;
   --net-line: #e0e9ee;
-  --net-blue: #0796c8;
-  --net-deep: #087ca8;
+  --net-blue: #0D7C86;
+  --net-deep: #0D7C86;
   --net-soft: #e6f6fc;
   --net-shadow: 0 18px 60px #183b5710;
   color: var(--net-ink);
@@ -20,7 +20,7 @@ html[data-sera-theme="dark"] .sera-network {
   --net-ink: #e5f0f7;
   --net-muted: #98adbf;
   --net-line: #2c4051;
-  --net-blue: #43c3ef;
+  --net-blue: #43D5CC;
   --net-deep: #36b8e9;
   --net-soft: #142f42;
   --net-shadow: 0 18px 60px #0002;
@@ -51,7 +51,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   background: #e5f0f7;
 }
 .sera-network :is(a, button, summary, input, select):focus-visible {
-  outline: 3px solid #43c3ef;
+  outline: 3px solid #43D5CC;
   outline-offset: 4px;
 }
 .sera-network a {
@@ -141,7 +141,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   background: var(--net-blue);
   border-radius: 50%;
   margin-inline-end: 8px;
-  box-shadow: 0 0 0 4px #0796c810;
+  box-shadow: 0 0 0 4px #0D7C8610;
 }
 .network-public-hero {
   display: grid;
@@ -190,7 +190,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   font-weight: 700;
   background: var(--net-blue);
   color: white;
-  box-shadow: 0 6px 18px #0796c825;
+  box-shadow: 0 6px 18px #0D7C8625;
 }
 .network-button:hover {
   background: var(--net-deep);
@@ -296,10 +296,10 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 }
 .network-artwork {
   height: 260px;
-  background: #d8f0fa;
+  background: #E5F4F2;
   position: relative;
   overflow: hidden;
-  color: #12394e;
+  color: #16363A;
 }
 .network-artwork-caption {
   position: absolute;
@@ -334,17 +334,17 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
   position: absolute;
   width: 230px;
   height: 230px;
-  border: 35px solid #0796c8;
+  border: 35px solid #0D7C86;
   border-radius: 50%;
   right: -34px;
   top: 40px;
   transform: rotate(-32deg);
-  box-shadow: 0 20px 45px #075c7820;
+  box-shadow: 0 20px 45px #0D7C8620;
 }
 .network-orbit.two {
   width: 170px;
   height: 170px;
-  border: 26px solid #8bd8f4;
+  border: 26px solid #7C3AED;
   right: 14px;
   top: 74px;
 }
@@ -805,7 +805,7 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 }
 .network-profile-cover {
   height: 70px;
-  background: linear-gradient(120deg, #b8e4f4, #0796c8);
+  background: linear-gradient(120deg, #b8e4f4, #0D7C86);
   position: relative;
   overflow: hidden;
 }
@@ -2299,3 +2299,9 @@ html[data-sera-theme="dark"] body:has(.sera-network) .hamburger span {
 .sera-network-person-identity .sera-network-person-reason{color:var(--net-deep);font-size:11px}
 .sera-hub-limit{font-size:12px;color:var(--net-muted);margin:0}
 .sera-relationship-hub .sera-connection-action:disabled{opacity:.55;cursor:wait}
+
+/* Homepage: neutral soft-white backdrop, light mode only. */
+html:not([data-sera-theme="dark"]) .network-public .network-hero-stage,
+html:not([data-sera-theme="dark"]) .network-public .network-artwork {
+  background-color: #F2F2F2;
+}

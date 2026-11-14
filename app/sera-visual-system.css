@@ -1,6 +1,6 @@
 /* Sera Visual System 2.0 — shared surface roles, loaded after feature styles. */
 :root {
-  --sera-bg:#F6FAF9; --sera-surface:#FFFFFF; --sera-surface-soft:#EEF5F4;
+  --sera-activity-badge:#7C3AED;--sera-activity-ink:#6D28D9;--sera-activity-soft:#F3ECFF;--sera-call:#4C1D95;--sera-bg:#F6FAF9; --sera-surface:#FFFFFF; --sera-surface-soft:#EEF5F4;
   --sera-border:#D9E8E5; --sera-text:#16363A; --sera-text-secondary:#5F7A7F;
   --sera-accent:#0D7C86; --sera-accent-hover:#0A5E66; --sera-focus:#0D7C86;
   --sera-selected:#E5F4F2; --sera-selected-ink:#0A5E66;
@@ -10,7 +10,7 @@
   --sera-header-glass:rgb(255 255 255 / 96%);--sera-dock-glass:rgb(255 255 255 / 94%);
 }
 html[data-sera-theme="dark"] {
-  --sera-bg:#0D171A;--sera-surface:#152326;--sera-surface-soft:#1D3033;
+  --sera-activity-badge:#7C3AED;--sera-activity-ink:#C4B5FD;--sera-activity-soft:#35254C;--sera-call:#C4B5FD;--sera-purple:#C4B5FD;--sera-purple-soft:#35254C;--sera-bg:#0D171A;--sera-surface:#152326;--sera-surface-soft:#1D3033;
   --sera-border:#263B3E;--sera-text:#F0F7F6;--sera-text-secondary:#A0B6B8;
   --sera-accent:#43D5CC;--sera-accent-hover:#91E8DF;--sera-focus:#43D5CC;
   --sera-selected:#204642;--sera-selected-ink:#B5F2EC;--sera-shadow:0 8px 24px rgb(0 0 0 / 18%);
@@ -39,7 +39,7 @@ html[data-sera-theme="dark"] {
 .sera-main .sera-editorial-feed .social-post-actions button[aria-pressed=true]{color:var(--sera-accent)}
 .sera-main .sera-editorial-feed .social-post-list>.social-card+.social-card{border-top-color:var(--sera-border)!important}
 .sera-main :is(.sera-connection-section,.sera-notification,.sera-notifications-empty,.sera-member-hero,.sera-public-portfolio-section,.sera-moderation-report){background:var(--sera-surface);color:var(--sera-text);border-color:var(--sera-border)}
-.sera-main .sera-notification.is-unread{background:var(--sera-selected);border-color:var(--sera-border)}
+.sera-main .sera-notification.is-unread{background:var(--sera-activity-soft);border-color:var(--sera-border)}
 .sera-main :is(.sera-notification-copy,.sera-notification-copy strong,.sera-member-hero h1){color:var(--sera-text)}
 .sera-main :is(.sera-notification-copy small,.sera-notifications-empty p){color:var(--sera-text-secondary)}
 /* Mobile web mirrors native navigation; desktop retains its existing header. */
@@ -64,3 +64,11 @@ html[data-sera-theme="dark"] {
 }
 :where(.sera-main,.site-header,.sera-mobile-dock,.footer-dock,.drawer,dialog) :is(button,a):focus-visible{outline-color:var(--sera-focus)}
 .sera-main .sera-signature-glyph[data-kind]{stroke-width:1.8}
+
+/* Brand color roles only; no geometry or interaction changes. */
+.sera-main .sera-notifications-count{color:var(--sera-activity-ink);background:var(--sera-activity-soft)}
+.sera-main .sera-notification.is-unread .sera-notification-icon{color:var(--sera-activity-ink)}
+.sera-main .sera-repost-byline,.sera-main .sera-repost-byline a{color:var(--sera-activity-ink)!important}
+.sera-main .social-post-actions button[aria-pressed=true]:has([data-kind=repost]){color:var(--sera-activity-ink)}
+.sera-chat-icon:has(svg.lucide-phone){color:var(--sera-call)}
+.activity-trigger b,.sera-toolbar-notification-badge{background:var(--sera-activity-badge)!important;color:#FFFFFF!important}

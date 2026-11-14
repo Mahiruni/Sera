@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -57,6 +58,17 @@ internal class SeraGlobalCallState {
         if(id!=null&&pendingIncomingId==id){pendingIncomingId=null;pendingIncomingDeadline=0L}
     }
     private var pendingStart=false
+    var inboxStartPending by mutableStateOf(false)
+        private set
+    fun startInbox(value:SeraCallTarget):Boolean{
+        if(pinned)return false
+        target=value;eligible=false;videoEligible=false;inboxStartPending=true;pinned=true
+        return true
+    }
+    fun consumeInboxStart(conversation:String):Boolean{
+        if(!inboxStartPending||target?.conversation!=conversation)return false
+        inboxStartPending=false;return true
+    }
     private var historySink:((List<SeraCallEvent>)->Unit)?=null
     private var audioStart:(()->Unit)?=null
     fun select(value:SeraCallTarget,onAudio:()->Unit,onHistory:(List<SeraCallEvent>)->Unit){
@@ -73,7 +85,7 @@ internal class SeraGlobalCallState {
     }
     fun report(conversation:String,keep:Boolean,enabled:Boolean){
         if(target?.conversation!=conversation)return
-        pinned=keep||pendingStart||pendingIncomingId!=null;eligible=enabled
+        pinned=keep||pendingStart||inboxStartPending||pendingIncomingId!=null;eligible=enabled
         if(!pinned&&selected?.conversation!=conversation){target=selected;eligible=false;videoEligible=false}
     }
     fun start(conversation:String){
@@ -150,7 +162,7 @@ internal val LocalSeraGlobalCall=staticCompositionLocalOf<SeraGlobalCallState?>{
     DisposableEffect(host,conversation){onDispose{host.unselect(conversation)}}
     if(host.target?.conversation==conversation&&host.eligible){
         IconButton(onClick={host.start(conversation)},modifier=Modifier.size(44.dp)){
-            Icon(Icons.Outlined.Call,voiceText(if(host.pinned)"Return to call" else "Voice call"),tint=if(host.pinned)accent else ink)
+            Icon(Icons.Outlined.Call,voiceText(if(host.pinned)"Return to call" else "Voice call"),tint=if(MaterialTheme.colorScheme.surface.luminance()<.5f)Color(0xFFC4B5FD) else Color(0xFF4C1D95))
         }
         if(host.videoEligible&&!host.pinned)IconButton(onClick={host.startVideo(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.Videocam,voiceText("Video call"),tint=ink)}
         if(showHistoryIcon&&!host.pinned)IconButton(onClick={host.history(conversation)},modifier=Modifier.size(40.dp)){Icon(Icons.Outlined.History,voiceText("Recent calls"),tint=ink)}

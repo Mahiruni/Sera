@@ -1,9 +1,9 @@
 name: SERA Native Signed Release
 on:
-  # A version-file change requests one signed native release from trusted main.
-  # UI-only commits don't publish unverified Android packages.
+  # A version-file change requests one signed native release from main or
+  # the explicitly approved Android release candidate. Same QA gates apply.
   push:
-    branches: [main]
+    branches: [main, release/sera-stable-integration]
     paths:
       - 'android-native/release-version.properties'
   workflow_dispatch:
