@@ -1,0 +1,44 @@
+{
+  "status": "proposed-foundation",
+  "brand": {
+    "name": "Sera",
+    "domain": "sera.et"
+  },
+  "palette": {
+    "teal": "#0D7C86",
+    "white": "#FFFFFF",
+    "purple": "#7C3AED",
+    "purpleDark": "#4C1D95",
+    "ink": "#111827"
+  },
+  "semantic": {
+    "light": {
+      "primary": "#0D7C86",
+      "onPrimary": "#FFFFFF",
+      "surface": "#FFFFFF",
+      "text": "#111827",
+      "activity": "#7C3AED",
+      "call": "#4C1D95",
+      "activityContainer": "#F3ECFF"
+    },
+    "dark": {
+      "primary": "#43D5CC",
+      "onPrimary": "#073B3B",
+      "surface": "#152326",
+      "text": "#F0F7F6",
+      "activity": "#C4B5FD",
+      "call": "#C4B5FD",
+      "activityContainer": "#35254C"
+    }
+  },
+  "typography": {
+    "ui": "Plus Jakarta Sans Variable",
+    "ethiopic": "Noto Sans Ethiopic Variable",
+    "display": "pending-logo-approval"
+  },
+  "languages": [
+    "en",
+    "am",
+    "om"
+  ]
+}
