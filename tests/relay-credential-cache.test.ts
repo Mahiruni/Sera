@@ -21,7 +21,7 @@ function fixture(){
  }};
  const db=(id="member-a")=>({auth:{getUser:async()=>({data:{user:{id,email_confirmed_at:state.verified?"confirmed":null}},error:null})},rpc:async(name:string,args:{p_issue:boolean})=>{assert.equal(name,"sera_call_relay_access");if(!state.authorized)return {data:null,error:null};if(args.p_issue){state.claims++;if(!state.quota)return {data:null,error:null};}return {data:"cloudflare",error:null};}});
  class Clock extends Date{constructor(value?:number){super(value??state.now);}static now(){return state.now;}}
- const api={exports:{} as {callRelayConfig:(db:ReturnType<typeof db>,conversation:string,issue:boolean)=>Promise<Config>}};
+ const api={exports:{} as {callRelayConfig:(client:ReturnType<typeof db>,conversation:string,issue:boolean)=>Promise<Config>}};
  runInNewContext(source,{exports:api.exports,require:(name:string)=>{
   if(name==="server-only")return {};
   if(name==="@supabase/supabase-js")return {createClient:()=>store};
