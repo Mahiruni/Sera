@@ -150,7 +150,15 @@ internal object SeraPush {
         val notification=buildCallNotification(context,id,recipient,remaining)
         context.getSystemService(NotificationManager::class.java).notify("sera-call:"+id,1,notification)
     }
-    internal fun buildCallNotification(context:Context,id:String,recipient:String,remaining:Long):android.app.Notification{
+    @Synchronized fun enrichCall(context:Context,data:Map<String,String>,preview:SeraNotificationPreview,image:android.graphics.Bitmap?){
+        val id=data["call_id"]?:return;val recipient=data["recipient_id"]?:return
+        if(!callUuid.matches(id)||owner(context)!=recipient||isCallSilenced(context,id)||callAlerts(context).getLong(id,0)>System.currentTimeMillis())return
+        val manager=context.getSystemService(NotificationManager::class.java)
+        if(manager.activeNotifications.none{it.tag=="sera-call:"+id&&it.id==1})return
+        val remaining=callRingWindowMillis(data["expires_at"],System.currentTimeMillis())
+        if(remaining>0)manager.notify("sera-call:"+id,1,buildCallNotification(context,id,recipient,remaining,preview,image))
+    }
+    internal fun buildCallNotification(context:Context,id:String,recipient:String,remaining:Long,preview:SeraNotificationPreview?=null,image:android.graphics.Bitmap?=null):android.app.Notification{
         require(callUuid.matches(id)&&callUuid.matches(recipient)&&remaining in 1..45000)
         val intent=Intent(context,MainActivity::class.java).apply{action="et.sera.nativeapp.INCOMING_CALL";flags=Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP;putExtra("sera_kind","voice_call:"+id)}
         val pi=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -158,11 +166,12 @@ internal object SeraPush {
         val decline=PendingIntent.getBroadcast(context,id.hashCode(),Intent(context,SeraCallDeclineReceiver::class.java).apply{action="et.sera.nativeapp.DECLINE_CALL";putExtra("call_id",id);putExtra("recipient_id",recipient)},PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val answer=PendingIntent.getActivity(context,id.hashCode(),Intent(context,SeraAnswerActivity::class.java).setAction("sera.call.ANSWER").putExtra("call_id",id).putExtra("recipient_id",recipient),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val public=NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming).setContentTitle("Sera").setContentText(context.voiceText("Incoming voice call")).build()
+        val person=androidx.core.app.Person.Builder().setName(preview?.title?:"Sera").apply{if(preview?.senderId!=null){setKey(preview.senderId);setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(image?:SeraNotificationAvatars.initials(preview.title)))}}.build()
         return NotificationCompat.Builder(context,CALL_CHANNEL).setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle(context.voiceText("Incoming voice call")).setContentText(context.voiceText("Open Sera to answer")).setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(preview?.title?:context.voiceText("Incoming voice call")).setContentText(context.voiceText("Open Sera to answer")).setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(public).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setTimeoutAfter(remaining.coerceAtMost(45000)).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(pi)
-            .setStyle(NotificationCompat.CallStyle.forIncomingCall(androidx.core.app.Person.Builder().setName("Sera").build(),decline,answer))
+            .setStyle(NotificationCompat.CallStyle.forIncomingCall(person,decline,answer))
             .addAction(android.R.drawable.ic_lock_silent_mode,context.voiceText("Silence"),silence).setDeleteIntent(silence).build().apply{flags=flags or android.app.Notification.FLAG_INSISTENT}
     }
     fun dispatch(access:String,kind:String,id:String){
@@ -229,8 +238,8 @@ class SeraApplication:Application(){override fun onCreate(){super.onCreate();Ser
 class SeraFirebaseService:FirebaseMessagingService(){
     override fun onMessageReceived(message:RemoteMessage){
         if(message.data["kind"]=="voice_call_dismiss"){SeraPush.dismissCallAlert(this,message.data);return}
-        if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);return}
-        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val preview=SeraMessagePreview.fetch(this,message.data);SeraMessageAlerts.receive(this,message.data,preview);if(preview?.senderId!=null&&preview.avatar!=null){val owner=message.data["recipient_id"];if(owner!=null){val image=SeraNotificationAvatars.load(this,owner,preview.senderId,preview.avatar);SeraMessageAlerts.enrichAvatar(this,message.data,preview,image)}};return}
+        if(message.data["kind"]=="voice_call"){SeraPush.notifyCall(this,message.data);val owner=message.data["recipient_id"];val id=message.data["call_id"];if(owner!=null&&id!=null){val preview=SeraMessagePreview.incomingCall(this,owner,id);if(preview!=null){val image=preview.avatar?.let{url->preview.senderId?.let{SeraNotificationAvatars.load(this,owner,it,url)}};SeraPush.enrichCall(this,message.data,preview,image)}};return}
+        if(message.data["kind"] in listOf("message","company_message") && message.data.containsKey("message_id")){val result=SeraMessagePreview.fetch(this,message.data);if(result.suppressed)return;val preview=result.preview;SeraMessageAlerts.receive(this,message.data,preview);if(preview?.senderId!=null&&preview.avatar!=null){val owner=message.data["recipient_id"];if(owner!=null){val image=SeraNotificationAvatars.load(this,owner,preview.senderId,preview.avatar);SeraMessageAlerts.enrichAvatar(this,message.data,preview,image)}};return}
         SeraPush.notify(this,message.data["kind"]?:"activity",message.data["title"]?:"Sera",message.data["body"]?:"You have a new update.")
     }
     override fun onNewToken(token:String){super.onNewToken(token);SeraPush.refreshToken(this,token)}

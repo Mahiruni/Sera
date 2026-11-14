@@ -2,6 +2,7 @@ package et.sera.nativeapp
 import org.junit.Assert.*
 import org.junit.Test
 class MessageNotificationPolicyTest{
+    @Test fun avatarFallbackIsSmallAndUsable(){val image=SeraNotificationAvatars.initials("Sera Member");assertEquals(128,image.width);assertEquals(128,image.height)}
     @Test fun viewportReadThreshold(){
         assertFalse(isReceiptVisible(90,100,0,100))
         assertTrue(isReceiptVisible(50,100,0,100))

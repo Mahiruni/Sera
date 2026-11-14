@@ -25,6 +25,7 @@ class VoiceCallNotificationTest {
         assertTrue(SeraNotificationAnswer.take(id,recipient))
         assertFalse(SeraNotificationAnswer.take(id,recipient))
     }
+    @Test fun namedCallKeepsPrivatePublicVersion(){val context=InstrumentationRegistry.getInstrumentation().targetContext;val preview=SeraNotificationPreview("Test caller","",recipient,mode="sender");val notification=SeraPush.buildCallNotification(context,id,recipient,21000L,preview);assertEquals("Test caller",notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString());assertNotNull(notification.publicVersion);assertEquals(Notification.VISIBILITY_PRIVATE,notification.visibility)}
     @Test fun incomingCallNotificationHasPrivateBoundedRingAndSilence(){
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val notification=SeraPush.buildCallNotification(context,id,recipient,21000L)

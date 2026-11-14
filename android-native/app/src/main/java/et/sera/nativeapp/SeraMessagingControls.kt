@@ -31,6 +31,7 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
 
 @Composable internal fun SeraMessagingControlDialog(token:String,userId:String,onDismiss:()->Unit){
  val scope=rememberCoroutineScope()
+ val context=androidx.compose.ui.platform.LocalContext.current
  var loaded by remember{mutableStateOf(false)}
  var enabled by remember{mutableStateOf(true)}
  var quiet by remember{mutableStateOf(false)}
@@ -62,7 +63,7 @@ private fun parseClock(s:String):Int?=if(s.matches(Regex("([01][0-9]|2[0-3]):[0-
  },confirmButton={TextButton(enabled=loaded&&!busy,onClick={
  val a=parseClock(start);val z=parseClock(end)
  if(a==null||z==null||a==z||zone.isBlank()){error="Enter valid quiet hours.";return@TextButton}
- busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null)onDismiss()else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
+ busy=true;scope.launch{val result=withContext(Dispatchers.IO){chatRpc(token,"sera_save_message_preferences",JSONObject().put("p_enabled",enabled).put("p_quiet",quiet).put("p_start",a).put("p_end",z).put("p_timezone",zone))};if(result.first!=null){val privacy=withContext(Dispatchers.IO){chatRpc(token,"sera_set_typing_visibility",JSONObject().put("p_visible",typing))};if(privacy.first!=null){val read=withContext(Dispatchers.IO){chatRpc(token,"sera_set_read_receipt_visibility",JSONObject().put("p_visible",receipts))};if(read.first!=null){val previewResult=withContext(Dispatchers.IO){chatRpc(token,"sera_set_notification_preview_mode",JSONObject().put("p_mode",previewMode))};busy=false;if(previewResult.first!=null){SeraMessageAlerts.clearPrivateAlerts(context,userId);onDismiss()}else error="Other preferences saved. Preview preference could not be saved."}else{busy=false;error="Other preferences saved. Read privacy could not be saved."}}else{busy=false;error="Notification preferences saved. Typing preference could not be saved."}}else{busy=false;error=result.second}}
  }){Text(if(busy)"Saving…" else "Save")}},dismissButton={TextButton(enabled=!busy,onClick=onDismiss){Text("Cancel")}})
 }
 @Composable internal fun SeraConversationControlMenu(token:String,conversation:NativeConversation,onChanged:()->Unit){

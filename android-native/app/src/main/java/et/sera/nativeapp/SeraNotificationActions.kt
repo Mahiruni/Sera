@@ -35,9 +35,9 @@ internal object SeraNotificationActions {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val input=RemoteInput.Builder(INPUT).setLabel("Write a reply").build()
         builder.addAction(NotificationCompat.Action.Builder(android.R.drawable.ic_menu_send,"Reply",reply)
-            .addRemoteInput(input).setAllowGeneratedReplies(true).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY).build())
+            .addRemoteInput(input).setAllowGeneratedReplies(true).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY).setAuthenticationRequired(true).build())
         builder.addAction(NotificationCompat.Action.Builder(android.R.drawable.ic_menu_view,"Mark as read",read)
-            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ).build())
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ).setAuthenticationRequired(true).build())
     }
 
     fun execute(context:Context,intent:Intent){
