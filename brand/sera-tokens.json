@@ -1,5 +1,5 @@
 {
-  "status": "phase-1-signature-approved",
+  "status": "phase-2-components-preview",
   "brand": {
     "name": "Sera",
     "domain": "sera.et"
@@ -19,7 +19,14 @@
       "text": "#111827",
       "activity": "#7C3AED",
       "call": "#4C1D95",
-      "activityContainer": "#F3ECFF"
+      "activityContainer": "#F3ECFF",
+      "background": "#F6FAF9",
+      "muted": "#536C70",
+      "border": "#D9E8E5",
+      "soft": "#EEF5F4",
+      "onActivity": "#FFFFFF",
+      "activityInk": "#6D28D9",
+      "danger": "#B3263A"
     },
     "dark": {
       "primary": "#43D5CC",
@@ -28,7 +35,14 @@
       "text": "#F0F7F6",
       "activity": "#C4B5FD",
       "call": "#C4B5FD",
-      "activityContainer": "#35254C"
+      "activityContainer": "#35254C",
+      "background": "#0D171A",
+      "muted": "#A0B6B8",
+      "border": "#355056",
+      "soft": "#1D3033",
+      "onActivity": "#35106A",
+      "activityInk": "#E9DDFF",
+      "danger": "#FFB4AB"
     }
   },
   "typography": {
@@ -45,5 +59,36 @@
     "direction": "03-signature",
     "assets": "brand/signature",
     "productionRollout": false
+  },
+  "metrics": {
+    "space": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      32
+    ],
+    "radius": {
+      "small": 12,
+      "medium": 16,
+      "large": 24
+    },
+    "target": {
+      "web": 44,
+      "android": 48
+    },
+    "motion": {
+      "fast": 150,
+      "normal": 220
+    },
+    "type": {
+      "display": 40,
+      "heading": 28,
+      "section": 20,
+      "body": 15,
+      "metadata": 12
+    }
   }
 }
