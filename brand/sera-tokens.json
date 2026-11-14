@@ -1,5 +1,5 @@
 {
-  "status": "proposed-foundation",
+  "status": "phase-1-signature-approved",
   "brand": {
     "name": "Sera",
     "domain": "sera.et"
@@ -34,11 +34,16 @@
   "typography": {
     "ui": "Plus Jakarta Sans Variable",
     "ethiopic": "Noto Sans Ethiopic Variable",
-    "display": "pending-logo-approval"
+    "display": "Plus Jakarta Sans UI; wordmark is outlined vector"
   },
   "languages": [
     "en",
     "am",
     "om"
-  ]
+  ],
+  "identity": {
+    "direction": "03-signature",
+    "assets": "brand/signature",
+    "productionRollout": false
+  }
 }
