@@ -129,6 +129,17 @@ class SeraFeedLayoutTest {
             compose.onNodeWithTag("sera_feed_text_stale").assertDoesNotExist()
         }finally{release.countDown();feed.close()}
     }
+    @Test fun feedOwnerReusesSameSessionAndSeparatesAccounts(){
+        val context=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val owner=SeraFeedOwner()
+        val first=owner.acquire("test-token",context,"qa-account-one")
+        try{
+            org.junit.Assert.assertSame(first,owner.acquire("test-token",context,"qa-account-one"))
+            val replacement=owner.acquire("test-token-two",context,"qa-account-two")
+            org.junit.Assert.assertNotSame(first,replacement)
+            org.junit.Assert.assertSame(replacement,owner.acquire("test-token-two",context,"qa-account-two"))
+        }finally{owner.signOut()}
+    }
     @Test fun failedRefreshRetainsPostsAndRetriesFirstPage(){
         val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
         val failing=java.util.concurrent.atomic.AtomicBoolean(false)

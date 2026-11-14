@@ -65,6 +65,7 @@ private val ink = Color(0xFF16363A)
 private val bg = Color(0xFFF6FAF9)
 
 class MainActivity : AppCompatActivity() {
+    private val feedOwner by lazy { androidx.lifecycle.ViewModelProvider(this)[SeraFeedOwner::class.java] }
     private val callback = mutableStateOf<Uri?>(null)
     private val pushKind = mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +91,7 @@ class MainActivity : AppCompatActivity() {
             Box(Modifier.fillMaxSize()) {
                 SeraApp(
                     context = this@MainActivity,
+                    feedOwner = feedOwner,
                     oauthCallback = callback.value,
                     onCallbackConsumed = { callback.value = null; setIntent(Intent(this@MainActivity, MainActivity::class.java).setAction(Intent.ACTION_MAIN)) },
                     onInitialDestinationReady = { destinationReady = true },
@@ -110,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     override fun onResume(){super.onResume();SeraMessageAlerts.setForeground(true)}
+    override fun onDestroy(){android.util.Log.d("SeraFeed","Activity destroyed changingConfig=$isChangingConfigurations finishing=$isFinishing");super.onDestroy()}
     override fun onPause(){SeraMessageAlerts.setForeground(false);super.onPause()}
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -120,8 +123,9 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun SeraApp(
+internal fun SeraApp(
     context: Context,
+    feedOwner: SeraFeedOwner,
     oauthCallback: Uri? = null,
     onCallbackConsumed: () -> Unit = {},
     onInitialDestinationReady: () -> Unit = {},
@@ -379,8 +383,8 @@ fun SeraApp(
     var inboxThreadOpen by remember(authenticatedUserId) { mutableStateOf(false) }
     val globalVoice=remember(authenticatedUserId){SeraGlobalCallState()}
     val pageStateHolder=key(authenticatedUserId){androidx.compose.runtime.saveable.rememberSaveableStateHolder()}
-    val feedSession=remember(accessToken,authenticatedUserId){accessToken?.takeIf{authenticatedUserId.isNotBlank()}?.let{SeraFeedSession(it,context.applicationContext,authenticatedUserId)}}
-    DisposableEffect(feedSession){onDispose{feedSession?.close()}}
+    // The authenticated session belongs to the Activity ViewModel, not a transient composition.
+    val feedSession=remember(feedOwner,accessToken,authenticatedUserId){accessToken?.takeIf{authenticatedUserId.isNotBlank()}?.let{feedOwner.acquire(it,context.applicationContext,authenticatedUserId)}}
     val homeFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
     val savedFeedState=key(authenticatedUserId){androidx.compose.foundation.lazy.rememberLazyListState()}
     var homeReselect by remember(authenticatedUserId){mutableIntStateOf(0)}
@@ -486,7 +490,7 @@ fun SeraApp(
     SeraPresenceHeartbeat(accessToken.orEmpty(),authenticatedUserId,networkLink.available)
     var dataError by remember { mutableStateOf("") }
     var dataLoading by remember { mutableStateOf(false) }
-    fun signOutSera(){SeraNetworkMemory.clear();SeraAvatarMemory.clear();SeraAccountSnapshot.clear();feedSession?.clearOnSignOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId);SeraLocalCache.get(context).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
+    fun signOutSera(){SeraNetworkMemory.clear();SeraAvatarMemory.clear();SeraAccountSnapshot.clear();feedOwner.signOut();runCatching{SeraMessageHistoryCache(context.applicationContext).clear(authenticatedUserId);SeraLocalCache.get(context).clear(authenticatedUserId)};accessToken?.let{token->val uid=authenticatedUserId;scope.launch{SeraPush.unregister(context,token,uid)}};SeraPush.clearLocal(context);session.clear();accessToken=null;authenticatedUserId="";showComposer=false;password="";message="";tab="Home";tabHistory.clear();identity="";profileAvatarUrl=null;profileHeadline="";profileVerified=false;dataError="";dataLoading=false;editProfileRequested=false}
     LaunchedEffect(accessToken,authenticatedUserId){
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isNotBlank())return@LaunchedEffect

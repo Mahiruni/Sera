@@ -227,3 +227,20 @@ internal class SeraDirectFeed(
     }
     @Synchronized fun close(){closed=true;generation++;deadline?.let{mainHandler.removeCallbacks(it)};deadline=null;baseJob?.cancel(true);baseExecutor.shutdownNow();worker.cancel();mutable.value=SeraFeedState(refreshing=false,hasMore=false);android.util.Log.d("SeraFeed","Direct feed closed generation=$generation")}
 }
+
+/** ViewModel owns the authenticated feed across configuration changes and transient UI disposal.
+ * No credentials or account identifiers are logged. Different accounts never share rows. */
+internal class SeraFeedOwner:androidx.lifecycle.ViewModel(){
+    private var session:SeraFeedSession?=null
+    private var token:String?=null
+    private var account:String?=null
+    @Synchronized fun acquire(access:String,context:android.content.Context,user:String):SeraFeedSession{
+        require(access.isNotBlank()&&user.isNotBlank())
+        val existing=session
+        if(existing!=null&&token==access&&account==user){android.util.Log.d("SeraFeed","Reusing authenticated feed session");return existing}
+        if(existing!=null){if(account!=user)existing.clearOnSignOut();existing.close()}
+        return SeraFeedSession(access,context.applicationContext,user).also{session=it;token=access;account=user;android.util.Log.d("SeraFeed","Created authenticated feed session")}
+    }
+    @Synchronized fun signOut(){session?.clearOnSignOut();session?.close();session=null;token=null;account=null;android.util.Log.d("SeraFeed","Feed owner signed out")}
+    override fun onCleared(){synchronized(this){session?.close();session=null;token=null;account=null};android.util.Log.d("SeraFeed","Feed owner cleared");super.onCleared()}
+}
