@@ -20,7 +20,24 @@ concurrency:
   group: sera-native-public-release
   cancel-in-progress: false
 jobs:
+  feed-qa-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require dedicated feed QA credentials before building
+        shell: bash
+        env:
+          SERA_E2E_OWNER_EMAIL: ${{ secrets.SERA_E2E_OWNER_EMAIL }}
+          SERA_E2E_OWNER_PASSWORD: ${{ secrets.SERA_E2E_OWNER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in SERA_E2E_OWNER_EMAIL SERA_E2E_OWNER_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository Actions secret: $name. Configure a dedicated verified QA account before publishing."
+              exit 1
+            fi
+          done
   visual-regression:
+    needs: feed-qa-preflight
     uses: ./.github/workflows/messaging-native-visual.yml
     with:
       live_calling: true
