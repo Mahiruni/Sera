@@ -256,7 +256,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                 }
                 items(previews.size,key={index->"cached-"+previews[index].id}){index->
                     val preview=previews[index]
-                    SeraCachedPostCard(preview)
+                    SeraCachedPostCard(preview,currentUserId)
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 }
             }

@@ -10,7 +10,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-@Composable internal fun SeraCachedPostCard(post:SeraFeedPreview){
+@Composable internal fun SeraCachedPostCard(post:SeraFeedPreview,owner:String=""){
  var expanded by remember(post.id){mutableStateOf(false)}
  val colors=MaterialTheme.colorScheme
  Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
    }
   }
   SeraFeedCopy(post.title,post.body,expanded,{expanded=it})
+  SeraSavedPostThumbnail(owner,post)
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
    Text("${post.likes} likes",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant)
    Text("${post.comments} comments",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant)

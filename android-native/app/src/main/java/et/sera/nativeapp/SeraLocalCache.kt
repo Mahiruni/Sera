@@ -82,12 +82,16 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
     }
     private fun trim(db:SQLiteDatabase,now:Long){
         db.delete("snapshots","expires<?",arrayOf(now.toString()))
-        val budget=budgetMb()*1024L*1024L
-        // Globally bounded, including old account namespaces.
+        trimGroup(db,false,budgetMb()*1024L*1024L)
+        trimGroup(db,true,imageBudgetMb()*1024L*1024L)
+    }
+    private fun trimGroup(db:SQLiteDatabase,image:Boolean,budget:Long){
+        val condition=if(image)"bucket='thumbnail'" else "bucket!='thumbnail'"
+        var total=db.rawQuery("SELECT coalesce(sum(length(payload)),0) FROM snapshots WHERE "+condition,null).use{c->if(c.moveToFirst())c.getLong(0) else 0L}
+        if(total<=budget)return
         val rows=mutableListOf<Pair<Long,Long>>()
-        db.rawQuery("SELECT rowid,length(payload) FROM snapshots ORDER BY touched DESC,written DESC,rowid DESC",null).use{c->while(c.moveToNext())rows.add(c.getLong(0) to c.getLong(1))}
-        var total=0L
-        rows.forEach{(id,size)->total+=size;if(total>budget)db.delete("snapshots","rowid=?",arrayOf(id.toString()))}
+        db.rawQuery("SELECT rowid,length(payload) FROM snapshots WHERE "+condition+" ORDER BY touched ASC,written ASC,rowid ASC",null).use{c->while(c.moveToNext())rows.add(c.getLong(0) to c.getLong(1))}
+        for((id,size) in rows){if(total<=budget)break;db.delete("snapshots","rowid=?",arrayOf(id.toString()));total-=size}
     }
     fun remove(owner:String,bucket:String,item:String)=synchronized(guard){writableDatabase.delete("snapshots",where,args(owner,bucket,item));Unit}
     fun clear(owner:String,bucket:String?=null)=synchronized(guard){
@@ -97,12 +101,20 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
         Unit
     }
     fun budgetMb():Int=prefs.getInt("text_mb",30).takeIf{it in listOf(15,30,50)}?:30
+    fun imageBudgetMb():Int=when(budgetMb()){15->30;50->200;else->100}
+    fun thumbnailLimit():Int=when(budgetMb()){15->120;50->800;else->400}
     fun setBudgetMb(mb:Int)=synchronized(guard){
         require(mb in listOf(15,30,50));prefs.edit().putInt("text_mb",mb).apply()
         trim(writableDatabase,System.currentTimeMillis())
     }
     fun bytes(owner:String):Long=synchronized(guard){
         readableDatabase.rawQuery("SELECT coalesce(sum(length(payload)),0) FROM snapshots WHERE owner=?",arrayOf(hash(owner))).use{c->if(c.moveToFirst())c.getLong(0) else 0L}
+    }
+    fun textBytes(owner:String):Long=synchronized(guard){bytesInGroup(owner,false)}
+    fun imageBytes(owner:String):Long=synchronized(guard){bytesInGroup(owner,true)}
+    private fun bytesInGroup(owner:String,image:Boolean):Long{
+        val condition=if(image)"bucket='thumbnail'" else "bucket!='thumbnail'"
+        return readableDatabase.rawQuery("SELECT coalesce(sum(length(payload)),0) FROM snapshots WHERE owner=? AND "+condition,arrayOf(hash(owner))).use{c->if(c.moveToFirst())c.getLong(0) else 0L}
     }
     companion object{
         @Volatile private var instance:SeraLocalCache?=null

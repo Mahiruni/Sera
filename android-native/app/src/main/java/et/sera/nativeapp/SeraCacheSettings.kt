@@ -19,12 +19,15 @@ import kotlinx.coroutines.withContext
     var message by remember{mutableStateOf("")}
     var budget by remember{mutableIntStateOf(30)}
     var bytes by remember(user){mutableLongStateOf(0L)}
-    LaunchedEffect(user){withContext(Dispatchers.IO){runCatching{val store=SeraLocalCache.get(context);store.budgetMb() to store.bytes(user)}.getOrNull()}?.let{budget=it.first;bytes=it.second}}
+    var imageBytes by remember(user){mutableLongStateOf(0L)}
+    val imageBudget=when(budget){15->30;50->200;else->100}
+    LaunchedEffect(user){withContext(Dispatchers.IO){runCatching{val store=SeraLocalCache.get(context);Triple(store.budgetMb(),store.textBytes(user),store.imageBytes(user))}.getOrNull()}?.let{budget=it.first;bytes=it.second;imageBytes=it.third}}
     Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)){
         Text("Storage and performance",style=MaterialTheme.typography.titleMedium)
         Text("Recent posts, conversations and profile previews are saved to help Sera open faster.",style=MaterialTheme.typography.bodySmall)
         Text("Saved text: "+String.format(java.util.Locale.ROOT,"%.1f",bytes/1048576.0)+" MB · limit "+budget+" MB",style=MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf(15,30,50).forEach{mb->FilterChip(selected=budget==mb,onClick={scope.launch{busy=true;val result=withContext(Dispatchers.IO){runCatching{val store=SeraLocalCache.get(context);store.setBudgetMb(mb);store.bytes(user)}};result.onSuccess{bytes=it;budget=mb};busy=false;if(result.isFailure)message="Could not change cache limit."}},label={Text("$mb MB")},enabled=!busy)}}
+        Text("Saved images: "+String.format(java.util.Locale.ROOT,"%.1f",imageBytes/1048576.0)+" MB · limit "+imageBudget+" MB",style=MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf(15 to "Saver",30 to "Balanced",50 to "Performance").forEach{(mb,label)->FilterChip(selected=budget==mb,onClick={scope.launch{busy=true;val result=withContext(Dispatchers.IO){runCatching{val store=SeraLocalCache.get(context);store.setBudgetMb(mb);store.textBytes(user) to store.imageBytes(user)}};result.onSuccess{bytes=it.first;imageBytes=it.second;budget=mb};busy=false;if(result.isFailure)message="Could not change cache limit."}},label={Text(label)},enabled=!busy)}}
         TextButton(onClick={confirm=true},enabled=!busy&&user.isNotBlank()){Text(if(busy)"Clearing…" else "Clear saved previews")}
         if(message.isNotBlank())Text(message,style=MaterialTheme.typography.bodySmall)
     }
@@ -38,7 +41,7 @@ import kotlinx.coroutines.withContext
                 SeraNetworkMemory.clear();SeraAvatarMemory.clear()
             }}
             busy=false
-            if(result.isSuccess){bytes=0;onClear();message="Saved previews cleared."}else message="Could not clear previews. Please retry."
+            if(result.isSuccess){bytes=0;imageBytes=0;onClear();message="Saved previews cleared."}else message="Could not clear previews. Please retry."
         }
     }){Text("Clear")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancel")}})
 }
