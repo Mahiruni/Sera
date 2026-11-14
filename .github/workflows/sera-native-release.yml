@@ -161,8 +161,12 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node_to_create=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify signed upgrade from the existing SERA app
+      - name: Verify signed upgrade and authenticated live feed
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          SERA_E2E_OWNER_EMAIL: ${{ secrets.SERA_E2E_OWNER_EMAIL }}
+          SERA_E2E_OWNER_PASSWORD: ${{ secrets.SERA_E2E_OWNER_PASSWORD }}
+          SERA_SUPABASE_ANON_KEY: ${{ secrets.SERA_SUPABASE_ANON_KEY }}
         with:
           api-level: 35
           arch: x86_64
@@ -171,6 +175,7 @@ jobs:
           script: |
             bash android-native/scripts/verify_signed_upgrade.sh
             bash android-native/scripts/verify_signed_call_engine.sh
+            bash android-native/scripts/verify_signed_feed.sh
       - name: Retain signed call diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4

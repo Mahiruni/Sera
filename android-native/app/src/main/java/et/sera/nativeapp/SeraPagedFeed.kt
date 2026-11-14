@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.paging.LoadState
@@ -58,7 +59,7 @@ private val feedTeal = Color(0xFF0D7C86)
 private val feedInk = Color(0xFF16363A)
 private val feedMuted = Color(0xFF667A7E)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class,androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) -> Unit, modifier: Modifier = Modifier, onAtTop:()->Unit = {},savedOnly:Boolean=false,composerName:String="",composerAvatar:String?=null,canCompose:Boolean=true,onCompose:(String?)->Unit={},session:SeraFeedSession?=null,retainedListState:androidx.compose.foundation.lazy.LazyListState?=null,homeReselect:Int=0,activeCall:Boolean=false,retainedPersonalized:Boolean=false,onPersonalized:(Boolean)->Unit={}) {
     val context = LocalContext.current
@@ -127,7 +128,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     PullToRefreshBox(
         isRefreshing = refreshing&&!slowLoad,
         onRefresh = { if(!refreshing||slowLoad)retryFeed() },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize().semantics{testTagsAsResourceId=true}
     ) {
         Box(Modifier.fillMaxSize()){
         LazyColumn(

@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * Network-backed paging foundation. A Room RemoteMediator will replace direct
  * network paging once the per-account offline database is migrated and tested.
  */
+internal const val SERA_ANDROID_FEED_PAGE_SIZE=5
+
 class SeraPostPagingSource(private val token: String, private val personalized:Boolean=false,private val savedOnly:Boolean=false,private val onFirstPage:((List<SeraPost>)->Unit)?=null,private val onBasePage:((List<SeraPost>)->Unit)?=null) : PagingSource<Int, SeraPost>() {
     override fun getRefreshKey(state: PagingState<Int, SeraPost>): Int? {
         val anchor = state.anchorPosition ?: return null
@@ -31,7 +33,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
             // Do not let a slow network generation hold Paging in Loading forever.
             val result = withTimeoutOrNull(40_000L) {
                 runInterruptible(Dispatchers.IO) {
-                    loadSeraFeed(token,page,personalized=personalized,savedOnly=savedOnly,onBasePosts=if(firstPublicPage)onBasePage else null)
+                    loadSeraFeed(token,page,personalized=personalized,savedOnly=savedOnly,onBasePosts=if(firstPublicPage)onBasePage else null,pageSize=SERA_ANDROID_FEED_PAGE_SIZE)
                 }
             } ?: return LoadResult.Error(IllegalStateException("Feed request timed out. Please retry."))
             val posts = result.first ?: return LoadResult.Error(IllegalStateException(result.second))
@@ -39,7 +41,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
             LoadResult.Page(
                 data = posts,
                 prevKey = if (page == 0) null else page - 1,
-                nextKey = if (posts.size < 20) null else page + 1
+                nextKey = if (posts.size < SERA_ANDROID_FEED_PAGE_SIZE) null else page + 1
             )
         } catch (cancelled:kotlinx.coroutines.CancellationException) { throw cancelled
         } catch (error: Exception) {
@@ -49,7 +51,7 @@ class SeraPostPagingSource(private val token: String, private val personalized:B
 }
 
 fun pagedSeraPosts(token: String, personalized:Boolean=false,savedOnly:Boolean=false,onFirstPage:((List<SeraPost>)->Unit)?=null,onBasePage:((List<SeraPost>)->Unit)?=null) = Pager(
-    config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 5, maxSize = 120, enablePlaceholders = false),
+    config = PagingConfig(pageSize = SERA_ANDROID_FEED_PAGE_SIZE, initialLoadSize = SERA_ANDROID_FEED_PAGE_SIZE, prefetchDistance = 2, maxSize = 120, enablePlaceholders = false),
     pagingSourceFactory = { SeraPostPagingSource(token,personalized,savedOnly,onFirstPage,onBasePage) }
 ).flow
 

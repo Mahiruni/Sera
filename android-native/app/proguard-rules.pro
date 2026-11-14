@@ -17,3 +17,6 @@
 # Upstream WebRTC AAR has an unused generated JniZeroJni reference.
 # Match flutter-webrtc's narrow missing-class rule, not a blanket suppression.
 -dontwarn org.jni_zero.JniZeroJni
+
+# Signed feed QA uses the normal encrypted session store through reflection.
+-keep class et.sera.nativeapp.SessionStore { public <init>(android.content.Context); public void saveRefreshToken(java.lang.String); public void clear(); }

@@ -6,32 +6,42 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 data class SeraPost(val id: String, val authorId: String, val title: String, val body: String, val likes: Int, val comments: Int, val shares: Int, val kind: String, val publishedAt: String, val author: String = "SERA member", val headline: String = "", val imageUrl: String? = null, val liked: Boolean = false, val avatarUrl: String? = null, val repostOf: String? = null, val repostAuthor: String? = null, val originalTime: String? = null, val originalTitle: String? = null, val originalBody: String? = null, val repostNote: String = "", val repostCount: Int = 0, val reposted: Boolean = false, val originalAvatar: String? = null, val originalAuthorId: String? = null, val audience:String="public", val editedAt:String?=null, val saved:Boolean=false,val identityVerified:Boolean=false,val imagePreviewUrl:String?=null)
 
+// Bound the entire HTTP exchange, including reading the response body. Never log credentials.
+private val seraFeedHttp=OkHttpClient.Builder()
+    .connectTimeout(7,TimeUnit.SECONDS).readTimeout(12,TimeUnit.SECONDS)
+    .callTimeout(18,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false)
+    .build()
+
 private fun request(token: String, path: String, auth: Boolean = false): Pair<String?, String> {
     return try {
-        val base = BuildConfig.SUPABASE_URL.trimEnd('/')
-        val url = URL(base + (if (auth) "/auth/v1/" else "/rest/v1/") + path)
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15000
-            readTimeout = 15000
-            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
-            setRequestProperty("Authorization", "Bearer $token")
+        val base=BuildConfig.SUPABASE_URL.trimEnd('/')
+        val req=Request.Builder().url(base+(if(auth)"/auth/v1/" else "/rest/v1/")+path)
+            .header("apikey",BuildConfig.SUPABASE_ANON_KEY)
+            .header("Authorization","Bearer $token").header("Accept","application/json").build()
+        seraFeedHttp.newCall(req).execute().use { response ->
+            if(!response.isSuccessful) return null to "Sera request failed (HTTP ${response.code})."
+            val body=response.body?.string()?:return null to "Empty server response. Please retry."
+            if(path.startsWith("posts?"))android.util.Log.d("SeraFeed","Post response decoded: ${body.length} characters")
+            body to ""
         }
-        val status = connection.responseCode
-        val response = (if (status in 200..299) connection.inputStream else connection.errorStream)
-            ?.bufferedReader()?.use { it.readText() } ?: ""
-        connection.disconnect()
-        if (status in 200..299) response to "" else null to "SERA request failed (HTTP $status)."
-    } catch (e: Exception) { null to "Network unavailable. Please retry." }
+    } catch(e:Exception) {
+        if(path.startsWith("posts?"))android.util.Log.w("SeraFeed","Post transport failed: "+e.javaClass.simpleName)
+        null to "Network unavailable. Please retry."
+    }
 }
 
-fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false,savedOnly:Boolean=false,onBasePosts:((List<SeraPost>)->Unit)?=null): Pair<List<SeraPost>?, String> {
+fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false,savedOnly:Boolean=false,onBasePosts:((List<SeraPost>)->Unit)?=null,pageSize:Int=20): Pair<List<SeraPost>?, String> {
+    require(pageSize in 1..20)
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
     val savedJoin=if(savedOnly)",post_saves!inner(post_id)" else ""
-    val result = if(personalized&&postId==null&&!savedOnly) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*20).put("p_limit",20)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=20&offset=${page * 20}$filter")
+    val result = if(personalized&&postId==null&&!savedOnly) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*pageSize).put("p_limit",pageSize)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=$pageSize&offset=${page * pageSize}$filter")
     val body = result.first ?: return null to result.second
     return try {
         val array = JSONArray(body)
@@ -51,6 +61,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             )
         }
         // Publish an authenticated public-text preview before optional enrichment requests.
+        android.util.Log.d("SeraFeed","Decoded ${posts.size} post rows")
         onBasePosts?.invoke(posts)
         if (posts.isEmpty()) return emptyList<SeraPost>() to ""
         val sourceAuthors = mutableMapOf<String, String>()

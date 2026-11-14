@@ -641,7 +641,9 @@ fun SeraApp(
                                 ) { currentTab ->
                                     pageStateHolder.SaveableStateProvider(currentTab) {
                                     when (currentTab) {
-                                        "Home", "Saved" -> SeraPagedFeed(
+                                        "Home", "Saved" -> if(feedSession==null){
+                                            Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()}
+                                        }else SeraPagedFeed(
                                             accessToken ?: "", refresh,
                                             onLike = { post ->
                                                 val token = accessToken
