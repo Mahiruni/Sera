@@ -71,6 +71,7 @@ internal fun pagedSeraPosts(token:String,personalized:Boolean=false,savedOnly:Bo
 
 /** Account-scoped feed generations; cancellation drops all cached pages and details. */
 internal class SeraFeedSession(private val token:String,context:android.content.Context,private val user:String){
+    val accountId:String get()=user
     private val cacheLock=Any()
     private var closed=false
     private val cache by lazy{runCatching{SeraFeedPreviewCache(context.applicationContext,user)}.getOrNull()}

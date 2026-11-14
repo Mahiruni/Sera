@@ -35,11 +35,11 @@ private data class SeraProfessional(
     val id: String, val name: String, val headline: String, val location: String, val avatarPath:String?=null,val matchedSkills:String="",val identityVerified:Boolean=false
 )
 
-private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList()):Pair<List<SeraProfessional>?,String>{
+private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList(),discover:Boolean=true):Pair<List<SeraProfessional>?,String>{
  if(BuildConfig.SUPABASE_URL.isBlank()||BuildConfig.SUPABASE_ANON_KEY.isBlank())return null to "Professional directory is not configured."
  return try{
-  val recs=spaceRows(spaceCall(token,"sera_recommend_talent").first).associateBy{it.optString("member_id")}
-  val authors=runCatching{val a=searchRows(token,"posts",mapOf("select" to "author_id","status" to "eq.published","audience" to "eq.public","deleted_at" to "is.null","order" to "created_at.desc","limit" to "150"));(0 until a.length()).map{a.getJSONObject(it).optString("author_id")}}.getOrDefault(emptyList())
+  val recs=if(discover)spaceRows(spaceCall(token,"sera_recommend_talent").first).associateBy{it.optString("member_id")} else emptyMap()
+  val authors=if(discover)runCatching{val a=searchRows(token,"posts",mapOf("select" to "author_id","status" to "eq.published","audience" to "eq.public","deleted_at" to "is.null","order" to "created_at.desc","limit" to "150"));(0 until a.length()).map{a.getJSONObject(it).optString("author_id")}}.getOrDefault(emptyList()) else emptyList()
   val ids=(relatedIds.distinct().take(500)+recs.keys+authors).filter{it.isNotBlank()}.distinct()
   val people=mutableListOf<SeraProfessional>()
   for(chunk in ids.chunked(100)){
@@ -82,7 +82,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
-    LaunchedEffect(token,userId,reload) {
+    LaunchedEffect(token,userId,reload,view=="Discover") {
         loading = true
         if (userId.isNotBlank()) {
             val relationships = withContext(Dispatchers.IO) { loadSeraRelations(token, userId) }
@@ -90,7 +90,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
             if (relationships.second.isNotBlank()) actionError = relationships.second
         }
         val related=relations.follows.toList()+relations.followers.toList()+relations.requests.map{if(it.requester==userId)it.recipient else it.requester}
-        val result=withContext(Dispatchers.IO){loadProfessionals(token,related)};result.first?.let{people=it};error=result.second
+        val result=withContext(Dispatchers.IO){loadProfessionals(token,related,view=="Discover")};result.first?.let{people=it};error=result.second
         loading = false
     }
     val connected=relations.requests.filter{it.status=="accepted"}.map{if(it.requester==userId)it.recipient else it.requester}.toSet()
@@ -118,7 +118,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                         val avatar by produceState<String?>(null,token,person.avatarPath){value=person.avatarPath?.let{path->withContext(Dispatchers.IO){signedPostImage(token,path,"sera-account-private")}}}
                         if(avatar!=null)SeraMediaImage(avatar!!,"Professional photo",128,128,Modifier.size(48.dp).clip(CircleShape)) else Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(person.name.take(1),color=teal,fontWeight=FontWeight.Bold)}
                         Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false));if(person.identityVerified)SeraIdentityBadge()};if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis);if(view=="Discover"&&person.matchedSkills.isNotBlank())Text("Shared skills: "+person.matchedSkills,style=MaterialTheme.typography.labelSmall,color=teal,maxLines=2,overflow=TextOverflow.Ellipsis)}
-                        if(person.id in connected)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}
+                        if(person.id in connected||followed||person.id in relations.followers)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}
                     }
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         if(request!=null&&request.recipient==userId){Button(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"accepted")}},enabled=actionPeer==null){Text("Accept")};TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"declined")}},enabled=actionPeer==null){Text("Decline")}}

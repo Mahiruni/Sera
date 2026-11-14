@@ -103,6 +103,21 @@ private fun readSearch(token:String,query:String,tab:String,location:String,work
 
 
 // Revalidate access at selection time; search previews are not authorization.
+internal data class SeraMemberDetailResult(val member:SearchHit?,val error:String="")
+internal fun loadSeraMemberDetail(token:String,id:String,lookup:(String,org.json.JSONObject)->Pair<String?,String> = {rpc,body->spaceCall(token,rpc,body)}):SeraMemberDetailResult {
+    if(!id.matches(Regex("^[0-9a-fA-F-]{36}$")))return SeraMemberDetailResult(null)
+    val result=lookup("member_cards",org.json.JSONObject().put("ids",JSONArray(listOf(id))))
+    val raw=result.first?:return SeraMemberDetailResult(null,result.second.ifBlank{"Could not connect to Sera."})
+    return try{
+        val rows=JSONArray(raw)
+        val row=(0 until rows.length()).map{rows.getJSONObject(it)}.firstOrNull{it.optString("id")==id}
+        if(row==null)SeraMemberDetailResult(null) else {
+            val name=row.optString("full_name").takeUnless{it=="null"}.orEmpty()
+            SeraMemberDetailResult(SearchHit(id,"People",name.ifBlank{"Sera member"},""))
+        }
+    }catch(_:Exception){SeraMemberDetailResult(null,"Could not read the member profile. Please retry.")}
+}
+
 private fun loadSearchDetail(token:String,hit:SearchHit):SearchHit? = try {
     val people=hit.kind=="People"
     val p=mutableMapOf("id" to "eq."+hit.id,"limit" to "1",
@@ -121,25 +136,42 @@ internal fun SearchResultDetail(token:String,userId:String,hit:SearchHit,modifie
     var detail by remember(token,hit.id){mutableStateOf<SearchHit?>(null)}
     var loading by remember(token,hit.id){mutableStateOf(true)}
     var error by remember(token,hit.id){mutableStateOf("")}
-    var retry by remember{mutableIntStateOf(0)}
+    var retry by remember(token,hit.id){mutableIntStateOf(0)}
+    var loadError by remember(token,hit.id){mutableStateOf("")}
     var thread by remember(token,hit.id){mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val context=LocalContext.current
     val linkHandler=androidx.compose.ui.platform.LocalUriHandler.current
     val person=hit.kind=="People"
-    val verified by produceState(false,token,hit.id,person){value=person&&withContext(Dispatchers.IO){hit.id in identityBadges(token,listOf(hit.id))}}
+    val verified by produceState(false,token,hit.id,person,detail?.id){value=person&&detail!=null&&withContext(Dispatchers.IO){hit.id in identityBadges(token,listOf(hit.id))}}
     androidx.activity.compose.BackHandler{if(thread!=null)thread=null else onBack()}
-    LaunchedEffect(token,hit.id,retry){loading=true;detail=null;detail=withContext(Dispatchers.IO){loadSearchDetail(token,hit)};loading=false}
+    LaunchedEffect(token,hit.id,retry){
+        loading=true;loadError=""
+        if(person){
+            var result=withContext(Dispatchers.IO){loadSeraMemberDetail(token,hit.id)}
+            if(result.error.isNotBlank()){delay(600);result=withContext(Dispatchers.IO){loadSeraMemberDetail(token,hit.id)}}
+            detail=result.member;loadError=result.error;loading=false
+            if(result.member!=null){
+                val headline=withContext(Dispatchers.IO){
+                    val response=spaceCall(token,"sera_feed_headlines",org.json.JSONObject().put("p_ids",JSONArray(listOf(hit.id))))
+                    spaceRows(response.first).firstOrNull{it.optString("id")==hit.id}?.optString("headline")?.takeUnless{it=="null"}.orEmpty()
+                }
+                if(headline.isNotBlank())detail=detail?.copy(subtitle=headline)
+            }
+        }else{
+            detail=withContext(Dispatchers.IO){loadSearchDetail(token,hit)};loading=false
+        }
+    }
     if(thread!=null){
         if(person)SeraNativeInbox(token,userId,modifier,initialThread=thread,initialPeer=hit.id,initialName=detail?.title.orEmpty(),onThreadExit={thread=null})
         else Box(modifier.fillMaxSize()){SeraCompanyInbox(token,userId,thread,onBack={thread=null})}
         return
     }
     Column(modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        TextButton(onClick=onBack){Text("Back to search")}
-        if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
-        else if(detail==null){Text("This result is no longer available or could not be loaded.");TextButton(onClick={retry++}){Text("Retry")}}
+        TextButton(onClick=onBack){Text("Back")}
+        if(loading){LinearProgressIndicator(Modifier.fillMaxWidth());Text(if(person)"Loading profile…" else "Loading result…")}
+        else if(detail==null){Text(loadError.ifBlank{if(person)"This profile is not available to you." else "This result is no longer available or could not be loaded."});TextButton(onClick={retry++}){Text("Retry")}}
         else detail?.let{item->
             ElevatedCard(Modifier.fillMaxWidth(),shape=RoundedCornerShape(22.dp)){
                 Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){

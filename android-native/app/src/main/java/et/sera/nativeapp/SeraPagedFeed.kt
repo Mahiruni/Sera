@@ -122,7 +122,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var withThoughts by remember{mutableStateOf(false)}
     val repostOverrides=remember(token){mutableStateMapOf<String,Pair<Boolean,Int>>()}
     var currentUserId by remember(token){mutableStateOf("")}
-    LaunchedEffect(token){currentUserId=withContext(Dispatchers.IO){loadSeraUserId(token).first.orEmpty()}}
+    LaunchedEffect(token){currentUserId=session?.accountId.orEmpty().ifBlank{withContext(Dispatchers.IO){loadSeraUserId(token).first.orEmpty()}}}
     val scope = rememberCoroutineScope()
     val expandedPosts = remember { mutableStateMapOf<String, Boolean>() }
     val reactionOverrides = remember(token, refreshKey) { mutableStateMapOf<String, Pair<Boolean, Int>>() }
