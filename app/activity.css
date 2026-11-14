@@ -18,7 +18,7 @@
   object-fit: cover;
 }
 .social-comment:target {
-  outline: 2px solid #0a9cb8;
+  outline: 2px solid #0D7C86;
   outline-offset: 4px;
   scroll-margin-top: 6rem;
 }
@@ -105,7 +105,7 @@
 }
 .activity-panel button:focus-visible,
 .activity-trigger:focus-visible {
-  outline: 2px solid #0d98b9;
+  outline: 2px solid #0D7C86;
   outline-offset: 2px;
 }
 .activity-panel button:disabled {
@@ -167,7 +167,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #0795b1;
+  background: #0D7C86;
   flex: none;
   margin-inline-start: auto;
 }

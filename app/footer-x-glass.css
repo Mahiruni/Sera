@@ -81,7 +81,7 @@ body:has(.auth-layout) .footer-dock { display: none !important; }
   cursor: pointer;
 }
 .header-language-picker:focus-within {
-  outline: 2px solid #087f9f;
+  outline: 2px solid #0D7C86;
   outline-offset: 3px;
 }
 

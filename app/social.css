@@ -1,6 +1,6 @@
 .social-page {
   --social-ink: #173a43;
-  --social-teal: #087e8b;
+  --social-teal: #0D7C86;
   color: var(--social-ink);
 }
 .social-page * {
@@ -230,7 +230,7 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #087e8b;
+  color: #0D7C86;
   background: #edf8f7;
   padding: 7px 10px;
   border-radius: 20px;
@@ -295,7 +295,7 @@
   gap: 7px;
   align-items: center;
   font-weight: 650;
-  color: #087e8b;
+  color: #0D7C86;
   margin: 14px 0;
 }
 .social-tags {
@@ -335,7 +335,7 @@
   cursor: pointer;
 }
 .social-post-actions button[aria-pressed="true"] {
-  color: #087e8b;
+  color: #0D7C86;
 }
 .social-post-actions > form,
 .social-share {
@@ -405,7 +405,7 @@
 }
 .social-thread summary {
   font-size: 0.75rem;
-  color: #087e8b;
+  color: #0D7C86;
   cursor: pointer;
   margin: 15px 0;
 }
@@ -497,7 +497,7 @@ button[disabled] {
 }
 .social-composer-details > summary {
   font-size: 0.8rem;
-  color: #087e8b;
+  color: #0D7C86;
   cursor: pointer;
   font-weight: 650;
 }
@@ -731,11 +731,11 @@ button[disabled] {
 .sera-feed-compose{background:var(--net-surface,#fff);border:1px solid var(--net-line,#dce8ee);border-radius:22px;padding:16px 18px;margin-bottom:20px;box-shadow:0 10px 32px #193c5010}
 .sera-feed-compose-top{display:flex;align-items:center;gap:12px}
 .sera-feed-compose-trigger{flex:1;min-width:0;text-align:left;border:1px solid var(--net-line,#dce8ee);border-radius:999px;padding:13px 17px;background:var(--net-subtle,#f2f7fa);color:var(--net-muted,#637986);font-size:14px;min-height:48px}
-.sera-feed-compose-pencil{display:grid;place-items:center;color:var(--net-blue,#0796c8);border:0;background:transparent;min-width:44px;min-height:44px}
+.sera-feed-compose-pencil{display:grid;place-items:center;color:var(--net-blue,#0D7C86);border:0;background:transparent;min-width:44px;min-height:44px}
 .sera-feed-compose-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--net-line,#dce8ee);margin-top:14px;padding-top:10px}
 .sera-feed-compose-actions button{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:var(--net-muted,#637986);min-height:44px;font-size:13px}
-.sera-feed-compose-actions svg{color:var(--net-blue,#0796c8)}
-.sera-feed-compose :is(button):focus-visible,.sera-compose-dialog :is(button,input,textarea,summary):focus-visible{outline:3px solid var(--net-blue,#0796c8);outline-offset:2px}
+.sera-feed-compose-actions svg{color:var(--net-blue,#0D7C86)}
+.sera-feed-compose :is(button):focus-visible,.sera-compose-dialog :is(button,input,textarea,summary):focus-visible{outline:3px solid var(--net-blue,#0D7C86);outline-offset:2px}
 .sera-compose-backdrop{position:fixed;inset:0;z-index:10000;background:#091c2bb8;display:flex;justify-content:center;align-items:center;padding:20px}
 .sera-compose-dialog{background:var(--net-surface,#fff);color:var(--net-ink,#172e42);border-radius:24px;width:min(620px,100%);max-height:min(90dvh,900px);display:flex;flex-direction:column;box-shadow:0 30px 90px #06182466;overflow:hidden}
 .sera-compose-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;border-bottom:1px solid var(--net-line,#dce8ee)}
@@ -825,7 +825,7 @@ button[disabled] {
 .social-page .social-card .social-owner { position: absolute; right: 0; top: 23px; margin: 0; z-index: 4; }
 .social-page .social-card .social-owner summary { list-style: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: #58737b; cursor: pointer; }
 .social-page .social-card .social-owner summary::-webkit-details-marker { display: none; }
-.social-page .social-card .social-owner summary:hover { background: #e8f2f2; color: #087e8b; }
+.social-page .social-card .social-owner summary:hover { background: #e8f2f2; color: #0D7C86; }
 .social-page .social-card .social-owner[open] { background: #fff; padding: 0 8px 10px; border: 1px solid #dce7e9; border-radius: 12px; box-shadow: 0 12px 35px #173a4320; }
 .social-page .social-card .social-owner[open] > a { margin: 0; }
 .social-page .social-card .social-owner[open] :is(a,button) { display: flex; min-height: 40px; align-items: center; gap: 8px; padding: 8px 12px; }
@@ -921,7 +921,7 @@ button[disabled] {
  margin-top:2px;padding-top:0;border:0;gap:0;min-height:44px;
 }
 .sera-editorial-feed .social-post-actions button{min-height:44px;background:transparent;border:0;box-shadow:none;gap:5px}
-.sera-editorial-feed .social-post-actions button:focus-visible{outline:2px solid var(--net-blue,#087e83);outline-offset:2px}
+.sera-editorial-feed .social-post-actions button:focus-visible{outline:2px solid var(--net-blue,#0D7C86);outline-offset:2px}
 @media(max-width:600px){
  .sera-editorial-feed.sera-network.network-app:has(.sera-premium-hero) .social-post-list>.social-card{padding:13px 2px 6px!important}
  .sera-editorial-feed.sera-network.network-app .social-card .social-images{margin:8px 0 4px}
@@ -930,7 +930,7 @@ button[disabled] {
 .social-post-actions.sera-premium-reactions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;gap:0;position:relative}
 .social-post-actions.sera-premium-reactions>*,.social-post-actions.sera-premium-reactions form{min-width:0;width:100%;margin:0}
 .social-post-actions.sera-premium-reactions button{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;min-height:44px;padding:0 2px;border:0;background:transparent;box-shadow:none;color:var(--net-muted,#52676c);font-variant-numeric:tabular-nums}
-.social-post-actions.sera-premium-reactions button[aria-pressed=true]{color:var(--net-deep,#087e83)}
+.social-post-actions.sera-premium-reactions button[aria-pressed=true]{color:var(--net-deep,#0D7C86)}
 .social-post-actions.sera-premium-reactions button[aria-busy=true]{opacity:.6}
 .social-post-actions.sera-premium-reactions .social-action-count{font-size:12px;white-space:nowrap}
 .social-post-actions.sera-premium-reactions .social-error,.social-post-actions.sera-premium-reactions .social-share>p{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
