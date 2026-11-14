@@ -1,0 +1,94 @@
+{
+  "status": "phase-2-components-preview",
+  "brand": {
+    "name": "Sera",
+    "domain": "sera.et"
+  },
+  "palette": {
+    "teal": "#0D7C86",
+    "white": "#FFFFFF",
+    "purple": "#7C3AED",
+    "purpleDark": "#4C1D95",
+    "ink": "#111827"
+  },
+  "semantic": {
+    "light": {
+      "primary": "#0D7C86",
+      "onPrimary": "#FFFFFF",
+      "surface": "#FFFFFF",
+      "text": "#111827",
+      "activity": "#7C3AED",
+      "call": "#4C1D95",
+      "activityContainer": "#F3ECFF",
+      "background": "#F6FAF9",
+      "muted": "#536C70",
+      "border": "#D9E8E5",
+      "soft": "#EEF5F4",
+      "onActivity": "#FFFFFF",
+      "activityInk": "#6D28D9",
+      "danger": "#B3263A"
+    },
+    "dark": {
+      "primary": "#43D5CC",
+      "onPrimary": "#073B3B",
+      "surface": "#152326",
+      "text": "#F0F7F6",
+      "activity": "#C4B5FD",
+      "call": "#C4B5FD",
+      "activityContainer": "#35254C",
+      "background": "#0D171A",
+      "muted": "#A0B6B8",
+      "border": "#355056",
+      "soft": "#1D3033",
+      "onActivity": "#35106A",
+      "activityInk": "#E9DDFF",
+      "danger": "#FFB4AB"
+    }
+  },
+  "typography": {
+    "ui": "Plus Jakarta Sans Variable",
+    "ethiopic": "Noto Sans Ethiopic Variable",
+    "display": "Plus Jakarta Sans UI; wordmark is outlined vector"
+  },
+  "languages": [
+    "en",
+    "am",
+    "om"
+  ],
+  "identity": {
+    "direction": "03-signature",
+    "assets": "brand/signature",
+    "productionRollout": false
+  },
+  "metrics": {
+    "space": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      32
+    ],
+    "radius": {
+      "small": 12,
+      "medium": 16,
+      "large": 24
+    },
+    "target": {
+      "web": 44,
+      "android": 48
+    },
+    "motion": {
+      "fast": 150,
+      "normal": 220
+    },
+    "type": {
+      "display": 40,
+      "heading": 28,
+      "section": 20,
+      "body": 15,
+      "metadata": 12
+    }
+  }
+}
