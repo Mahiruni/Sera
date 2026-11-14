@@ -104,14 +104,21 @@ internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,person
  * Never bypass authentication or return posts from a different audience. */
 internal fun loadSeraFeedChecked(token:String,page:Int,personalized:Boolean,savedOnly:Boolean,pageSize:Int):Pair<List<SeraPost>?,String>{
     val first=loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=pageSize)
-    if(page!=0||personalized||savedOnly||first.first?.isNotEmpty()==true)return first
+    if(page!=0||savedOnly||first.first?.isNotEmpty()==true)return first
     if(first.first==null)return first
-    val head=seraLatestFeedHead(token)
-    if(head.second.isNotBlank())return null to head.second
-    if(head.first==null)return first
+
+    val visible=seraLatestFeedVisibleCount(token)
+    if(visible.second.isNotBlank())return null to visible.second
+    if(visible.first==0)return first
+
+    // A positive RLS count means an empty page is suspect. Retry Latest once,
+    // then confirm the count again before publishing a genuinely empty result.
     val retry=loadSeraFeedBase(token,page,personalized=false,savedOnly=false,pageSize=pageSize)
-    if(retry.first?.isNotEmpty()==true)return retry
-    return null to retry.second.ifBlank{"Published posts are available but could not be loaded. Please retry."}
+    if(retry.first==null||retry.first.isNotEmpty())return retry
+    val confirmed=seraLatestFeedVisibleCount(token)
+    if(confirmed.second.isNotBlank())return null to confirmed.second
+    if(confirmed.first==0)return retry
+    return null to "Published posts are available but could not be loaded. Please retry."
 }
 
 internal fun enrichSeraFeed(token:String,posts:List<SeraPost>):Pair<List<SeraPost>?,String>{
@@ -326,6 +333,31 @@ fun loadSeraCurrentAvatar(token: String, userId: String): String? {
                 signedPostImage(token, path, "sera-account-private")
         } finally { connection.disconnect() }
     } catch (_: Exception) { null }
+}
+
+/** Exact count from the authenticated/RLS-filtered posts endpoint, used only to validate empty feed responses. */
+internal fun seraLatestFeedVisibleCount(token:String):Pair<Int?,String>{
+    return try{
+        val base=BuildConfig.SUPABASE_URL.trimEnd('/')
+        val request=Request.Builder()
+            .url(base+"/rest/v1/posts?select=id&status=eq.published")
+            .header("apikey",BuildConfig.SUPABASE_ANON_KEY)
+            .header("Authorization","Bearer $token")
+            .header("Accept","application/json")
+            .header("Prefer","count=exact")
+            .header("Range-Unit","items")
+            .header("Range","0-0")
+            .head()
+            .build()
+        seraFeedHttp.newCall(request).execute().use{response->
+            if(!response.isSuccessful)return null to "Unable to verify whether published posts are available. Please retry."
+            val raw=response.header("Content-Range")?.substringAfter('/',"")?.trim()
+            val count=raw?.toIntOrNull()
+            if(count!=null)count to "" else null to "Unable to verify whether published posts are available. Please retry."
+        }
+    }catch(e:Exception){
+        null to "Unable to verify whether published posts are available. Please retry."
+    }
 }
 
 /** Minimal authenticated/RLS-filtered latest-feed probe: no post bodies or media. */

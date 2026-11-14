@@ -38,7 +38,36 @@ export async function querySocialFeedPage(
     result = await latest();
     if (result.error) return { rows: [], error: result.error };
     rows = (result.data || []) as FeedRow[];
-    return { rows, error: null };
+  }
+
+  if (result.error) return { rows: [], error: result.error };
+
+  // Only show the quiet-feed state after authenticated exact-count checks
+  // confirm there are no published posts visible under this viewer's RLS rules.
+  if (offset === 0 && rows.length === 0) {
+    const countVisiblePosts = () =>
+      db.from("posts").select("id", { count: "exact", head: true }).eq("status", "published");
+
+    const visible = await countVisiblePosts();
+    if (visible.error) return { rows: [], error: visible.error };
+    if (visible.count === null) {
+      return { rows: [], error: new Error("Unable to verify whether published posts are available.") };
+    }
+    if (visible.count === 0) return { rows: [], error: null };
+
+    // A nonzero count means the page query was incomplete; retry the same RLS query.
+    result = await latest();
+    if (result.error) return { rows: [], error: result.error };
+    rows = (result.data || []) as FeedRow[];
+    if (rows.length === 0) {
+      const confirmed = await countVisiblePosts();
+      if (confirmed.error) return { rows: [], error: confirmed.error };
+      if (confirmed.count === 0) return { rows: [], error: null };
+      return { rows: [], error: new Error("Published posts are available but could not be loaded.") };
+    }
+  }
+
+  return { rows, error: null };
   }
 
   if (result.error) return { rows: [], error: result.error };
