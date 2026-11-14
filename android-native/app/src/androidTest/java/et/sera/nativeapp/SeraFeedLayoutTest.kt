@@ -101,6 +101,34 @@ class SeraFeedLayoutTest {
             assertEquals("new",feed.state.value.rows.first().id)
         }finally{release.countDown();feed.close()}
     }
+    @Test fun stalledBaseRequestTimesOutAndRetryRendersFreshPost(){
+        val row=SeraPost("fresh","member","","Fresh post",0,0,0,"post","2026-11-14T00:00:00Z")
+        val entered=java.util.concurrent.CountDownLatch(1)
+        val release=java.util.concurrent.CountDownLatch(1)
+        val calls=java.util.concurrent.atomic.AtomicInteger()
+        val feed=SeraDirectFeed("",false,false,fetch={
+            if(calls.incrementAndGet()==1){
+                entered.countDown()
+                while(release.count>0){try{release.await(100,java.util.concurrent.TimeUnit.MILLISECONDS)}catch(_:InterruptedException){}}
+                listOf(row.copy(id="stale")) to ""
+            }else listOf(row) to ""
+        },enrich={null},requestTimeoutMs=1000L)
+        try{
+            compose.setContent{MaterialTheme{
+                val state by feed.state.collectAsState()
+                Column{state.rows.forEach{SeraFeedCopy(it.title,it.body,false,{},postId=it.id)}}
+            }}
+            feed.start()
+            org.junit.Assert.assertTrue(entered.await(5,java.util.concurrent.TimeUnit.SECONDS))
+            compose.waitUntil(5000){feed.state.value.error.contains("timed out")}
+            assertEquals(false,feed.state.value.refreshing)
+            feed.retry()
+            compose.waitUntil(5000){feed.state.value.rows.singleOrNull()?.id=="fresh"}
+            release.countDown()
+            compose.onNodeWithTag("sera_feed_text_fresh").assertIsDisplayed()
+            compose.onNodeWithTag("sera_feed_text_stale").assertDoesNotExist()
+        }finally{release.countDown();feed.close()}
+    }
     @Test fun failedRefreshRetainsPostsAndRetriesFirstPage(){
         val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
         val failing=java.util.concurrent.atomic.AtomicBoolean(false)

@@ -109,7 +109,8 @@ internal class SeraDirectFeed(
     private val onFirstPage:((List<SeraPost>)->Unit)?=null,
     private val fetch: (Int) -> Pair<List<SeraPost>?, String> = {page->loadSeraFeedChecked(token,page,personalized,savedOnly,SERA_ANDROID_FEED_PAGE_SIZE)},
     private val enrich: (List<SeraPost>) -> List<SeraPost>? = {rows->enrichSeraFeed(token,rows).first},
-    private val onAccessLost:()->Unit={}
+    private val onAccessLost:()->Unit={},
+    private val requestTimeoutMs:Long=45000L
 ){
     private val mutable=MutableStateFlow(SeraFeedState())
     val state=mutable.asStateFlow()
@@ -119,6 +120,9 @@ internal class SeraDirectFeed(
     private var started=false
     private val baseExecutor=java.util.concurrent.Executors.newFixedThreadPool(2){task->Thread(task,"sera-feed-base").apply{isDaemon=true}}
     private var baseJob:java.util.concurrent.Future<*>?=null
+    private val mainHandler=android.os.Handler(android.os.Looper.getMainLooper())
+    private var deadline:Runnable?=null
+    private var requestSequence=0L
     private var failedPage=0
     private val detailJobs=mutableListOf<kotlinx.coroutines.Job>()
     @Synchronized fun start(){if(!closed&&!started)refresh()}
@@ -128,6 +132,7 @@ internal class SeraDirectFeed(
         generation++
         failedPage=0
         baseJob?.cancel(true)
+        deadline?.let{mainHandler.removeCallbacks(it)};deadline=null
         detailJobs.forEach{it.cancel()};detailJobs.clear()
         mutable.value=mutable.value.copy(refreshing=true,appending=false,error="",nextPage=0,hasMore=true)
         load(generation,0)
@@ -144,25 +149,51 @@ internal class SeraDirectFeed(
         else {mutable.value=s.copy(error="");append()}
     }
     private fun load(expected:Long,page:Int){
+        val sequence=++requestSequence
+        val timeout=Runnable{
+            synchronized(this){
+                if(closed||expected!=generation||sequence!=requestSequence||deadline==null)return@synchronized
+                deadline=null
+                baseJob?.cancel(true)
+                fail(expected,page,"Feed request timed out. Please retry.")
+                // Late responses (including transport calls ignoring interruption) cannot commit.
+                generation++
+                android.util.Log.w("SeraFeed","Base request deadline reached page=$page")
+            }
+        }
+        deadline=timeout
+        mainHandler.postDelayed(timeout,requestTimeoutMs)
         baseJob=baseExecutor.submit{
-            try{
+            val response=try{
                 android.util.Log.d("SeraFeed","Base request start generation=$expected page=$page")
-                var response=fetch(page)
-                android.util.Log.d("SeraFeed","Base request returned generation=$expected page=$page rows=${response.first?.size ?: -1}")
-                // Retry transient transport failures once; a stale generation may never publish.
-                if(response.first==null && page==0 && !response.second.contains("HTTP 401") && !response.second.contains("HTTP 403")){
+                val initial=fetch(page)
+                android.util.Log.d("SeraFeed","Base request returned generation=$expected page=$page rows=${initial.first?.size ?: -1}")
+                if(initial.first==null&&page==0&&!initial.second.contains("HTTP 401")&&!initial.second.contains("HTTP 403")){
                     Thread.sleep(750L)
                     if(Thread.currentThread().isInterrupted)return@submit
-                    response=fetch(page)
-                    android.util.Log.d("SeraFeed","Base retry returned generation=$expected rows=${response.first?.size ?: -1}")
+                    fetch(page)
+                }else initial
+            }catch(e:InterruptedException){Thread.currentThread().interrupt();return@submit}
+            catch(e:Throwable){
+                android.util.Log.e("SeraFeed","Base request failure type="+e.javaClass.simpleName)
+                if(e is VirtualMachineError||e is ThreadDeath)throw e
+                null to "Unable to load posts. Please retry."
+            }
+            // The exact base row commit runs on Android's UI dispatcher.
+            mainHandler.post{
+                synchronized(this){
+                    if(closed||expected!=generation||sequence!=requestSequence){
+                        android.util.Log.d("SeraFeed","Discard base rows generation=$expected current=$generation")
+                        return@synchronized
+                    }
+                    mainHandler.removeCallbacks(timeout);deadline=null
+                    val rows=response.first
+                    if(rows==null){fail(expected,page,response.second.ifBlank{"Unable to load posts."});return@synchronized}
+                    if(!publish(expected,page,rows))return@synchronized
+                    if(page==0&&!personalized&&!savedOnly)runCatching{onFirstPage?.invoke(rows)}
+                    scheduleDetails(expected,page,rows)
                 }
-                val rows=response.first
-                if(rows==null){fail(expected,page,response.second.ifBlank{"Unable to load posts."});return@submit}
-                if(!publish(expected,page,rows))return@submit
-                if(page==0&&!personalized&&!savedOnly)onFirstPage?.invoke(rows)
-                scheduleDetails(expected,page,rows)
-            }catch(e:InterruptedException){Thread.currentThread().interrupt();android.util.Log.d("SeraFeed","Base request interrupted generation=$expected")}
-            catch(e:Throwable){android.util.Log.e("SeraFeed","Base request failure type="+e.javaClass.simpleName);fail(expected,page,"Unable to load posts. Please retry.");if(e is VirtualMachineError||e is ThreadDeath)throw e}
+            }
         }
     }
     @Synchronized private fun publish(expected:Long,page:Int,rows:List<SeraPost>):Boolean{
@@ -194,5 +225,5 @@ internal class SeraDirectFeed(
         android.util.Log.d("SeraFeed","Direct feed details ready: ${rows.size} rows")
         return true
     }
-    @Synchronized fun close(){closed=true;generation++;baseJob?.cancel(true);baseExecutor.shutdownNow();worker.cancel();mutable.value=SeraFeedState(refreshing=false,hasMore=false);android.util.Log.d("SeraFeed","Direct feed closed generation=$generation")}
+    @Synchronized fun close(){closed=true;generation++;deadline?.let{mainHandler.removeCallbacks(it)};deadline=null;baseJob?.cancel(true);baseExecutor.shutdownNow();worker.cancel();mutable.value=SeraFeedState(refreshing=false,hasMore=false);android.util.Log.d("SeraFeed","Direct feed closed generation=$generation")}
 }
