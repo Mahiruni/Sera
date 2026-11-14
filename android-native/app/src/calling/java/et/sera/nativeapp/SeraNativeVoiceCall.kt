@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.Icon as AndroidMaterialIcon
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.CallEnd
 import androidx.compose.material.icons.outlined.Mic
@@ -389,7 +391,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
         SeraCallBackdrop(photo,bg,halo,Modifier.matchParentSize())
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal=24.dp,vertical=12.dp).testTag("sera_voice_screen"),horizontalAlignment=Alignment.CenterHorizontally){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                if(!incoming)IconButton(onClick={minimized=true}){Icon(Icons.Outlined.KeyboardArrowDown,voiceText("Minimize call"),tint=primary)}else Spacer(Modifier.size(48.dp))
+                if(!incoming)IconButton(onClick={minimized=true}){AndroidMaterialIcon(Icons.Rounded.KeyboardArrowDown,voiceText("Minimize call"),tint=primary)}else Spacer(Modifier.size(48.dp))
                 Text(if(videoMode)"Sera Video" else "Sera Voice",color=teal,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.size(48.dp))
             }
@@ -415,25 +417,25 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
             }
             Column(Modifier.fillMaxWidth().padding(bottom=12.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(incoming){
-                    TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){Icon(Icons.Outlined.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(voiceText(if(silenced)"Ringtone silenced" else "Silence ringtone"))}
+                    TextButton(onClick={silenced=true;row?.let{SeraPush.silenceCall(context,it.id,userId)}},enabled=!silenced){AndroidMaterialIcon(Icons.Rounded.VolumeOff,null);Spacer(Modifier.width(6.dp));Text(voiceText(if(silenced)"Ringtone silenced" else "Silence ringtone"))}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
-                        SeraVoiceControl(Icons.Outlined.CallEnd,"Decline",destructive=true){scope.launch{end("decline")}}
-                        SeraVoiceControl(if(videoMode)Icons.Outlined.Videocam else Icons.Outlined.Call,if(videoMode)"Answer with video" else "Answer",accept=true){request(true,withCamera=videoMode)}
-                        if(videoMode)SeraVoiceControl(Icons.Outlined.Mic,"Audio only"){request(true,withCamera=false)}
+                        SeraVoiceControl(Icons.Rounded.CallEnd,"Decline",destructive=true){scope.launch{end("decline")}}
+                        SeraVoiceControl(if(videoMode)Icons.Rounded.Videocam else Icons.Rounded.Call,if(videoMode)"Answer with video" else "Answer",accept=true){request(true,withCamera=videoMode)}
+                        if(videoMode)SeraVoiceControl(Icons.Rounded.Mic,"Audio only"){request(true,withCamera=false)}
                     }
                 }else{
                     if(row?.state=="accepted"){
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){
-                            SeraVoiceControl(if(muted)Icons.Outlined.MicOff else Icons.Outlined.Mic,if(muted)"Unmute" else "Mute",active=muted){muted=!muted;rtc?.mute(muted)}
+                            SeraVoiceControl(if(muted)Icons.Rounded.MicOff else Icons.Rounded.Mic,if(muted)"Unmute" else "Mute",active=muted){muted=!muted;rtc?.mute(muted)}
                             Box{
-                                SeraVoiceControl(Icons.Outlined.VolumeUp,routeLabel,active=speaker){routes=runCatching{rtc?.routes().orEmpty()}.getOrDefault(emptyList());routeMenu=true}
+                                SeraVoiceControl(Icons.Rounded.VolumeUp,routeLabel,active=speaker){routes=runCatching{rtc?.routes().orEmpty()}.getOrDefault(emptyList());routeMenu=true}
                                 DropdownMenu(expanded=routeMenu,onDismissRequest={routeMenu=false}){
                                     routes.forEach{route->DropdownMenuItem(text={Text(voiceText(route.label))},onClick={routeMenu=false;if(rtc?.selectRoute(route.id)==true){routeLabel=route.label;speaker=route.label=="Speaker"}else error="This audio device is no longer available."})}
                                     if(routes.isEmpty())DropdownMenuItem(text={Text(voiceText("No audio routes available"))},onClick={routeMenu=false})
                                 }
                             }
-                            if(videoMode)SeraVoiceControl(if(cameraOn)Icons.Outlined.Videocam else Icons.Outlined.VideocamOff,if(cameraOn)"Camera off" else "Camera on"){toggleCamera()}
-                            SeraVoiceControl(Icons.Outlined.ChatBubbleOutline,"Messages"){minimized=true}
+                            if(videoMode)SeraVoiceControl(if(cameraOn)Icons.Rounded.Videocam else Icons.Rounded.VideocamOff,if(cameraOn)"Camera off" else "Camera on",active=cameraOn){toggleCamera()}
+                            SeraVoiceControl(Icons.Rounded.ChatBubbleOutline,"Messages"){minimized=true}
                         }
                     }
                     if(videoMode&&row?.state=="accepted"){
@@ -445,7 +447,7 @@ internal fun SeraNativeVoiceCallButton(token:String,userId:String,conversation:S
                             }}
                         }
                     }
-                    SeraVoiceControl(Icons.Outlined.CallEnd,if(cancelRequested)"Cancelling…" else "End call",destructive=true,enabled=!cancelRequested){
+                    SeraVoiceControl(Icons.Rounded.CallEnd,if(cancelRequested)"Cancelling…" else "End call",destructive=true,enabled=!cancelRequested){
                         if(busy){cancelPreparation()}else scope.launch{end("end")}
                     }
                 }

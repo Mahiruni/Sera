@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.Icon as AndroidMaterialIcon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,8 +73,8 @@ internal fun seraCallShouldAnimate(started:Long,cancelling:Boolean,active:Boolea
 @Composable internal fun SeraCallBackdrop(photo:String?,bg:Color,halo:Color,modifier:Modifier=Modifier){
     Box(modifier.clip(RoundedCornerShape(0.dp)).background(Brush.verticalGradient(listOf(bg,halo,bg))).testTag("sera_call_backdrop")){
         if(!photo.isNullOrBlank()&&android.os.Build.VERSION.SDK_INT>=31){
-            SeraMediaImage(photo,"",192,320,Modifier.fillMaxSize().blur(34.dp).alpha(.26f))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.72f),bg.copy(alpha=.42f),bg.copy(alpha=.82f)))))
+            SeraMediaImage(photo,"",384,640,Modifier.fillMaxSize().blur(14.dp).alpha(.78f))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg.copy(alpha=.62f),bg.copy(alpha=.28f),bg.copy(alpha=.68f)))))
         }
     }
 }
@@ -81,13 +82,13 @@ internal fun seraCallShouldAnimate(started:Long,cancelling:Boolean,active:Boolea
 @Composable internal fun SeraVoiceControl(icon:ImageVector,label:String,active:Boolean=false,destructive:Boolean=false,accept:Boolean=false,enabled:Boolean=true,onClick:()->Unit){
     val c=MaterialTheme.colorScheme
     val haptic=LocalHapticFeedback.current
-    val background by animateColorAsState(when{destructive->Color(0xFFC5374B);accept->Color(0xFF137C5B);active->c.primary;else->c.surfaceVariant},label="voice control")
+    val background by animateColorAsState(when{destructive->Color(0xFFCE3348);accept->Color(0xFF137C5B);active->c.primary;else->c.surfaceVariant},label="voice control")
     val foreground=if(destructive||accept)Color.White else if(active)c.onPrimary else c.onSurfaceVariant
-    Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){
-        FilledIconButton(onClick={haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove);onClick()},enabled=enabled,modifier=Modifier.size(if(destructive||accept)68.dp else 56.dp).testTag("sera_voice_"+label),colors=IconButtonDefaults.filledIconButtonColors(containerColor=background,contentColor=foreground)){
-            Icon(icon,voiceText(label),Modifier.size(if(destructive||accept)28.dp else 24.dp))
+    Column(Modifier.width(if(destructive||accept)72.dp else 64.dp),horizontalAlignment=Alignment.CenterHorizontally){
+        FilledIconButton(onClick={haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove);onClick()},enabled=enabled,modifier=Modifier.size(if(destructive||accept)64.dp else 56.dp).testTag("sera_voice_"+label),colors=IconButtonDefaults.filledIconButtonColors(containerColor=background,contentColor=foreground)){
+            AndroidMaterialIcon(icon,voiceText(label),Modifier.size(if(destructive||accept)28.dp else 24.dp))
         }
-        Text(voiceText(label),color=c.onSurfaceVariant,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=6.dp),maxLines=2)
+        Text(voiceText(label),color=c.onSurface,fontSize=11.sp,lineHeight=14.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=7.dp),maxLines=2)
     }
 }
 

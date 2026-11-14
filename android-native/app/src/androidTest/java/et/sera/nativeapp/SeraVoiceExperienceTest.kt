@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -24,6 +25,16 @@ class SeraVoiceExperienceTest {
         compose.setContent{MaterialTheme{SeraVoiceAvatar("Test member",null,MaterialTheme.colorScheme.primary,false)}}
         compose.onNodeWithTag("sera_voice_avatar_footprint").assertExists()
         compose.onNodeWithTag("sera_call_orbit").assertDoesNotExist()
+    }
+    @Test fun standardCallControlsUseAccessibleConsistentTargets(){
+        compose.setContent{MaterialTheme{Column{
+            SeraVoiceControl(Icons.Outlined.Mic,"Mute"){}
+            SeraVoiceControl(Icons.Outlined.MicOff,"Unmute"){}
+            SeraVoiceControl(Icons.Outlined.Mic,"Answer",accept=true){}
+        }}}
+        compose.onNodeWithTag("sera_voice_Mute").assertWidthIsEqualTo(56.dp).assertHeightIsEqualTo(56.dp).assertHasClickAction()
+        compose.onNodeWithTag("sera_voice_Unmute").assertWidthIsEqualTo(56.dp).assertHeightIsEqualTo(56.dp)
+        compose.onNodeWithTag("sera_voice_Answer").assertWidthIsEqualTo(64.dp).assertHeightIsEqualTo(64.dp)
     }
     @Test fun packetLossWarningRequiresMeasuredAudio(){
         assertEquals(null,seraAudioQuality(null,SeraAudioSample(100,3)))
