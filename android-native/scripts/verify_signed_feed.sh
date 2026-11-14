@@ -16,7 +16,7 @@ set -e
 if [[ "$status" != 0 ]] || ! grep -q 'INSTRUMENTATION_RESULT: sera_feed_smoke=passed' <<<"$result" || ! grep -q 'INSTRUMENTATION_CODE: -1' <<<"$result"; then
     echo "::error::Signed Android did not display an authenticated live feed post."
     printf "%s\n" "$result" | grep -E "INSTRUMENTATION_CODE|AssertionError: Authenticated signed Android" | tail -n 8 || true
-    adb logcat -d -s SeraFeed:D '*:S' | tail -n 80 || true
+    adb logcat -d -s SeraFeed:D SeraPerf:I AndroidRuntime:E '*:S' | tail -n 120 || true
     exit 1
 fi
 echo "Signed Android rendered a real authenticated feed post."

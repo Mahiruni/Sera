@@ -104,7 +104,8 @@ internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,person
  * Never bypass authentication or return posts from a different audience. */
 internal fun loadSeraFeedChecked(token:String,page:Int,personalized:Boolean,savedOnly:Boolean,pageSize:Int):Pair<List<SeraPost>?,String>{
     val first=loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=pageSize)
-    if(page!=0||savedOnly||first.first?.isNotEmpty()==true)return first
+    val firstRows=first.first
+    if(page!=0||savedOnly||firstRows?.isNotEmpty()==true){android.util.Log.d("SeraFeed","Checked feed returning rows=${firstRows?.size ?: -1}");return first}
     if(first.first==null)return first
 
     val visible=seraLatestFeedVisibleCount(token)

@@ -20,3 +20,11 @@
 
 # Signed feed QA uses the normal encrypted session store through reflection.
 -keep class et.sera.nativeapp.SessionStore { public <init>(android.content.Context); public void saveRefreshToken(java.lang.String); public void clear(); }
+
+# Keep the small base-feed boundary identical in the signed APK while the
+# release-only publication regression is investigated. Other code stays minified.
+-keep class et.sera.nativeapp.SeraDirectFeed { *; }
+-keep class et.sera.nativeapp.SeraDirectFeed$* { *; }
+-keep class et.sera.nativeapp.SeraFeedState { *; }
+-keep class et.sera.nativeapp.SeraPost { *; }
+-keep class et.sera.nativeapp.SeraDataKt { *; }

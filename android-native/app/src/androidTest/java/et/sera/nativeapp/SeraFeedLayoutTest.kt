@@ -78,6 +78,29 @@ class SeraFeedLayoutTest {
             assertEquals(0,feed.state.value.details.size)
         }finally{release.countDown();feed.close()}
     }
+    @Test fun supersededBaseRequestCannotOverwriteLatestRows(){
+        val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
+        val entered=java.util.concurrent.CountDownLatch(1)
+        val release=java.util.concurrent.CountDownLatch(1)
+        val calls=java.util.concurrent.atomic.AtomicInteger()
+        val feed=SeraDirectFeed("",false,false,fetch={
+            if(calls.incrementAndGet()==1){
+                entered.countDown()
+                // Simulate an HTTP call that completes after cancellation.
+                while(release.count>0){try{release.await(100,java.util.concurrent.TimeUnit.MILLISECONDS)}catch(_:InterruptedException){}}
+                listOf(row.copy(id="old")) to ""
+            }else listOf(row.copy(id="new")) to ""
+        },enrich={null})
+        try{
+            feed.start()
+            org.junit.Assert.assertTrue(entered.await(5,java.util.concurrent.TimeUnit.SECONDS))
+            feed.refresh()
+            compose.waitUntil(5000){feed.state.value.rows.firstOrNull()?.id=="new"}
+            release.countDown()
+            compose.waitForIdle()
+            assertEquals("new",feed.state.value.rows.first().id)
+        }finally{release.countDown();feed.close()}
+    }
     @Test fun failedRefreshRetainsPostsAndRetriesFirstPage(){
         val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
         val failing=java.util.concurrent.atomic.AtomicBoolean(false)
