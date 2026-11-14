@@ -40,15 +40,46 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
     return enrichSeraFeed(token,rows)
 }
 
+/** Main feed reads use the same authenticated RLS query as the SERA website. */
+private fun requestNativeFeed(token:String,page:Int,personalized:Boolean,pageSize:Int):Pair<String?,String>{
+    val started=android.os.SystemClock.elapsedRealtime()
+    var status=0
+    val result=try{
+        val view=if(personalized)"for-you" else "latest"
+        val url="https://sera.hisabtech.com/api/native/feed?page=$page&limit=$pageSize&view=$view"
+        val request=Request.Builder().url(url)
+            .header("Authorization","Bearer $token")
+            .header("Accept","application/json")
+            .header("Cache-Control","no-store")
+            .get().build()
+        seraFeedHttp.newCall(request).execute().use{response->
+            status=response.code
+            val body=response.body?.string().orEmpty()
+            if(response.isSuccessful&&body.isNotBlank())body to ""
+            else {
+                val message=runCatching{JSONObject(body).optString("error")}.getOrNull()
+                    ?.takeIf{it.isNotBlank()}?:"Unable to load posts. Please retry."
+                null to message
+            }
+        }
+    }catch(e:Exception){
+        null to "Network unavailable. Please retry."
+    }
+    SeraPerformance.record("feed",started,status)
+    return result
+}
+
 internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,personalized:Boolean=false,savedOnly:Boolean=false,pageSize:Int=20):Pair<List<SeraPost>?,String>{
     require(pageSize in 1..20)
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
     val savedJoin=if(savedOnly)",post_saves!inner(post_id)" else ""
-    val result = if(personalized&&postId==null&&!savedOnly) spaceCall(token,"sera_ranked_feed",JSONObject().put("p_offset",page*pageSize).put("p_limit",pageSize)) else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=$pageSize&offset=${page * pageSize}$filter")
+    val nativeFeed=postId==null&&!savedOnly
+    val result = if(nativeFeed) requestNativeFeed(token,page,personalized,pageSize)
+        else request(token, "posts?select=id,author_id,title,body,kind,like_count,comment_count,share_count,published_at,repost_of,repost_note,audience,edited_at$savedJoin&status=eq.published&order=published_at.desc,id.desc&limit=$pageSize&offset=${page * pageSize}$filter")
     val body = result.first ?: return null to result.second
     return try {
-        val array = JSONArray(body)
+        val array = if(nativeFeed) JSONObject(body).optJSONArray("posts") ?: return null to "Unable to read the feed response." else JSONArray(body)
         val posts = (0 until array.length()).map {
             val item = array.getJSONObject(it)
             SeraPost(

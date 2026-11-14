@@ -3,6 +3,7 @@ import "server-only";
 import { sanitizeDiscoveryQuery } from "@/lib/network/model";
 import { searchSince, type SearchFilters } from "@/lib/network/search-filters";
 import { serverClient, currentUser } from "@/lib/supabase/server";
+import { querySocialFeedPage } from "./feed-page";
 import { type PostKind } from "./validation";
 export type SocialComment = {
   id: string;
@@ -82,10 +83,26 @@ export async function loadSocialFeed(
   const since = searchSince(filters?.days || "");
   if (since) query = query.gte("published_at", since);
   const start = ((options.page || 1) - 1) * 20;
-  const { data: rows, error } = options.personalized && !options.authorId && !options.query && !options.savedOnly && !options.postId && !options.kind && !options.excludeKind && !options.filters ? await db.rpc("sera_ranked_feed",{p_offset:start,p_limit:21}) : await query
-    .order("published_at", { ascending: false })
-    .order("id", { ascending: false })
-    .range(start, start + 20);
+  const sharedFeed = !options.authorId && !search && !options.savedOnly && !options.postId &&
+    !options.kind && !options.excludeKind && !options.filters;
+  let rows: unknown[] | null;
+  let error: Error | null;
+  if (sharedFeed) {
+    const feedResult = await querySocialFeedPage(db, {
+      offset: start,
+      pageSize: 20,
+      personalized: !!options.personalized,
+    });
+    rows = feedResult.rows;
+    error = feedResult.error;
+  } else {
+    const feedResult = await query
+      .order("published_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(start, start + 20);
+    rows = feedResult.data;
+    error = feedResult.error;
+  }
   if (error)
     throw new Error("Unable to load the community feed. Please try again.");
   const posts = (rows || []).slice(0, 20) as unknown as SocialPost[];
