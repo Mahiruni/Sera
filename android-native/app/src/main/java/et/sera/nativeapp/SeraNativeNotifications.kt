@@ -86,15 +86,39 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
  var rows by remember(token,userId){mutableStateOf<List<JSONObject>>(emptyList())};var people by remember(token,userId){mutableStateOf<Map<String,NotificationPerson>>(emptyMap())};var jobs by remember(token,userId){mutableStateOf<Map<String,JSONObject>>(emptyMap())}
  var enabled by remember(token,userId){mutableStateOf(false)};var error by remember(token,userId){mutableStateOf("")};var loading by remember(token,userId){mutableStateOf(true)};var refresh by remember(token,userId){mutableIntStateOf(0)}
  var selectedPost by remember(token,userId){mutableStateOf<String?>(null)};var selectedJob by remember(token,userId){mutableStateOf<SearchHit?>(null)};var marking by remember(token,userId){mutableStateOf(false)};var sounds by remember{mutableStateOf(false)}
+ val context=androidx.compose.ui.platform.LocalContext.current
+ var savedActivity by remember(token,userId){mutableStateOf(false)}
+ var liveActivity by remember(token,userId){mutableStateOf(false)}
  val scope=rememberCoroutineScope();val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle;val teal=Color(0xFF087E83)
  fun mark(ids:List<String>?){
-  if(marking)return;marking=true
-  scope.launch{val r=withContext(Dispatchers.IO){notificationCall(token,"professional_notifications?recipient_id=eq."+userId+"&read_at=is.null"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}.orEmpty()),true)};marking=false;error=r.second;if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}}
+  if(marking||!liveActivity)return;marking=true
+  scope.launch{val r=withContext(Dispatchers.IO){notificationCall(token,"professional_notifications?recipient_id=eq."+userId+"&read_at=is.null"+(ids?.let{"&id=in.("+it.joinToString(",")+")"}.orEmpty()),true)};marking=false;error=r.second;if(r.first!=null){withContext(Dispatchers.IO){SeraDirectoryCache(context,userId).clear("notifications")};refresh++;SeraUnreadRefresh.changed()}}
  }
  fun preference(value:Boolean){marking=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_set_job_alert_preference",JSONObject().put("p_enabled",value))};marking=false;error=r.second;if(r.first!=null){enabled=value;refresh++}}}
  LaunchedEffect(token,userId,tab,page,refresh,lifecycle){
-  if(token.isBlank()){loading=false;error="Sign in to view notifications.";return@LaunchedEffect}
-  lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){val result=withContext(Dispatchers.IO){loadNotifications(token,userId,tab,page)};if(result.rows!=null){rows=result.rows;people=result.people;jobs=result.jobs;enabled=result.enabled};error=result.error;loading=false;delay(20000)}}
+  liveActivity=false;savedActivity=false;loading=true
+  if(token.isBlank()||userId.isBlank()){rows=emptyList();people=emptyMap();jobs=emptyMap();loading=false;error="Sign in to view notifications.";return@LaunchedEffect}
+  val cache=SeraDirectoryCache(context,userId)
+  val cached=withContext(Dispatchers.IO){cache.readNotifications(tab,page)}
+  if(cached!=null){
+   rows=spaceRows(cached.optJSONArray("rows")?.toString())
+   val names=cached.optJSONObject("names")
+   people=names?.let{obj->obj.keys().asSequence().associateWith{NotificationPerson(obj.optString(it),null)}}?:emptyMap()
+   jobs=spaceRows(cached.optJSONArray("jobs")?.toString()).associateBy{it.field("id")}
+   enabled=cached.optBoolean("enabled");savedActivity=true
+  }
+  lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){while(true){
+   val generation=cache.generation()
+   val result=withContext(Dispatchers.IO){loadNotifications(token,userId,tab,page)}
+   if(result.rows!=null){
+    rows=result.rows;people=result.people;jobs=result.jobs;enabled=result.enabled;liveActivity=true;savedActivity=false
+    withContext(Dispatchers.IO){cache.writeNotifications(tab,page,result.rows,result.people.mapValues{it.value.name},result.jobs,result.enabled,generation)}
+   }else{
+    liveActivity=false;savedActivity=rows.isNotEmpty()
+    if(seraCacheDenied(result.error)){rows=emptyList();people=emptyMap();jobs=emptyMap();savedActivity=false;selectedPost=null;selectedJob=null;withContext(Dispatchers.IO){cache.clear("notifications")}}
+   }
+   error=result.error;loading=false;delay(30000)
+  }}
  }
  val unread=rememberSeraUnreadActivity(token,userId,"Notifications").first
  if(sounds){SeraSoundSettings(modifier,userId){sounds=false};return}
@@ -103,22 +127,23 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
  Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
   Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){
    Column(Modifier.weight(1f)){Text("Notifications",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(if(unread>0)"$unread unread" else "Your professional activity",style=MaterialTheme.typography.labelMedium,color=teal)}
-   TextButton(onClick={sounds=true}){Text("Sounds")};TextButton(onClick={mark(null)},enabled=unread>0&&!marking){Text("Read all")}
+   TextButton(onClick={sounds=true}){Text("Sounds")};TextButton(onClick={mark(null)},enabled=unread>0&&!marking&&liveActivity){Text("Read all")}
   }
-  Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){notificationTabs.forEach{t->FilterChip(selected=tab==t,onClick={if(tab!=t){tab=t;page=1;rows=emptyList();loading=true}},label={Text(t)})}}
+  Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){notificationTabs.forEach{t->FilterChip(selected=tab==t,onClick={if(tab!=t){tab=t;page=1;rows=emptyList();liveActivity=false;loading=true}},label={Text(t)})}}
+  if(savedActivity)Text("Saved activity · checking for updates",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
   if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
   LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
-   if(tab=="Opportunities")item{ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp)){Text("Career alerts",style=MaterialTheme.typography.titleMedium);Row(verticalAlignment=Alignment.CenterVertically){Text("Automatic job matches",Modifier.weight(1f));Switch(checked=enabled,onCheckedChange={preference(it)},enabled=!marking&&!loading)};Text("Up to 3 relevant opportunities per day.",style=MaterialTheme.typography.bodySmall);TextButton(enabled=!marking,onClick={marking=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_refresh_job_alerts")};marking=false;error=r.second;if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}}}){Text("Refresh job matches")}}}}
+   if(tab=="Opportunities")item{ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp)){Text("Career alerts",style=MaterialTheme.typography.titleMedium);Row(verticalAlignment=Alignment.CenterVertically){Text("Automatic job matches",Modifier.weight(1f));Switch(checked=enabled,onCheckedChange={preference(it)},enabled=!marking&&!loading&&liveActivity)};Text("Up to 3 relevant opportunities per day.",style=MaterialTheme.typography.bodySmall);TextButton(enabled=!marking,onClick={marking=true;scope.launch{val r=withContext(Dispatchers.IO){spaceCall(token,"sera_refresh_job_alerts")};marking=false;error=r.second;if(r.first!=null){refresh++;SeraUnreadRefresh.changed()}}}){Text("Refresh job matches")}}}}
    groups.forEachIndexed{index,g->
     val n=g.latest;val day=dateGroup(n);if(index==0||dateGroup(groups[index-1].latest)!=day)item(key="day-"+day){Text(day,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}
     item(key=n.field("id")){
-     val unreadIds=g.events.filter{it.isNull("read_at")}.map{it.field("id")};val isUnread=unreadIds.isNotEmpty();val actor=people[n.field("actor_id")];val post=n.field("post_id").takeIf{it.isNotBlank()};val job=jobs[n.field("job_id")];val isJob=n.field("kind")=="job_match"
+     val unreadIds=g.events.filter{it.isNull("read_at")}.map{it.field("id")};val isUnread=liveActivity&&unreadIds.isNotEmpty();val actor=people[n.field("actor_id")];val post=n.field("post_id").takeIf{it.isNotBlank()};val job=jobs[n.field("job_id")];val isJob=n.field("kind")=="job_match"
      val names=g.actors.map{people[it]?.name?:"SERA member"};val name=if(names.size<=2)names.joinToString(" and ")else names.take(2).joinToString(", ")+" and "+(names.size-2)+" other"+if(names.size==3)"" else "s"
      val action=when(n.field("kind")){"like"->"liked your post";"comment"->"commented on your post";"share"->"shared your post";"repost"->"reposted your post";"reply"->"replied to your comment";"follow"->"started following you";"connection_request"->"sent a connection invitation";"connection_accepted"->"accepted your invitation";else->"interacted with you"}
-     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable{if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"))}){
+     Surface(shape=RoundedCornerShape(18.dp),color=if(isUnread)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,modifier=Modifier.fillMaxWidth().clickable(enabled=liveActivity){if(isUnread)mark(unreadIds);if(post!=null)selectedPost=post;if(job!=null)selectedJob=SearchHit(job.field("id"),"Jobs",job.field("title"),job.field("company"))}){
       Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-       if(!isJob&&actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(40.dp).clip(CircleShape))else Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(if(isJob)"J" else name.take(1),fontWeight=FontWeight.Bold)}
+       if(!isJob&&actor?.avatar!=null)SeraMediaImage(actor.avatar,"Member photo",96,96,Modifier.size(40.dp).clip(CircleShape),accessToken=token)else Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(if(isJob)"J" else name.take(1),fontWeight=FontWeight.Bold)}
        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
         Text(if(isJob)job?.field("title")?:"Opportunity no longer available" else "$name $action",fontWeight=FontWeight.SemiBold,fontSize=14.sp)
         if(isJob&&job!=null){Text(job.field("company"),style=MaterialTheme.typography.bodySmall);val arr=n.optJSONArray("match_reasons");if(arr!=null)Text("Matches: "+(0 until arr.length()).map{arr.optString(it)}.joinToString(", "),color=teal,style=MaterialTheme.typography.labelSmall)}
@@ -131,7 +156,7 @@ private fun dateGroup(r:JSONObject):String{val now=java.time.LocalDate.now(ZoneI
     }
    }
    if(rows.isEmpty()&&!loading&&error.isBlank())item{Text("You're all caught up",Modifier.padding(24.dp),style=MaterialTheme.typography.titleMedium)}
-   if(page>1||rows.size>30)item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton(onClick={page--;rows=emptyList();loading=true},enabled=page>1){Text("Previous")};Text("Page $page");TextButton(onClick={page++;rows=emptyList();loading=true},enabled=rows.size>30&&page<100){Text("Next")}}}
+   if(page>1||rows.size>30)item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton(onClick={page--;rows=emptyList();liveActivity=false;loading=true},enabled=page>1){Text("Previous")};Text("Page $page");TextButton(onClick={page++;rows=emptyList();liveActivity=false;loading=true},enabled=rows.size>30&&page<100){Text("Next")}}}
   }
  }
  selectedPost?.let{SeraNativePostDetail(token,it,onClose={selectedPost=null;refresh++})}

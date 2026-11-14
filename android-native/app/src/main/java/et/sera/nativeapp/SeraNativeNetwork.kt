@@ -68,6 +68,9 @@ private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList()
 
 @Composable
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier, initialSearch: Boolean = false) {
+    val context=androidx.compose.ui.platform.LocalContext.current
+    var liveNetwork by remember(userId,token){mutableStateOf(false)}
+    var savedNetwork by remember(userId,token){mutableStateOf(false)}
     var showTalent by remember { mutableStateOf(initialSearch) }
     if(showTalent){SeraTalent(token,userId,modifier,onBack={showTalent=false});return}
     var people by remember(userId) { mutableStateOf<List<SeraProfessional>>(emptyList()) }
@@ -81,29 +84,41 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     var actionError by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     fun perform(peerId: String, operation: suspend () -> String) {
-        if (actionPeer != null) return
+        if (actionPeer != null||!liveNetwork) return
         actionPeer = peerId
         actionError = ""
         scope.launch {
             val result = withContext(Dispatchers.IO) { operation() }
-            if (result.isNotBlank()) actionError = result else {SeraNetworkMemory.clear();reload++}
+            if (result.isNotBlank()) actionError = result else {SeraNetworkMemory.clear();withContext(Dispatchers.IO){SeraDirectoryCache(context,userId).clear("network")};reload++}
             actionPeer = null
         }
     }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(token,userId,reload,view=="Discover") {
-        loading = true
-        SeraNetworkMemory.read(userId,token,view=="Discover")?.let{(savedPeople,savedRelations)->people=savedPeople;relations=savedRelations}
-        actionError=""
-        if (userId.isNotBlank()) {
-            val relationships = withContext(Dispatchers.IO) { loadSeraRelations(token, userId) }
-            relationships.first?.let { relations = it }
-            if (relationships.second.isNotBlank()) actionError = relationships.second
+        loading=true;liveNetwork=false;savedNetwork=false;actionError="";error=""
+        if(userId.isBlank()||token.isBlank()){people=emptyList();relations=SeraNetworkRelations(emptySet(),emptyList());loading=false;return@LaunchedEffect}
+        val discover=view=="Discover"
+        val cache=SeraDirectoryCache(context,userId)
+        val generation=cache.generation()
+        val cached=SeraNetworkMemory.read(userId,token,discover)?:withContext(Dispatchers.IO){cache.readNetwork(discover)}
+        people=cached?.first.orEmpty();relations=cached?.second?:SeraNetworkRelations(emptySet(),emptyList());savedNetwork=cached!=null
+        val relationships=withContext(Dispatchers.IO){loadSeraRelations(token,userId)}
+        if(relationships.first!=null){
+            val fresh=relationships.first!!
+            val related=fresh.follows.toList()+fresh.followers.toList()+fresh.requests.map{if(it.requester==userId)it.recipient else it.requester}
+            val result=withContext(Dispatchers.IO){loadProfessionals(token,related,discover)}
+            if(result.first!=null){
+                people=result.first!!;relations=fresh;liveNetwork=true;savedNetwork=false
+                SeraNetworkMemory.write(userId,token,discover,people,relations)
+                withContext(Dispatchers.IO){cache.writeNetwork(discover,result.first!!,fresh,generation)}
+            }else error=result.second
+        }else error=relationships.second
+        if(seraCacheDenied(error)){
+            people=emptyList();relations=SeraNetworkRelations(emptySet(),emptyList());selected=null;savedNetwork=false
+            SeraNetworkMemory.clear();withContext(Dispatchers.IO){cache.clear("network")}
         }
-        val related=relations.follows.toList()+relations.followers.toList()+relations.requests.map{if(it.requester==userId)it.recipient else it.requester}
-        val result=withContext(Dispatchers.IO){loadProfessionals(token,related,view=="Discover")};result.first?.let{people=it;if(actionError.isBlank())SeraNetworkMemory.write(userId,token,view=="Discover",it,relations)};error=result.second
-        loading = false
+        loading=false
     }
     val connected=relations.requests.filter{it.status=="accepted"}.map{if(it.requester==userId)it.recipient else it.requester}.toSet()
     val invitations=relations.requests.filter{it.status=="pending"}
@@ -119,6 +134,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("Discover","Connections","Invitations","Following","Followers").forEach{v->FilterChip(selected=view==v,onClick={view=v;query=""},label={Text(if(v=="Invitations"&&incoming.isNotEmpty())"$v · ${incoming.size}" else v)})}}
         OutlinedTextField(value=query,onValueChange={query=it.take(100)},label={Text("Search "+view.lowercase())},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp))
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(view,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f));TextButton(onClick={reload++},enabled=!loading){Text("Refresh")}}
+        if(savedNetwork)Text("Saved network · checking for updates",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error.isNotBlank()||actionError.isNotBlank())Text(error.ifBlank{actionError},color=MaterialTheme.colorScheme.error)
         LazyColumn(Modifier.weight(1f),state=networkListState,contentPadding=PaddingValues(bottom=16.dp)){
@@ -127,15 +143,15 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
                 val request=invitations.firstOrNull{it.requester==person.id||it.recipient==person.id}
                 Column(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                        val avatar by produceState<String?>(null,token,person.avatarPath){value=person.avatarPath?.let{path->withContext(Dispatchers.IO){SeraAvatarMemory.get(token,path)?:signedPostImage(token,path,"sera-account-private")?.also{SeraAvatarMemory.put(token,path,it)}}}}
+                        val avatar by produceState<String?>(null,token,person.avatarPath,liveNetwork){value=person.avatarPath?.takeIf{liveNetwork}?.let{path->withContext(Dispatchers.IO){SeraAvatarMemory.get(token,path)?:signedPostImage(token,path,"sera-account-private")?.also{SeraAvatarMemory.put(token,path,it)}}}}
                         if(avatar!=null)SeraMediaImage(avatar!!,"Professional photo",128,128,Modifier.size(48.dp).clip(CircleShape),accessToken=token) else Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer,CircleShape),contentAlignment=Alignment.Center){Text(person.name.take(1),color=teal,fontWeight=FontWeight.Bold)}
                         Column(Modifier.weight(1f).clickable{selected=SearchHit(person.id,"People",person.name,person.headline)},verticalArrangement=Arrangement.spacedBy(3.dp)){Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Text(person.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false));if(person.identityVerified)SeraIdentityBadge()};if(person.headline.isNotBlank())Text(person.headline,style=MaterialTheme.typography.bodySmall,maxLines=2,overflow=TextOverflow.Ellipsis);if(view=="Discover"&&person.matchedSkills.isNotBlank())Text("Shared skills: "+person.matchedSkills,style=MaterialTheme.typography.labelSmall,color=teal,maxLines=2,overflow=TextOverflow.Ellipsis)}
-                        if(person.id in connected||followed||person.id in relations.followers)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null){Text("Connect")}
+                        if(person.id in connected||followed||person.id in relations.followers)TextButton(onClick={selected=SearchHit(person.id,"People",person.name,person.headline)}){Text("View")}else if(request==null)OutlinedButton(onClick={perform(person.id){requestSeraConnection(token,userId,person.id)}},enabled=actionPeer==null&&liveNetwork){Text("Connect")}
                     }
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        if(request!=null&&request.recipient==userId){Button(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"accepted")}},enabled=actionPeer==null){Text("Accept")};TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"declined")}},enabled=actionPeer==null){Text("Decline")}}
-                        else if(request!=null&&request.requester==userId)TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"withdrawn")}},enabled=actionPeer==null){Text("Withdraw invitation")}
-                        else TextButton(onClick={perform(person.id){changeSeraFollow(token,userId,person.id,!followed)}},enabled=actionPeer==null){Text(if(followed)"Unfollow" else "Follow")}
+                        if(request!=null&&request.recipient==userId){Button(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"accepted")}},enabled=actionPeer==null&&liveNetwork){Text("Accept")};TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"declined")}},enabled=actionPeer==null&&liveNetwork){Text("Decline")}}
+                        else if(request!=null&&request.requester==userId)TextButton(onClick={perform(request.id){resolveSeraConnection(token,request,userId,"withdrawn")}},enabled=actionPeer==null&&liveNetwork){Text("Withdraw invitation")}
+                        else TextButton(onClick={perform(person.id){changeSeraFollow(token,userId,person.id,!followed)}},enabled=actionPeer==null&&liveNetwork){Text(if(followed)"Unfollow" else "Follow")}
                     }
                 }
                 HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant,thickness=.7.dp)
