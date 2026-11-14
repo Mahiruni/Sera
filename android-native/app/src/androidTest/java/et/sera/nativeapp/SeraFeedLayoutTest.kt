@@ -62,6 +62,22 @@ class SeraFeedLayoutTest {
         store.publish(second,listOf(row.copy(author="Member")))
         assertEquals("Member",store.rows.value["post"]?.author)
     }
+    @Test fun directFeedPublishesBaseRowsWithoutWaitingForDetails(){
+        val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
+        val release=java.util.concurrent.CountDownLatch(1)
+        val feed=SeraDirectFeed("",false,false,fetch={listOf(row) to ""},enrich={release.await(10,java.util.concurrent.TimeUnit.SECONDS);null})
+        try{
+            compose.setContent{MaterialTheme{
+                val state by feed.state.collectAsState()
+                LaunchedEffect(Unit){feed.start()}
+                Column{state.rows.forEach{SeraFeedCopy(it.title,it.body,false,{},postId=it.id)}}
+            }}
+            compose.waitUntil(5000){feed.state.value.rows.size==1}
+            compose.onNodeWithTag("sera_feed_text_qa-post").assertIsDisplayed().assertTextEquals("Actual post body")
+            assertEquals(false,feed.state.value.refreshing)
+            assertEquals(0,feed.state.value.details.size)
+        }finally{release.countDown();feed.close()}
+    }
     @Test fun shortPostDoesNotShowReadMore(){
         compose.setContent{MaterialTheme{SeraFeedCopy("","A short update.",false,{})}}
         compose.onNodeWithTag("sera_feed_expand").assertDoesNotExist()

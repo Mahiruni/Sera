@@ -79,10 +79,104 @@ internal class SeraFeedSession(private val token:String,context:android.content.
     private val streams=mutableMapOf<Pair<Boolean,Boolean>,kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<SeraPost>>>()
     private val details=mutableMapOf<Pair<Boolean,Boolean>,SeraFeedEnrichment>()
     private val revisions=mutableMapOf<Pair<Boolean,Boolean>,Int>()
+    private val directFeeds=mutableMapOf<Pair<Boolean,Boolean>,SeraDirectFeed>()
+    fun direct(personalized:Boolean,saved:Boolean)=directFeeds.getOrPut(personalized to saved){SeraDirectFeed(token,personalized,saved,::storePreview)}
     fun enrichment(personalized:Boolean,saved:Boolean)=details.getOrPut(personalized to saved){SeraFeedEnrichment()}
     private fun storePreview(rows:List<SeraPost>){scope.launch(Dispatchers.IO){synchronized(cacheLock){if(!closed)runCatching{cache?.write(rows)};Unit}}}
     fun stream(personalized:Boolean,saved:Boolean)=streams.getOrPut(personalized to saved){pagedSeraPosts(token,personalized,saved,::storePreview,enrichment(personalized,saved)).cachedIn(scope)}
     fun changed(personalized:Boolean,saved:Boolean,revision:Int):Boolean{val previous=revisions.put(personalized to saved,revision);return previous!=null&&previous!=revision}
     fun clearOnSignOut()=synchronized(cacheLock){closed=true;runCatching{cache?.clear()};Unit}
-    fun close(){synchronized(cacheLock){closed=true};scope.cancel();streams.clear();details.values.forEach{it.clear()};details.clear();revisions.clear()}
+    fun close(){synchronized(cacheLock){closed=true};directFeeds.values.forEach{it.close()};directFeeds.clear();scope.cancel();streams.clear();details.values.forEach{it.clear()};details.clear();revisions.clear()}
+}
+
+// Direct publication from the IO worker avoids a suspended PagingSource handoff.
+// Each mode and authenticated session has independent state and generation.
+internal data class SeraFeedState(
+    val rows:List<SeraPost> = emptyList(),
+    val details:Map<String,SeraPost> = emptyMap(),
+    val refreshing:Boolean=true,
+    val appending:Boolean=false,
+    val error:String="",
+    val nextPage:Int=0,
+    val hasMore:Boolean=true
+)
+internal class SeraDirectFeed(
+    private val token:String,
+    private val personalized:Boolean,
+    private val savedOnly:Boolean,
+    private val onFirstPage:((List<SeraPost>)->Unit)?=null,
+    private val fetch:(Int)->Pair<List<SeraPost>?,String>={page->loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=SERA_ANDROID_FEED_PAGE_SIZE)},
+    private val enrich:(List<SeraPost>)->List<SeraPost>?={rows->enrichSeraFeed(token,rows).first}
+){
+    private val mutable=MutableStateFlow(SeraFeedState())
+    val state=mutable.asStateFlow()
+    private val worker=kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+Dispatchers.IO)
+    private var generation=0L
+    private var closed=false
+    private var started=false
+    private var baseJob:kotlinx.coroutines.Job?=null
+    private val detailJobs=mutableListOf<kotlinx.coroutines.Job>()
+    @Synchronized fun start(){if(!closed&&!started)refresh()}
+    @Synchronized fun refresh(){
+        if(closed)return
+        started=true
+        generation++
+        baseJob?.cancel()
+        detailJobs.forEach{it.cancel()};detailJobs.clear()
+        mutable.value=mutable.value.copy(refreshing=true,appending=false,error="",nextPage=0,hasMore=true)
+        load(generation,0)
+    }
+    @Synchronized fun append(){
+        val s=mutable.value
+        if(closed||!started||s.refreshing||s.appending||!s.hasMore||s.error.isNotBlank())return
+        mutable.value=s.copy(appending=true)
+        load(generation,s.nextPage)
+    }
+    @Synchronized fun retry(){
+        val s=mutable.value
+        if(s.nextPage==0||s.refreshing||s.rows.isEmpty())refresh()
+        else {mutable.value=s.copy(error="");append()}
+    }
+    private fun load(expected:Long,page:Int){
+        baseJob=worker.launch{
+            try{
+                val response=fetch(page)
+                val rows=response.first
+                if(rows==null){fail(expected,response.second.ifBlank{"Unable to load posts."});return@launch}
+                if(!publish(expected,page,rows))return@launch
+                if(page==0&&!personalized&&!savedOnly)onFirstPage?.invoke(rows)
+                scheduleDetails(expected,page,rows)
+            }catch(e:kotlinx.coroutines.CancellationException){throw e}
+            catch(e:Exception){android.util.Log.w("SeraFeed","Direct feed failed: "+e.javaClass.simpleName);fail(expected,"Unable to load posts. Please retry.")}
+        }
+    }
+    @Synchronized private fun publish(expected:Long,page:Int,rows:List<SeraPost>):Boolean{
+        if(closed||expected!=generation)return false
+        val prior=mutable.value
+        val combined=if(page==0)rows.distinctBy{it.id} else (prior.rows+rows).distinctBy{it.id}
+        mutable.value=prior.copy(rows=combined,details=if(page==0)emptyMap() else prior.details,refreshing=false,appending=false,error="",nextPage=page+1,hasMore=rows.size==SERA_ANDROID_FEED_PAGE_SIZE)
+        android.util.Log.d("SeraFeed","Direct feed published: ${combined.size} rows")
+        return true
+    }
+    @Synchronized private fun fail(expected:Long,message:String){
+        if(!closed&&expected==generation)mutable.value=mutable.value.copy(refreshing=false,appending=false,error=message)
+    }
+    @Synchronized private fun scheduleDetails(expected:Long,page:Int,rows:List<SeraPost>){
+        if(closed||expected!=generation||rows.isEmpty())return
+        detailJobs.removeAll{it.isCompleted}
+        detailJobs.add(worker.launch{
+            try{
+                val details=enrich(rows)?:return@launch
+                if(publishDetails(expected,details)&&page==0&&!personalized&&!savedOnly)onFirstPage?.invoke(details)
+            }catch(e:kotlinx.coroutines.CancellationException){throw e}
+            catch(e:Exception){android.util.Log.w("SeraFeed","Optional details failed: "+e.javaClass.simpleName)}
+        })
+    }
+    @Synchronized private fun publishDetails(expected:Long,rows:List<SeraPost>):Boolean{
+        if(closed||expected!=generation)return false
+        mutable.value=mutable.value.copy(details=mutable.value.details+rows.associateBy{it.id})
+        android.util.Log.d("SeraFeed","Direct feed details ready: ${rows.size} rows")
+        return true
+    }
+    @Synchronized fun close(){closed=true;generation++;worker.cancel();mutable.value=SeraFeedState(refreshing=false,hasMore=false)}
 }

@@ -52,8 +52,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
-import androidx.paging.LoadState
-import androidx.paging.compose.collectAsLazyPagingItems
 
 private val feedTeal = Color(0xFF0D7C86)
 private val feedInk = Color(0xFF16363A)
@@ -73,34 +71,40 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
     var personalized by remember(token){mutableStateOf(retainedPersonalized)}
-    val enrichment=remember(token,session,personalized,savedOnly){session?.enrichment(personalized,savedOnly)?:SeraFeedEnrichment()}
-    val enrichedRows by enrichment.rows.collectAsState()
-    val stream = remember(token,session,personalized,savedOnly) { session?.stream(personalized,savedOnly)?:pagedSeraPosts(token,personalized,savedOnly,enrichment=enrichment) }
-    val posts = stream.collectAsLazyPagingItems()
-    LaunchedEffect(posts.itemCount){android.util.Log.d("SeraFeed","UI paging items: ${posts.itemCount}")}
+    val feed=remember(token,session,personalized,savedOnly){session?.direct(personalized,savedOnly)?:SeraDirectFeed(token,personalized,savedOnly)}
+    DisposableEffect(feed){feed.start();onDispose{if(session==null)feed.close()}}
+    val feedState by feed.state.collectAsState()
+    val posts=feedState.rows
+    val enrichedRows=feedState.details
+    LaunchedEffect(posts.size){android.util.Log.d("SeraFeed","UI direct items: ${posts.size}")}
+    LaunchedEffect(feed,listState,posts.size,feedState.refreshing,feedState.appending,feedState.hasMore,feedState.error){
+        if(posts.isNotEmpty()&&feedState.hasMore&&!feedState.refreshing&&!feedState.appending&&feedState.error.isBlank()){
+            snapshotFlow{val layout=listState.layoutInfo;val last=layout.visibleItemsInfo.lastOrNull()?.index?:-1;last>=0&&last>=layout.totalItemsCount-3}.collect{if(it)feed.append()}
+        }
+    }
     var cachedPreview by remember(session,personalized,savedOnly){mutableStateOf<List<SeraFeedPreview>>(emptyList())}
     LaunchedEffect(session,personalized,savedOnly){if(!personalized&&!savedOnly)cachedPreview=withContext(Dispatchers.IO){session?.readPreview().orEmpty()}}
     val previews=cachedPreview
-    val showPreview=!personalized&&!savedOnly&&posts.itemCount==0&&posts.loadState.refresh !is LoadState.NotLoading&&previews.isNotEmpty()
-    val refreshing=posts.loadState.refresh is LoadState.Loading
-    var retryAttempt by remember(stream){mutableIntStateOf(0)}
-    var slowLoad by remember(stream){mutableStateOf(false)}
-    LaunchedEffect(stream,refreshing,retryAttempt){
+    val showPreview=!personalized&&!savedOnly&&posts.size==0&&(feedState.refreshing||feedState.error.isNotBlank())&&previews.isNotEmpty()
+    val refreshing=feedState.refreshing
+    var retryAttempt by remember(feed){mutableIntStateOf(0)}
+    var slowLoad by remember(feed){mutableStateOf(false)}
+    LaunchedEffect(feed,refreshing,retryAttempt){
         slowLoad=false
         if(refreshing){kotlinx.coroutines.delay(8_000L);slowLoad=true}
     }
-    fun retryFeed(){retryAttempt++;slowLoad=false;if(posts.loadState.refresh is LoadState.Error)posts.retry() else posts.refresh()}
+    fun retryFeed(){retryAttempt++;slowLoad=false;feed.retry()}
     var previousRevision by remember(token,personalized,savedOnly){mutableIntStateOf(refreshKey)}
-    LaunchedEffect(refreshKey,session,personalized,savedOnly){val changed=session?.changed(personalized,savedOnly,refreshKey)?: (previousRevision!=refreshKey);previousRevision=refreshKey;if(changed)posts.refresh()}
+    LaunchedEffect(refreshKey,session,personalized,savedOnly){val changed=session?.changed(personalized,savedOnly,refreshKey)?: (previousRevision!=refreshKey);previousRevision=refreshKey;if(changed)feed.refresh()}
     var lastReselect by remember{mutableIntStateOf(homeReselect)}
-    LaunchedEffect(homeReselect){if(homeReselect!=lastReselect){lastReselect=homeReselect;if(!savedOnly){if(listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0)posts.refresh() else listState.animateScrollToItem(0)}}}
+    LaunchedEffect(homeReselect){if(homeReselect!=lastReselect){lastReselect=homeReselect;if(!savedOnly){if(listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0)feed.refresh() else listState.animateScrollToItem(0)}}}
     var newHead by remember(token,personalized,savedOnly){mutableStateOf<String?>(null)}
-    val displayedHead=posts.itemSnapshotList.items.firstOrNull()?.let{SeraFeedHead(it.id,it.publishedAt)}
+    val displayedHead=posts.firstOrNull()?.let{SeraFeedHead(it.id,it.publishedAt)}
     val currentHead by rememberUpdatedState(displayedHead)
     LaunchedEffect(displayedHead){if(displayedHead?.id==newHead)newHead=null}
     val freshnessLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle,link){if(link.available&&!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null&&current!=null){newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraSecondarySyncDelay(link,activeCall,60000L))}}}
-    val authorIds = posts.itemSnapshotList.items.map { it.authorId }.distinct().take(100)
+    val authorIds = posts.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(token,authorIds,presenceLifecycle,link,activeCall) { if(!link.available||activeCall){activeAuthors=emptySet();return@LaunchedEffect};presenceLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while(true) { activeAuthors=withContext(Dispatchers.IO){feedPresence(token,authorIds)} ?: emptySet(); kotlinx.coroutines.delay(seraSecondarySyncDelay(link,false,30000L)) } } }
@@ -143,7 +147,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
             if(!savedOnly) item(key="home-compose") { Box(Modifier.padding(top=6.dp,bottom=10.dp)){SeraHomeComposeCard(composerName,composerAvatar,canCompose,onCompose)} }
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
-            items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->
+            items(posts.size, key = { index -> posts[index].id }) { index ->
                 val basePost = posts[index]
                 val post=basePost?.let{enrichedRows[it.id]?:it}
                 val detailsReady=post!=null&&enrichedRows.containsKey(post.id)
@@ -185,7 +189,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                         Text(details+(if(post.editedAt!=null)" · Edited" else ""), color = feedMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
-                                SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ posts.refresh() }
+                                SeraPostOptions(token,post,currentUserId.isNotBlank()&&post.authorId==currentUserId){ feed.refresh() }
                             }
                             val title = (if(post.repostOf!=null)post.originalTitle.orEmpty() else post.title).trim()
                             val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
@@ -236,7 +240,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                 FeedReactionControl(SeraReactionKind.SAVE,0,saved,Modifier.weight(1f),enabled=detailsReady&&savePending[post.id]!=true){
                                     val previous=saveOverrides[post.id]?:post.saved
                                     saveOverrides[post.id]=!previous;savePending[post.id]=true
-                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second}else if(savedOnly)posts.refresh();savePending.remove(post.id)}
+                                    scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second}else if(savedOnly)feed.refresh();savePending.remove(post.id)}
                                 }
                             }
                         }
@@ -257,25 +261,24 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                     }
                 }
             }
-            if(refreshing&&posts.itemCount==0&&slowLoad) item(key="feed-slow") { SeraFeedLoadingNotice(onRetry=::retryFeed) }
-            if (refreshing && posts.itemCount == 0 && !showPreview && !slowLoad) item { SeraLoadingCards(count = 3) }
-            if (posts.loadState.append is LoadState.Loading) item {
+            if(refreshing&&posts.size==0&&slowLoad) item(key="feed-slow") { SeraFeedLoadingNotice(onRetry=::retryFeed) }
+            if (refreshing && posts.size == 0 && !showPreview && !slowLoad) item { SeraLoadingCards(count = 3) }
+            if (feedState.appending) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
-            val error = (posts.loadState.refresh as? LoadState.Error)?.error
-                ?: (posts.loadState.append as? LoadState.Error)?.error
-            if (error != null) item {
+            val error = feedState.error
+            if (error.isNotBlank()) item {
                 Column {
-                    Text(error.message ?: "Unable to load feed.", color = MaterialTheme.colorScheme.error)
+                    Text(error, color = MaterialTheme.colorScheme.error)
                     OutlinedButton(onClick = { retryFeed() }) { Text(stringResource(R.string.retry)) }
                 }
             }
-            if (posts.loadState.refresh is LoadState.NotLoading && posts.itemCount == 0) item {
+            if ((!feedState.refreshing&&feedState.error.isBlank()) && posts.size == 0) item {
                 Text(stringResource(R.string.feed_empty))
             }
         }
-        if(newHead!=null&&!savedOnly&&!personalized&&posts.loadState.refresh !is LoadState.Loading){
-            FilledTonalButton(onClick={scope.launch{listState.scrollToItem(0);posts.refresh()}},modifier=Modifier.align(Alignment.TopCenter).padding(top=72.dp).testTag("sera_new_posts")){Text(stringResource(R.string.new_feed_posts))}
+        if(newHead!=null&&!savedOnly&&!personalized&&!feedState.refreshing){
+            FilledTonalButton(onClick={scope.launch{listState.scrollToItem(0);feed.refresh()}},modifier=Modifier.align(Alignment.TopCenter).padding(top=72.dp).testTag("sera_new_posts")){Text(stringResource(R.string.new_feed_posts))}
         }
         }
     }
@@ -361,7 +364,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                     if(repostState.first){val r=spaceCall(token,"sera_undo_repost",JSONObject().put("p_original",originalId));(r.first!=null) to r.second}else repostNativePost(token,originalId,if(withThoughts)repostNote else "")
                                 }
                                 reposting = false
-                                if (result.first) { repostOverrides[originalId]=(!repostState.first to (repostState.second+if(repostState.first)-1 else 1).coerceAtLeast(0)); repostTarget = null; posts.refresh() }
+                                if (result.first) { repostOverrides[originalId]=(!repostState.first to (repostState.second+if(repostState.first)-1 else 1).coerceAtLeast(0)); repostTarget = null; feed.refresh() }
                                 else repostMessage = result.second
                             }
                         },
@@ -387,8 +390,8 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     }
     if(discardRepost)SeraConfirmAction("Discard repost draft?","Your thoughts have not been published.","Discard","Keep writing",onCancel={discardRepost=false},onConfirm={discardRepost=false;repostTarget=null;repostNote=""})
     expandedImage?.let { url -> SeraMediaLightbox(url, stringResource(R.string.post_image), accessToken=token, onDismiss = { expandedImage = null }) }
-    nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;posts.refresh()}) }
-    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={posts.refresh()}) }
+    nativePostId?.let { id -> SeraNativePostDetail(token,id,onClose={nativePostId=null;feed.refresh()}) }
+    commentsPostId?.let { id -> SeraCommentsSheet(token, id, onDismiss = { commentsPostId = null }, onChanged={feed.refresh()}) }
 }
 
 private fun postTimeLabel(value: String): String = runCatching {
