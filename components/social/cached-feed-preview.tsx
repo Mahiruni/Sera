@@ -6,8 +6,9 @@ export function SaveFeedPreview({owner,rows}:{owner:string;rows:PublicFeedPrevie
   return null;
 }
 export function CachedFeedPreview({owner,failed=false,href="/feed"}:{owner:string;failed?:boolean;href?:string}){
-  const [rows,setRows]=useState<PublicFeedPreview[]>([]);
-  useEffect(()=>{let alive=true;setRows([]);void readPublicFeed(owner).then(r=>{if(alive)setRows(r)}).catch(()=>{});return()=>{alive=false};},[owner]);
+  const [snapshot,setSnapshot]=useState<{owner:string;rows:PublicFeedPreview[]}|null>(null);
+  const rows=snapshot?.owner===owner?snapshot.rows:[];
+  useEffect(()=>{let alive=true;void readPublicFeed(owner).then(r=>{if(alive)setSnapshot({owner,rows:r})}).catch(()=>{});return()=>{alive=false};},[owner]);
   return <div className="social-post-list" aria-busy={!failed}>
     {rows.length>0?<><p role="status">Previously loaded public posts · {failed?"unable to refresh":"checking for updates"}</p>
       {rows.map(row=><article className="social-card" key={row.id}>
