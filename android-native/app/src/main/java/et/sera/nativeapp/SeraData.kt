@@ -37,6 +37,13 @@ private fun request(token: String, path: String, auth: Boolean = false): Pair<St
 }
 
 fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personalized:Boolean=false,savedOnly:Boolean=false,onBasePosts:((List<SeraPost>)->Unit)?=null,pageSize:Int=20): Pair<List<SeraPost>?, String> {
+    val base=loadSeraFeedBase(token,page,postId,personalized,savedOnly,pageSize)
+    val rows=base.first?:return base
+    onBasePosts?.invoke(rows)
+    return enrichSeraFeed(token,rows)
+}
+
+internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,personalized:Boolean=false,savedOnly:Boolean=false,pageSize:Int=20):Pair<List<SeraPost>?,String>{
     require(pageSize in 1..20)
     if(postId!=null && !Regex("^[0-9a-fA-F-]{36}$").matches(postId))return null to "Invalid post."
     val filter=postId?.let{"&id=eq.$it"}?:""
@@ -60,10 +67,14 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 repostOf = item.optString("repost_of").takeIf { it.isNotBlank() && it != "null" }, repostNote = item.optString("repost_note").takeUnless{it=="null"}.orEmpty(), audience=item.optString("audience","public"),editedAt=item.optString("edited_at").takeUnless{it.isBlank()||it=="null"}
             )
         }
-        // Publish an authenticated public-text preview before optional enrichment requests.
         android.util.Log.d("SeraFeed","Decoded ${posts.size} post rows")
-        onBasePosts?.invoke(posts)
-        if (posts.isEmpty()) return emptyList<SeraPost>() to ""
+        posts to ""
+    } catch(e:Exception){null to "Unable to read the feed response."}
+}
+
+internal fun enrichSeraFeed(token:String,posts:List<SeraPost>):Pair<List<SeraPost>?,String>{
+    if(posts.isEmpty())return emptyList<SeraPost>() to ""
+    return try {
         val sourceAuthors = mutableMapOf<String, String>()
         val sourceRows = mutableMapOf<String, JSONObject>()
         val sourceIds = posts.mapNotNull { it.repostOf }.distinct()
@@ -105,7 +116,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
             val likes = async(Dispatchers.IO){request(token,"post_likes?select=post_id&post_id=in.($idsForLikes)").first}
             val saves = async(Dispatchers.IO){request(token,"post_saves?select=post_id&post_id=in.($idsForLikes)").first}
             val media = async(Dispatchers.IO){request(token,"post_images?select=id,post_id,path&post_id=in.($ids)&order=sort_order.asc").first}
-            val states = async(Dispatchers.IO){spaceRows(spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first).associateBy{it.optString("id")}}
+            val states = async(Dispatchers.IO){val raw=spaceCall(token,"sera_repost_states",JSONObject().put("p_ids",JSONArray(stateIds))).first?:error("Repost state unavailable");spaceRows(raw).associateBy{it.optString("id")}}
             heads.await().forEach{headlines[it.optString("id")]=it.optString("headline").takeUnless{v->v=="null"}.orEmpty()}
             val (rows,signed)=people.await()
             rows.forEach{row->
@@ -113,8 +124,10 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 if(id.isNotBlank()&&name.isNotBlank()&&name!="null")names[id]=name
                 signed[row.optString("avatar_path")]?.let{avatars[id]=it}
             }
-            likes.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())likedIds.add(r.getJSONObject(i).optString("post_id"))}
-            saves.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length())savedIds.add(r.getJSONObject(i).optString("post_id"))}
+            val likeResponse=likes.await()?:error("Like state unavailable")
+            likeResponse.let{json->val r=JSONArray(json);for(i in 0 until r.length())likedIds.add(r.getJSONObject(i).optString("post_id"))}
+            val saveResponse=saves.await()?:error("Save state unavailable")
+            saveResponse.let{json->val r=JSONArray(json);for(i in 0 until r.length())savedIds.add(r.getJSONObject(i).optString("post_id"))}
             media.await()?.let{json->val r=JSONArray(json);for(i in 0 until r.length()){val row=r.getJSONObject(i);val id=row.optString("post_id");val path=row.optString("path");if(path.isNotBlank()&&!images.containsKey(id)){images[id]=authenticatedPostMedia(path);val mediaId=row.optString("id");if(SeraMessageAlerts.validId(mediaId))previews[id]="https://sera.hisabtech.com/api/post-media/"+mediaId}}}
             badges.await() to states.await()
         }
@@ -126,7 +139,7 @@ fun loadSeraFeed(token: String, page: Int = 0, postId: String? = null, personali
                 avatarUrl = avatars[post.authorId],
                 repostAuthor = post.repostOf?.let { id -> sourceAuthors[id]?.let { author -> names[author] } }, originalTime=sourceRows[post.repostOf]?.optString("published_at"), originalTitle=sourceRows[post.repostOf]?.optString("title"), originalBody=sourceRows[post.repostOf]?.optString("body"), originalAvatar=avatars[sourceAuthors[post.repostOf]],originalAuthorId=sourceAuthors[post.repostOf],repostCount=repostStates[post.repostOf?:post.id]?.optInt("repost_count")?:0,reposted=repostStates[post.repostOf?:post.id]?.optBoolean("reposted")?:false)
         } to ""
-    } catch (e: Exception) { null to "Unable to read the feed response." }
+    } catch (e: Exception) { android.util.Log.w("SeraFeed","Optional enrichment failed: "+e.javaClass.simpleName); null to "Unable to enrich the feed." }
 }
 
 /** Batch private avatar signing under the caller's own storage policies. */

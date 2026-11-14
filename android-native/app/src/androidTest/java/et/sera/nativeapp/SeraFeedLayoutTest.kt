@@ -46,6 +46,22 @@ class SeraFeedLayoutTest {
         compose.runOnIdle{org.junit.Assert.assertTrue(retried)}
     }
 
+    @Test fun livePostTextIsAvailableToAndroidAccessibility(){
+        compose.setContent{MaterialTheme{SeraFeedCopy("","Actual post body",false,{},postId="qa-post")}}
+        compose.onNodeWithTag("sera_feed_text_qa-post").assertIsDisplayed().assertTextEquals("Actual post body")
+    }
+    @Test fun lateEnrichmentCannotOverwriteNewGeneration(){
+        val store=SeraFeedEnrichment()
+        val first=store.begin()
+        val row=SeraPost("post","member","","Post body",0,0,0,"post","2026-11-14T00:00:00Z")
+        store.publish(first,listOf(row))
+        assertEquals(1,store.rows.value.size)
+        val second=store.begin()
+        store.publish(first,listOf(row))
+        assertEquals(0,store.rows.value.size)
+        store.publish(second,listOf(row.copy(author="Member")))
+        assertEquals("Member",store.rows.value["post"]?.author)
+    }
     @Test fun shortPostDoesNotShowReadMore(){
         compose.setContent{MaterialTheme{SeraFeedCopy("","A short update.",false,{})}}
         compose.onNodeWithTag("sera_feed_expand").assertDoesNotExist()

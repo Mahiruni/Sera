@@ -23,8 +23,15 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
     private boolean hasPost(AccessibilityNodeInfo node) {
         if(node==null)return false;
         String id=node.getViewIdResourceName();
-        if(id!=null&&id.startsWith("sera_feed_post_")&&node.isVisibleToUser())return true;
+        CharSequence body=node.getText();
+        if(id!=null&&(id.startsWith("sera_feed_text_")||id.contains("/sera_feed_text_"))&&node.isVisibleToUser()&&body!=null&&body.length()>0)return true;
         for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null){try{if(hasPost(child))return true;}finally{child.recycle();}}}
+        return false;
+    }
+    private boolean scrollFeed(AccessibilityNodeInfo node){
+        if(node==null)return false;
+        if(node.isScrollable()&&node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))return true;
+        for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null){try{if(scrollFeed(child))return true;}finally{child.recycle();}}}
         return false;
     }
     private void verifyFeed(Context target,String refresh) throws Exception {
@@ -37,9 +44,10 @@ public final class SeraSignedCallInstrumentation extends Instrumentation {
             android.app.UiAutomation ui=getUiAutomation();
             AccessibilityServiceInfo info=ui.getServiceInfo();info.flags|=AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;ui.setServiceInfo(info);
             long deadline=SystemClock.elapsedRealtime()+75000;
+            long nextScroll=SystemClock.elapsedRealtime()+12000;
             while(SystemClock.elapsedRealtime()<deadline){
                 AccessibilityNodeInfo root=ui.getRootInActiveWindow();
-                if(root!=null){try{if(hasPost(root))return;}finally{root.recycle();}}
+                if(root!=null){try{if(hasPost(root))return;if(SystemClock.elapsedRealtime()>=nextScroll){scrollFeed(root);nextScroll=SystemClock.elapsedRealtime()+5000;}}finally{root.recycle();}}
                 SystemClock.sleep(500);
             }
             throw new AssertionError("Authenticated signed Android home did not render a real post within 75 seconds");

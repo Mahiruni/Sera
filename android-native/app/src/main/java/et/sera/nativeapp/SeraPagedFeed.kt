@@ -73,13 +73,14 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     LaunchedEffect(listState){snapshotFlow{listState.firstVisibleItemIndex==0&&listState.firstVisibleItemScrollOffset==0}.collect{if(it)topCallback()}}
     val shareTitle = stringResource(R.string.share_post)
     var personalized by remember(token){mutableStateOf(retainedPersonalized)}
-    val stream = remember(token,session,personalized,savedOnly) { session?.stream(personalized,savedOnly)?:pagedSeraPosts(token,personalized,savedOnly) }
+    val enrichment=remember(token,session,personalized,savedOnly){session?.enrichment(personalized,savedOnly)?:SeraFeedEnrichment()}
+    val enrichedRows by enrichment.rows.collectAsState()
+    val stream = remember(token,session,personalized,savedOnly) { session?.stream(personalized,savedOnly)?:pagedSeraPosts(token,personalized,savedOnly,enrichment=enrichment) }
     val posts = stream.collectAsLazyPagingItems()
+    LaunchedEffect(posts.itemCount){android.util.Log.d("SeraFeed","UI paging items: ${posts.itemCount}")}
     var cachedPreview by remember(session,personalized,savedOnly){mutableStateOf<List<SeraFeedPreview>>(emptyList())}
     LaunchedEffect(session,personalized,savedOnly){if(!personalized&&!savedOnly)cachedPreview=withContext(Dispatchers.IO){session?.readPreview().orEmpty()}}
-    val emptyPreview=remember{ kotlinx.coroutines.flow.MutableStateFlow<List<SeraFeedPreview>?>(null) }
-    val freshPreview by (if(!personalized&&!savedOnly)session?.preview?:emptyPreview else emptyPreview).collectAsState()
-    val previews=freshPreview?:cachedPreview
+    val previews=cachedPreview
     val showPreview=!personalized&&!savedOnly&&posts.itemCount==0&&posts.loadState.refresh !is LoadState.NotLoading&&previews.isNotEmpty()
     val refreshing=posts.loadState.refresh is LoadState.Loading
     var retryAttempt by remember(stream){mutableIntStateOf(0)}
@@ -143,7 +144,9 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
             // The app chrome already owns the brand/title. Keep the feed editorial.
 
             items(posts.itemCount, key = { index -> posts.peek(index)?.id ?: "placeholder-$index" }) { index ->
-                val post = posts[index]
+                val basePost = posts[index]
+                val post=basePost?.let{enrichedRows[it.id]?:it}
+                val detailsReady=post!=null&&enrichedRows.containsKey(post.id)
                 if (post != null) {
                     Surface(
                         shape = RoundedCornerShape(if(savedOnly)20.dp else 0.dp),
@@ -187,7 +190,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                             val title = (if(post.repostOf!=null)post.originalTitle.orEmpty() else post.title).trim()
                             val body = (if(post.repostOf!=null)post.originalBody.orEmpty() else post.body).trim()
                             val postBody: @Composable () -> Unit = {
-                                SeraFeedCopy(title,body,expandedPosts[post.id]==true,{expandedPosts[post.id]=it})
+                                SeraFeedCopy(title,body,expandedPosts[post.id]==true,{expandedPosts[post.id]=it},postId=post.id)
                                 post.imageUrl?.let { url ->
                                     SeraMediaImage(url=url,description=stringResource(R.string.post_image),widthPx=1080,heightPx=720,accessToken=token,previewUrl=post.imagePreviewUrl,
                                         modifier=Modifier.fillMaxWidth().padding(top=8.dp).heightIn(min=160.dp,max=340.dp).clip(RoundedCornerShape(14.dp)).clickable{expandedImage=url})
@@ -217,7 +220,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                 val reaction=reactionOverrides[post.id]?: (post.liked to post.likes)
                                 val repostState=repostOverrides[post.repostOf?:post.id]?: (post.reposted to post.repostCount)
                                 val saved=saveOverrides[post.id]?:post.saved
-                                FeedReactionControl(SeraReactionKind.LIKE,reaction.second,reaction.first,Modifier.weight(1f),enabled=reactionPending[post.id]!=true){
+                                FeedReactionControl(SeraReactionKind.LIKE,reaction.second,reaction.first,Modifier.weight(1f),enabled=detailsReady&&reactionPending[post.id]!=true){
                                     val previous=reactionOverrides[post.id]?: (post.liked to post.likes)
                                     reactionOverrides[post.id]=(!previous.first to (previous.second+if(previous.first)-1 else 1).coerceAtLeast(0))
                                     reactionPending[post.id]=true
@@ -225,12 +228,12 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                                     scope.launch{val result=withContext(Dispatchers.IO){setSeraLike(token,post.id,previous.first)};if(!result.first){reactionOverrides[post.id]=previous;reactionError=result.second};reactionPending.remove(post.id)}
                                 }
                                 FeedReactionControl(SeraReactionKind.COMMENT,post.comments,false,Modifier.weight(1f)){commentsPostId=post.id}
-                                FeedReactionControl(SeraReactionKind.REPOST,repostState.second,repostState.first,Modifier.weight(1f)){repostTarget=post;withThoughts=false;repostNote="";repostMessage=""}
+                                FeedReactionControl(SeraReactionKind.REPOST,repostState.second,repostState.first,Modifier.weight(1f),enabled=detailsReady){repostTarget=post;withThoughts=false;repostNote="";repostMessage=""}
                                 FeedReactionControl(SeraReactionKind.SHARE,post.shares,false,Modifier.weight(1f)){
                                     val intent=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"https://sera.hisabtech.com/posts/"+post.id)}
                                     context.startActivity(Intent.createChooser(intent,shareTitle))
                                 }
-                                FeedReactionControl(SeraReactionKind.SAVE,0,saved,Modifier.weight(1f),enabled=savePending[post.id]!=true){
+                                FeedReactionControl(SeraReactionKind.SAVE,0,saved,Modifier.weight(1f),enabled=detailsReady&&savePending[post.id]!=true){
                                     val previous=saveOverrides[post.id]?:post.saved
                                     saveOverrides[post.id]=!previous;savePending[post.id]=true
                                     scope.launch{val result=withContext(Dispatchers.IO){setSeraSaved(token,post.id,previous)};if(!result.first){saveOverrides[post.id]=previous;reactionError=result.second}else if(savedOnly)posts.refresh();savePending.remove(post.id)}
@@ -242,12 +245,12 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
             }
             if(showPreview){
                 item(key="cached_feed_notice"){
-                    Text(stringResource(if(freshPreview!=null)R.string.feed_live_preview else R.string.feed_cached_preview),color=feedMuted,fontSize=12.sp,modifier=Modifier.padding(vertical=8.dp).testTag("sera_cached_feed_notice"))
+                    Text(stringResource(R.string.feed_cached_preview),color=feedMuted,fontSize=12.sp,modifier=Modifier.padding(vertical=8.dp).testTag("sera_cached_feed_notice"))
                 }
                 items(previews.size,key={index->"cached-"+previews[index].id}){index->
                     val preview=previews[index]
                     Column(Modifier.fillMaxWidth().padding(vertical=10.dp,horizontal=2.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-                        if(freshPreview==null||preview.author!="SERA member")Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                        Text(preview.author,color=feedInk,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
                         if(preview.title.isNotBlank())Text(preview.title,color=feedInk,fontWeight=FontWeight.Medium)
                         if(preview.body.isNotBlank())Text(preview.body,color=feedInk,fontSize=14.sp,lineHeight=20.sp,maxLines=8,overflow=TextOverflow.Ellipsis)
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
@@ -446,12 +449,14 @@ internal fun seraFeedCopyParts(title:String,body:String):Pair<String,String>{
     return t to b
 }
 
-@Composable internal fun SeraFeedCopy(title:String,body:String,expanded:Boolean,onExpanded:(Boolean)->Unit){
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable internal fun SeraFeedCopy(title:String,body:String,expanded:Boolean,onExpanded:(Boolean)->Unit,postId:String?=null){
+    val textTag=if(postId==null)Modifier else Modifier.testTag("sera_feed_text_"+postId).semantics{testTagsAsResourceId=true}
     val (heading,copy)=remember(title,body){seraFeedCopyParts(title,body)}
     var overflowed by remember(title,body){mutableStateOf(false)}
     Column(Modifier.fillMaxWidth().testTag("sera_feed_copy"),verticalArrangement=Arrangement.spacedBy(3.dp)){
-        if(heading.isNotBlank())Text(heading,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,fontSize=14.sp,lineHeight=20.sp,maxLines=if(copy.isBlank()&&!expanded)5 else Int.MAX_VALUE,overflow=TextOverflow.Ellipsis,onTextLayout={if(copy.isBlank()&&!expanded)overflowed=it.hasVisualOverflow})
-        if(copy.isNotBlank())Text(copy,color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp,lineHeight=20.sp,maxLines=if(expanded)Int.MAX_VALUE else 5,overflow=TextOverflow.Ellipsis,onTextLayout={if(!expanded)overflowed=it.hasVisualOverflow})
+        if(heading.isNotBlank())Text(heading,modifier=textTag,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,fontSize=14.sp,lineHeight=20.sp,maxLines=if(copy.isBlank()&&!expanded)5 else Int.MAX_VALUE,overflow=TextOverflow.Ellipsis,onTextLayout={if(copy.isBlank()&&!expanded)overflowed=it.hasVisualOverflow})
+        if(copy.isNotBlank())Text(copy,modifier=if(heading.isBlank())textTag else Modifier,color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp,lineHeight=20.sp,maxLines=if(expanded)Int.MAX_VALUE else 5,overflow=TextOverflow.Ellipsis,onTextLayout={if(!expanded)overflowed=it.hasVisualOverflow})
         if(overflowed||expanded)Box(Modifier.heightIn(min=36.dp).clip(RoundedCornerShape(8.dp)).clickable(role=Role.Button){onExpanded(!expanded)}.padding(end=16.dp).testTag("sera_feed_expand"),contentAlignment=Alignment.CenterStart){Text(if(expanded)"Show less" else "Read more",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold,fontSize=12.sp)}
     }
 }
