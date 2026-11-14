@@ -66,17 +66,18 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
         val encrypted=seal(value,aad(a[0],bucket,a[2],now,expires))
         val db=writableDatabase;db.beginTransaction()
         try{
-            db.insertWithOnConflict("snapshots",null,ContentValues().apply{
+            val inserted=db.insertWithOnConflict("snapshots",null,ContentValues().apply{
                 put("owner",a[0]);put("bucket",bucket);put("item",a[2]);put("written",now);put("expires",expires);put("touched",now);put("payload",encrypted)
             },SQLiteDatabase.CONFLICT_REPLACE)
+            check(inserted!=-1L){"Cache insert failed"}
             // Keep newest records per bucket, and enforce a logical payload budget across all buckets.
             db.execSQL("DELETE FROM snapshots WHERE owner=? AND bucket=? AND item NOT IN (SELECT item FROM snapshots WHERE owner=? AND bucket=? ORDER BY touched DESC,written DESC,item LIMIT ?)",arrayOf(a[0],bucket,a[0],bucket,maxEntries))
-            trim(db,a[0],System.currentTimeMillis())
+            trim(db,now)
             db.setTransactionSuccessful()
         }finally{db.endTransaction()}
         true
     }
-    private fun trim(db:SQLiteDatabase,ownerHash:String,now:Long){
+    private fun trim(db:SQLiteDatabase,now:Long){
         db.delete("snapshots","expires<?",arrayOf(now.toString()))
         val budget=budgetMb()*1024L*1024L
         // Globally bounded, including old account namespaces.
@@ -94,7 +95,7 @@ internal class SeraLocalCache private constructor(context:Context):SQLiteOpenHel
     fun budgetMb():Int=prefs.getInt("text_mb",30).takeIf{it in listOf(15,30,50)}?:30
     fun setBudgetMb(mb:Int)=synchronized(guard){
         require(mb in listOf(15,30,50));prefs.edit().putInt("text_mb",mb).apply()
-        trim(writableDatabase,"",System.currentTimeMillis())
+        trim(writableDatabase,System.currentTimeMillis())
     }
     fun bytes(owner:String):Long=synchronized(guard){
         readableDatabase.rawQuery("SELECT coalesce(sum(length(payload)),0) FROM snapshots WHERE owner=?",arrayOf(hash(owner))).use{c->if(c.moveToFirst())c.getLong(0) else 0L}
