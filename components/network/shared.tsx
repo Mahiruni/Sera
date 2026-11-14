@@ -1,5 +1,6 @@
 import { MemberAvatar } from "@/components/activity/avatar";
 import Link from "next/link";
+import { SeraBrandMark } from "@/components/ui";
 import {
   ArrowUpRight,
   BriefcaseBusiness,
@@ -8,7 +9,6 @@ import {
   MessageCircle,
   UsersRound,
   Bell,
-  ArrowRight,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { UniversalSearchBox } from "./universal-search-box";
@@ -29,9 +29,8 @@ export type OpportunityCard = {
 };
 export function NetworkBrand() {
   return (
-    <Link href="/" className="network-wordmark" aria-label="Sera.et home">
-      Sera<span>.et</span>
-      <i aria-hidden="true" />
+    <Link href="/" className="network-wordmark" aria-label="Sera home">
+      <SeraBrandMark/> Sera
     </Link>
   );
 }

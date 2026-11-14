@@ -1,6 +1,6 @@
 "use client";
 import {postAudiences,audienceLabels,readAudience,type PostAudience} from "@/lib/social/audience";
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, Send, FileText, ChevronDown, Globe2, ChevronRight, Lightbulb, Quote, Award, FolderKanban, MessageCircle, Bookmark, Smile } from "lucide-react";
 import { createPost, updatePost } from "@/lib/social/actions";
@@ -15,6 +15,7 @@ import "./composer-premium.css";
 const labels: Record<PostKind, string> = { idea:"Idea", photos:"Photo", quote:"Quote", talent:"Talent", project:"Project", achievement:"Achievement", question:"Discussion" };
 const icons = {idea:Lightbulb,photos:ImagePlus,quote:Quote,talent:Award,project:FolderKanban,achievement:Award,question:MessageCircle};
 export function PostComposer({ post, initialKind = "idea", draftOwnerId, onPublished }: { post?: SocialPost; initialKind?: PostKind; draftOwnerId?: string; onPublished?: (postId: string) => void }) {
+  const editorId=useId();
   const draftKey = draftOwnerId ? seraDraftKey(draftOwnerId, post?.id) : null;
   const [audience,setAudience]=useState<PostAudience>(post?.audience||"public");
   const [kind,setKind] = useState<PostKind>(post?.kind || initialKind);
@@ -102,7 +103,7 @@ export function PostComposer({ post, initialKind = "idea", draftOwnerId, onPubli
       <input type="hidden" name="kind" value={kind}/>
       {!post&&<label className="sera-post-audience"><Globe2 size={16} aria-hidden="true"/><span>Audience:</span><select name="audience" value={audience} onChange={e=>setAudience(e.target.value as PostAudience)}>{postAudiences.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}</select><small className="sr-only">{audience==="public"?"Visible to SERA members":audience==="connections"?"Your accepted connections":audience==="followers"?"People who follow you":"Only you"}</small></label>}
       {!repost&&(showHeadline||kind==="project")?<label className="sera-premium-headline"><span>Headline</span><input name="title" maxLength={140} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Give your post a headline"/></label>:<input type="hidden" name="title" value={title}/>}
-      <div className="sera-premium-editor"><label htmlFor="sera-premium-body" className="sr-only">{kind==="quote"?"Your quote":"Your story"}</label><textarea id="sera-premium-body" ref={textarea} name="body" rows={8} maxLength={repost?400:kind==="quote"?600:10000} minLength={repost?0:kind==="quote"?3:1} required={!repost&&kind!=="photos"} value={body} onChange={e=>{setBody(e.target.value);e.target.style.height="auto";e.target.style.height=Math.max(160,e.target.scrollHeight)+"px";}} placeholder={kind==="quote"?"Share a thought worth remembering…":kind==="project"?"What have you been building?":"What would you like to share?"}/><span className="sera-premium-counter">{body.length.toLocaleString()} / {(repost?400:kind==="quote"?600:10000).toLocaleString()}</span></div>
+      <div className="sera-premium-editor"><label htmlFor={editorId} className="sr-only">{kind==="quote"?"Your quote":"Your story"}</label><textarea id={editorId} ref={textarea} name="body" rows={8} maxLength={repost?400:kind==="quote"?600:10000} minLength={repost?0:kind==="quote"?3:1} required={!repost&&kind!=="photos"} value={body} onChange={e=>{setBody(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(420,Math.max(160,e.target.scrollHeight))+"px";}} placeholder={kind==="quote"?"Share a thought worth remembering…":kind==="project"?"What have you been building?":"What would you like to share?"}/><span className="sera-premium-counter">{body.length.toLocaleString()} / {(repost?400:kind==="quote"?600:10000).toLocaleString()}</span></div>
       {kind==="quote"?<label className="sera-premium-headline">Attribution <input name="quote_source" maxLength={120} value={quoteSource} onChange={e=>setQuoteSource(e.target.value)} placeholder="Who said it?"/></label>:<input type="hidden" name="quote_source" value={quoteSource}/>}
       {!post&&<div className="sera-premium-toolbar" aria-label="Post attachments and tools">
         <button type="button" onClick={()=>{fileInput.current?.click();}}><ImagePlus size={23}/><span>Photos</span></button>

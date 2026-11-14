@@ -30,7 +30,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{edit?:s
   const { data: visibilitySettings } = await db.from("professional_profile_visibility").select("visibility").eq("user_id", user.id).maybeSingle();
   const { data: publicPortfolio } = await db.from("professional_public_portfolios").select("published").eq("user_id",user.id).maybeSingle();
   return (
-    <div className="container page account-foundation">
+    <div className="container page account-foundation sera-web-settings">
       {profile ? (
         <ProfessionalProfile
           key={edit?"edit":"view"}

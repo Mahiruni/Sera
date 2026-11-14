@@ -1,0 +1,51 @@
+name: Sera Web Responsive QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'public/**'
+      - 'tests/e2e/web-signature*'
+      - '.github/workflows/sera-web-responsive.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SERA_E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+      SERA_ACCOUNT_REGISTRATION: enabled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false @playwright/test@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Run actual web components in local browser
+        run: |
+          mkdir -p app/qa-messaging-fixture app/qa-web-signature
+          cp tests/e2e/messaging-fixture-page.tsx app/qa-messaging-fixture/page.tsx
+          cp tests/e2e/web-signature-fixture.tsx app/qa-web-signature/page.tsx
+          npx next dev --hostname 127.0.0.1 --port 3000 > /tmp/sera-web-qa.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3000/sign-in >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS --max-time 10 http://127.0.0.1:3000/sign-in >/dev/null
+          npx playwright test tests/e2e/web-signature.spec.ts --project=chromium
+      - name: Upload browser screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sera-web-responsive-qa
+          path: |
+            test-results/
+            /tmp/sera-web-qa.log
+          retention-days: 7

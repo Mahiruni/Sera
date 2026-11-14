@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowUpRight,
   Bookmark,
@@ -12,6 +13,7 @@ import type { Job } from "@/lib/model";
 import { pay, categories } from "@/lib/model";
 import { useSera } from "./store";
 import { PageIntro } from "./page-intro";
+export function SeraBrandMark(){return <Image className="sera-brand-mark" src="/sera-signature-mark.svg" alt="" width={34} height={34} priority/>;}
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <Link
@@ -19,6 +21,7 @@ export function Brand({ small = false }: { small?: boolean }) {
       className={`brand ${small ? "small" : ""}`}
       aria-label="Sera home"
     >
+      <SeraBrandMark />
       <span className="text-wordmark">
         Sera
       </span>

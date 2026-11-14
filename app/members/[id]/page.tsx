@@ -73,7 +73,7 @@ export default async function Member({
   const sentStatus = sent?.data?.status;
   const receivedStatus = received?.data?.status;
   return (
-    <div className="container page social-page social-detail sera-member-page">
+    <div className="container page social-page social-detail sera-member-page sera-web-member">
       {preview && <aside className="sera-visitor-preview" role="status">
         <div><strong>Visitor preview</strong><p>This is a member-view simulation. It does not yet verify anonymous or connection-restricted access.</p></div>
         <Link href="/settings">Exit preview</Link>

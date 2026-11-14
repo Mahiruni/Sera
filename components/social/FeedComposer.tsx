@@ -61,7 +61,7 @@ export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerif
     <section className="sera-feed-compose" aria-label="Create a post">
       <div className="sera-feed-compose-top">
         <MemberAvatar name={name} photo={avatarUrl} size={46} />
-        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}><strong>Share something valuable</strong><small>Ideas, projects, achievements…</small></button>
+        <button ref={trigger} type="button" className="sera-feed-compose-trigger" onClick={() => launch("idea")}><strong>Start a post</strong><small>Share an idea, project or achievement…</small></button>
         <button type="button" className="sera-feed-compose-pencil" aria-label="Create a post" onClick={() => launch("idea")}><PenLine size={19}/></button>
       </div>
       <div className="sera-feed-compose-actions">
@@ -71,8 +71,8 @@ export function FeedComposer({ name, avatarUrl, userId,headline="",identityVerif
       </div>
     </section>
     {open && typeof document !== "undefined" && createPortal(
-      <div className="sera-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
-        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet sera-social-composer-dialog">
+      <div className="sera-compose-backdrop sera-web-compose-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) dismiss(); }}>
+        <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="sera-compose-heading" className="sera-compose-dialog sera-signature-sheet sera-social-composer-dialog sera-web-composer-dialog">
           <SignatureSheetHandle onClose={dismiss}/><div className="sera-compose-dialog-head"><h2 id="sera-compose-heading">Create post</h2><button ref={close} type="button" aria-label="Close editor" onClick={dismiss}><X size={21}/></button></div>
           <div className="sera-compose-dialog-author"><MemberAvatar name={name} photo={avatarUrl} size={42}/><div><strong>{name}{identityVerified&&<IdentityBadge/>}</strong>{headline&&<small>{headline}</small>}</div></div>
           <div className="sera-compose-dialog-content"><PostComposer key={initialKind} initialKind={initialKind} draftOwnerId={userId} onPublished={onPublished} /></div>

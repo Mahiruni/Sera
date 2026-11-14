@@ -2,6 +2,7 @@
 import "@/app/auth-premium.css";
 import { useActionState, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { SeraBrandMark } from "@/components/ui";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -163,6 +164,18 @@ const T = {
     eTerms: "እባክዎ ውሎችንና የግላዊነት መግለጫውን ይቀበሉ።",
     secure: "ደህንነቱ የተጠበቀ መግቢያ",
   },
+  om: {
+    signinTitle:"Baga nagaan deebite", signinSub:"Gara hawaasa ogummaa keetti deebi'i.",
+    signupTitle:"Herrega kee bani", signupSub:"Eenymummaa ogummaa kee ijaari, hojii kee qoodi, namoota waliin wal qunnami.",
+    name:"Maqaa guutuu",namePh:"Maqaa kee guutuu",email:"Teessoo imeelii",phone:"Lakkoofsa bilbilaa",phoneOpt:"filannoo",
+    password:"Jecha iccitii",confirm:"Jecha iccitii mirkaneessi",passwordPh:"Jecha iccitii galchi",newPasswordPh:"Qubee yoo xiqqaate 12",confirmPh:"Jecha iccitii irra deebi'i",
+    show:"Jecha iccitii agarsiisi",hide:"Jecha iccitii dhoksi",forgot:"Jecha iccitii dagatte?",
+    signIn:"Seeni",signingIn:"Seenaa jira...",create:"Herrega bani",creating:"Herrega banuu...",google:"Google waliin itti fufi",linkedin:"LinkedIn waliin itti fufi",connectingGoogle:"Google waliin wal qunnamaa jira...",connectingLinkedin:"LinkedIn waliin wal qunnamaa jira...",or:"yookaan",
+    accountType:"Ani",seeker:"Ogeessa",seekerSub:"Hojii qoodi, wal qunnami",employer:"Qacaraa",employerSub:"Ogeeyyii barbaadi",
+    agree:"Waliin gala",terms:"Haala itti fayyadamaa",and:"fi",privacy:"Imaammata iccitii",haveAccount:"Herrega qabdaa?",newHere:"Sera irratti haaraa dhaa?",country:"Koodii biyyaa",strength:["","Dadhabaa","Giddu galeessa","Gaarii","Cimaa"],
+    closed:"Yeroo ammaa galmeen herregaa hin jiru. Booda irra deebi'i.",pwUpdated:"Jecha iccitii kee haaromfame. Jecha haaraa fayyadami.",signedOut:"Herrega keessaa baate.",
+    eName:"Maqaa guutuu galchi (yoo xiqqaate qubee 2).",eEmail:"Teessoo imeelii sirrii galchi.",ePhone:"Lakkoofsa bilbilaa sirrii galchi.",ePwRequired:"Jecha iccitii galchi.",ePwShort:"Qubee yoo xiqqaate 12 fayyadami.",eConfirm:"Jechoonni iccitii wal hin siman.",eTerms:"Haala itti fayyadamaa fi imaammata iccitii fudhadhu.",secure:"Seensa nageenya qabu",
+  },
 };
 type Copy = (typeof T)["en"];
 
@@ -286,7 +299,7 @@ export function PremiumAuth({
   notice?: Notice;
 }) {
   const { lang, locale } = useSera();
-  const t: Copy = lang === "am" ? T.am : T.en;
+  const t: Copy = locale === "om" ? T.om : lang === "am" ? T.am : T.en;
   const signup = mode === "signup";
   const [state, action, pending] = useActionState<ActionState, FormData>(
     signup ? register : signIn,
@@ -345,11 +358,12 @@ export function PremiumAuth({
         : null;
 
   return (
-    <section className={`ax ax-${mode}`} aria-labelledby="ax-title">
+    <section className={`ax ax-${mode} sera-web-auth`} aria-labelledby="ax-title">
+      <div className="ax-brand-panel" aria-hidden="true"><div className="ax-brand-panel-mark"><SeraBrandMark/><span>Sera</span></div><div><h2>{locale==="om"?"Hojii kee. Namoota kee.":lang==="am"?"ሥራዎ። የእርስዎ ሰዎች።":"Your work. Your people."}</h2><p>{signup?t.signupSub:t.signinSub}</p></div><div className="ax-brand-panel-lines"/></div>
       <div className="ax-card">
         <header className="ax-head">
           <Link href="/" className="ax-brand" aria-label="Sera home">
-            Sera
+            <SeraBrandMark/> Sera
           </Link>
           <h1 id="ax-title">{signup ? t.signupTitle : t.signinTitle}</h1>
           <p>{signup ? t.signupSub : t.signinSub}</p>

@@ -3,17 +3,6 @@ import Link from "next/link";
 
 import {
   ArrowUpRight,
-  PenLine,
-  ImagePlus,
-  FolderKanban,
-  Quote,
-  BriefcaseBusiness,
-  Compass,
-  MessageCircle,
-  Bell,
-  UsersRound,
-  Layers3,
-  Lightbulb,
   Plus,
 } from "lucide-react";
 import { FeedComposer } from "@/components/social/FeedComposer";
@@ -80,19 +69,6 @@ export function NetworkHome({
   const name = profile?.full_name?.trim() || "Your professional profile";
   return (
     <div className="sera-network network-app social-page sera-editorial-feed">
-      <section className="sera-premium-hero" aria-label="Welcome to SERA">
-        <div className="sera-premium-hero-copy">
-          <h1>A good place to grow your career.</h1>
-          <p>Discover people, ideas, projects and opportunities.</p>
-        </div>
-        <div className="sera-premium-hero-art" aria-hidden="true">Sera</div>
-      </section>
-      <nav className="sera-premium-quicklinks" aria-label="Explore SERA">
-        <Link href="/jobs"><BriefcaseBusiness /><span>Jobs &amp; Opportunities</span></Link>
-        <Link href="/discover?tab=people"><UsersRound /><span>People &amp; Connections</span></Link>
-        <Link href="/discover?tab=projects"><Layers3 /><span>Projects &amp; Portfolios</span></Link>
-        <Link href="/feed?kind=idea"><Lightbulb /><span>Ideas &amp; Innovation</span></Link>
-      </nav>
       <div className="network-app-grid">
         <aside className="network-left" aria-label="Your professional identity">
           <section className="network-profile-card">
@@ -155,42 +131,7 @@ export function NetworkHome({
           className="network-content"
           aria-label="Professional community feed"
         >
-          <header className="network-welcome sera-premium-old-welcome">
-            <div>
-              <h1>
-                {mine ? "Your work. Your voice." : "A good place to grow."}
-              </h1>
-              <p className="network-welcome-subtitle">
-                {mine
-                  ? "Everything you have shared with your professional community."
-                  : "Discover ideas, people and opportunities worth your time."}
-              </p>
-            </div>
-            <span>People · Ideas · Opportunities</span>
-          </header>
-          <nav
-            className="network-mobile-shortcuts sera-premium-old-shortcuts"
-            aria-label="Community shortcuts"
-          >
-            <Link href="/discover">
-              <Compass size={14} />
-              Discover
-            </Link>
-            <Link href="/jobs">
-              <BriefcaseBusiness size={14} />
-              Opportunities
-            </Link>
-            <Link href="/network/messages">
-              <MessageCircle size={14} aria-hidden="true" /> Messages
-            </Link>
-            <Link href="/notifications">
-              <Bell size={14} aria-hidden="true" /> Notifications
-            </Link>
-            <Link href="/settings">
-              My profile <ArrowUpRight size={13} />
-            </Link>
-          </nav>
-          <nav className="network-feed-tabs" aria-label="Feed view">
+          <nav className="network-feed-tabs sera-web-feed-tabs" aria-label="Feed view">
             <Link href="/feed" aria-current={!mine&&!personalized&&!kind?"page":undefined}>Latest</Link>
             <Link href="/feed?view=for-you" aria-current={personalized ? "page" : undefined}>For you</Link>
             <Link
