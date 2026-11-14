@@ -75,3 +75,20 @@ internal fun seraRelativeActivity(seconds:Long):String {
  fun ago(n:Long,unit:String)="$n $unit${if(n==1L)"" else "s"} ago"
  return when { elapsed<90->"Active now";elapsed<3600->ago(elapsed/60,"minute");elapsed<86400->ago(elapsed/3600,"hour");elapsed<604800->ago(elapsed/86400,"day");else->ago(elapsed/604800,"week") }
 }
+
+/** Batch visible presence through the same RLS-protected table as peerPresence. No message timestamps are used. */
+internal fun inboxPeerPresence(token:String,ids:List<String>):Map<String,String>{
+ val result=mutableMapOf<String,String>()
+ val valid=ids.distinct().filter{it.matches(Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))}
+ for(batch in valid.chunked(100)){
+  val raw=presenceRequest(token,"professional_presence?select=member_id,last_seen_at,visibility&visibility=eq.connections&member_id=in.("+batch.joinToString(",")+")")?:continue
+  runCatching{val rows=JSONArray(raw);for(i in 0 until rows.length()){
+   val row=rows.getJSONObject(i);val id=row.optString("member_id")
+   if(id in batch&&row.optString("visibility")=="connections"){
+    val elapsed=java.time.Duration.between(java.time.Instant.parse(row.getString("last_seen_at")),java.time.Instant.now()).seconds.coerceAtLeast(0)
+    result[id]=seraRelativeActivity(elapsed)
+   }
+  }}
+ }
+ return result
+}

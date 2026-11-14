@@ -41,6 +41,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.VolumeUp
@@ -86,6 +90,23 @@ import java.net.URL
     var swipeError by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
+    val callHost=LocalSeraGlobalCall.current
+    var confirmCall by remember{mutableStateOf<NativeConversation?>(null)}
+    var callError by remember{mutableStateOf(false)}
+    var activity by remember(token,userId){mutableStateOf<Map<String,String>>(emptyMap())}
+    val peers=remember(conversations){conversations.map{it.peerId}.distinct()}
+    val lifecycle=LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(token,userId,peers,lifecycle){
+        activity=emptyMap()
+        if(token.isNotBlank()&&userId.isNotBlank()&&peers.isNotEmpty())lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED){
+            while(true){activity=withContext(Dispatchers.IO){inboxPeerPresence(token,peers)};delay(30000)}
+        }
+    }
+    confirmCall?.let{c->SeraInboxCallConfirmation(c,token,onDismiss={confirmCall=null},onConfirm={
+        confirmCall=null
+        if(!BuildConfig.LIVE_CALLING_INCLUDED||callHost?.startInbox(SeraCallTarget(c.id,c.peerName,c.photo))!=true)callError=true
+    })}
+    if(callError)AlertDialog(onDismissRequest={callError=false},title={Text(stringResource(R.string.sera_inbox_call_title))},text={Text(stringResource(R.string.sera_inbox_call_unavailable))},confirmButton={TextButton(onClick={callError=false}){Text(stringResource(R.string.sera_inbox_call_ok))}})
     fun quick(c:NativeConversation,action:String,value:Boolean,minutes:Int=0){if(busy)return;busy=true;scope.launch{val r=withContext(Dispatchers.IO){chatRpc(token,"sera_set_conversation_preference",JSONObject().put("p_conversation",c.id).put("p_action",action).put("p_value",value).put("p_mute_minutes",minutes))};busy=false;if(r.first!=null){revealed=null;onControlChanged()}else swipeError=r.second}}
     if(controls)SeraMessagingControlDialog(token,userId,onDismiss={controls=false})
     Column(Modifier.fillMaxSize()){
@@ -116,7 +137,7 @@ import java.net.URL
                         shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().pointerInput(conversation.id){var dx=0f;detectHorizontalDragGestures(onDragStart={dx=0f},onHorizontalDrag={change,amount->change.consume();dx+=amount},onDragEnd={if(kotlin.math.abs(dx)>52.dp.toPx())revealed=if(revealed==conversation.id)null else conversation.id},onDragCancel={dx=0f})},
                         colors = CardDefaults.cardColors(containerColor = if(conversation.unread>0) inboxSoft else chatSurface)) {
                         Row(Modifier.padding(horizontal=12.dp,vertical=12.dp), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(Modifier.size(48.dp).clip(CircleShape).background(inboxSoft),
                                 contentAlignment = Alignment.Center) {
                                 Text(conversation.peerName.take(1).uppercase(), color = inboxTeal, fontWeight = FontWeight.Bold)
@@ -124,10 +145,24 @@ import java.net.URL
                             }
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                                 Text((if(conversation.pinned)"⌖ " else "")+conversation.peerName, fontWeight = if(conversation.unread>0) FontWeight.Bold else FontWeight.SemiBold, color = inboxInk,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                Text(conversation.preview.ifBlank{"Start a conversation"}, fontSize = 13.sp, color = muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                activity[conversation.peerId]?.let{status->
+                                    val active=status=="Active now"
+                                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){
+                                        if(active)Box(Modifier.size(6.dp).background(if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF6EE7B7) else Color(0xFF137A4D),CircleShape))
+                                        Text(inboxActivityText(status),fontSize=11.sp,color=if(active)if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFF6EE7B7) else Color(0xFF137A4D) else muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                    }
+                                }
+                                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                                    Text(conversation.preview.ifBlank{"Start a conversation"},Modifier.weight(1f),fontSize=13.sp,color=muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                    if(conversation.unread>0||conversation.markedUnread)Box(Modifier.size(20.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}
+                                }
                             }
                             if(userId.isNotBlank())SeraConversationControlMenu(token,conversation,onControlChanged)
-                            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(5.dp)){val stamp=runCatching{java.time.Instant.parse(conversation.lastAt).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}.getOrDefault("");if(stamp.isNotBlank())Text(stamp,fontSize=11.sp,color=muted);if(conversation.unread>0||conversation.markedUnread) Box(Modifier.size(24.dp).clip(CircleShape).background(inboxTeal),contentAlignment=Alignment.Center){Text(if(conversation.unread>99)"99+" else if(conversation.unread>0)conversation.unread.toString() else "•",fontSize=10.sp,color=Color.White,fontWeight=FontWeight.Bold)}}
+                            Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(2.dp)){
+                                IconButton(onClick={confirmCall=conversation},modifier=Modifier.size(48.dp).testTag("sera_inbox_call_${conversation.id}")){
+                                    Icon(Icons.Outlined.Call,stringResource(R.string.sera_inbox_call_person,conversation.peerName),tint=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFFC4B5FD) else Color(0xFF4C1D95),modifier=Modifier.size(24.dp))
+                                }
+                            }
                         }
                     }
                     androidx.compose.animation.AnimatedVisibility(visible=revealed==conversation.id&&userId.isNotBlank()){
@@ -147,3 +182,24 @@ import java.net.URL
 }
 
 @Composable internal fun SeraInboxConversationDivider(){Box(Modifier.fillMaxWidth().padding(start=72.dp,end=12.dp).height(1.dp).clip(CircleShape).background(seraChatColors().border.copy(alpha=.55f)).testTag("sera_inbox_conversation_divider"))}
+
+@Composable private fun inboxActivityText(status:String):String{
+    if(status=="Active now")return stringResource(R.string.sera_inbox_active_now)
+    val parts=status.split(" ")
+    val n=parts.firstOrNull()?.toIntOrNull()?:return status
+    val id=when(parts.getOrNull(1)?.removeSuffix("s")){"minute"->R.plurals.sera_inbox_minutes;"hour"->R.plurals.sera_inbox_hours;"day"->R.plurals.sera_inbox_days;"week"->R.plurals.sera_inbox_weeks;else->return status}
+    return androidx.compose.ui.res.pluralStringResource(id,n,n)
+}
+@Composable private fun SeraInboxCallConfirmation(conversation:NativeConversation,token:String,onDismiss:()->Unit,onConfirm:()->Unit){
+    val purple=if(androidx.compose.foundation.isSystemInDarkTheme())Color(0xFFC4B5FD) else Color(0xFF4C1D95)
+    var confirmed by remember(conversation.id){mutableStateOf(false)}
+    AlertDialog(onDismissRequest=onDismiss,shape=RoundedCornerShape(26.dp),containerColor=MaterialTheme.colorScheme.surface,
+        icon={Box(Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),contentAlignment=Alignment.Center){
+            if(conversation.photo.isNullOrBlank())Icon(Icons.Outlined.Call,null,tint=purple,modifier=Modifier.size(30.dp))
+            else SeraMediaImage(conversation.photo!!,"Profile photo",128,128,Modifier.fillMaxSize(),accessToken=token)
+        }},
+        title={Text(stringResource(R.string.sera_inbox_call_title),fontWeight=FontWeight.SemiBold)},
+        text={Text(stringResource(R.string.sera_inbox_call_question,conversation.peerName),style=MaterialTheme.typography.bodyLarge)},
+        dismissButton={OutlinedButton(onClick=onDismiss,modifier=Modifier.testTag("sera_inbox_call_no")){Text(stringResource(R.string.sera_inbox_call_no))}},
+        confirmButton={Button(enabled=!confirmed,onClick={if(!confirmed){confirmed=true;onConfirm()}},modifier=Modifier.testTag("sera_inbox_call_yes")){Icon(Icons.Outlined.Call,null,modifier=Modifier.size(18.dp));Spacer(Modifier.width(7.dp));Text(stringResource(R.string.sera_inbox_call_yes))}})
+}
