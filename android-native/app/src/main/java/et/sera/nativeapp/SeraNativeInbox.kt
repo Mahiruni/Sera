@@ -407,6 +407,8 @@ private class InboxThreadState {
     var cachedHistory by mutableStateOf(false)
     var safetyDialog by mutableStateOf(false)
     var initialMessagesLoaded by mutableStateOf(false)
+    val openedAt=android.os.SystemClock.elapsedRealtime()
+    var firstPaintRecorded=false
     var initialScrollComplete by mutableStateOf(false)
     var detailsOpen by mutableStateOf(false)
     var libraryMode by mutableStateOf<String?>(null)
@@ -618,6 +620,13 @@ private class InboxController(
         LaunchedEffect(token,selected?.id,lifecycle,link,activeCall,thread.initialMessagesLoaded) { peerActivity=null; val peer=selected?.peerId?:return@LaunchedEffect; if(!link.available||!thread.initialMessagesLoaded)return@LaunchedEffect; lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){peerActivity=withContext(Dispatchers.IO){peerPresence(token,peer)};delay(seraSecondarySyncDelay(link,activeCall,30000L))}} }
         val ime = WindowInsets.ime
         val density = LocalDensity.current
+        LaunchedEffect(selected?.id,thread.initialMessagesLoaded){
+            if(selected!=null&&thread.initialMessagesLoaded&&!thread.firstPaintRecorded){
+                withFrameNanos{}
+                thread.firstPaintRecorded=true
+                SeraPerformance.record("chat_first_frame",thread.openedAt)
+            }
+        }
         val tail = thread.textQueue.lastOrNull()?.id ?: thread.textAcknowledged.lastOrNull()?.id ?: messages.lastOrNull()?.id
         LaunchedEffect(selected?.id, tail,thread.initialMessagesLoaded,thread.detailsOpen) {
             val id = selected?.id ?: return@LaunchedEffect

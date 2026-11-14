@@ -470,10 +470,11 @@ fun SeraApp(
     LaunchedEffect(accessToken,authenticatedUserId){
         val token=accessToken?:return@LaunchedEffect
         if(authenticatedUserId.isNotBlank())return@LaunchedEffect
-        repeat(3){attempt->
+        var attempt=0
+        while(authenticatedUserId.isBlank()){
             val result=withContext(Dispatchers.IO){loadSeraUserId(token)}
             if(result.first!=null){authenticatedUserId=result.first!!;return@LaunchedEffect}
-            if(attempt<2)delay(1000L*(attempt+1))
+            delay(seraReconnectDelay(attempt));attempt=(attempt+1).coerceAtMost(5)
         }
     }
     LaunchedEffect(accessToken, tab, refresh) {

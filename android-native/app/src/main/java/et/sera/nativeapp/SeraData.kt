@@ -196,22 +196,29 @@ internal fun authenticatedPostMedia(path:String):String=BuildConfig.SUPABASE_URL
 /** Cache only a server-validated account snapshot for this access token.
  * The server remains authoritative for every protected data operation. */
 internal object SeraAccountSnapshot {
-    private val lock=Any()
-    private var token:String?=null
-    private var user:JSONObject?=null
-    private var at=0L
+    private data class Entry(val access:String,val account:JSONObject,val at:Long)
+    private val entry=java.util.concurrent.atomic.AtomicReference<Entry?>(null)
+    private val generation=java.util.concurrent.atomic.AtomicLong(0)
+    private val readLock=Any()
     fun seed(access:String,account:JSONObject?){
         if(account==null||account.optString("id").isBlank())return
-        synchronized(lock){token=access;user=account;at=android.os.SystemClock.elapsedRealtime()}
+        entry.set(Entry(access,account,android.os.SystemClock.elapsedRealtime()))
     }
-    fun clear(){synchronized(lock){token=null;user=null;at=0}}
-    fun read(access:String):Pair<JSONObject?,String> = synchronized(lock){
-        if(token==access&&user!=null&&android.os.SystemClock.elapsedRealtime()-at in 0L..120000L)return@synchronized user to ""
+    // Sign-out must never wait on an in-flight network call.
+    fun clear(){generation.incrementAndGet();entry.set(null)}
+    fun read(access:String):Pair<JSONObject?,String> = synchronized(readLock){
+        val current=entry.get()
+        if(current!=null&&current.access==access&&android.os.SystemClock.elapsedRealtime()-current.at in 0L..120000L)return@synchronized current.account to ""
+        val before=generation.get()
         val result=request(access,"user",true)
         val body=result.first?:return@synchronized null to result.second
         val account=runCatching{JSONObject(body)}.getOrNull()
         if(account==null||account.optString("id").isBlank())return@synchronized null to "Unable to read your account."
-        token=access;user=account;at=android.os.SystemClock.elapsedRealtime()
+        if(before==generation.get()){
+            val next=Entry(access,account,android.os.SystemClock.elapsedRealtime())
+            entry.set(next)
+            if(before!=generation.get())entry.compareAndSet(next,null)
+        }
         account to ""
     }
 }

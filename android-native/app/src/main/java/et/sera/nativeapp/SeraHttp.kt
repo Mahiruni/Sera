@@ -15,7 +15,8 @@ internal object SeraHttp {
         .retryOnConnectionFailure(false).build()
     data class Result(val status:Int,val body:String?,val error:String)
     fun rest(token:String,path:String,method:String="GET",body:JSONObject?=null,prefer:String?=null):Result{
-        return try{
+        val started=android.os.SystemClock.elapsedRealtime()
+        val result=try{
             val builder=Request.Builder().url(BuildConfig.SUPABASE_URL.trimEnd('/')+"/rest/v1/"+path)
                 .header("apikey",BuildConfig.SUPABASE_ANON_KEY).header("Authorization","Bearer "+token)
                 .header("Accept","application/json").header("Cache-Control","no-store")
@@ -27,5 +28,8 @@ internal object SeraHttp {
                 else Result(response.code,null,"Request failed (HTTP ${response.code}). Please retry.")
             }
         }catch(_:Exception){Result(0,null,"Connection failed. Check your network and retry.")}
+        val category=when(path.substringBefore("?")){"rpc/sera_inbox_v2"->"inbox";"professional_messages"->"messages";"rpc/member_cards"->"member_cards";"posts"->"feed";else->"secondary"}
+        SeraPerformance.record(category,started,result.status)
+        return result
     }
 }
