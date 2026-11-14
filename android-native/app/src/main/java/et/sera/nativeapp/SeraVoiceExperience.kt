@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -48,21 +47,29 @@ internal data class SeraVoiceSummary(val title:String,val connectedSeconds:Long?
 /** Only an unanswered call animates; a connected or reconnecting call stays still. */
 internal fun seraCallShouldAnimate(started:Long,cancelling:Boolean,active:Boolean)=started==0L&&!cancelling&&active
 
-/** The contact photo stays fixed; a single soft orbit signals dialing. */
+/** A continuous inhale/exhale, shared by the portrait and its surrounding circle. */
+internal fun seraCallPortraitScale(progress:Float)=1f+.08f*progress.coerceIn(0f,1f)
+internal fun seraCallRingRadiusDp(progress:Float)=70f+12f*progress.coerceIn(0f,1f)
+internal fun seraCallRingAlpha(progress:Float)=.85f-.40f*progress.coerceIn(0f,1f)
+
+/** The portrait and complete outer circle breathe together without rotation or double beats. */
 @Composable internal fun SeraVoiceAvatar(name:String,photo:String?,accent:Color,pulsing:Boolean,modifier:Modifier=Modifier){
     val colors=MaterialTheme.colorScheme
     val animate=pulsing&&ValueAnimator.areAnimatorsEnabled()
-    val angle=if(animate){
-        val transition=rememberInfiniteTransition(label="call orbit")
-        transition.animateFloat(0f,360f,infiniteRepeatable(tween(2300,easing=LinearEasing),RepeatMode.Restart),label="ring angle")
+    val progress=if(animate){
+        val transition=rememberInfiniteTransition(label="call breathing")
+        transition.animateFloat(0f,1f,infiniteRepeatable(tween(1600,easing=FastOutSlowInEasing),RepeatMode.Reverse),label="breath progress")
     }else rememberUpdatedState(0f)
     Box(modifier.size(176.dp).testTag("sera_voice_avatar_footprint"),contentAlignment=Alignment.Center){
-        Box(Modifier.size(156.dp).border(1.dp,accent.copy(alpha=.15f),CircleShape))
-        if(animate)Canvas(Modifier.size(156.dp).testTag("sera_call_orbit")){
-            drawArc(color=accent.copy(alpha=.85f),startAngle=angle.value-90f,sweepAngle=96f,useCenter=false,style=Stroke(width=2.5.dp.toPx(),cap=StrokeCap.Round))
+        Canvas(Modifier.size(176.dp).testTag(if(animate)"sera_call_breathing_ring" else "sera_call_static_ring")){
+            drawCircle(color=accent.copy(alpha=if(animate)seraCallRingAlpha(progress.value) else .24f),
+                radius=seraCallRingRadiusDp(progress.value).dp.toPx(),
+                style=Stroke(width=2.dp.toPx()))
         }
-        Box(Modifier.size(136.dp).border(1.dp,accent.copy(alpha=.24f),CircleShape))
-        Box(Modifier.size(112.dp).clip(CircleShape).background(colors.primaryContainer),contentAlignment=Alignment.Center){
+        Box(Modifier.size(112.dp).graphicsLayer{
+            val scale=seraCallPortraitScale(progress.value)
+            scaleX=scale;scaleY=scale
+        }.clip(CircleShape).background(colors.primaryContainer).testTag("sera_call_portrait"),contentAlignment=Alignment.Center){
             Text(name.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1).uppercase()},fontSize=34.sp,color=colors.onPrimaryContainer,fontWeight=FontWeight.SemiBold)
             if(!photo.isNullOrBlank())SeraMediaImage(photo,voiceText("Profile photo"),224,224,Modifier.fillMaxSize())
         }

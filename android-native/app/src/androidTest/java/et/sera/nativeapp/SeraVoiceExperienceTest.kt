@@ -21,10 +21,21 @@ class SeraVoiceExperienceTest {
         assertEquals(false,seraCallShouldAnimate(0L,true,true))
         assertEquals(false,seraCallShouldAnimate(0L,false,false))
     }
-    @Test fun connectedAvatarHasNoOrbit(){
+    @Test fun connectedAvatarIsStatic(){
         compose.setContent{MaterialTheme{SeraVoiceAvatar("Test member",null,MaterialTheme.colorScheme.primary,false)}}
         compose.onNodeWithTag("sera_voice_avatar_footprint").assertExists()
-        compose.onNodeWithTag("sera_call_orbit").assertDoesNotExist()
+        compose.onNodeWithTag("sera_call_portrait").assertExists()
+        compose.onNodeWithTag("sera_call_static_ring").assertExists()
+        compose.onNodeWithTag("sera_call_breathing_ring").assertDoesNotExist()
+    }
+    @Test fun portraitAndRingExpandTogetherAndReturnToRest(){
+        assertEquals(1f,seraCallPortraitScale(0f),.001f)
+        assertEquals(1.08f,seraCallPortraitScale(1f),.001f)
+        assertEquals(70f,seraCallRingRadiusDp(0f),.001f)
+        assertEquals(82f,seraCallRingRadiusDp(1f),.001f)
+        assertEquals(1.04f,seraCallPortraitScale(.5f),.001f)
+        assertEquals(76f,seraCallRingRadiusDp(.5f),.001f)
+        assertEquals(.45f,seraCallRingAlpha(1f),.001f)
     }
     @Test fun standardCallControlsUseAccessibleConsistentTargets(){
         compose.setContent{MaterialTheme{Column{
