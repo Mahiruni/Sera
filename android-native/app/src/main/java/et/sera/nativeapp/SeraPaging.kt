@@ -105,7 +105,7 @@ internal class SeraDirectFeed(
     private val personalized:Boolean,
     private val savedOnly:Boolean,
     private val onFirstPage:((List<SeraPost>)->Unit)?=null,
-    private val fetch: (Int) -> Pair<List<SeraPost>?, String> = {page->loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=SERA_ANDROID_FEED_PAGE_SIZE)},
+    private val fetch: (Int) -> Pair<List<SeraPost>?, String> = {page->loadSeraFeedChecked(token,page,personalized,savedOnly,SERA_ANDROID_FEED_PAGE_SIZE)},
     private val enrich: (List<SeraPost>) -> List<SeraPost>? = {rows->enrichSeraFeed(token,rows).first}
 ){
     private val mutable=MutableStateFlow(SeraFeedState())
@@ -115,12 +115,14 @@ internal class SeraDirectFeed(
     private var closed=false
     private var started=false
     private var baseJob:kotlinx.coroutines.Job?=null
+    private var failedPage=0
     private val detailJobs=mutableListOf<kotlinx.coroutines.Job>()
     @Synchronized fun start(){if(!closed&&!started)refresh()}
     @Synchronized fun refresh(){
         if(closed)return
         started=true
         generation++
+        failedPage=0
         baseJob?.cancel()
         detailJobs.forEach{it.cancel()};detailJobs.clear()
         mutable.value=mutable.value.copy(refreshing=true,appending=false,error="",nextPage=0,hasMore=true)
@@ -134,20 +136,25 @@ internal class SeraDirectFeed(
     }
     @Synchronized fun retry(){
         val s=mutable.value
-        if(s.nextPage==0||s.refreshing||s.rows.isEmpty())refresh()
+        if(failedPage==0||s.nextPage==0||s.refreshing||s.rows.isEmpty())refresh()
         else {mutable.value=s.copy(error="");append()}
     }
     private fun load(expected:Long,page:Int){
         baseJob=worker.launch{
             try{
-                val response=fetch(page)
+                var response=fetch(page)
+                // Retry transient transport failures once; a stale generation may never publish.
+                if(response.first==null && page==0 && !response.second.contains("HTTP 401") && !response.second.contains("HTTP 403")){
+                    kotlinx.coroutines.delay(750L)
+                    response=fetch(page)
+                }
                 val rows=response.first
-                if(rows==null){fail(expected,response.second.ifBlank{"Unable to load posts."});return@launch}
+                if(rows==null){fail(expected,page,response.second.ifBlank{"Unable to load posts."});return@launch}
                 if(!publish(expected,page,rows))return@launch
                 if(page==0&&!personalized&&!savedOnly)onFirstPage?.invoke(rows)
                 scheduleDetails(expected,page,rows)
             }catch(e:kotlinx.coroutines.CancellationException){throw e}
-            catch(e:Exception){android.util.Log.w("SeraFeed","Direct feed failed: "+e.javaClass.simpleName);fail(expected,"Unable to load posts. Please retry.")}
+            catch(e:Exception){android.util.Log.w("SeraFeed","Direct feed failed: "+e.javaClass.simpleName);fail(expected,page,"Unable to load posts. Please retry.")}
         }
     }
     @Synchronized private fun publish(expected:Long,page:Int,rows:List<SeraPost>):Boolean{
@@ -158,8 +165,8 @@ internal class SeraDirectFeed(
         android.util.Log.d("SeraFeed","Direct feed published: ${combined.size} rows")
         return true
     }
-    @Synchronized private fun fail(expected:Long,message:String){
-        if(!closed&&expected==generation)mutable.value=mutable.value.copy(refreshing=false,appending=false,error=message)
+    @Synchronized private fun fail(expected:Long,page:Int,message:String){
+        if(!closed&&expected==generation){failedPage=page;mutable.value=mutable.value.copy(refreshing=false,appending=false,error=message)}
     }
     @Synchronized private fun scheduleDetails(expected:Long,page:Int,rows:List<SeraPost>){
         if(closed||expected!=generation||rows.isEmpty())return

@@ -101,9 +101,10 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
     var newHead by remember(token,personalized,savedOnly){mutableStateOf<String?>(null)}
     val displayedHead=posts.firstOrNull()?.let{SeraFeedHead(it.id,it.publishedAt)}
     val currentHead by rememberUpdatedState(displayedHead)
+    val currentRefreshing by rememberUpdatedState(feedState.refreshing)
     LaunchedEffect(displayedHead){if(displayedHead?.id==newHead)newHead=null}
     val freshnessLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle,link){if(link.available&&!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(baseline!=null){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null&&current!=null){newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraSecondarySyncDelay(link,activeCall,60000L))}}}
+    LaunchedEffect(token,personalized,savedOnly,activeCall,freshnessLifecycle,link){if(link.available&&!personalized&&!savedOnly&&token.isNotBlank())freshnessLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){if(!activeCall){val baseline=currentHead;if(!currentRefreshing){val result=withContext(Dispatchers.IO){seraLatestFeedHead(token)};val remote=result.first;val current=currentHead;if(result.second.isBlank()&&remote!=null){if(current==null)feed.refresh() else newHead=remote.id.takeIf{seraFeedHeadIsNewer(remote,current)}}}};kotlinx.coroutines.delay(seraSecondarySyncDelay(link,activeCall,60000L))}}}
     val authorIds = posts.map { it.authorId }.distinct().take(100)
     var activeAuthors by remember(token) { mutableStateOf<Set<String>>(emptySet()) }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -274,7 +275,7 @@ internal fun SeraPagedFeed(token: String, refreshKey: Int, onLike: (SeraPost) ->
                 }
             }
             if ((!feedState.refreshing&&feedState.error.isBlank()) && posts.size == 0) item {
-                Text(stringResource(R.string.feed_empty))
+                Column(Modifier.fillMaxWidth().padding(vertical=16.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(stringResource(R.string.feed_empty),style=MaterialTheme.typography.bodyMedium);TextButton(onClick=::retryFeed){Text(stringResource(R.string.retry))}}
             }
         }
         if(newHead!=null&&!savedOnly&&!personalized&&!feedState.refreshing){

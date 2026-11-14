@@ -546,7 +546,7 @@ fun SeraApp(
                     val standaloneThread = tab=="Inbox"
                     val baseTab = if(standaloneThread)tabHistory.lastOrNull{it!="Inbox"}?:"Home" else tab
                     val darkSystem = androidx.compose.foundation.isSystemInDarkTheme()
-                    val sections = remember { listOf("Home", "Network", "Jobs", "Inbox", "Profile") }
+                    val sections = remember { listOf("Home", "Network", "Explore", "Jobs", "Inbox", "Profile") }
                     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -675,6 +675,7 @@ fun SeraApp(
                                         "Workspace" -> SeraNativeWorkspace(pageModifier,::navigateTo)
                                         "Settings" -> SeraContentSettings(accessToken ?: "",pageModifier){navigateTo("Profile")}
                                         "Search" -> SeraUniversalSearch(accessToken ?: "", authenticatedUserId, pageModifier)
+                                        "Explore" -> SeraExplore(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Notifications" -> SeraNativeNotifications(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Jobs" -> SeraNativeJobs(accessToken ?: "", authenticatedUserId, pageModifier)
                                         "Network" -> SeraNativeNetwork(
@@ -791,7 +792,7 @@ private fun BoxScope.SeraChromeOverlays(
     ) {
         SeraFloatingDock(
             selected = selected,
-            sections = listOf("Home", "Network", "Search", "Jobs", "Inbox"),
+            sections = listOf("Home", "Network", "Explore", "Jobs", "Inbox"),
             onNavigate = onNavigate,
             canCompose = canCompose,
             profileAvatarUrl = profileAvatarUrl,

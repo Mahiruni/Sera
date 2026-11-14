@@ -1,0 +1,10 @@
+<resources>
+    <string name="explore_title">Sakatta\'i</string>
+    <string name="explore_subtitle">Addunyaa ogummaa kee sakatta\'i.</string>
+    <string name="explore_hiring">Qacarrii</string>
+    <string name="explore_opportunities">Carraalee</string>
+    <string name="explore_events">Taateewwan</string>
+    <string name="explore_spaces">Bakkeewwan</string>
+    <string name="explore_talent">Dandeettii</string>
+    <string name="explore_communities">Hawaasota</string>
+</resources>

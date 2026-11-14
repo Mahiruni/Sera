@@ -1,0 +1,10 @@
+<resources>
+    <string name="explore_title">ያስሱ</string>
+    <string name="explore_subtitle">የሙያ ዓለምዎን ያስሱ።</string>
+    <string name="explore_hiring">ቅጥር</string>
+    <string name="explore_opportunities">ዕድሎች</string>
+    <string name="explore_events">ዝግጅቶች</string>
+    <string name="explore_spaces">የትብብር ቦታዎች</string>
+    <string name="explore_talent">ተሰጥኦ</string>
+    <string name="explore_communities">ማኅበረሰቦች</string>
+</resources>

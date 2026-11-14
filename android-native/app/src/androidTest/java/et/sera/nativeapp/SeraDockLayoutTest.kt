@@ -26,7 +26,7 @@ class SeraDockLayoutTest {
             var active by remember{mutableStateOf("Home")}
             MaterialTheme {
                 Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter){
-                    SeraFloatingDock(active,listOf("Home","Network","Search","Jobs","Inbox"),{active=it},inboxCount=3)
+                    SeraFloatingDock(active,listOf("Home","Network","Explore","Jobs","Inbox"),{active=it},inboxCount=3)
                 }
             }
         }
@@ -35,7 +35,7 @@ class SeraDockLayoutTest {
         val root=compose.onNodeWithTag("sera_dock_root").fetchSemanticsNode().boundsInRoot
         val surface=compose.onNodeWithTag("sera_dock_surface").fetchSemanticsNode().boundsInRoot
         assertEquals(insetPx.toFloat(),root.bottom-surface.bottom,1f)
-        compose.onNodeWithTag("sera_dock_Search").performClick().assertIsSelected()
+        compose.onNodeWithTag("sera_dock_Explore").performClick().assertIsSelected()
         compose.onNodeWithTag("sera_dock_Inbox").assertExists().performClick().assertIsSelected()
         compose.onNodeWithContentDescription("Messages, 3 unread",substring=true).assertExists()
     }

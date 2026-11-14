@@ -72,6 +72,20 @@ internal fun loadSeraFeedBase(token:String,page:Int=0,postId:String?=null,person
     } catch(e:Exception){null to "Unable to read the feed response."}
 }
 
+/** Confirm a surprising empty Latest response against a minimal RLS-filtered head read.
+ * Never bypass authentication or return posts from a different audience. */
+internal fun loadSeraFeedChecked(token:String,page:Int,personalized:Boolean,savedOnly:Boolean,pageSize:Int):Pair<List<SeraPost>?,String>{
+    val first=loadSeraFeedBase(token,page,personalized=personalized,savedOnly=savedOnly,pageSize=pageSize)
+    if(page!=0||personalized||savedOnly||first.first?.isNotEmpty()==true)return first
+    if(first.first==null)return first
+    val head=seraLatestFeedHead(token)
+    if(head.second.isNotBlank())return null to head.second
+    if(head.first==null)return first
+    val retry=loadSeraFeedBase(token,page,personalized=false,savedOnly=false,pageSize=pageSize)
+    if(retry.first?.isNotEmpty()==true)return retry
+    return null to retry.second.ifBlank{"Published posts are available but could not be loaded. Please retry."}
+}
+
 internal fun enrichSeraFeed(token:String,posts:List<SeraPost>):Pair<List<SeraPost>?,String>{
     if(posts.isEmpty())return emptyList<SeraPost>() to ""
     return try {

@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 
 /** Shared signature geometry; footer destinations retain their exact existing shapes. */
 @Composable internal fun SeraDockGlyph(section:String,tint:Color,modifier:Modifier=Modifier){
-    val key=when(section){"Home"->"Home";"Network"->"PeopleOutline";"Search"->"Explore";"Jobs"->"WorkOutline";"Inbox"->"Inbox";else->"AccountCircle"}
+    val key=when(section){"Home"->"Home";"Network"->"PeopleOutline";"Explore"->"Explore";"Search"->"Search";"Jobs"->"WorkOutline";"Inbox"->"Inbox";else->"AccountCircle"}
     SeraSignatureGlyph(key,tint,modifier,size=23.dp)
 }
 
@@ -71,6 +71,7 @@ internal fun SeraFloatingDock(
         ) {
             sections.forEach { section ->
                 val active = selected == section
+                val exploreLabel = androidx.compose.ui.res.stringResource(R.string.explore_title)
                 val tint by animateColorAsState(
                     targetValue = if (active) dockActive else dockIdle,
                     animationSpec = spring(),
@@ -81,7 +82,7 @@ internal fun SeraFloatingDock(
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .testTag("sera_dock_"+section)
-                        .semantics { this.selected=active;contentDescription=when(section){"Search"->"Discover";"Inbox"->if(inboxCount>0)"Messages, $inboxCount unread" else "Messages";else->section} }
+                        .semantics { this.selected=active;contentDescription=when(section){"Explore"->exploreLabel;"Search"->"Search";"Inbox"->if(inboxCount>0)"Messages, $inboxCount unread" else "Messages";else->section} }
                         .clickable(
                             enabled = true,
                             role = Role.Tab,

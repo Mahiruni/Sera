@@ -1,0 +1,10 @@
+<resources>
+    <string name="explore_title">Explore</string>
+    <string name="explore_subtitle">Discover your professional world.</string>
+    <string name="explore_hiring">Hiring</string>
+    <string name="explore_opportunities">Opportunities</string>
+    <string name="explore_events">Events</string>
+    <string name="explore_spaces">Spaces</string>
+    <string name="explore_talent">Talent</string>
+    <string name="explore_communities">Communities</string>
+</resources>

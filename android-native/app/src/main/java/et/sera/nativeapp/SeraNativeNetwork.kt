@@ -58,24 +58,13 @@ private fun loadProfessionals(token:String,relatedIds:List<String> = emptyList()
 
 @Composable
 fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifier, initialSearch: Boolean = false) {
-    var showHiring by remember { mutableStateOf(false) }
-    if(showHiring){SeraEmployerDashboard(token,userId,modifier,onBack={showHiring=false});return}
-    var showOpportunities by remember { mutableStateOf(false) }
-    if(showOpportunities){SeraOpportunities(token,userId,modifier,onBack={showOpportunities=false});return}
-    var showEvents by remember { mutableStateOf(false) }
-    if(showEvents){SeraEvents(token,userId,modifier,onBack={showEvents=false});return}
-    var showCollaboration by remember { mutableStateOf(false) }
-    if(showCollaboration){SeraCollaboration(token,userId,modifier,onBack={showCollaboration=false});return}
     var showTalent by remember { mutableStateOf(initialSearch) }
     if(showTalent){SeraTalent(token,userId,modifier,onBack={showTalent=false});return}
-    var showCommunities by remember { mutableStateOf(false) }
-    if(showCommunities){SeraCommunities(token,modifier,onBack={showCommunities=false});return}
     var people by remember(userId) { mutableStateOf<List<SeraProfessional>>(emptyList()) }
     var query by rememberSaveable(userId) { mutableStateOf("") }
     var view by rememberSaveable(userId) { mutableStateOf("Discover") }
     val networkListState=rememberLazyListState()
     var selected by remember { mutableStateOf<SearchHit?>(null) }
-    var more by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var relations by remember(userId) { mutableStateOf(SeraNetworkRelations(emptySet(), emptyList())) }
     var actionPeer by remember { mutableStateOf<String?>(null) }
@@ -112,7 +101,7 @@ fun SeraNativeNetwork(token: String, userId: String, modifier: Modifier = Modifi
     val matches=people.filter{it.id!=userId&&(query.isBlank()||listOf(it.name,it.headline,it.location,it.matchedSkills).any{v->v.contains(query.trim(),ignoreCase=true)})}.filter{when(view){"Connections"->it.id in connected;"Invitations"->invitations.any{r->r.requester==it.id||r.recipient==it.id};"Following"->it.id in relations.follows;"Followers"->it.id in relations.followers;else->it.id !in connected&&it.id !in relations.follows&&invitations.none{r->r.requester==it.id||r.recipient==it.id}}}.let{if(view=="Discover")it.sortedByDescending{p->p.matchedSkills.isNotBlank()} else it}
     val teal=MaterialTheme.colorScheme.primary
     Column(modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Network",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Text("Your professional circle.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};Box{TextButton(onClick={more=true}){Text("Explore")};DropdownMenu(expanded=more,onDismissRequest={more=false}){listOf("Hiring workspace" to {showHiring=true},"Collaboration opportunities" to {showOpportunities=true},"Professional events" to {showEvents=true},"Collaboration spaces" to {showCollaboration=true},"Discover portfolio talent" to {showTalent=true},"Explore communities" to {showCommunities=true}).forEach{(label,action)->DropdownMenuItem(text={Text(label)},onClick={more=false;action()})}}}}
+        Column(Modifier.fillMaxWidth().padding(top=8.dp)){Text("Network",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Text("Your professional circle.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){listOf("Connections" to connected.size,"Following" to relations.follows.size,"Followers" to relations.followers.size).forEach{(label,count)->Column(Modifier.weight(1f).clickable{view=label;query=""}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(count.toString(),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
         HorizontalDivider()
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("Discover","Connections","Invitations","Following","Followers").forEach{v->FilterChip(selected=view==v,onClick={view=v;query=""},label={Text(if(v=="Invitations"&&incoming.isNotEmpty())"$v · ${incoming.size}" else v)})}}
