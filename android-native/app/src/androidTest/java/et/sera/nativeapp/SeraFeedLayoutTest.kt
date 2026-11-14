@@ -82,13 +82,25 @@ class SeraFeedLayoutTest {
         val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
         val failing=java.util.concurrent.atomic.AtomicBoolean(false)
         val pages=java.util.concurrent.CopyOnWriteArrayList<Int>()
-        val feed=SeraDirectFeed("",false,false,fetch={page->pages.add(page);if(failing.get())null to "HTTP 401" else listOf(row) to ""},enrich={null})
+        val feed=SeraDirectFeed("",false,false,fetch={page->pages.add(page);if(failing.get())null to "HTTP 503" else listOf(row) to ""},enrich={null})
         try{
             feed.start();compose.waitUntil(5000){feed.state.value.rows.size==1}
             failing.set(true);feed.refresh();compose.waitUntil(5000){feed.state.value.error.isNotBlank()}
             assertEquals(1,feed.state.value.rows.size)
             failing.set(false);feed.retry();compose.waitUntil(5000){!feed.state.value.refreshing&&feed.state.value.error.isBlank()}
             assertEquals(0,pages.last())
+        }finally{feed.close()}
+    }
+    @Test fun deniedAccessPurgesCachedFeed(){
+        val row=SeraPost("qa-post","member","","Actual post body",0,0,0,"post","2026-11-14T00:00:00Z")
+        val denied=java.util.concurrent.atomic.AtomicBoolean(false)
+        val invalidated=java.util.concurrent.atomic.AtomicBoolean(false)
+        val feed=SeraDirectFeed("",false,false,fetch={if(denied.get())null to "HTTP 403" else listOf(row) to ""},enrich={null},onAccessLost={invalidated.set(true)})
+        try{
+            feed.start();compose.waitUntil(5000){feed.state.value.rows.size==1}
+            denied.set(true);feed.refresh();compose.waitUntil(5000){feed.state.value.error.isNotBlank()}
+            assertEquals(0,feed.state.value.rows.size)
+            assertEquals(true,invalidated.get())
         }finally{feed.close()}
     }
     @Test fun shortPostDoesNotShowReadMore(){
